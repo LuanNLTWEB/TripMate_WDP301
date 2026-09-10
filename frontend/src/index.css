@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+.hover-white:hover {
+  color: #ffffff !important;
+}
+
+.navbar-dark .nav-link.text-white-50:hover,
+.navbar-dark .nav-link.text-white-50:focus {
+  color: #ffffff !important;
+}
+
+footer a.text-white-50:hover {
+  color: #ffffff !important;
+}
+
+.user-profile-link {
+  transition: all 0.2s ease-in-out;
+}
+
+.user-profile-link:hover {
+  border-color: #0d6efd !important;
+  background-color: rgba(13, 110, 253, 0.15) !important;
+}
