@@ -1,4 +1,53 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
+
+/**
+ * Validate the payload used when staff create a destination.
+ */
+export const createDestinationValidation = [
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Destination name is required')
+    .isLength({ max: 120 }).withMessage('Destination name cannot exceed 120 characters'),
+
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 }).withMessage('Description cannot exceed 2000 characters'),
+
+  body('category')
+    .trim()
+    .notEmpty().withMessage('Destination category is required')
+    .isLength({ max: 80 }).withMessage('Destination category cannot exceed 80 characters'),
+
+  body('location.address')
+    .trim()
+    .notEmpty().withMessage('Destination address is required'),
+
+  body('location.city')
+    .trim()
+    .notEmpty().withMessage('Destination city is required'),
+
+  body('location.country')
+    .trim()
+    .notEmpty().withMessage('Destination country is required'),
+
+  body('images')
+    .optional()
+    .isArray({ max: 10 }).withMessage('Images must be an array with at most 10 items'),
+
+  body('images.*')
+    .optional()
+    .isURL().withMessage('Each image must be a valid URL')
+];
+
+/**
+ * Validate a destination identifier and its requested status.
+ */
+export const updateDestinationStatusValidation = [
+  param('id').isMongoId().withMessage('Invalid destination identifier'),
+  body('status')
+    .isIn(['active', 'inactive']).withMessage('Status must be active or inactive')
+];
 
 // Register validation rules
 export const registerValidation = [
@@ -98,4 +147,43 @@ export const updateProfileValidation = [
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
+];
+
+/**
+ * Validate an itinerary header before it is created or updated.
+ */
+export const itineraryValidation = [
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Itinerary title cannot be empty')
+    .isLength({ max: 120 }).withMessage('Itinerary title cannot exceed 120 characters'),
+  body('budget')
+    .optional()
+    .isFloat({ min: 0 }).withMessage('Budget cannot be negative'),
+  body('startDate')
+    .optional()
+    .isISO8601().withMessage('Start date must be valid'),
+  body('endDate')
+    .optional()
+    .isISO8601().withMessage('End date must be valid')
+];
+
+/**
+ * Validate an itinerary activity payload.
+ */
+export const activityValidation = [
+  param('id').isMongoId().withMessage('Invalid itinerary identifier'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Activity title is required')
+    .isLength({ max: 160 }).withMessage('Activity title cannot exceed 160 characters'),
+  body('date').isISO8601().withMessage('Activity date must be valid'),
+  body('startTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Start time must use HH:mm format'),
+  body('endTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('End time must use HH:mm format'),
+  body('estimatedCost').optional().isFloat({ min: 0 }).withMessage('Estimated cost cannot be negative')
+];
+
+export const itineraryIdValidation = [
+  param('id').isMongoId().withMessage('Invalid itinerary identifier')
 ];

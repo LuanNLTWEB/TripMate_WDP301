@@ -85,4 +85,33 @@ export const authApi = {
   })
 };
 
+export const destinationApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiRequest(`/destinations${query ? `?${query}` : ''}`);
+  },
+
+  create: (destination) => apiRequest('/destinations', {
+    method: 'POST',
+    body: JSON.stringify(destination)
+  }),
+
+  updateStatus: (id, status) => apiRequest(`/destinations/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  })
+};
+
+export const itineraryApi = {
+  list: () => apiRequest('/itineraries'),
+  create: (itinerary) => apiRequest('/itineraries', {
+    method: 'POST',
+    body: JSON.stringify(itinerary)
+  }),
+  addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
+    method: 'POST',
+    body: JSON.stringify(activity)
+  })
+};
+
 export default authApi;
