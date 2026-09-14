@@ -5,6 +5,7 @@ import logo from '../assets/logo.png';
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'admin';
 
   const handleLogout = () => {
     logout();
@@ -14,7 +15,7 @@ function Navbar() {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top" style={{ backgroundColor: '#1a1a2e' }}>
       <div className="container">
-        <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
+        <Link className="navbar-brand d-flex align-items-center gap-2" to={isAdmin ? '/admin/accounts' : '/'}>
           <img src={logo} alt="TripMate" style={{ height: '40px', width: 'auto' }} />
           <span className="fw-bold fs-3">TripMate</span>
         </Link>
@@ -31,6 +32,11 @@ function Navbar() {
         </button>
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+            {isAdmin ? (
+              <li className="nav-item">
+                <Link className="nav-link text-warning" to="/admin/accounts">Quản lý tài khoản</Link>
+              </li>
+            ) : <>
             <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/">Trang chủ</Link>
             </li>
@@ -46,6 +52,7 @@ function Navbar() {
             <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/about">Giới thiệu</Link>
             </li>
+            </>}
           </ul>
 
           <div className="d-flex align-items-center gap-2">

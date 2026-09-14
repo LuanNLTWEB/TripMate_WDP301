@@ -96,6 +96,13 @@ export const login = async (req, res) => {
       });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị vô hiệu hóa'
+      });
+    }
+
     // Check password
     const isMatch = await user.comparePassword(password);
     

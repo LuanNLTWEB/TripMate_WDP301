@@ -61,7 +61,9 @@ function Register() {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
     }
     
-    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone.trim())) {
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
+    } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
       newErrors.phone = 'Số điện thoại phải gồm 10-11 chữ số';
     }
     
@@ -111,7 +113,7 @@ function Register() {
         username: formData.username.trim(),
         email: formData.email.trim(),
         password: formData.password,
-        phone: formData.phone?.trim() || undefined,
+        phone: formData.phone.trim(),
         dateOfBirth: formData.dateOfBirth || undefined,
         gender: formData.gender
       });
@@ -224,7 +226,7 @@ function Register() {
                       </div>
                       
                       <div className="col-12">
-                        <label htmlFor="phone" className="form-label fw-medium small">Số điện thoại (Không bắt buộc)</label>
+                        <label htmlFor="phone" className="form-label fw-medium small">Số điện thoại</label>
                         <div className="input-group">
                           <span className="input-group-text bg-white text-muted"><i className="bi bi-phone"></i></span>
                           <input
@@ -237,6 +239,7 @@ function Register() {
                             placeholder="Ví dụ: 0912345678"
                             autoComplete="tel"
                             disabled={isLoading}
+                            required
                           />
                           {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
                         </div>

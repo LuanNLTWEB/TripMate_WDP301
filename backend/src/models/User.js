@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    required: [true, 'Vui lòng nhập số điện thoại'],
     trim: true,
     match: [/^[0-9]{10,11}$/, 'Please provide a valid phone number']
   },
@@ -39,8 +40,12 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['admin', 'staff', 'tourProvider', 'customer'],
+    default: 'customer'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
