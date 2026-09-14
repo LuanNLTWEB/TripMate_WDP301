@@ -69,8 +69,8 @@ function Login() {
     setIsLoading(true);
 
     try {
-      await login(formData.email.trim(), formData.password, formData.rememberMe);
-      const from = location.state?.from?.pathname || '/';
+      const response = await login(formData.email.trim(), formData.password, formData.rememberMe);
+      const from = location.state?.from?.pathname || (response.user.role === 'admin' ? '/admin/accounts' : '/');
       navigate(from, { replace: true });
     } catch (error) {
       setServerError(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');

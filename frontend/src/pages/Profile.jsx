@@ -39,7 +39,9 @@ function ProfileForm({ user, onUpdateProfile }) {
       newErrors.username = 'Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới';
     }
 
-    if (formData.phone && !/^[0-9]{10,11}$/.test(formData.phone.trim())) {
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
+    } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
       newErrors.phone = 'Số điện thoại phải gồm 10-11 chữ số';
     }
 
@@ -147,7 +149,12 @@ function ProfileForm({ user, onUpdateProfile }) {
                   <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1">
                     <h3 className="fw-bold mb-0">{user.username}</h3>
                     <span className="badge bg-primary-subtle text-primary border border-primary-subtle text-uppercase small">
-                      {user.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                      {{
+                        admin: 'Quản trị viên',
+                        staff: 'Nhân viên',
+                        tourProvider: 'Tour Provider',
+                        customer: 'Khách hàng'
+                      }[user.role] || 'Khách hàng'}
                     </span>
                   </div>
                   <p className="text-muted small mb-1">
@@ -271,6 +278,7 @@ function ProfileForm({ user, onUpdateProfile }) {
                         onChange={handleChange}
                         placeholder="Ví dụ: 0912345678"
                         disabled={isLoading || !isEditMode}
+                        required
                       />
                       {errors.phone && (
                         <div className="invalid-feedback">{errors.phone}</div>

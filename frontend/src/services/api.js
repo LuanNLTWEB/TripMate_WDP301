@@ -85,4 +85,13 @@ export const authApi = {
   })
 };
 
+export const accountApi = {
+  getAll: (search = '') => apiRequest(`/admin/accounts${search ? `?search=${encodeURIComponent(search)}` : ''}`, { method: 'GET' }),
+  getById: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'GET' }),
+  create: (accountData) => apiRequest('/admin/accounts', { method: 'POST', body: JSON.stringify(accountData) }),
+  update: (id, accountData) => apiRequest(`/admin/accounts/${id}`, { method: 'PUT', body: JSON.stringify(accountData) }),
+  setStatus: (id, isActive) => apiRequest(`/admin/accounts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+  remove: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'DELETE' })
+};
+
 export default authApi;

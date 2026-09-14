@@ -33,6 +33,13 @@ export const protect = async (req, res, next) => {
       });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị vô hiệu hóa'
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
