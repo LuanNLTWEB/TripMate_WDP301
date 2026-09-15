@@ -31,12 +31,15 @@ const findDuplicate = async (account, username, email) => User.findOne({
 export const getAccounts = async (req, res) => {
   try {
     const search = req.query.search?.trim();
-    const filter = search ? {
-      $or: [
+    const filter = {
+      isDeleted: { $ne: true }
+    };
+    if (search) {
+      filter.$or = [
         { username: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
-      ]
-    } : {};
+      ];
+    }
     const accounts = await User.find(filter).sort({ createdAt: -1 });
     res.json({ success: true, accounts: accounts.map(toAccountResponse) });
   } catch (error) {
@@ -64,7 +67,7 @@ export const createAccount = async (req, res) => {
 
 export const getAccount = async (req, res) => {
   try {
-    const account = await User.findById(req.params.id);
+    const account = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!account) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
     res.json({ success: true, account: toAccountDetailResponse(account) });
   } catch (error) {
@@ -78,7 +81,7 @@ export const updateAccount = async (req, res) => {
     const validationError = getValidationError(req);
     if (validationError) return res.status(400).json({ success: false, message: validationError });
 
-    const account = await User.findById(req.params.id);
+    const account = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!account) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
 
     const { role } = req.body;
@@ -86,12 +89,15 @@ export const updateAccount = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không thể thay đổi vai trò của chính bạn' });
     }
 
-    account.role = role;
-    await account.save();
-    res.json({ success: true, message: 'Cập nhật tài khoản thành công', account: toAccountResponse(account) });
+    const updatedAccount = await User.findByIdAndUpdate(
+      account._id,
+      { $set: { role } },
+      { new: true }
+    );
+    res.json({ success: true, message: 'Cập nhật tài khoản thành công', account: toAccountResponse(updatedAccount) });
   } catch (error) {
     console.error('Update account error:', error);
-    res.status(500).json({ success: false, message: 'Không thể cập nhật tài khoản' });
+    res.status(500).json({ success: false, message: error.message || 'Không thể cập nhật tài khoản' });
   }
 };
 
@@ -99,27 +105,39 @@ export const setAccountStatus = async (req, res) => {
   try {
     const { isActive } = req.body;
     if (typeof isActive !== 'boolean') return res.status(400).json({ success: false, message: 'Trạng thái tài khoản không hợp lệ' });
-    const account = await User.findById(req.params.id);
+    const account = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!account) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
     if (String(account._id) === String(req.user._id) && !isActive) return res.status(400).json({ success: false, message: 'Không thể vô hiệu hóa chính bạn' });
-    account.isActive = isActive;
-    await account.save();
-    res.json({ success: true, message: isActive ? 'Đã kích hoạt tài khoản' : 'Đã vô hiệu hóa tài khoản', account: toAccountResponse(account) });
+    
+    const updatedAccount = await User.findByIdAndUpdate(
+      account._id,
+      { $set: { isActive } },
+      { new: true }
+    );
+    res.json({ success: true, message: isActive ? 'Đã kích hoạt tài khoản' : 'Đã vô hiệu hóa tài khoản', account: toAccountResponse(updatedAccount) });
   } catch (error) {
     console.error('Set account status error:', error);
-    res.status(500).json({ success: false, message: 'Không thể cập nhật trạng thái tài khoản' });
+    res.status(500).json({ success: false, message: error.message || 'Không thể cập nhật trạng thái tài khoản' });
   }
 };
 
 export const deleteAccount = async (req, res) => {
   try {
-    const account = await User.findById(req.params.id);
+    const account = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!account) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
     if (String(account._id) === String(req.user._id)) return res.status(400).json({ success: false, message: 'Không thể xóa chính bạn' });
-    await account.deleteOne();
+
+    await User.findByIdAndUpdate(account._id, {
+      $set: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        isActive: false
+      }
+    });
+
     res.json({ success: true, message: 'Đã xóa tài khoản' });
   } catch (error) {
     console.error('Delete account error:', error);
-    res.status(500).json({ success: false, message: 'Không thể xóa tài khoản' });
+    res.status(500).json({ success: false, message: error.message || 'Không thể xóa tài khoản' });
   }
 };
