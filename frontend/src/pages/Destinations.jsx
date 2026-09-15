@@ -68,7 +68,7 @@ const Destinations = () => {
             </p>
           </div>
         </div>
-
+          
         {/* Thanh tìm kiếm nổi*/}
         <div className="row justify-content-center" style={{ marginTop: '-42px', position: 'relative', zIndex: 2 }}>
           <div className="col-11 col-lg-10">
