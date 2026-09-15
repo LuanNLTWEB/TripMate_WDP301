@@ -33,9 +33,32 @@ function Navbar() {
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             {isAdmin ? (
-              <li className="nav-item">
-                <Link className="nav-link text-warning" to="/admin/accounts">Quản lý tài khoản</Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link text-warning" to="/admin/accounts">Quản lý tài khoản</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-warning" to="/staff/destinations">Quản lý điểm đến</Link>
+                </li>
+              </>
+            ) : user?.role === 'staff' ? (
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link text-warning" to="/staff/destinations">Quản lý điểm đến</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-white-50 hover-white" to="/">Trang chủ</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-white-50 hover-white" to="/destinations">Điểm đến</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-white-50 hover-white" to="/tours">Tour du lịch</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-white-50 hover-white" to="/itinerary">Lịch trình của tôi</Link>
+                </li>
+              </>
             ) : <>
             <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/">Trang chủ</Link>

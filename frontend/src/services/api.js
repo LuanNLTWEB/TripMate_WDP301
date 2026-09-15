@@ -94,4 +94,17 @@ export const accountApi = {
   remove: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'DELETE' })
 };
 
+export const destinationApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.isPopular) query.append('isPopular', params.isPopular);
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/destinations${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' })
+};
+
 export default authApi;
