@@ -96,6 +96,13 @@ export const login = async (req, res) => {
       });
     }
 
+    if (user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị xóa khỏi hệ thống'
+      });
+    }
+
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,

@@ -26,10 +26,10 @@ export const protect = async (req, res, next) => {
     // Get user from token
     const user = await User.findById(decoded.id);
     
-    if (!user) {
+    if (!user || user.isDeleted) {
       return res.status(401).json({
         success: false,
-        message: 'User not found'
+        message: 'Tài khoản không tồn tại hoặc đã bị xóa'
       });
     }
 
