@@ -40,11 +40,17 @@ function Navbar() {
                 <li className="nav-item">
                   <Link className="nav-link text-warning" to="/staff/destinations">Quản lý điểm đến</Link>
                 </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-warning" to="/staff/destination-categories">Quản lý danh mục</Link>
+                </li>
               </>
             ) : user?.role === 'staff' ? (
               <>
                 <li className="nav-item">
                   <Link className="nav-link text-warning" to="/staff/destinations">Quản lý điểm đến</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link text-warning" to="/staff/destination-categories">Quản lý danh mục</Link>
                 </li>
                 <li className="nav-item">
                   <Link className="nav-link text-white-50 hover-white" to="/">Trang chủ</Link>

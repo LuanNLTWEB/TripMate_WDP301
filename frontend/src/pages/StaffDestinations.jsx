@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { destinationApi } from '../services/api';
+import { destinationApi, destinationCategoryApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -16,13 +16,18 @@ function StaffDestinations() {
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     location: '',
     imageUrl: '',
+    categoryId: '',
     isPopular: false
   });
+
+  // Category list for dropdown
+  const [categories, setCategories] = useState([]);
 
   const loadDestinations = async (searchTerm = search, page = currentPage) => {
     setIsLoading(true);
@@ -52,12 +57,19 @@ function StaffDestinations() {
   useEffect(() => {
     if (user?.role !== 'staff' && user?.role !== 'admin') return;
     const timer = setTimeout(() => {
-      // Reset to page 1 when searching
       if (search !== '') setCurrentPage(1);
       loadDestinations(search, search !== '' ? 1 : currentPage);
     }, 300);
     return () => clearTimeout(timer);
   }, [search, user?.role]);
+
+  // Load categories for dropdown
+  useEffect(() => {
+    if (user?.role !== 'staff' && user?.role !== 'admin') return;
+    destinationCategoryApi.getAll()
+      .then((res) => setCategories(res.data || []))
+      .catch(() => {});
+  }, [user?.role]);
 
   // Load data on page change
   useEffect(() => {
@@ -90,9 +102,10 @@ function StaffDestinations() {
         description: formData.description,
         location: formData.location,
         images: [formData.imageUrl],
+        categoryId: formData.categoryId || undefined,
         isPopular: formData.isPopular
       });
-      setFormData({ name: '', description: '', location: '', imageUrl: '', isPopular: false });
+      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
       setShowCreateForm(false);
       await loadDestinations('', 1);
     } catch (requestError) {
@@ -114,6 +127,45 @@ function StaffDestinations() {
     }
   };
 
+  const openEditForm = (dest) => {
+    setEditingId(dest._id);
+    setFormData({
+      name: dest.name,
+      description: dest.description,
+      location: dest.location,
+      imageUrl: dest.images?.[0] || '',
+      categoryId: dest.categoryId?._id || dest.categoryId || '',
+      isPopular: dest.isPopular
+    });
+    setShowCreateForm(true);
+    setError('');
+  };
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setError('');
+
+    try {
+      await destinationApi.update(editingId, {
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        images: [formData.imageUrl],
+        categoryId: formData.categoryId || null,
+        isPopular: formData.isPopular
+      });
+      setEditingId(null);
+      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
+      setShowCreateForm(false);
+      await loadDestinations(search, currentPage);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể cập nhật điểm đến.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!isAuthenticated || (user?.role !== 'staff' && user?.role !== 'admin')) return null;
 
   return (
@@ -126,15 +178,15 @@ function StaffDestinations() {
               <h1 className="h3 fw-bold mb-1">Quản lý điểm đến</h1>
               <p className="text-muted mb-0">Xem danh sách các điểm đến trên hệ thống</p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowCreateForm((current) => !current)}>
+            <button className="btn btn-primary" onClick={() => { setShowCreateForm((current) => !current); setEditingId(null); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); setError(''); }}>
               <i className="bi bi-plus-circle me-2"></i>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}
             </button>
           </div>
 
           {showCreateForm && (
-            <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={handleCreate}>
+            <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={editingId ? handleEditSubmit : handleCreate}>
               <div className="card-body p-4">
-                <h2 className="h5 fw-bold mb-3">Tạo điểm đến</h2>
+                <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa điểm đến' : 'Tạo điểm đến'}</h2>
                 <div className="row g-3">
                   <div className="col-md-6">
                     <label className="form-label" htmlFor="destination-name">Tên điểm đến</label>
@@ -148,7 +200,16 @@ function StaffDestinations() {
                     <label className="form-label" htmlFor="destination-description">Mô tả</label>
                     <textarea id="destination-description" name="description" className="form-control" rows="3" value={formData.description} onChange={handleCreateChange} required />
                   </div>
-                  <div className="col-md-8">
+                  <div className="col-md-4">
+                    <label className="form-label" htmlFor="destination-category">Danh mục</label>
+                    <select id="destination-category" name="categoryId" className="form-select" value={formData.categoryId} onChange={handleCreateChange}>
+                      <option value="">— Không chọn —</option>
+                      {categories.map((cat) => (
+                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-4">
                     <label className="form-label" htmlFor="destination-image">URL hình ảnh</label>
                     <input id="destination-image" name="imageUrl" type="url" className="form-control" value={formData.imageUrl} onChange={handleCreateChange} required />
                   </div>
@@ -160,8 +221,13 @@ function StaffDestinations() {
                   </div>
                 </div>
                 <button className="btn btn-primary mt-3" disabled={isSaving}>
-                  {isSaving ? 'Đang lưu...' : 'Lưu điểm đến'}
+                  {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Lưu điểm đến')}
                 </button>
+                {editingId && (
+                  <button type="button" className="btn btn-outline-secondary mt-3 ms-2" onClick={() => { setEditingId(null); setShowCreateForm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); }}>
+                    Hủy
+                  </button>
+                )}
               </div>
             </form>
           )}
@@ -253,7 +319,7 @@ function StaffDestinations() {
                             <Link to={`/destinations/${dest._id}`} className="btn btn-sm btn-light border" title="Xem trước trang khách">
                               <i className="bi bi-eye text-info"></i>
                             </Link>
-                            <button className="btn btn-sm btn-light border" disabled title="Tính năng Sửa đang phát triển">
+                            <button className="btn btn-sm btn-light border" onClick={() => openEditForm(dest)} title="Chỉnh sửa">
                               <i className="bi bi-pencil text-primary"></i>
                             </button>
                             <button className="btn btn-sm btn-light border" disabled title="Tính năng Xóa đang phát triển">

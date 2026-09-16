@@ -22,6 +22,7 @@ export const createDestination = async (req, res) => {
       description: req.body.description,
       location: req.body.location,
       images: req.body.images,
+      categoryId: req.body.categoryId || null,
       isPopular: req.body.isPopular === true || req.body.isPopular === 'true',
       createdBy: req.user._id
     });
@@ -36,6 +37,52 @@ export const createDestination = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Không thể tạo điểm đến'
+    });
+  }
+};
+
+/**
+ * Update a destination.
+ * @route PUT /api/destinations/:id
+ * @access Staff, Admin
+ */
+export const updateDestination = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const destination = await Destination.findById(req.params.id);
+    if (!destination) {
+      return res.status(404).json({ success: false, message: 'Destination not found' });
+    }
+
+    destination.name = req.body.name ?? destination.name;
+    destination.description = req.body.description ?? destination.description;
+    destination.location = req.body.location ?? destination.location;
+    destination.images = req.body.images ?? destination.images;
+    destination.categoryId = req.body.categoryId !== undefined ? (req.body.categoryId || null) : destination.categoryId;
+    destination.isPopular = req.body.isPopular !== undefined
+      ? (req.body.isPopular === true || req.body.isPopular === 'true')
+      : destination.isPopular;
+
+    await destination.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật điểm đến thành công',
+      data: destination
+    });
+  } catch (error) {
+    console.error('Error updating destination:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật điểm đến'
     });
   }
 };
@@ -131,7 +178,7 @@ export const getAllDestinations = async (req, res) => {
 // @access  Public (Guest)
 export const getDestinationById = async (req, res) => {
   try {
-    const destination = await Destination.findById(req.params.id);
+    const destination = await Destination.findById(req.params.id).populate('categoryId');
 
     if (!destination) {
       return res.status(404).json({

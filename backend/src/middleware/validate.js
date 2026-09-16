@@ -205,3 +205,64 @@ export const activityValidation = [
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
+
+/**
+ * Validate destination category creation.
+ */
+export const createCategoryValidation = [
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên danh mục')
+    .isLength({ max: 100 }).withMessage('Tên danh mục không được vượt quá 100 ký tự'),
+  body('description')
+    .optional()
+    .trim()
+];
+
+/**
+ * Validate destination category update.
+ */
+export const updateCategoryValidation = [
+  param('id').isMongoId().withMessage('Mã danh mục không hợp lệ'),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên danh mục')
+    .isLength({ max: 100 }).withMessage('Tên danh mục không được vượt quá 100 ký tự'),
+  body('description')
+    .optional()
+    .trim()
+];
+
+/**
+ * Validate destination category ID param.
+ */
+export const categoryIdValidation = [
+  param('id').isMongoId().withMessage('Mã danh mục không hợp lệ')
+];
+
+/**
+ * Validate destination update.
+ */
+export const updateDestinationValidation = [
+  param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ'),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên điểm đến')
+    .isLength({ max: 100 }).withMessage('Tên điểm đến không được vượt quá 100 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả điểm đến'),
+  body('location')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập vị trí điểm đến'),
+  body('images')
+    .isArray({ min: 1, max: 10 }).withMessage('Cần ít nhất một hình ảnh và tối đa 10 hình ảnh'),
+  body('images.*')
+    .isURL().withMessage('Mỗi hình ảnh phải là một URL hợp lệ'),
+  body('categoryId')
+    .optional({ values: 'falsy' })
+    .isMongoId().withMessage('Mã danh mục không hợp lệ'),
+  body('isPopular')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
+];

@@ -112,7 +112,24 @@ export const destinationApi = {
   updateStatus: (id, status) => apiRequest(`/destinations/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
+  }),
+  update: (id, destination) => apiRequest(`/destinations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(destination)
   })
+};
+
+export const destinationCategoryApi = {
+  getAll: () => apiRequest('/destination-categories', { method: 'GET' }),
+  create: (category) => apiRequest('/destination-categories', {
+    method: 'POST',
+    body: JSON.stringify(category)
+  }),
+  update: (id, category) => apiRequest(`/destination-categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(category)
+  }),
+  remove: (id) => apiRequest(`/destination-categories/${id}`, { method: 'DELETE' })
 };
 
 export const itineraryApi = {

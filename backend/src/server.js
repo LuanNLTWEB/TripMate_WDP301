@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes.js';
 import accountRoutes from './routes/accountRoutes.js';
 import destinationRoutes from './routes/destinationRoutes.js';
 import itineraryRoutes from './routes/itineraryRoutes.js';
+import destinationCategoryRoutes from './routes/destinationCategoryRoutes.js';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin/accounts', accountRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/itineraries', itineraryRoutes);
+app.use('/api/destination-categories', destinationCategoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -4,10 +4,12 @@ import {
 	createDestination,
 	getAllDestinations,
 	getDestinationById,
+	updateDestination,
 	updateDestinationStatus
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
+	updateDestinationValidation,
 	updateDestinationStatusValidation
 } from '../middleware/validate.js';
 
@@ -32,6 +34,14 @@ router.patch(
 	authorize('staff', 'admin'),
 	updateDestinationStatusValidation,
 	updateDestinationStatus
+);
+
+router.put(
+	'/:id',
+	protect,
+	authorize('staff', 'admin'),
+	updateDestinationValidation,
+	updateDestination
 );
 
 // @route   GET /api/destinations/:id

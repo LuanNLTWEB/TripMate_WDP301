@@ -9,13 +9,14 @@ import AdminAccounts from './pages/AdminAccounts'
 import Destinations from './pages/Destinations'
 import DestinationDetails from './pages/DestinationDetails'
 import StaffDestinations from './pages/StaffDestinations'
+import StaffDestinationCategories from './pages/StaffDestinationCategories'
 import Itinerary from './pages/Itinerary'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
   const location = useLocation()
 
-  const adminAllowedPaths = ['/admin/accounts', '/profile', '/staff/destinations']
+  const adminAllowedPaths = ['/admin/accounts', '/profile', '/staff/destinations', '/staff/destination-categories']
 
   if (isAuthenticated && user?.role === 'admin' && !adminAllowedPaths.includes(location.pathname)) {
     return <Navigate to="/admin/accounts" replace />
@@ -38,6 +39,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin/accounts" element={<AdminAccounts />} />
             <Route path="/staff/destinations" element={<StaffDestinations />} />
+            <Route path="/staff/destination-categories" element={<StaffDestinationCategories />} />
             <Route path="/itinerary" element={<Itinerary />} />
           </Routes>
         </AdminRouteGate>

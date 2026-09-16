@@ -77,6 +77,12 @@ const DestinationDetails = () => {
               <i className="bi bi-geo-alt-fill text-danger me-1"></i>
               <span className="text-decoration-underline">{destination.location}</span>
             </span>
+            {destination.categoryId?.name && (
+              <span className="ms-3">
+                <i className="bi bi-tag-fill text-info me-1"></i>
+                {destination.categoryId.name}
+              </span>
+            )}
           </div>
         </div>
 
