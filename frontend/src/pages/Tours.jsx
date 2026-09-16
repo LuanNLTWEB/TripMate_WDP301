@@ -15,7 +15,7 @@ const Tours = () => {
   const [destination, setDestination] = useState('');
   const [travelDate, setTravelDate] = useState(today);
 
-  // Dropdown visibility states
+  // Dropdown 
   const [showDepartureList, setShowDepartureList] = useState(false);
   const [showDestinationList, setShowDestinationList] = useState(false);
 
