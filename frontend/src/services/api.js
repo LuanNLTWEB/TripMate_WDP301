@@ -127,4 +127,16 @@ export const itineraryApi = {
   })
 };
 
+export const tourApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/tours${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' })
+};
+
 export default authApi;

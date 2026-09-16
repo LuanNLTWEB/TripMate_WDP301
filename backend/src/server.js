@@ -5,6 +5,7 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import accountRoutes from './routes/accountRoutes.js';
 import destinationRoutes from './routes/destinationRoutes.js';
+import tourRoutes from './routes/tourRoutes.js';
 import itineraryRoutes from './routes/itineraryRoutes.js';
 
 dotenv.config();
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/accounts', accountRoutes);
 app.use('/api/destinations', destinationRoutes);
+app.use('/api/tours', tourRoutes);
 app.use('/api/itineraries', itineraryRoutes);
 
 // Health check
