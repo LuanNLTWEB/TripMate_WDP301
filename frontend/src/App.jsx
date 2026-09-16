@@ -9,6 +9,7 @@ import AdminAccounts from './pages/AdminAccounts'
 import Destinations from './pages/Destinations'
 import DestinationDetails from './pages/DestinationDetails'
 import StaffDestinations from './pages/StaffDestinations'
+import Tours from './pages/Tours'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
@@ -32,6 +33,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/destinations" element={<Destinations />} />
             <Route path="/destinations/:id" element={<DestinationDetails />} />
+            <Route path="/tours" element={<Tours />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
