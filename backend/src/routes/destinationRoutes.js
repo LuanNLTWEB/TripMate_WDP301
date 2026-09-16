@@ -4,14 +4,22 @@ import {
 	createDestination,
 	getAllDestinations,
 	getDestinationById,
-	updateDestinationStatus
+	updateDestination,
+	updateDestinationStatus,
+	getFavoriteDestinations
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
+	updateDestinationValidation,
 	updateDestinationStatusValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
+
+// @route   GET /api/destinations/favorites
+// @desc    Get favorite destinations of current user
+// @access  Private (Customer)
+router.get('/favorites', protect, authorize('customer'), getFavoriteDestinations);
 
 // @route   GET /api/destinations
 // @desc    Get all destinations
@@ -32,6 +40,14 @@ router.patch(
 	authorize('staff', 'admin'),
 	updateDestinationStatusValidation,
 	updateDestinationStatus
+);
+
+router.put(
+	'/:id',
+	protect,
+	authorize('staff', 'admin'),
+	updateDestinationValidation,
+	updateDestination
 );
 
 // @route   GET /api/destinations/:id

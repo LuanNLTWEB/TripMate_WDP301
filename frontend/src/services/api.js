@@ -104,15 +104,33 @@ export const destinationApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/destinations${queryString}`, { method: 'GET' });
   },
-  getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' })
-  ,create: (destination) => apiRequest('/destinations', {
+  getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' }),
+  create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)
   }),
   updateStatus: (id, status) => apiRequest(`/destinations/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
-  })
+  }),
+  update: (id, destination) => apiRequest(`/destinations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(destination)
+  }),
+  getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' })
+};
+
+export const destinationCategoryApi = {
+  getAll: () => apiRequest('/destination-categories', { method: 'GET' }),
+  create: (category) => apiRequest('/destination-categories', {
+    method: 'POST',
+    body: JSON.stringify(category)
+  }),
+  update: (id, category) => apiRequest(`/destination-categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(category)
+  }),
+  remove: (id) => apiRequest(`/destination-categories/${id}`, { method: 'DELETE' })
 };
 
 export const itineraryApi = {

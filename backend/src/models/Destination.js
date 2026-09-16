@@ -36,6 +36,11 @@ const destinationSchema = new mongoose.Schema({
     default: 'active',
     index: true
   },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DestinationCategory',
+    default: null
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

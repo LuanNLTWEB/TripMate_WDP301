@@ -55,7 +55,13 @@ const userSchema = new mongoose.Schema({
   deletedAt: {
     type: Date,
     default: null
-  }
+  },
+  favoriteDestinations: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Destination'
+    }
+  ]
 }, {
   timestamps: true
 });
