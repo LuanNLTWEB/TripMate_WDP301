@@ -51,7 +51,7 @@ const Destinations = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.05) 100%), url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')`,
+            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.05) 100%), url(${destinationsBanner})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',
@@ -68,7 +68,7 @@ const Destinations = () => {
             </p>
           </div>
         </div>
-          
+
         {/* Thanh tìm kiếm nổi*/}
         <div className="row justify-content-center" style={{ marginTop: '-42px', position: 'relative', zIndex: 2 }}>
           <div className="col-11 col-lg-10">
