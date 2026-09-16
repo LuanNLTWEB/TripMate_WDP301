@@ -29,6 +29,16 @@ const destinationSchema = new mongoose.Schema({
   isPopular: {
     type: Boolean,
     default: false
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+    index: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true
