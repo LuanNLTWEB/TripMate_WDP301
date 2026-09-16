@@ -205,3 +205,58 @@ export const activityValidation = [
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
+
+/**
+ * Validate a partial itinerary update (PATCH /:id).
+ */
+export const updateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Tên lịch trình không được để trống')
+    .isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+  body('budget')
+    .optional()
+    .isFloat({ min: 0 }).withMessage('Ngân sách không được âm'),
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
+];
+
+/**
+ * Validate adding a collaborator to an itinerary.
+ */
+export const addCollaboratorValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .isEmail().withMessage('Email không hợp lệ')
+    .normalizeEmail(),
+  body('permission')
+    .optional()
+    .isIn(['view', 'edit']).withMessage('Quyền phải là view hoặc edit')
+];
+
+/**
+ * Validate updating a collaborator's permission.
+ */
+export const updateCollaboratorPermissionValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('collaboratorId').isMongoId().withMessage('Mã cộng tác viên không hợp lệ'),
+  body('permission')
+    .notEmpty().withMessage('Vui lòng chọn quyền')
+    .isIn(['view', 'edit']).withMessage('Quyền phải là view hoặc edit')
+];
+
+/**
+ * Validate route params for collaborator operations (read / delete).
+ */
+export const collaboratorIdValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('collaboratorId').isMongoId().withMessage('Mã cộng tác viên không hợp lệ')
+];
