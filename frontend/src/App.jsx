@@ -9,6 +9,7 @@ import AdminAccounts from './pages/AdminAccounts'
 import Destinations from './pages/Destinations'
 import DestinationDetails from './pages/DestinationDetails'
 import StaffDestinations from './pages/StaffDestinations'
+import Itinerary from './pages/Itinerary'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
@@ -37,6 +38,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin/accounts" element={<AdminAccounts />} />
             <Route path="/staff/destinations" element={<StaffDestinations />} />
+            <Route path="/itinerary" element={<Itinerary />} />
           </Routes>
         </AdminRouteGate>
       </BrowserRouter>

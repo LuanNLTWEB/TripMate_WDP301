@@ -1,4 +1,36 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
+
+/**
+ * Validate the destination fields managed by Staff.
+ */
+export const createDestinationValidation = [
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên điểm đến')
+    .isLength({ max: 100 }).withMessage('Tên điểm đến không được vượt quá 100 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả điểm đến'),
+  body('location')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập vị trí điểm đến'),
+  body('images')
+    .isArray({ min: 1, max: 10 }).withMessage('Cần ít nhất một hình ảnh và tối đa 10 hình ảnh'),
+  body('images.*')
+    .isURL().withMessage('Mỗi hình ảnh phải là một URL hợp lệ'),
+  body('isPopular')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
+];
+
+/**
+ * Validate a destination status change request.
+ */
+export const updateDestinationStatusValidation = [
+  param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ'),
+  body('status')
+    .isIn(['active', 'inactive']).withMessage('Trạng thái phải là active hoặc inactive')
+];
 
 // Register validation rules
 export const registerValidation = [
@@ -137,4 +169,39 @@ export const updateAccountRoleValidation = [
   body('role')
     .notEmpty().withMessage('Vui lòng chọn vai trò')
     .isIn(['admin', 'staff', 'tourProvider', 'customer']).withMessage('Vai trò không hợp lệ')
+];
+
+/**
+ * Validate personal itinerary metadata.
+ */
+export const itineraryValidation = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên lịch trình')
+    .isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+  body('budget')
+    .optional()
+    .isFloat({ min: 0 }).withMessage('Ngân sách không được âm'),
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
+];
+
+/**
+ * Validate a personal itinerary activity.
+ */
+export const activityValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
+  body('date').isISO8601().withMessage('Ngày hoạt động không hợp lệ'),
+  body('startTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ bắt đầu phải có dạng HH:mm'),
+  body('endTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ kết thúc phải có dạng HH:mm'),
+  body('estimatedCost').optional().isFloat({ min: 0 }).withMessage('Chi phí không được âm')
+];
+
+export const itineraryIdValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
