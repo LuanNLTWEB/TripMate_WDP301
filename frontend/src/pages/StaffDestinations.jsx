@@ -14,6 +14,15 @@ function StaffDestinations() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    location: '',
+    imageUrl: '',
+    isPopular: false
+  });
 
   const loadDestinations = async (searchTerm = search, page = currentPage) => {
     setIsLoading(true);
@@ -62,6 +71,49 @@ function StaffDestinations() {
     }
   };
 
+  const handleCreateChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setFormData((current) => ({
+      ...current,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setError('');
+
+    try {
+      await destinationApi.create({
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        images: [formData.imageUrl],
+        isPopular: formData.isPopular
+      });
+      setFormData({ name: '', description: '', location: '', imageUrl: '', isPopular: false });
+      setShowCreateForm(false);
+      await loadDestinations('', 1);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể tạo điểm đến.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (destination) => {
+    try {
+      await destinationApi.updateStatus(
+        destination._id,
+        destination.status === 'inactive' ? 'active' : 'inactive'
+      );
+      await loadDestinations(search, currentPage);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể cập nhật trạng thái.');
+    }
+  };
+
   if (!isAuthenticated || (user?.role !== 'staff' && user?.role !== 'admin')) return null;
 
   return (
@@ -74,10 +126,45 @@ function StaffDestinations() {
               <h1 className="h3 fw-bold mb-1">Quản lý điểm đến</h1>
               <p className="text-muted mb-0">Xem danh sách các điểm đến trên hệ thống</p>
             </div>
-            <button className="btn btn-primary" disabled title="Tính năng Thêm đang phát triển">
-              <i className="bi bi-plus-circle me-2"></i>Thêm điểm đến
+            <button className="btn btn-primary" onClick={() => setShowCreateForm((current) => !current)}>
+              <i className="bi bi-plus-circle me-2"></i>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}
             </button>
           </div>
+
+          {showCreateForm && (
+            <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={handleCreate}>
+              <div className="card-body p-4">
+                <h2 className="h5 fw-bold mb-3">Tạo điểm đến</h2>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label" htmlFor="destination-name">Tên điểm đến</label>
+                    <input id="destination-name" name="name" className="form-control" value={formData.name} onChange={handleCreateChange} required />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label" htmlFor="destination-location">Vị trí</label>
+                    <input id="destination-location" name="location" className="form-control" value={formData.location} onChange={handleCreateChange} required />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label" htmlFor="destination-description">Mô tả</label>
+                    <textarea id="destination-description" name="description" className="form-control" rows="3" value={formData.description} onChange={handleCreateChange} required />
+                  </div>
+                  <div className="col-md-8">
+                    <label className="form-label" htmlFor="destination-image">URL hình ảnh</label>
+                    <input id="destination-image" name="imageUrl" type="url" className="form-control" value={formData.imageUrl} onChange={handleCreateChange} required />
+                  </div>
+                  <div className="col-md-4 d-flex align-items-end">
+                    <div className="form-check mb-2">
+                      <input id="destination-popular" name="isPopular" type="checkbox" className="form-check-input" checked={formData.isPopular} onChange={handleCreateChange} />
+                      <label className="form-check-label" htmlFor="destination-popular">Đánh dấu phổ biến</label>
+                    </div>
+                  </div>
+                </div>
+                <button className="btn btn-primary mt-3" disabled={isSaving}>
+                  {isSaving ? 'Đang lưu...' : 'Lưu điểm đến'}
+                </button>
+              </div>
+            </form>
+          )}
           
           {error && (
             <div className="alert alert-danger alert-dismissible fade show" role="alert">
@@ -158,7 +245,7 @@ function StaffDestinations() {
                         </td>
                         <td className="py-3">
                           <span className={`badge rounded-pill ${dest.isPopular ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'}`}>
-                            {dest.isPopular ? 'Phổ biến' : 'Thường'}
+                            {dest.status === 'inactive' ? 'Tạm ẩn' : (dest.isPopular ? 'Phổ biến' : 'Đang hoạt động')}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-end">
@@ -171,6 +258,9 @@ function StaffDestinations() {
                             </button>
                             <button className="btn btn-sm btn-light border" disabled title="Tính năng Xóa đang phát triển">
                               <i className="bi bi-trash text-danger"></i>
+                            </button>
+                            <button className="btn btn-sm btn-light border" onClick={() => handleStatusChange(dest)} title={dest.status === 'inactive' ? 'Kích hoạt' : 'Tạm ẩn'}>
+                              <i className={dest.status === 'inactive' ? 'bi bi-toggle-off text-secondary' : 'bi bi-toggle-on text-success'}></i>
                             </button>
                           </div>
                         </td>

@@ -105,6 +105,26 @@ export const destinationApi = {
     return apiRequest(`/destinations${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' })
+  ,create: (destination) => apiRequest('/destinations', {
+    method: 'POST',
+    body: JSON.stringify(destination)
+  }),
+  updateStatus: (id, status) => apiRequest(`/destinations/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  })
+};
+
+export const itineraryApi = {
+  list: () => apiRequest('/itineraries', { method: 'GET' }),
+  create: (itinerary) => apiRequest('/itineraries', {
+    method: 'POST',
+    body: JSON.stringify(itinerary)
+  }),
+  addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
+    method: 'POST',
+    body: JSON.stringify(activity)
+  })
 };
 
 export const tourApi = {

@@ -1,4 +1,84 @@
 import Destination from '../models/Destination.js';
+import { validationResult } from 'express-validator';
+
+/**
+ * Create a destination in the Staff catalogue.
+ * @route POST /api/destinations
+ * @access Staff, Admin
+ */
+export const createDestination = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const destination = await Destination.create({
+      name: req.body.name,
+      description: req.body.description,
+      location: req.body.location,
+      images: req.body.images,
+      isPopular: req.body.isPopular === true || req.body.isPopular === 'true',
+      createdBy: req.user._id
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Tạo điểm đến thành công',
+      data: destination
+    });
+  } catch (error) {
+    console.error('Error creating destination:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tạo điểm đến'
+    });
+  }
+};
+
+/**
+ * Activate or deactivate a destination in the catalogue.
+ * @route PATCH /api/destinations/:id/status
+ * @access Staff, Admin
+ */
+export const updateDestinationStatus = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const destination = await Destination.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true, runValidators: true }
+    );
+
+    if (!destination) {
+      return res.status(404).json({ success: false, message: 'Destination not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Cập nhật trạng thái thành công',
+      data: destination
+    });
+  } catch (error) {
+    console.error('Error updating destination status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật trạng thái điểm đến'
+    });
+  }
+};
 
 // @desc    Get all destinations
 // @route   GET /api/destinations

@@ -1,5 +1,15 @@
 import express from 'express';
-import { getAllDestinations, getDestinationById } from '../controllers/destinationController.js';
+import { protect, authorize } from '../middleware/auth.js';
+import {
+	createDestination,
+	getAllDestinations,
+	getDestinationById,
+	updateDestinationStatus
+} from '../controllers/destinationController.js';
+import {
+	createDestinationValidation,
+	updateDestinationStatusValidation
+} from '../middleware/validate.js';
 
 const router = express.Router();
 
@@ -7,6 +17,22 @@ const router = express.Router();
 // @desc    Get all destinations
 // @access  Public
 router.get('/', getAllDestinations);
+
+router.post(
+	'/',
+	protect,
+	authorize('staff', 'admin'),
+	createDestinationValidation,
+	createDestination
+);
+
+router.patch(
+	'/:id/status',
+	protect,
+	authorize('staff', 'admin'),
+	updateDestinationStatusValidation,
+	updateDestinationStatus
+);
 
 // @route   GET /api/destinations/:id
 // @desc    Get single destination
