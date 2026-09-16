@@ -5,7 +5,8 @@ import {
 	getAllDestinations,
 	getDestinationById,
 	updateDestination,
-	updateDestinationStatus
+	updateDestinationStatus,
+	getFavoriteDestinations
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
@@ -14,6 +15,11 @@ import {
 } from '../middleware/validate.js';
 
 const router = express.Router();
+
+// @route   GET /api/destinations/favorites
+// @desc    Get favorite destinations of current user
+// @access  Private (Customer)
+router.get('/favorites', protect, authorize('customer'), getFavoriteDestinations);
 
 // @route   GET /api/destinations
 // @desc    Get all destinations

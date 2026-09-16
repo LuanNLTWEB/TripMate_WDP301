@@ -73,6 +73,9 @@ function Navbar() {
               <Link className="nav-link text-white-50 hover-white" to="/destinations">Điểm đến</Link>
             </li>
             <li className="nav-item">
+              <Link className="nav-link text-white-50 hover-white" to="/favorites">Yêu thích</Link>
+            </li>
+            <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/tours">Tour du lịch</Link>
             </li>
             <li className="nav-item">

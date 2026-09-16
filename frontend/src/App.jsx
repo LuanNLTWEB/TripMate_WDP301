@@ -11,6 +11,7 @@ import DestinationDetails from './pages/DestinationDetails'
 import StaffDestinations from './pages/StaffDestinations'
 import StaffDestinationCategories from './pages/StaffDestinationCategories'
 import Itinerary from './pages/Itinerary'
+import FavoriteDestinations from './pages/FavoriteDestinations'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
@@ -41,6 +42,7 @@ function App() {
             <Route path="/staff/destinations" element={<StaffDestinations />} />
             <Route path="/staff/destination-categories" element={<StaffDestinationCategories />} />
             <Route path="/itinerary" element={<Itinerary />} />
+            <Route path="/favorites" element={<FavoriteDestinations />} />
           </Routes>
         </AdminRouteGate>
       </BrowserRouter>

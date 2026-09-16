@@ -104,8 +104,8 @@ export const destinationApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/destinations${queryString}`, { method: 'GET' });
   },
-  getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' })
-  ,create: (destination) => apiRequest('/destinations', {
+  getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' }),
+  create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)
   }),
@@ -116,7 +116,8 @@ export const destinationApi = {
   update: (id, destination) => apiRequest(`/destinations/${id}`, {
     method: 'PUT',
     body: JSON.stringify(destination)
-  })
+  }),
+  getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' })
 };
 
 export const destinationCategoryApi = {

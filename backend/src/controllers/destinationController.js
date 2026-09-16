@@ -1,4 +1,5 @@
 import Destination from '../models/Destination.js';
+import User from '../models/User.js';
 import { validationResult } from 'express-validator';
 
 /**
@@ -205,6 +206,34 @@ export const getDestinationById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while fetching destination'
+    });
+  }
+};
+
+// @desc    Get favorite destinations of current user
+// @route   GET /api/destinations/favorites
+// @access  Private (Customer)
+export const getFavoriteDestinations = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate('favoriteDestinations');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: user.favoriteDestinations.length,
+      data: user.favoriteDestinations
+    });
+  } catch (error) {
+    console.error('Error fetching favorite destinations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching favorite destinations'
     });
   }
 };
