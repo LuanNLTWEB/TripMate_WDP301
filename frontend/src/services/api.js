@@ -104,14 +104,36 @@ export const destinationApi = {
 
 export const itineraryApi = {
   list: () => apiRequest('/itineraries'),
+  listShared: () => apiRequest('/itineraries/shared'),
+  get: (id) => apiRequest(`/itineraries/${id}`),
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
+    body: JSON.stringify(itinerary)
+  }),
+  update: (id, itinerary) => apiRequest(`/itineraries/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(itinerary)
   }),
   addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
     method: 'POST',
     body: JSON.stringify(activity)
-  })
+  }),
+  addCollaborator: (id, collaborator) => apiRequest(`/itineraries/${id}/collaborators`, {
+    method: 'POST',
+    body: JSON.stringify(collaborator)
+  }),
+  updateCollaboratorPermission: (id, collaboratorId, permission) => apiRequest(
+    `/itineraries/${id}/collaborators/${collaboratorId}`,
+    { method: 'PATCH', body: JSON.stringify({ permission }) }
+  ),
+  removeCollaborator: (id, collaboratorId) => apiRequest(
+    `/itineraries/${id}/collaborators/${collaboratorId}`,
+    { method: 'DELETE' }
+  )
+};
+
+export const statsApi = {
+  getPlatform: () => apiRequest('/stats/platform')
 };
 
 export default authApi;

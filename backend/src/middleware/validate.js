@@ -187,3 +187,35 @@ export const activityValidation = [
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Invalid itinerary identifier')
 ];
+
+/**
+ * Validate sharing an itinerary with a customer via their email address.
+ */
+export const addCollaboratorValidation = [
+  param('id').isMongoId().withMessage('Invalid itinerary identifier'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Collaborator email is required')
+    .isEmail().withMessage('Collaborator email must be valid')
+    .normalizeEmail(),
+  body('permission')
+    .isIn(['view', 'edit']).withMessage('Permission must be view or edit')
+];
+
+/**
+ * Validate the payload used to change a collaborator permission.
+ */
+export const updateCollaboratorValidation = [
+  param('id').isMongoId().withMessage('Invalid itinerary identifier'),
+  param('collaboratorId').isMongoId().withMessage('Invalid collaborator identifier'),
+  body('permission')
+    .isIn(['view', 'edit']).withMessage('Permission must be view or edit')
+];
+
+/**
+ * Validate the collaborator identifier used when removing a collaborator.
+ */
+export const removeCollaboratorValidation = [
+  param('id').isMongoId().withMessage('Invalid itinerary identifier'),
+  param('collaboratorId').isMongoId().withMessage('Invalid collaborator identifier')
+];

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Profile from './pages/Profile'
 import Destinations from './pages/Destinations'
 import Itinerary from './pages/Itinerary'
+import Stats from './pages/Stats'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/destinations" element={<Destinations />} />
           <Route path="/itinerary" element={<Itinerary />} />
+          <Route path="/stats" element={<Stats />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -43,6 +43,11 @@ function Navbar() {
             <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/itinerary">Lịch trình của tôi</Link>
             </li>
+            {(user?.role === 'staff' || user?.role === 'admin') && (
+              <li className="nav-item">
+                <Link className="nav-link text-white-50 hover-white" to="/stats">Thống kê</Link>
+              </li>
+            )}
             <li className="nav-item">
               <Link className="nav-link text-white-50 hover-white" to="/about">Giới thiệu</Link>
             </li>
