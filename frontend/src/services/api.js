@@ -142,6 +142,10 @@ export const itineraryApi = {
   addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
     method: 'POST',
     body: JSON.stringify(activity)
+  }),
+  addDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations`, {
+    method: 'POST',
+    body: JSON.stringify({ destinationId })
   })
 };
 
