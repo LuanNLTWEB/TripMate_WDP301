@@ -11,11 +11,13 @@ const initialActivity = {
 };
 
 /**
- * Customer-facing personal itinerary workspace.
+ * Customer-facing personal itinerary workspace (view shared + conflict detection).
  */
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
   const [itineraries, setItineraries] = useState([]);
+  const [sharedItineraries, setSharedItineraries] = useState([]);
+  const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
   const [itineraryForm, setItineraryForm] = useState(initialItinerary);
   const [activityForm, setActivityForm] = useState(initialActivity);
@@ -33,11 +35,13 @@ function Itinerary() {
     }
 
     try {
-      const [itineraryResponse, destinationResponse] = await Promise.all([
+      const [itineraryResponse, sharedResponse, destinationResponse] = await Promise.all([
         itineraryApi.list(),
+        itineraryApi.listShared(),
         destinationApi.getAll({ limit: 100 })
       ]);
       setItineraries(itineraryResponse.itineraries || []);
+      setSharedItineraries(sharedResponse.itineraries || []);
       setSelected(itineraryResponse.itineraries?.[0] || null);
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
     } catch (requestError) {
@@ -51,6 +55,16 @@ function Itinerary() {
     loadItineraries();
   }, [isAuthenticated, user?.role]);
 
+  const applyItinerary = (updated) => {
+    setSelected(updated);
+    setItineraries((current) => current.map((itinerary) => (
+      itinerary._id === updated._id ? updated : itinerary
+    )));
+    setSharedItineraries((current) => current.map((itinerary) => (
+      itinerary._id === updated._id ? updated : itinerary
+    )));
+  };
+
   const createItinerary = async (event) => {
     event.preventDefault();
     setSaving(true);
@@ -63,6 +77,7 @@ function Itinerary() {
       setItineraryForm(initialItinerary);
       setItineraries((current) => [response.itinerary, ...current]);
       setSelected(response.itinerary);
+      setActiveTab('mine');
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -81,10 +96,7 @@ function Itinerary() {
         ...activityForm,
         estimatedCost: Number(activityForm.estimatedCost || 0)
       });
-      setSelected(response.itinerary);
-      setItineraries((current) => current.map((itinerary) => (
-        itinerary._id === response.itinerary._id ? response.itinerary : itinerary
-      )));
+      applyItinerary(response.itinerary);
       setActivityForm(initialActivity);
     } catch (requestError) {
       setError(requestError.message);
@@ -113,10 +125,7 @@ function Itinerary() {
     setError('');
     try {
       const response = await itineraryApi.addDestination(selected._id, destinationId);
-      setSelected(response.itinerary);
-      setItineraries((current) => current.map((itinerary) => (
-        itinerary._id === response.itinerary._id ? response.itinerary : itinerary
-      )));
+      applyItinerary(response.itinerary);
       setDestinationId('');
     } catch (requestError) {
       setError(requestError.message);
@@ -139,12 +148,32 @@ function Itinerary() {
     }
   };
 
+  const isOwner = selected && String(selected.owner?._id || selected.owner) === String(user?._id);
+  const myPermission = selected?.collaborators?.find(
+    (collaborator) => String(collaborator.user?._id || collaborator.user) === String(user?._id)
+  )?.permission;
+  const canEditSelected = Boolean(isOwner || myPermission === 'edit');
+
+  const conflictedActivityIds = new Set();
+  (selected?.conflicts || []).forEach((conflict) => {
+    conflictedActivityIds.add(String(conflict.first._id));
+    conflictedActivityIds.add(String(conflict.second._id));
+  });
+
   const addedDestinationIds = new Set(
     (selected?.destinations || []).map((destination) => String(destination._id || destination))
   );
   const selectableDestinations = destinations.filter(
     (destination) => !addedDestinationIds.has(String(destination._id))
   );
+
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    const list = tab === 'shared' ? sharedItineraries : itineraries;
+    setSelected((current) => current || list[0] || null);
+  };
+
+  const visibleItineraries = activeTab === 'shared' ? sharedItineraries : itineraries;
 
   return (
     <>
@@ -155,7 +184,7 @@ function Itinerary() {
           <div className="mb-4">
             <p className="text-primary text-uppercase fw-semibold small mb-2">Personal planning</p>
             <h1 className="fw-bold mb-2">Lịch trình của tôi</h1>
-            <p className="text-muted mb-0">Tạo và quản lý lịch trình cá nhân của bạn.</p>
+            <p className="text-muted mb-0">Tạo và quản lý lịch trình cá nhân, xem lịch trình được chia sẻ với bạn.</p>
           </div>
 
           {!isAuthenticated ? (
@@ -165,41 +194,48 @@ function Itinerary() {
           ) : (
             <>
               {error && <div className="alert alert-danger">{error}</div>}
+              <ul className="nav nav-tabs mb-4">
+                <li className="nav-item">
+                  <button type="button" className={`nav-link ${activeTab === 'mine' ? 'active' : ''}`} onClick={() => switchTab('mine')}>
+                    Lịch trình của tôi
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button type="button" className={`nav-link ${activeTab === 'shared' ? 'active' : ''}`} onClick={() => switchTab('shared')}>
+                    Được chia sẻ với tôi
+                  </button>
+                </li>
+              </ul>
               <div className="row g-4">
                 <div className="col-lg-4">
-                  <form className="card border-0 shadow-sm mb-4" onSubmit={createItinerary}>
-                    <div className="card-body p-4">
-                      <h2 className="h5 fw-bold mb-3">Tạo lịch trình</h2>
-                      <label className="form-label" htmlFor="itinerary-title">Tên lịch trình</label>
-                      <input id="itinerary-title" className="form-control mb-3" value={itineraryForm.title} onChange={(event) => setItineraryForm({ ...itineraryForm, title: event.target.value })} required />
-                      <label className="form-label" htmlFor="itinerary-budget">Ngân sách dự kiến</label>
-                      <input id="itinerary-budget" type="number" min="0" className="form-control mb-3" value={itineraryForm.budget} onChange={(event) => setItineraryForm({ ...itineraryForm, budget: event.target.value })} />
-                      <button className="btn btn-primary w-100" disabled={saving}>Tạo lịch trình</button>
-                    </div>
-                  </form>
+                  {activeTab === 'mine' && (
+                    <form className="card border-0 shadow-sm mb-4" onSubmit={createItinerary}>
+                      <div className="card-body p-4">
+                        <h2 className="h5 fw-bold mb-3">Tạo lịch trình</h2>
+                        <label className="form-label" htmlFor="itinerary-title">Tên lịch trình</label>
+                        <input id="itinerary-title" className="form-control mb-3" value={itineraryForm.title} onChange={(event) => setItineraryForm({ ...itineraryForm, title: event.target.value })} required />
+                        <label className="form-label" htmlFor="itinerary-budget">Ngân sách dự kiến</label>
+                        <input id="itinerary-budget" type="number" min="0" className="form-control mb-3" value={itineraryForm.budget} onChange={(event) => setItineraryForm({ ...itineraryForm, budget: event.target.value })} />
+                        <button className="btn btn-primary w-100" disabled={saving}>Tạo lịch trình</button>
+                      </div>
+                    </form>
+                  )}
 
                   <div className="list-group shadow-sm">
-                    {itineraries.map((itinerary) => (
-                      <div key={itinerary._id} className={`list-group-item d-flex justify-content-between align-items-center ${selected?._id === itinerary._id ? 'active' : ''}`}>
-                        <button
-                          className="btn btn-link text-start p-0 flex-grow-1 text-decoration-none"
-                          style={{ color: 'inherit' }}
-                          onClick={() => { setSelected(itinerary); setDestinationId(''); }}
-                        >
-                          <span className="fw-semibold d-block">{itinerary.title}</span>
-                          <small>{itinerary.activities.length} hoạt động</small>
-                        </button>
-                        <button
-                          className="btn btn-sm btn-link p-0 ms-2"
-                          style={{ color: 'inherit', opacity: 0.7 }}
-                          onClick={() => setPendingDeleteId(itinerary._id)}
-                          title="Xóa lịch trình"
-                        >
-                          <i className="bi bi-trash"></i>
-                        </button>
-                      </div>
+                    {visibleItineraries.map((itinerary) => (
+                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); }}>
+                        <span className="fw-semibold d-block">{itinerary.title}</span>
+                        <small>{itinerary.activities.length} hoạt động</small>
+                        {activeTab === 'shared' && itinerary.owner?.username && (
+                          <small className="d-block text-primary">chia sẻ bởi {itinerary.owner.username}</small>
+                        )}
+                      </button>
                     ))}
-                    {!loading && itineraries.length === 0 && <div className="list-group-item text-muted">Chưa có lịch trình.</div>}
+                    {!loading && visibleItineraries.length === 0 && (
+                      <div className="list-group-item text-muted">
+                        {activeTab === 'shared' ? 'Chưa có lịch trình nào được chia sẻ với bạn.' : 'Chưa có lịch trình.'}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -211,28 +247,69 @@ function Itinerary() {
                       <section className="card border-0 shadow-sm mb-4">
                         <div className="card-body p-4">
                           <div className="d-flex justify-content-between align-items-start mb-3">
-                            <div><h2 className="h4 fw-bold mb-1">{selected.title}</h2><p className="text-muted mb-0">Ngân sách: {selected.budget || 0}</p></div>
+                            <div>
+                              <h2 className="h4 fw-bold mb-1">{selected.title}</h2>
+                              <p className="text-muted mb-0">Ngân sách: {selected.budget || 0} · Điểm đến: {(selected.destinations || []).length} · Hoạt động: {selected.activities.length}</p>
+                            </div>
                             <div className="d-flex align-items-center gap-2">
-                              <span className="badge text-bg-success">Có thể chỉnh sửa</span>
+                              <span className={`badge ${isOwner ? 'text-bg-primary' : canEditSelected ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                                {isOwner ? 'Chủ sở hữu' : canEditSelected ? 'Có thể chỉnh sửa' : 'Chỉ xem'}
+                              </span>
                               <button type="button" className="btn btn-outline-primary btn-sm" onClick={exportItinerary}>
                                 <i className="bi bi-printer me-1"></i>
                                 Xuất lịch trình
                               </button>
                             </div>
                           </div>
+
+                          {(selected.conflicts || []).length > 0 && (
+                            <div className="alert alert-warning mb-3">
+                              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                              <strong>Xung đột lịch trình:</strong> phát hiện {(selected.conflicts || []).length} cặp hoạt động trùng thời gian.
+                            </div>
+                          )}
+
+                          {!canEditSelected && (
+                            <div className="alert alert-info py-2 small">Bạn có quyền xem lịch trình này, chỉ chủ sở hữu hoặc cộng tác viên được chỉnh sửa mới có thể thay đổi.</div>
+                          )}
+
                           {selected.activities.length === 0 ? <p className="text-muted mb-0">Chưa có hoạt động.</p> : (
                             <div className="vstack gap-3">
-                              {selected.activities.map((activity) => (
-                                <div className="border-start border-primary border-3 ps-3" key={activity._id}>
-                                  <div className="fw-semibold">{activity.title}</div>
-                                  <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
-                                  {activity.notes && <div className="small mt-1">{activity.notes}</div>}
-                                </div>
-                              ))}
+                              {selected.activities.map((activity) => {
+                                const conflicted = conflictedActivityIds.has(String(activity._id));
+                                return (
+                                  <div className="border-start border-primary border-3 ps-3" key={activity._id}>
+                                    <div className="fw-semibold d-flex align-items-center gap-2">
+                                      {activity.title}
+                                      {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
+                                    </div>
+                                    <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
+                                    {activity.notes && <div className="small mt-1">{activity.notes}</div>}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
                       </section>
+
+                      {selected.conflicts?.length > 0 && (
+                        <section className="card border-0 shadow-sm mb-4">
+                          <div className="card-body p-4">
+                            <h2 className="h5 fw-bold mb-3">Cặp hoạt động trùng thời gian</h2>
+                            <div className="vstack gap-2">
+                              {selected.conflicts.map((conflict, index) => (
+                                <div className="border rounded p-2 px-3 bg-warning-subtle" key={index}>
+                                  <i className="bi bi-clock-history me-2"></i>
+                                  <strong>{conflict.first.title}</strong> ({conflict.first.startTime} - {conflict.first.endTime})
+                                  {' … '}
+                                  <strong>{conflict.second.title}</strong> ({conflict.second.startTime} - {conflict.second.endTime})
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </section>
+                      )}
 
                       <section className="card border-0 shadow-sm mb-4">
                         <div className="card-body p-4">
@@ -255,52 +332,58 @@ function Itinerary() {
                             </div>
                           )}
 
-                          <form className="row g-2 align-items-end" onSubmit={addDestination}>
-                            <div className="col-md-9">
-                              <label className="form-label" htmlFor="itinerary-destination">Thêm điểm đến</label>
-                              <select
-                                id="itinerary-destination"
-                                className="form-select"
-                                value={destinationId}
-                                onChange={(event) => setDestinationId(event.target.value)}
-                                disabled={saving || selectableDestinations.length === 0}
-                                required
-                              >
-                                <option value="">Chọn điểm đến</option>
-                                {selectableDestinations.map((destination) => (
-                                  <option value={destination._id} key={destination._id}>
-                                    {destination.name} — {destination.location}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="col-md-3">
-                              <button className="btn btn-outline-primary w-100" disabled={saving || !destinationId}>
-                                Thêm
-                              </button>
-                            </div>
-                          </form>
-                          {selectableDestinations.length === 0 && (
+                          {canEditSelected ? (
+                            <form className="row g-2 align-items-end" onSubmit={addDestination}>
+                              <div className="col-md-9">
+                                <label className="form-label" htmlFor="itinerary-destination">Thêm điểm đến</label>
+                                <select
+                                  id="itinerary-destination"
+                                  className="form-select"
+                                  value={destinationId}
+                                  onChange={(event) => setDestinationId(event.target.value)}
+                                  disabled={saving || selectableDestinations.length === 0}
+                                  required
+                                >
+                                  <option value="">Chọn điểm đến</option>
+                                  {selectableDestinations.map((destination) => (
+                                    <option value={destination._id} key={destination._id}>
+                                      {destination.name} — {destination.location}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-md-3">
+                                <button className="btn btn-outline-primary w-100" disabled={saving || !destinationId}>
+                                  Thêm
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <p className="small text-muted mb-0">Cần quyền chỉnh sửa để thêm điểm đến.</p>
+                          )}
+                          {canEditSelected && selectableDestinations.length === 0 && (
                             <p className="small text-muted mt-2 mb-0">Không còn điểm đến khả dụng để thêm.</p>
                           )}
                         </div>
                       </section>
 
-                      <form className="card border-0 shadow-sm" onSubmit={addActivity}>
-                        <div className="card-body p-4">
-                          <h2 className="h5 fw-bold mb-3">Thêm hoạt động</h2>
-                          <div className="row g-3">
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-title">Hoạt động</label><input id="activity-title" className="form-control" value={activityForm.title} onChange={(event) => setActivityForm({ ...activityForm, title: event.target.value })} required /></div>
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-date">Ngày</label><input id="activity-date" type="date" className="form-control" value={activityForm.date} onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })} required /></div>
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-start">Giờ bắt đầu</label><input id="activity-start" type="time" className="form-control" value={activityForm.startTime} onChange={(event) => setActivityForm({ ...activityForm, startTime: event.target.value })} required /></div>
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-end">Giờ kết thúc</label><input id="activity-end" type="time" className="form-control" value={activityForm.endTime} onChange={(event) => setActivityForm({ ...activityForm, endTime: event.target.value })} required /></div>
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-location">Địa điểm</label><input id="activity-location" className="form-control" value={activityForm.location} onChange={(event) => setActivityForm({ ...activityForm, location: event.target.value })} /></div>
-                            <div className="col-md-6"><label className="form-label" htmlFor="activity-cost">Chi phí dự kiến</label><input id="activity-cost" type="number" min="0" className="form-control" value={activityForm.estimatedCost} onChange={(event) => setActivityForm({ ...activityForm, estimatedCost: event.target.value })} /></div>
-                            <div className="col-12"><label className="form-label" htmlFor="activity-notes">Ghi chú</label><textarea id="activity-notes" className="form-control" rows="2" value={activityForm.notes} onChange={(event) => setActivityForm({ ...activityForm, notes: event.target.value })} /></div>
+                      {canEditSelected && (
+                        <form className="card border-0 shadow-sm" onSubmit={addActivity}>
+                          <div className="card-body p-4">
+                            <h2 className="h5 fw-bold mb-3">Thêm hoạt động</h2>
+                            <div className="row g-3">
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-title">Hoạt động</label><input id="activity-title" className="form-control" value={activityForm.title} onChange={(event) => setActivityForm({ ...activityForm, title: event.target.value })} required /></div>
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-date">Ngày</label><input id="activity-date" type="date" className="form-control" value={activityForm.date} onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })} required /></div>
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-start">Giờ bắt đầu</label><input id="activity-start" type="time" className="form-control" value={activityForm.startTime} onChange={(event) => setActivityForm({ ...activityForm, startTime: event.target.value })} required /></div>
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-end">Giờ kết thúc</label><input id="activity-end" type="time" className="form-control" value={activityForm.endTime} onChange={(event) => setActivityForm({ ...activityForm, endTime: event.target.value })} required /></div>
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-location">Địa điểm</label><input id="activity-location" className="form-control" value={activityForm.location} onChange={(event) => setActivityForm({ ...activityForm, location: event.target.value })} /></div>
+                              <div className="col-md-6"><label className="form-label" htmlFor="activity-cost">Chi phí dự kiến</label><input id="activity-cost" type="number" min="0" className="form-control" value={activityForm.estimatedCost} onChange={(event) => setActivityForm({ ...activityForm, estimatedCost: event.target.value })} /></div>
+                              <div className="col-12"><label className="form-label" htmlFor="activity-notes">Ghi chú</label><textarea id="activity-notes" className="form-control" rows="2" value={activityForm.notes} onChange={(event) => setActivityForm({ ...activityForm, notes: event.target.value })} /></div>
+                            </div>
+                            <button className="btn btn-primary mt-3" disabled={saving}>Thêm hoạt động</button>
                           </div>
-                          <button className="btn btn-primary mt-3" disabled={saving}>Thêm hoạt động</button>
-                        </div>
-                      </form>
+                        </form>
+                      )}
                     </>
                   )}
                 </div>

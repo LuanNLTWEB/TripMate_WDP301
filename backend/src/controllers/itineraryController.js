@@ -4,13 +4,47 @@ import Destination from '../models/Destination.js';
 
 const destinationFields = 'name location images status';
 
+/**
+ * Detect overlapping activities within an itinerary (same date, time overlap).
+ * @param {Object} itinerary
+ * @returns {Array<{first:{_id,title,startTime,endTime}, second:{_id,title,startTime,endTime}}>}
+ */
+const detectScheduleConflicts = (itinerary) => {
+  const conflicts = [];
+  const activities = itinerary.activities || [];
+  for (let i = 0; i < activities.length; i++) {
+    for (let j = i + 1; j < activities.length; j++) {
+      const a = activities[i];
+      const b = activities[j];
+      const sameDate = new Date(a.date).toDateString() === new Date(b.date).toDateString();
+      if (sameDate && a.startTime < b.endTime && b.startTime < a.endTime) {
+        conflicts.push({
+          first: { _id: a._id, title: a.title, startTime: a.startTime, endTime: a.endTime },
+          second: { _id: b._id, title: b.title, startTime: b.startTime, endTime: b.endTime }
+        });
+      }
+    }
+  }
+  return conflicts;
+};
+
+/**
+ * Return a plain-object itinerary with a computed `conflicts` field.
+ */
+const hydrateItinerary = (itinerary) => {
+  const doc = itinerary.toObject ? itinerary.toObject() : itinerary;
+  return { ...doc, conflicts: detectScheduleConflicts(doc) };
+};
+
 const canView = (itinerary, userId) => (
-  itinerary.owner.equals(userId) || itinerary.collaborators.some((collaborator) => collaborator.user.equals(userId))
+  String(itinerary.owner?._id || itinerary.owner) === String(userId)
+  || itinerary.collaborators.some((c) => String(c.user?._id || c.user) === String(userId))
 );
 
 const canEdit = (itinerary, userId) => (
-  itinerary.owner.equals(userId) || itinerary.collaborators.some((collaborator) => (
-    collaborator.user.equals(userId) && collaborator.permission === 'edit'
+  String(itinerary.owner?._id || itinerary.owner) === String(userId)
+  || itinerary.collaborators.some((c) => (
+    String(c.user?._id || c.user) === String(userId) && c.permission === 'edit'
   ))
 );
 
@@ -34,6 +68,16 @@ export const createItinerary = async (req, res) => {
   }
 };
 
+const findAllPopulated = (filter) => Itinerary.find(filter)
+  .populate('destinations', destinationFields)
+  .populate('owner', 'username email')
+  .populate('collaborators.user', 'username email');
+
+const findByIdPopulated = (id) => Itinerary.findById(id)
+  .populate('destinations', destinationFields)
+  .populate('owner', 'username email')
+  .populate('collaborators.user', 'username email');
+
 /**
  * List personal itineraries owned by the authenticated customer.
  * @route GET /api/itineraries
@@ -41,13 +85,26 @@ export const createItinerary = async (req, res) => {
  */
 export const listItineraries = async (req, res) => {
   try {
-    const itineraries = await Itinerary.find({ owner: req.user._id })
-      .populate('destinations', destinationFields)
-      .sort({ updatedAt: -1 });
-    return res.json({ success: true, itineraries });
+    const itineraries = await findAllPopulated({ owner: req.user._id }).sort({ updatedAt: -1 });
+    return res.json({ success: true, itineraries: itineraries.map(hydrateItinerary) });
   } catch (error) {
     console.error('List itineraries error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itineraries' });
+  }
+};
+
+/**
+ * List itineraries shared with the authenticated customer.
+ * @route GET /api/itineraries/shared
+ * @access Customer
+ */
+export const listSharedItineraries = async (req, res) => {
+  try {
+    const itineraries = await findAllPopulated({ 'collaborators.user': req.user._id }).sort({ updatedAt: -1 });
+    return res.json({ success: true, itineraries: itineraries.map(hydrateItinerary) });
+  } catch (error) {
+    console.error('List shared itineraries error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to load shared itineraries' });
   }
 };
 
@@ -58,15 +115,32 @@ export const listItineraries = async (req, res) => {
  */
 export const getItinerary = async (req, res) => {
   try {
-    const itinerary = await Itinerary.findById(req.params.id)
-      .populate('destinations', destinationFields);
+    const itinerary = await findByIdPopulated(req.params.id);
     if (!itinerary || !canView(itinerary, req.user._id)) {
       return res.status(404).json({ success: false, message: 'Itinerary not found' });
     }
-    return res.json({ success: true, itinerary });
+    return res.json({ success: true, itinerary: hydrateItinerary(itinerary) });
   } catch (error) {
     console.error('Get itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itinerary' });
+  }
+};
+
+/**
+ * Return detected schedule conflicts for an itinerary.
+ * @route GET /api/itineraries/:id/conflicts
+ * @access Customer
+ */
+export const getActivityConflicts = async (req, res) => {
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canView(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Itinerary not found' });
+    }
+    return res.json({ success: true, conflicts: detectScheduleConflicts(itinerary) });
+  } catch (error) {
+    console.error('Get itinerary conflicts error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to load itinerary conflicts' });
   }
 };
 
@@ -93,8 +167,9 @@ export const addActivity = async (req, res) => {
 
     itinerary.activities.push(req.body);
     await itinerary.save();
-    await itinerary.populate('destinations', destinationFields);
-    return res.status(201).json({ success: true, itinerary });
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated) });
   } catch (error) {
     console.error('Add itinerary activity error:', error);
     return res.status(500).json({ success: false, message: 'Unable to add activity' });
@@ -135,36 +210,15 @@ export const addDestination = async (req, res) => {
 
     itinerary.destinations.push(destination._id);
     await itinerary.save();
-    await itinerary.populate('destinations', destinationFields);
 
+    const populated = await findByIdPopulated(itinerary._id);
     return res.status(201).json({
       success: true,
       message: 'Đã thêm điểm đến vào lịch trình',
-      itinerary
+      itinerary: hydrateItinerary(populated)
     });
   } catch (error) {
     console.error('Add itinerary destination error:', error);
     return res.status(500).json({ success: false, message: 'Không thể thêm điểm đến vào lịch trình' });
-  }
-};
-
-/**
- * Delete a personal itinerary (owner only).
- * @route DELETE /api/itineraries/:id
- * @access Customer
- */
-export const deleteItinerary = async (req, res) => {
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-    if (!itinerary || !itinerary.owner.equals(req.user._id)) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
-    }
-
-    await Itinerary.findByIdAndDelete(req.params.id);
-
-    return res.json({ success: true, message: 'Đã xóa lịch trình' });
-  } catch (error) {
-    console.error('Delete itinerary error:', error);
-    return res.status(500).json({ success: false, message: 'Không thể xóa lịch trình' });
   }
 };

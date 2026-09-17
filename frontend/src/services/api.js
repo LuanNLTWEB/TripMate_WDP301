@@ -136,6 +136,7 @@ export const destinationCategoryApi = {
 
 export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
+  listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
     body: JSON.stringify(itinerary)
@@ -149,6 +150,10 @@ export const itineraryApi = {
     body: JSON.stringify({ destinationId })
   }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
+};
+
+export const statsApi = {
+  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
 export const tourApi = {

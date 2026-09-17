@@ -4,9 +4,10 @@ import {
   addDestination,
   addActivity,
   createItinerary,
+  getActivityConflicts,
   getItinerary,
   listItineraries,
-  deleteItinerary
+  listSharedItineraries
 } from '../controllers/itineraryController.js';
 import {
   activityValidation,
@@ -20,6 +21,8 @@ const customerAccess = [protect, authorize('customer')];
 
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
 router.get('/', ...customerAccess, listItineraries);
+router.get('/shared', ...customerAccess, listSharedItineraries);
+router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);

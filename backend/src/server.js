@@ -8,6 +8,7 @@ import destinationRoutes from './routes/destinationRoutes.js';
 import tourRoutes from './routes/tourRoutes.js';
 import itineraryRoutes from './routes/itineraryRoutes.js';
 import destinationCategoryRoutes from './routes/destinationCategoryRoutes.js';
+import statsRoutes from './routes/statsRoutes.js';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api/destinations', destinationRoutes);
 app.use('/api/tours', tourRoutes);
 app.use('/api/itineraries', itineraryRoutes);
 app.use('/api/destination-categories', destinationCategoryRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
