@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationApi, destinationCategoryApi } from '../services/api';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 function StaffDestinations() {
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const [destinations, setDestinations] = useState([]);
   const [search, setSearch] = useState('');
@@ -30,7 +27,6 @@ function StaffDestinations() {
     isPopular: false
   });
 
-  // Category list for dropdown
   const [categories, setCategories] = useState([]);
 
   const loadDestinations = async (searchTerm = search, page = currentPage) => {
@@ -48,15 +44,6 @@ function StaffDestinations() {
     }
   };
 
-  // Protect route
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { replace: true, state: { from: { pathname: '/staff/destinations' } } });
-    } else if (user?.role !== 'staff' && user?.role !== 'admin') {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthenticated, navigate, user]);
-
   useEffect(() => {
     if (user?.role !== 'staff' && user?.role !== 'admin') return;
     const timer = setTimeout(() => {
@@ -65,7 +52,6 @@ function StaffDestinations() {
     return () => clearTimeout(timer);
   }, [search, currentPage, user?.role]);
 
-  // Load categories for dropdown
   useEffect(() => {
     if (user?.role !== 'staff' && user?.role !== 'admin') return;
     destinationCategoryApi.getAll()
@@ -187,13 +173,10 @@ function StaffDestinations() {
     }
   };
 
-  if (!isAuthenticated || (user?.role !== 'staff' && user?.role !== 'admin')) return null;
-
   return (
     <>
-      <Navbar />
-      <main className="py-5 bg-light flex-grow-1">
-        <div className="container">
+      <section className="management-page-section">
+        <div className="container-fluid px-0">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
               <h1 className="h3 fw-bold mb-1">Quản lý điểm đến</h1>
@@ -366,7 +349,6 @@ function StaffDestinations() {
                 </table>
               </div>
               
-              {/* Pagination */}
               {!isLoading && totalPages > 1 && (
                 <div className="p-4 border-top bg-white rounded-bottom d-flex align-items-center justify-content-between flex-wrap gap-3">
                   <div className="text-muted small">
@@ -394,7 +376,7 @@ function StaffDestinations() {
             </div>
           </div>
         </div>
-      </main>
+      </section>
 
       {destinationToDelete && (
         <>
@@ -462,7 +444,6 @@ function StaffDestinations() {
         </>
       )}
 
-      <Footer />
     </>
   );
 }

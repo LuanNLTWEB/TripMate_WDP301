@@ -1,8 +1,5 @@
 import { body, param } from 'express-validator';
 
-/**
- * Validate the destination fields managed by Staff.
- */
 export const createDestinationValidation = [
   body('name')
     .trim()
@@ -23,16 +20,12 @@ export const createDestinationValidation = [
     .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
 ];
 
-/**
- * Validate a destination status change request.
- */
 export const updateDestinationStatusValidation = [
   param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ'),
   body('status')
     .isIn(['active', 'inactive']).withMessage('Trạng thái phải là active hoặc inactive')
 ];
 
-// Register validation rules
 export const registerValidation = [
   body('username')
     .trim()
@@ -81,7 +74,6 @@ export const registerValidation = [
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
 ];
 
-// Login validation rules
 export const loginValidation = [
   body('email')
     .trim()
@@ -93,7 +85,6 @@ export const loginValidation = [
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
 ];
 
-// Update profile validation rules
 export const updateProfileValidation = [
   body('username')
     .optional()
@@ -171,9 +162,6 @@ export const updateAccountRoleValidation = [
     .isIn(['admin', 'staff', 'tourProvider', 'customer']).withMessage('Vai trò không hợp lệ')
 ];
 
-/**
- * Validate personal itinerary metadata.
- */
 export const itineraryValidation = [
   body('title')
     .trim()
@@ -190,9 +178,6 @@ export const itineraryValidation = [
     .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
 ];
 
-/**
- * Validate a personal itinerary activity.
- */
 export const activityValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
@@ -210,6 +195,23 @@ export const tourIdValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
+export const updateTourStatusValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('status')
+    .isIn(['active', 'suspended']).withMessage('Trạng thái tour không hợp lệ'),
+  body('reason')
+    .custom((value, { req }) => {
+      const reason = typeof value === 'string' ? value.trim() : '';
+      if (req.body.status === 'suspended' && reason.length < 5) {
+        throw new Error('Lý do tạm ngưng phải có ít nhất 5 ký tự');
+      }
+      if (reason.length > 500) {
+        throw new Error('Lý do tạm ngưng không được vượt quá 500 ký tự');
+      }
+      return true;
+    })
+];
+
 export const itineraryDestinationValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('destinationId')
@@ -222,9 +224,6 @@ export const removeDestinationValidation = [
   param('destinationId').isMongoId().withMessage('Mã điểm đến không hợp lệ')
 ];
 
-/**
- * Validate destination category creation.
- */
 export const createCategoryValidation = [
   body('name')
     .trim()
@@ -235,9 +234,6 @@ export const createCategoryValidation = [
     .trim()
 ];
 
-/**
- * Validate destination category update.
- */
 export const updateCategoryValidation = [
   param('id').isMongoId().withMessage('Mã danh mục không hợp lệ'),
   body('name')
@@ -249,9 +245,6 @@ export const updateCategoryValidation = [
     .trim()
 ];
 
-/**
- * Validate destination category ID param.
- */
 export const categoryIdValidation = [
   param('id').isMongoId().withMessage('Mã danh mục không hợp lệ')
 ];
@@ -260,9 +253,6 @@ export const destinationIdValidation = [
   param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ')
 ];
 
-/**
- * Validate destination update.
- */
 export const updateDestinationValidation = [
   param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ'),
   body('name')

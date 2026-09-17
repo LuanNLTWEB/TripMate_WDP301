@@ -8,7 +8,7 @@ import Footer from '../components/Footer';
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const toast = useToast();
 
   const [formData, setFormData] = useState({
@@ -20,13 +20,13 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // If already logged in, redirect to home or previous page
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/';
+      const defaultPath = ['admin', 'staff'].includes(user?.role) ? '/management' : '/';
+      const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, location, user?.role]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -66,7 +66,8 @@ function Login() {
 
     try {
       const response = await login(formData.email.trim(), formData.password, formData.rememberMe);
-      const from = location.state?.from?.pathname || (response.user.role === 'admin' ? '/admin/accounts' : '/');
+      const defaultPath = ['admin', 'staff'].includes(response.user.role) ? '/management' : '/';
+      const from = location.state?.from?.pathname || defaultPath;
       toast.success(`Chào mừng ${response.user.username || 'bạn'} quay lại!`);
       navigate(from, { replace: true });
     } catch (error) {
@@ -94,7 +95,6 @@ function Login() {
                   </div>
 
                   <form onSubmit={handleSubmit} noValidate>
-                    {/* Email Input */}
                     <div className="mb-3">
                       <label htmlFor="email" className="form-label fw-medium small">
                         Địa chỉ Email
@@ -121,7 +121,6 @@ function Login() {
                       </div>
                     </div>
 
-                    {/* Password Input */}
                     <div className="mb-3">
                       <label htmlFor="password" className="form-label fw-medium small">
                         Mật khẩu
@@ -157,7 +156,6 @@ function Login() {
                       </div>
                     </div>
 
-                    {/* Remember me & Forgot password */}
                     <div className="d-flex justify-content-between align-items-center mb-4">
                       <div className="form-check">
                         <input
@@ -178,7 +176,6 @@ function Login() {
                       </Link>
                     </div>
 
-                    {/* Submit Button */}
                     <button
                       type="submit"
                       className="btn btn-primary w-100 py-2 fw-medium"

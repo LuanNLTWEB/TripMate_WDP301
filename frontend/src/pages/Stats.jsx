@@ -1,19 +1,12 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { statsApi } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
 
 function byKey(entries, key, fallback = 0) {
   const entry = (entries || []).find((item) => String(item._id) === key);
   return entry ? entry.count : fallback;
 }
 
-/**
- * Staff/admin platform statistics dashboard.
- */
 function Stats() {
-  const { isAuthenticated } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,27 +25,19 @@ function Stats() {
       }
     };
 
-    if (isAuthenticated) {
-      loadStats();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated]);
+    loadStats();
+  }, []);
 
   return (
-    <>
-      <Navbar />
-      <main className="bg-light py-5 flex-grow-1">
-        <div className="container">
+    <section className="management-page-section">
+      <div className="container-fluid px-0">
           <div className="mb-4">
             <p className="text-primary text-uppercase fw-semibold small mb-2">Platform overview</p>
             <h1 className="fw-bold mb-2">Thống kê nền tảng</h1>
             <p className="text-muted mb-0">Tổng quan về người dùng, điểm đến, tour và lịch trình.</p>
           </div>
 
-          {!isAuthenticated ? (
-            <div className="alert alert-info">Vui lòng đăng nhập để xem thống kê nền tảng.</div>
-          ) : loading ? (
+          {loading ? (
             <div className="text-center py-5"><div className="spinner-border text-primary" role="status"></div></div>
           ) : error ? (
             <div className="alert alert-danger">{error}</div>
@@ -196,9 +181,7 @@ function Stats() {
             <div className="text-center text-muted py-5">Không có dữ liệu thống kê.</div>
           )}
         </div>
-      </main>
-      <Footer />
-    </>
+    </section>
   );
 }
 
