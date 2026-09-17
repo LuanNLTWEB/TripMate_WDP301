@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { tourApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import toursBanner from '../assets/banner_tours.jpg';
 
 const Tours = () => {
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [favoriteTourIds, setFavoriteTourIds] = useState(new Set());
+  const [favoriteOwnerId, setFavoriteOwnerId] = useState('');
+  const [savingFavoriteId, setSavingFavoriteId] = useState('');
+  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [favoriteError, setFavoriteError] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -63,6 +73,78 @@ const Tours = () => {
     fetchTours();
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'customer') return;
+
+    let isMounted = true;
+    tourApi.getFavorites()
+      .then((response) => {
+        if (isMounted) {
+          setFavoriteTourIds(new Set((response.favoriteTourIds || []).map(String)));
+          setFavoriteOwnerId(String(user?.id || user?._id || ''));
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setFavoriteError(err.message || 'Không thể tải danh sách tour yêu thích.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, user?.role, user?.id, user?._id]);
+
+  const isFavoriteTour = (tourId) => (
+    favoriteOwnerId === String(user?.id || user?._id || '')
+    && favoriteTourIds.has(String(tourId))
+  );
+
+  const handleToggleFavorite = async (tourId) => {
+    const normalizedTourId = String(tourId);
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    if (user?.role !== 'customer') {
+      setFavoriteError('Chức năng yêu thích chỉ dành cho khách hàng.');
+      return;
+    }
+
+    setSavingFavoriteId(normalizedTourId);
+    setFavoriteMessage('');
+    setFavoriteError('');
+
+    const isFav = isFavoriteTour(normalizedTourId);
+
+    try {
+      if (isFav) {
+        const response = await tourApi.removeFavorite(normalizedTourId);
+        setFavoriteTourIds((currentIds) => {
+          const updatedIds = new Set(currentIds);
+          updatedIds.delete(normalizedTourId);
+          return updatedIds;
+        });
+        setFavoriteOwnerId(String(user?.id || user?._id || ''));
+        setFavoriteMessage(response.message || 'Đã bỏ lưu tour yêu thích.');
+      } else {
+        const response = await tourApi.saveFavorite(normalizedTourId);
+        setFavoriteTourIds((currentIds) => {
+          const updatedIds = new Set(currentIds);
+          updatedIds.add(String(response.tourId || normalizedTourId));
+          return updatedIds;
+        });
+        setFavoriteOwnerId(String(user?.id || user?._id || ''));
+        setFavoriteMessage(response.message || 'Đã lưu tour yêu thích.');
+      }
+    } catch (err) {
+      setFavoriteError(err.message || (isFav ? 'Không thể bỏ lưu tour yêu thích.' : 'Không thể lưu tour yêu thích.'));
+    } finally {
+      setSavingFavoriteId('');
+    }
+  };
+
   // Xử lý submit tìm kiếm
   const handleSearch = (e) => {
     e.preventDefault();
@@ -89,7 +171,7 @@ const Tours = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%), url('/src/assets/banner_tours.jpg')`,
+            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%), url(${toursBanner})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',
@@ -111,120 +193,130 @@ const Tours = () => {
         <div className="row justify-content-center" style={{ marginTop: '-42px', position: 'relative', zIndex: 2 }}>
           <div className="col-12 col-lg-11">
             <div className="card border-0 shadow-lg p-3 p-md-4" style={{ borderRadius: '18px' }}>
+
               <form onSubmit={handleSearch}>
-                <div className="row g-2 align-items-stretch">
+                <div className="row g-2 align-items-center">
 
                   {/* Điểm khởi hành */}
-                  <div className="col-12 col-md-3 col-lg-3" style={{ position: 'relative' }}>
-                    <label className="form-label small text-secondary mb-1">Điểm khởi hành</label>
+                  <div className="col-12 col-md-4 col-lg-4 position-relative">
+                    <label className="form-label text-muted small fw-semibold mb-1">
+                      <i className="bi bi-geo-alt me-1 text-primary"></i>Khởi hành từ
+                    </label>
                     <div className="input-group">
-                      <span className="input-group-text bg-white border-end-0">
-                        <i className="bi bi-geo-alt text-primary"></i>
-                      </span>
                       <input
                         type="text"
-                        className="form-control border-start-0 ps-0"
-                        placeholder="Tất cả"
+                        className="form-control form-control-lg fs-6 border-0 bg-light"
+                        placeholder="Chọn điểm khởi hành"
                         value={departure}
-                        onChange={(e) => setDeparture(e.target.value)}
+                        onChange={(e) => {
+                          setDeparture(e.target.value);
+                          setShowDepartureList(true);
+                        }}
                         onFocus={() => setShowDepartureList(true)}
-                        onBlur={() => setTimeout(() => setShowDepartureList(false), 150)}
+                        onBlur={() => setTimeout(() => setShowDepartureList(false), 200)}
                       />
-                      {departure && (
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary border-start-0 bg-white"
-                          onClick={() => setDeparture('')}
-                          title="Xóa"
-                        >
-                          <i className="bi bi-x-lg"></i>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="btn bg-light border-0 text-muted"
+                        onClick={() => setShowDepartureList(!showDepartureList)}
+                        tabIndex={-1}
+                      >
+                        <i className="bi bi-chevron-down small"></i>
+                      </button>
                     </div>
-                    {/* Dropdown gợi ý điểm khởi hành */}
-                    {showDepartureList && filteredDeparture.length > 0 && (
-                      <ul className="list-group shadow" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, maxHeight: '220px', overflowY: 'auto' }}>
-                        {filteredDeparture.map((option) => (
-                          <li
-                            key={option}
-                            className="list-group-item list-group-item-action d-flex align-items-center gap-2"
-                            style={{ cursor: 'pointer' }}
-                            onMouseDown={() => {
-                              setDeparture(option === 'Tất cả' ? '' : option);
-                              setShowDepartureList(false);
-                            }}
-                          >
-                            <i className="bi bi-geo-alt text-primary"></i>
-                            {option}
-                          </li>
-                        ))}
-                      </ul>
+
+                    {showDepartureList && (
+                      <div
+                        className="dropdown-menu show w-100 shadow border-0 mt-1 py-1"
+                        style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1000 }}
+                      >
+                        {filteredDeparture.length > 0 ? (
+                          filteredDeparture.map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              className="dropdown-item py-2 small"
+                              onMouseDown={() => {
+                                setDeparture(opt);
+                                setShowDepartureList(false);
+                              }}
+                            >
+                              {opt}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="dropdown-item text-muted small py-2">Không tìm thấy</div>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   {/* Điểm đến */}
-                  <div className="col-12 col-md-4 col-lg-4" style={{ position: 'relative' }}>
-                    <label className="form-label small text-secondary mb-1">Điểm đến</label>
+                  <div className="col-12 col-md-3 col-lg-3 position-relative">
+                    <label className="form-label text-muted small fw-semibold mb-1">
+                      <i className="bi bi-pin-map me-1 text-primary"></i>Bạn muốn đi đâu?
+                    </label>
                     <div className="input-group">
-                      <span className="input-group-text bg-white border-end-0">
-                        <i className="bi bi-geo-alt-fill text-primary"></i>
-                      </span>
                       <input
                         type="text"
-                        className="form-control border-start-0 ps-0"
-                        placeholder="Địa điểm bất kỳ..."
+                        className="form-control form-control-lg fs-6 border-0 bg-light"
+                        placeholder="Chọn điểm đến"
                         value={destination}
-                        onChange={(e) => setDestination(e.target.value)}
+                        onChange={(e) => {
+                          setDestination(e.target.value);
+                          setShowDestinationList(true);
+                        }}
                         onFocus={() => setShowDestinationList(true)}
-                        onBlur={() => setTimeout(() => setShowDestinationList(false), 150)}
+                        onBlur={() => setTimeout(() => setShowDestinationList(false), 200)}
                       />
-                      {destination && (
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary border-start-0 bg-white"
-                          onClick={() => setDestination('')}
-                          title="Xóa"
-                        >
-                          <i className="bi bi-x-lg"></i>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="btn bg-light border-0 text-muted"
+                        onClick={() => setShowDestinationList(!showDestinationList)}
+                        tabIndex={-1}
+                      >
+                        <i className="bi bi-chevron-down small"></i>
+                      </button>
                     </div>
-                    {/* Dropdown gợi ý điểm đến */}
-                    {showDestinationList && filteredDestination.length > 0 && (
-                      <ul className="list-group shadow" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, maxHeight: '220px', overflowY: 'auto' }}>
-                        {filteredDestination.map((option) => (
-                          <li
-                            key={option}
-                            className="list-group-item list-group-item-action d-flex align-items-center gap-2"
-                            style={{ cursor: 'pointer' }}
-                            onMouseDown={() => {
-                              setDestination(option);
-                              setShowDestinationList(false);
-                            }}
-                          >
-                            <i className="bi bi-geo-alt-fill text-primary"></i>
-                            {option}
-                          </li>
-                        ))}
-                      </ul>
+
+                    {showDestinationList && (
+                      <div
+                        className="dropdown-menu show w-100 shadow border-0 mt-1 py-1"
+                        style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1000 }}
+                      >
+                        {filteredDestination.length > 0 ? (
+                          filteredDestination.map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              className="dropdown-item py-2 small"
+                              onMouseDown={() => {
+                                setDestination(opt);
+                                setShowDestinationList(false);
+                              }}
+                            >
+                              {opt}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="dropdown-item text-muted small py-2">Không tìm thấy</div>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {/* Ngày đi */}
+                  {/* Ngày khởi hành */}
                   <div className="col-12 col-md-3 col-lg-3">
-                    <label className="form-label small text-secondary mb-1">Ngày đi</label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-white border-end-0">
-                        <i className="bi bi-calendar3 text-primary"></i>
-                      </span>
-                      <input
-                        type="date"
-                        className="form-control border-start-0 ps-0"
-                        value={travelDate}
-                        min={today}
-                        onChange={(e) => setTravelDate(e.target.value)}
-                      />
-                    </div>
+                    <label className="form-label text-muted small fw-semibold mb-1">
+                      <i className="bi bi-calendar3 me-1 text-primary"></i>Ngày khởi hành
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control form-control-lg fs-6 border-0 bg-light"
+                      value={travelDate}
+                      min={today}
+                      onChange={(e) => setTravelDate(e.target.value)}
+                    />
                   </div>
 
                   {/* Nút Tìm kiếm */}
@@ -261,6 +353,30 @@ const Tours = () => {
             )}
           </div>
 
+          {favoriteMessage && (
+            <div className="alert alert-success alert-dismissible" role="alert">
+              {favoriteMessage}
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Đóng"
+                onClick={() => setFavoriteMessage('')}
+              ></button>
+            </div>
+          )}
+
+          {favoriteError && (
+            <div className="alert alert-danger alert-dismissible" role="alert">
+              {favoriteError}
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Đóng"
+                onClick={() => setFavoriteError('')}
+              ></button>
+            </div>
+          )}
+
           {loading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary" role="status">
@@ -281,22 +397,61 @@ const Tours = () => {
             <div className="row row-cols-1 row-cols-md-3 g-4">
               {tours.map((tour) => (
                 <div key={tour._id} className="col">
-                  <div className="card h-100 shadow-sm border-0 position-relative overflow-hidden">
-                    {tour.images?.[0] ? (
-                      <img
-                        src={tour.images[0]}
-                        className="card-img-top"
-                        alt={tour.title}
-                        style={{ height: '220px', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '220px' }}>
-                        <i className="bi bi-image fs-1"></i>
-                      </div>
-                    )}
-                    <div className="position-absolute top-0 end-0 bg-primary text-white px-3 py-1 rounded-start mt-3 fw-bold">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tour.price)}
+                  <div
+                    className="card h-100 shadow-sm border-0 position-relative overflow-hidden"
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Xem chi tiết tour ${tour.title}`}
+                    onClick={() => navigate(`/tours/${tour._id}`)}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(`/tours/${tour._id}`);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="position-relative">
+                      {tour.images?.[0] ? (
+                        <img
+                          src={tour.images[0]}
+                          className="card-img-top"
+                          alt={tour.title}
+                          style={{ height: '220px', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '220px' }}>
+                          <i className="bi bi-image fs-1"></i>
+                        </div>
+                      )}
+
+                      {/* Phần giá nằm bên trái giống như ở trong phần yêu thích */}
+                      <span className="position-absolute bottom-0 start-0 bg-primary text-white px-3 py-1 fw-semibold">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tour.price)}
+                      </span>
+
+                      {/* Phần tim nằm ở trên cùng bên phải giống như ở trong phần yêu thích, thích/hủy thích trực tiếp */}
+                      <button
+                        type="button"
+                        className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center"
+                        style={{ width: '40px', height: '40px', zIndex: 2 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleFavorite(tour._id);
+                        }}
+                        disabled={savingFavoriteId === String(tour._id)}
+                        aria-label={isFavoriteTour(tour._id) ? `Bỏ lưu tour ${tour.title}` : `Lưu tour ${tour.title}`}
+                        title={isFavoriteTour(tour._id) ? 'Bỏ yêu thích' : 'Yêu thích'}
+                      >
+                        {savingFavoriteId === String(tour._id) ? (
+                          <span className="spinner-border spinner-border-sm text-danger" aria-hidden="true"></span>
+                        ) : (
+                          <i className={`bi ${isFavoriteTour(tour._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
+                        )}
+                      </button>
                     </div>
+
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-center mb-2">
                         <span className="badge bg-light text-dark border">
@@ -319,16 +474,10 @@ const Tours = () => {
                       }}>
                         {tour.description}
                       </p>
-                      <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                      <div className="mt-3 pt-3 border-top">
                         <span className="text-muted small">
                           <i className="bi bi-person-check me-1"></i>Còn {tour.availableSeats} chỗ
                         </span>
-                        <button
-                          className="btn btn-primary btn-sm rounded-pill px-3"
-                          onClick={() => alert('Chức năng Xem chi tiết đang được phát triển!')}
-                        >
-                          Xem chi tiết
-                        </button>
                       </div>
                     </div>
                   </div>

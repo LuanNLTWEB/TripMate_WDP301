@@ -35,6 +35,50 @@ footer a.text-white-50:hover {
   background-color: rgba(13, 110, 253, 0.15) !important;
 }
 
+.user-dropdown-menu {
+  animation: dropdownFadeIn 0.18s ease-out;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-dropdown-menu .dropdown-item {
+  color: rgba(255, 255, 255, 0.75) !important;
+  background-color: transparent;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.user-dropdown-menu .dropdown-item:hover,
+.user-dropdown-menu .dropdown-item:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  transform: translateX(3px);
+}
+
+.user-dropdown-menu .dropdown-item.text-danger {
+  color: #ea868f !important;
+}
+
+.user-dropdown-menu .dropdown-item.text-danger:hover,
+.user-dropdown-menu .dropdown-item.text-danger:focus {
+  background-color: rgba(220, 53, 69, 0.18) !important;
+  color: #ff99a2 !important;
+}
+
 .itinerary-print-root {
   display: none;
 }
