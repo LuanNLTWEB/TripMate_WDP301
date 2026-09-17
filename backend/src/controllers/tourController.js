@@ -2,6 +2,8 @@ import Tour from '../models/Tour.js';
 import User from '../models/User.js';
 import { validationResult } from 'express-validator';
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // @desc    Get the current customer's favorite tours
 // @route   GET /api/tours/favorites
 // @access  Private (Customer)
@@ -117,23 +119,70 @@ export const saveFavoriteTour = async (req, res) => {
 // @access  Public (Guest)
 export const getAllTours = async (req, res) => {
   try {
-    const { search, page = 1, limit = 10 } = req.query;
-    let query = {};
-    
+    const {
+      search,
+      departure,
+      destination,
+      maxPrice,
+      minSeats,
+      sort = 'newest',
+      page = 1,
+      limit = 10
+    } = req.query;
+    const filters = [];
+
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
-      ];
+      const safeSearch = escapeRegex(search);
+      filters.push({ $or: [
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { location: { $regex: safeSearch, $options: 'i' } },
+        { departureLocation: { $regex: safeSearch, $options: 'i' } },
+        { destinationLocation: { $regex: safeSearch, $options: 'i' } }
+      ] });
     }
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    if (departure) {
+      const cleanDeparture = departure.replace(/^(Thành phố|Tỉnh)\s+/i, '').trim();
+      filters.push({
+        $or: [
+          { departureLocation: { $regex: escapeRegex(departure), $options: 'i' } },
+          { departureLocation: { $regex: escapeRegex(cleanDeparture), $options: 'i' } }
+        ]
+      });
+    }
+
+    if (destination) {
+      const safeDestination = escapeRegex(destination);
+      filters.push({ $or: [
+        { destinationLocation: { $regex: safeDestination, $options: 'i' } },
+        { location: { $regex: safeDestination, $options: 'i' } }
+      ] });
+    }
+
+    const parsedMaxPrice = Number(maxPrice);
+    if (maxPrice !== undefined && maxPrice !== '' && Number.isFinite(parsedMaxPrice) && parsedMaxPrice >= 0) {
+      filters.push({ price: { $lte: parsedMaxPrice } });
+    }
+
+    const parsedMinSeats = Number(minSeats);
+    if (minSeats !== undefined && minSeats !== '' && Number.isInteger(parsedMinSeats) && parsedMinSeats >= 0) {
+      filters.push({ availableSeats: { $gte: parsedMinSeats } });
+    }
+
+    const query = filters.length > 0 ? { $and: filters } : {};
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const startIndex = (pageNum - 1) * limitNum;
+    const sortOptions = {
+      newest: { createdAt: -1 },
+      priceAsc: { price: 1 },
+      priceDesc: { price: -1 },
+      rating: { averageRating: -1 }
+    };
 
     const total = await Tour.countDocuments(query);
     const tours = await Tour.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortOptions[sort] || sortOptions.newest)
       .skip(startIndex)
       .limit(limitNum);
     

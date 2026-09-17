@@ -136,7 +136,10 @@ export const deleteCategory = async (req, res) => {
       });
     }
 
-    const destinationCount = await Destination.countDocuments({ categoryId: req.params.id });
+    const destinationCount = await Destination.countDocuments({
+      categoryId: req.params.id,
+      isDeleted: { $ne: true }
+    });
     if (destinationCount > 0) {
       return res.status(400).json({
         success: false,

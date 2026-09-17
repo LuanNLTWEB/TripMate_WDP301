@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { destinationCategoryApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -8,6 +9,7 @@ import Footer from '../components/Footer';
 function StaffDestinationCategories() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -79,10 +81,11 @@ function StaffDestinationCategories() {
       } else {
         await destinationCategoryApi.create(formData);
       }
+      toast.success(editingId ? 'Đã cập nhật danh mục.' : 'Đã tạo danh mục mới.');
       handleCancel();
       await loadCategories();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể lưu danh mục.');
+      toast.error(requestError.message || 'Không thể lưu danh mục.');
     } finally {
       setIsSaving(false);
     }
@@ -95,9 +98,10 @@ function StaffDestinationCategories() {
 
     try {
       await destinationCategoryApi.remove(category._id);
+      toast.success(`Đã xóa danh mục "${category.name}".`);
       await loadCategories();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể xóa danh mục.');
+      toast.error(requestError.message || 'Không thể xóa danh mục.');
     }
   };
 
@@ -113,7 +117,7 @@ function StaffDestinationCategories() {
               <h1 className="h3 fw-bold mb-1">Quản lý danh mục điểm đến</h1>
               <p className="text-muted mb-0">Xem và quản lý các danh mục phân loại điểm đến</p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowForm((current) => !current)}>
+            <button className="btn btn-primary" onClick={showForm ? handleCancel : openCreateForm}>
               <i className="bi bi-plus-circle me-2"></i>{showForm ? 'Đóng biểu mẫu' : 'Thêm danh mục'}
             </button>
           </div>

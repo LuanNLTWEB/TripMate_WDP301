@@ -36,6 +36,15 @@ const destinationSchema = new mongoose.Schema({
     default: 'active',
     index: true
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'DestinationCategory',

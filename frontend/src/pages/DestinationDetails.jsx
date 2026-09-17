@@ -4,10 +4,12 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 
 const DestinationDetails = () => {
   const { id } = useParams();
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [destination, setDestination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,8 +50,9 @@ const DestinationDetails = () => {
     try {
       const res = await destinationApi.toggleFavorite(id);
       setIsFavorite(res.isFavorite);
-    } catch {
-      // bỏ qua lỗi
+      toast.success(res.message || (res.isFavorite ? 'Đã lưu điểm đến yêu thích.' : 'Đã bỏ lưu điểm đến yêu thích.'));
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể cập nhật điểm đến yêu thích.');
     } finally {
       setIsToggling(false);
     }

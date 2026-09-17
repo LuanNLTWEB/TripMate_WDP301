@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import logo from '../assets/logo.png';
 
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const isAdmin = user?.role === 'admin';
+  const canUseProfile = ['admin', 'staff', 'tourProvider', 'customer'].includes(user?.role);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Đóng dropdown khi click ra ngoài hoặc bấm Escape
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -39,6 +41,7 @@ function Navbar() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+    toast.success('Bạn đã đăng xuất khỏi TripMate.');
   };
 
   return (
@@ -166,7 +169,6 @@ function Navbar() {
                       zIndex: 1050
                     }}
                   >
-                    {/* Header thông tin người dùng */}
                     <div className="px-3 py-2 border-bottom border-secondary border-opacity-25 mb-1">
                       <div className="fw-bold text-white text-truncate">{user?.username}</div>
                       <div className="text-white-50 small text-truncate" style={{ fontSize: '0.8rem' }}>
@@ -185,19 +187,19 @@ function Navbar() {
                       </Link>
                     )}
 
-                    {/* Mục Cài đặt (Trang cá nhân / Thông tin tài khoản) */}
-                    <Link
-                      to="/settings"
-                      className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <i className="bi bi-gear fs-6"></i>
-                      <span>Cài đặt</span>
-                    </Link>
+                    {canUseProfile && (
+                      <Link
+                        to="/profile"
+                        className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <i className="bi bi-person fs-6"></i>
+                        <span>Hồ sơ</span>
+                      </Link>
+                    )}
 
                     <div className="dropdown-divider border-secondary border-opacity-25 my-1"></div>
 
-                    {/* Mục Đăng xuất */}
                     <button
                       type="button"
                       className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-danger"

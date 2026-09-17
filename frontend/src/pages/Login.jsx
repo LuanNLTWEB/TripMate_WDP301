@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -8,6 +9,7 @@ function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated } = useAuth();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -15,7 +17,6 @@ function Login() {
     rememberMe: true
   });
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -55,15 +56,10 @@ function Login() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-    if (serverError) {
-      setServerError('');
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError('');
-
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -71,9 +67,10 @@ function Login() {
     try {
       const response = await login(formData.email.trim(), formData.password, formData.rememberMe);
       const from = location.state?.from?.pathname || (response.user.role === 'admin' ? '/admin/accounts' : '/');
+      toast.success(`Chào mừng ${response.user.username || 'bạn'} quay lại!`);
       navigate(from, { replace: true });
     } catch (error) {
-      setServerError(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      toast.error(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsLoading(false);
     }
@@ -95,19 +92,6 @@ function Login() {
                     <h2 className="fw-bold mb-1">Chào mừng trở lại</h2>
                     <p className="text-muted small">Đăng nhập để tiếp tục cùng TripMate</p>
                   </div>
-
-                  {serverError && (
-                    <div className="alert alert-danger alert-dismissible fade show small" role="alert">
-                      <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                      {serverError}
-                      <button
-                        type="button"
-                        className="btn-close"
-                        aria-label="Đóng"
-                        onClick={() => setServerError('')}
-                      ></button>
-                    </div>
-                  )}
 
                   <form onSubmit={handleSubmit} noValidate>
                     {/* Email Input */}

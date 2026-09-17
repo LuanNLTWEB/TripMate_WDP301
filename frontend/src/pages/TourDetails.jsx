@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -13,6 +14,7 @@ const formatPrice = (price) => new Intl.NumberFormat('vi-VN', {
 const TourDetails = () => {
   const { id } = useParams();
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [tour, setTour] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,12 +67,14 @@ const TourDetails = () => {
       if (isFavorite) {
         await tourApi.removeFavorite(id);
         setIsFavorite(false);
+        toast.success('Đã bỏ lưu tour yêu thích.');
       } else {
         await tourApi.saveFavorite(id);
         setIsFavorite(true);
+        toast.success('Đã lưu tour yêu thích.');
       }
     } catch (err) {
-      setError(err.message || 'Không thể cập nhật tour yêu thích.');
+      toast.error(err.message || 'Không thể cập nhật tour yêu thích.');
     } finally {
       setUpdatingFavorite(false);
     }
@@ -130,7 +134,10 @@ const TourDetails = () => {
                     <div>
                       <h1 className="fw-bold mb-2">{tour.title}</h1>
                       <p className="text-muted mb-0">
-                        <i className="bi bi-geo-alt-fill text-danger me-2"></i>{tour.location}
+                        <i className="bi bi-geo-alt-fill text-danger me-2"></i>
+                        {tour.departureLocation
+                          ? `${tour.departureLocation} → ${tour.destinationLocation || tour.location}`
+                          : (tour.destinationLocation || tour.location)}
                       </p>
                     </div>
                     {isAuthenticated && user?.role === 'customer' && (

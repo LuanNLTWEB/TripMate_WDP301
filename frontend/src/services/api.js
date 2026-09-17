@@ -99,6 +99,9 @@ export const destinationApi = {
     const query = new URLSearchParams();
     if (params.isPopular) query.append('isPopular', params.isPopular);
     if (params.search) query.append('search', params.search);
+    if (params.categoryId) query.append('categoryId', params.categoryId);
+    if (params.minRating) query.append('minRating', params.minRating);
+    if (params.sort) query.append('sort', params.sort);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
@@ -117,6 +120,7 @@ export const destinationApi = {
     method: 'PUT',
     body: JSON.stringify(destination)
   }),
+  remove: (id) => apiRequest(`/destinations/${id}`, { method: 'DELETE' }),
   getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' }),
   toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' })
 };
@@ -166,6 +170,11 @@ export const tourApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
+    if (params.departure) query.append('departure', params.departure);
+    if (params.destination) query.append('destination', params.destination);
+    if (params.maxPrice) query.append('maxPrice', params.maxPrice);
+    if (params.minSeats) query.append('minSeats', params.minSeats);
+    if (params.sort) query.append('sort', params.sort);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';

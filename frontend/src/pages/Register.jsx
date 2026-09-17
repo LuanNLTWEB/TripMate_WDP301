@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 function Register() {
   const navigate = useNavigate();
   const { register, isAuthenticated } = useAuth();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -18,8 +20,6 @@ function Register() {
     gender: 'other'
   });
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -94,16 +94,10 @@ function Register() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-    if (serverError) {
-      setServerError('');
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError('');
-    setSuccessMessage('');
-    
     if (!validateForm()) return;
     
     setIsLoading(true);
@@ -118,7 +112,7 @@ function Register() {
         gender: formData.gender
       });
 
-      setSuccessMessage('Tài khoản của bạn đã được tạo thành công.');
+      toast.success('Tài khoản của bạn đã được tạo thành công.');
 
       // Reset form fields after successful registration
       setFormData({
@@ -132,7 +126,7 @@ function Register() {
       });
       setErrors({});
     } catch (error) {
-      setServerError(error.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      toast.error(error.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -154,34 +148,6 @@ function Register() {
                     <h2 className="fw-bold mb-1">Tạo tài khoản</h2>
                     <p className="text-muted small">Tham gia TripMate và bắt đầu lên kế hoạch cho chuyến đi</p>
                   </div>
-                  
-                  {/* Error Notification */}
-                  {serverError && (
-                    <div className="alert alert-danger alert-dismissible fade show small" role="alert">
-                      <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                      {serverError}
-                      <button type="button" className="btn-close" onClick={() => setServerError('')} aria-label="Đóng"></button>
-                    </div>
-                  )}
-
-                  {/* Success Notification */}
-                  {successMessage && (
-                    <div className="alert alert-success alert-dismissible fade show p-3 mb-4 rounded-3 shadow-sm" role="alert">
-                      <div className="d-flex align-items-center gap-2">
-                        <i className="bi bi-check-circle-fill fs-5 text-success flex-shrink-0"></i>
-                        <div className="flex-grow-1 small">
-                          <strong className="me-1">Đăng ký thành công!</strong>
-                          {successMessage}
-                        </div>
-                        <button 
-                          type="button" 
-                          className="btn-close" 
-                          onClick={() => setSuccessMessage('')} 
-                          aria-label="Đóng"
-                        ></button>
-                      </div>
-                    </div>
-                  )}
                   
                   <form onSubmit={handleSubmit} noValidate>
                     <div className="row g-3">

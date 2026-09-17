@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { destinationApi, destinationCategoryApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -8,6 +9,7 @@ import Footer from '../components/Footer';
 function StaffDestinations() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [destinations, setDestinations] = useState([]);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -17,6 +19,8 @@ function StaffDestinations() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [destinationToDelete, setDestinationToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -53,15 +57,13 @@ function StaffDestinations() {
     }
   }, [isAuthenticated, navigate, user]);
 
-  // Load data with debounce for search
   useEffect(() => {
     if (user?.role !== 'staff' && user?.role !== 'admin') return;
     const timer = setTimeout(() => {
-      if (search !== '') setCurrentPage(1);
-      loadDestinations(search, search !== '' ? 1 : currentPage);
+      loadDestinations(search, currentPage);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, user?.role]);
+  }, [search, currentPage, user?.role]);
 
   // Load categories for dropdown
   useEffect(() => {
@@ -70,12 +72,6 @@ function StaffDestinations() {
       .then((res) => setCategories(res.data || []))
       .catch(() => {});
   }, [user?.role]);
-
-  // Load data on page change
-  useEffect(() => {
-    if (user?.role !== 'staff' && user?.role !== 'admin') return;
-    loadDestinations(search, currentPage);
-  }, [currentPage]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -97,7 +93,7 @@ function StaffDestinations() {
     setError('');
 
     try {
-      await destinationApi.create({
+      const response = await destinationApi.create({
         name: formData.name,
         description: formData.description,
         location: formData.location,
@@ -107,9 +103,10 @@ function StaffDestinations() {
       });
       setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
       setShowCreateForm(false);
+      toast.success(response.message || 'Đã tạo điểm đến thành công.');
       await loadDestinations('', 1);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tạo điểm đến.');
+      toast.error(requestError.message || 'Không thể tạo điểm đến.');
     } finally {
       setIsSaving(false);
     }
@@ -117,13 +114,36 @@ function StaffDestinations() {
 
   const handleStatusChange = async (destination) => {
     try {
-      await destinationApi.updateStatus(
+      const response = await destinationApi.updateStatus(
         destination._id,
         destination.status === 'inactive' ? 'active' : 'inactive'
       );
+      toast.success(response.message || 'Đã cập nhật trạng thái điểm đến.');
       await loadDestinations(search, currentPage);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể cập nhật trạng thái.');
+      toast.error(requestError.message || 'Không thể cập nhật trạng thái.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!destinationToDelete || isDeleting) return;
+
+    setIsDeleting(true);
+    setError('');
+    try {
+      const response = await destinationApi.remove(destinationToDelete._id);
+      const nextPage = destinations.length === 1 && currentPage > 1
+        ? currentPage - 1
+        : currentPage;
+      setDestinationToDelete(null);
+      setCurrentPage(nextPage);
+      toast.success(response.message || `Đã xóa điểm đến "${destinationToDelete.name}".`);
+      await loadDestinations(search, nextPage);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa điểm đến.');
+      setDestinationToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -147,7 +167,7 @@ function StaffDestinations() {
     setError('');
 
     try {
-      await destinationApi.update(editingId, {
+      const response = await destinationApi.update(editingId, {
         name: formData.name,
         description: formData.description,
         location: formData.location,
@@ -158,9 +178,10 @@ function StaffDestinations() {
       setEditingId(null);
       setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
       setShowCreateForm(false);
+      toast.success(response.message || 'Đã cập nhật điểm đến thành công.');
       await loadDestinations(search, currentPage);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể cập nhật điểm đến.');
+      toast.error(requestError.message || 'Không thể cập nhật điểm đến.');
     } finally {
       setIsSaving(false);
     }
@@ -248,7 +269,10 @@ function StaffDestinations() {
                     type="search" 
                     className="form-control border-start-0 ps-0" 
                     value={search} 
-                    onChange={(event) => setSearch(event.target.value)} 
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setCurrentPage(1);
+                    }}
                     placeholder="Tìm kiếm theo tên hoặc vị trí..." 
                     aria-label="Tìm kiếm điểm đến" 
                   />
@@ -322,7 +346,13 @@ function StaffDestinations() {
                             <button className="btn btn-sm btn-light border" onClick={() => openEditForm(dest)} title="Chỉnh sửa">
                               <i className="bi bi-pencil text-primary"></i>
                             </button>
-                            <button className="btn btn-sm btn-light border" disabled title="Tính năng Xóa đang phát triển">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-light border"
+                              onClick={() => setDestinationToDelete(dest)}
+                              disabled={isDeleting}
+                              title="Xóa điểm đến"
+                            >
                               <i className="bi bi-trash text-danger"></i>
                             </button>
                             <button className="btn btn-sm btn-light border" onClick={() => handleStatusChange(dest)} title={dest.status === 'inactive' ? 'Kích hoạt' : 'Tạm ẩn'}>
@@ -365,6 +395,73 @@ function StaffDestinations() {
           </div>
         </div>
       </main>
+
+      {destinationToDelete && (
+        <>
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-destination-title"
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header">
+                  <h2 id="delete-destination-title" className="modal-title h5 fw-bold">
+                    Xác nhận xóa điểm đến
+                  </h2>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setDestinationToDelete(null)}
+                    disabled={isDeleting}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <p className="mb-2">
+                    Bạn có chắc muốn xóa <strong>{destinationToDelete.name}</strong>?
+                  </p>
+                  <p className="text-muted small mb-0">
+                    Điểm đến sẽ bị ẩn khỏi hệ thống và danh sách yêu thích. Dữ liệu lịch trình cũ vẫn được giữ lại.
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setDestinationToDelete(null)}
+                    disabled={isDeleting}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Đang xóa...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash me-2"></i>
+                        Xóa điểm đến
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
+
       <Footer />
     </>
   );

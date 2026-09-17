@@ -195,7 +195,8 @@ export const addDestination = async (req, res) => {
 
     const destination = await Destination.findOne({
       _id: req.body.destinationId,
-      status: { $ne: 'inactive' }
+      status: { $ne: 'inactive' },
+      isDeleted: { $ne: true }
     });
     if (!destination) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến đang hoạt động' });

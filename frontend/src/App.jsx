@@ -16,7 +16,7 @@ import Itinerary from './pages/Itinerary'
 import FavoriteDestinations from './pages/FavoriteDestinations'
 import Stats from './pages/Stats'
 import AboutVietnam from './pages/AboutVietnam'
-import Settings from './pages/Settings'
+import ToastProvider from './context/ToastProvider'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
@@ -27,8 +27,7 @@ function AdminRouteGate({ children }) {
     '/profile',
     '/staff/destinations',
     '/staff/destination-categories',
-    '/stats',
-    '/settings'
+    '/stats'
   ]
 
   if (isAuthenticated && user?.role === 'admin' && !adminAllowedPaths.includes(location.pathname)) {
@@ -40,10 +39,11 @@ function AdminRouteGate({ children }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AdminRouteGate>
-          <Routes>
+    <ToastProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AdminRouteGate>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/destinations" element={<Destinations />} />
             <Route path="/destinations/:id" element={<DestinationDetails />} />
@@ -59,11 +59,11 @@ function App() {
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/about" element={<AboutVietnam />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </AdminRouteGate>
-      </BrowserRouter>
-    </AuthProvider>
+            </Routes>
+          </AdminRouteGate>
+        </BrowserRouter>
+      </AuthProvider>
+    </ToastProvider>
   )
 }
 
