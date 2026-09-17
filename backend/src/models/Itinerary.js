@@ -71,6 +71,10 @@ const itinerarySchema = new mongoose.Schema({
     min: [0, 'Budget cannot be negative'],
     default: 0
   },
+  destinations: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Destination'
+  }],
   activities: [activitySchema],
   collaborators: [collaboratorSchema]
 }, { timestamps: true });

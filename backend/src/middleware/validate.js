@@ -206,6 +206,13 @@ export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
 
+export const itineraryDestinationValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('destinationId')
+    .notEmpty().withMessage('Vui lòng chọn điểm đến')
+    .isMongoId().withMessage('Mã điểm đến không hợp lệ')
+];
+
 /**
  * Validate destination category creation.
  */

@@ -34,3 +34,130 @@ footer a.text-white-50:hover {
   border-color: #0d6efd !important;
   background-color: rgba(13, 110, 253, 0.15) !important;
 }
+
+.itinerary-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .itinerary-print-root,
+  .itinerary-print-root * {
+    visibility: visible !important;
+  }
+
+  .itinerary-print-root {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    color: #000000;
+    background: #ffffff;
+    font-size: 12px;
+  }
+
+  .itinerary-print-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #0d6efd;
+  }
+
+  .itinerary-print-header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .itinerary-print-header p {
+    margin: 0;
+  }
+
+  .itinerary-print-brand {
+    color: #0d6efd;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .itinerary-print-summary {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .itinerary-print-summary > div {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+  }
+
+  .itinerary-print-summary span,
+  .itinerary-print-summary strong {
+    display: block;
+  }
+
+  .itinerary-print-summary span {
+    margin-bottom: 4px;
+    color: #495057;
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .itinerary-print-root h2 {
+    margin-bottom: 10px;
+    font-size: 17px;
+  }
+
+  .itinerary-print-destinations {
+    margin: 0 0 20px;
+    padding-left: 20px;
+  }
+
+  .itinerary-print-destinations li {
+    margin-bottom: 5px;
+  }
+
+  .itinerary-print-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .itinerary-print-table th,
+  .itinerary-print-table td {
+    padding: 7px;
+    border: 1px solid #adb5bd;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .itinerary-print-table th {
+    background: #e9ecef !important;
+    print-color-adjust: exact;
+  }
+
+  .itinerary-print-table tr {
+    break-inside: avoid;
+  }
+
+  .itinerary-print-empty {
+    padding: 16px;
+    border: 1px dashed #adb5bd;
+    text-align: center;
+  }
+}

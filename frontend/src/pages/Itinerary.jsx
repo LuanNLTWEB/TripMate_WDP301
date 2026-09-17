@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { itineraryApi } from '../services/api';
+import ItineraryPrintView from '../components/ItineraryPrintView';
+import { destinationApi, itineraryApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
 const initialItinerary = { title: '', budget: '' };
@@ -18,6 +19,8 @@ function Itinerary() {
   const [selected, setSelected] = useState(null);
   const [itineraryForm, setItineraryForm] = useState(initialItinerary);
   const [activityForm, setActivityForm] = useState(initialActivity);
+  const [destinations, setDestinations] = useState([]);
+  const [destinationId, setDestinationId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29,9 +32,13 @@ function Itinerary() {
     }
 
     try {
-      const response = await itineraryApi.list();
-      setItineraries(response.itineraries || []);
-      setSelected(response.itineraries?.[0] || null);
+      const [itineraryResponse, destinationResponse] = await Promise.all([
+        itineraryApi.list(),
+        destinationApi.getAll({ limit: 100 })
+      ]);
+      setItineraries(itineraryResponse.itineraries || []);
+      setSelected(itineraryResponse.itineraries?.[0] || null);
+      setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -85,9 +92,51 @@ function Itinerary() {
     }
   };
 
+  const addDestination = async (event) => {
+    event.preventDefault();
+    if (!selected || !destinationId) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      const response = await itineraryApi.addDestination(selected._id, destinationId);
+      setSelected(response.itinerary);
+      setItineraries((current) => current.map((itinerary) => (
+        itinerary._id === response.itinerary._id ? response.itinerary : itinerary
+      )));
+      setDestinationId('');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportItinerary = () => {
+    if (!selected) return;
+
+    const previousTitle = document.title;
+    const safeTitle = selected.title?.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'itinerary';
+    document.title = `${safeTitle} - TripMate`;
+
+    try {
+      window.print();
+    } finally {
+      document.title = previousTitle;
+    }
+  };
+
+  const addedDestinationIds = new Set(
+    (selected?.destinations || []).map((destination) => String(destination._id || destination))
+  );
+  const selectableDestinations = destinations.filter(
+    (destination) => !addedDestinationIds.has(String(destination._id))
+  );
+
   return (
     <>
       <Navbar />
+      <ItineraryPrintView itinerary={selected} />
       <main className="bg-light py-5 flex-grow-1">
         <div className="container">
           <div className="mb-4">
@@ -118,7 +167,7 @@ function Itinerary() {
 
                   <div className="list-group shadow-sm">
                     {itineraries.map((itinerary) => (
-                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => setSelected(itinerary)}>
+                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); }}>
                         <span className="fw-semibold d-block">{itinerary.title}</span>
                         <small>{itinerary.activities.length} hoạt động</small>
                       </button>
@@ -136,7 +185,13 @@ function Itinerary() {
                         <div className="card-body p-4">
                           <div className="d-flex justify-content-between align-items-start mb-3">
                             <div><h2 className="h4 fw-bold mb-1">{selected.title}</h2><p className="text-muted mb-0">Ngân sách: {selected.budget || 0}</p></div>
-                            <span className="badge text-bg-success">Có thể chỉnh sửa</span>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="badge text-bg-success">Có thể chỉnh sửa</span>
+                              <button type="button" className="btn btn-outline-primary btn-sm" onClick={exportItinerary}>
+                                <i className="bi bi-printer me-1"></i>
+                                Xuất lịch trình
+                              </button>
+                            </div>
                           </div>
                           {selected.activities.length === 0 ? <p className="text-muted mb-0">Chưa có hoạt động.</p> : (
                             <div className="vstack gap-3">
@@ -148,6 +203,58 @@ function Itinerary() {
                                 </div>
                               ))}
                             </div>
+                          )}
+                        </div>
+                      </section>
+
+                      <section className="card border-0 shadow-sm mb-4">
+                        <div className="card-body p-4">
+                          <h2 className="h5 fw-bold mb-3">Điểm đến trong lịch trình</h2>
+                          {(selected.destinations || []).length === 0 ? (
+                            <p className="text-muted">Chưa có điểm đến trong lịch trình.</p>
+                          ) : (
+                            <div className="row g-3 mb-4">
+                              {selected.destinations.map((destination) => (
+                                <div className="col-md-6" key={destination._id || destination}>
+                                  <div className="border rounded p-3 h-100">
+                                    <div className="fw-semibold">{destination.name}</div>
+                                    <div className="small text-muted">
+                                      <i className="bi bi-geo-alt me-1"></i>
+                                      {destination.location}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <form className="row g-2 align-items-end" onSubmit={addDestination}>
+                            <div className="col-md-9">
+                              <label className="form-label" htmlFor="itinerary-destination">Thêm điểm đến</label>
+                              <select
+                                id="itinerary-destination"
+                                className="form-select"
+                                value={destinationId}
+                                onChange={(event) => setDestinationId(event.target.value)}
+                                disabled={saving || selectableDestinations.length === 0}
+                                required
+                              >
+                                <option value="">Chọn điểm đến</option>
+                                {selectableDestinations.map((destination) => (
+                                  <option value={destination._id} key={destination._id}>
+                                    {destination.name} — {destination.location}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-3">
+                              <button className="btn btn-outline-primary w-100" disabled={saving || !destinationId}>
+                                Thêm
+                              </button>
+                            </div>
+                          </form>
+                          {selectableDestinations.length === 0 && (
+                            <p className="small text-muted mt-2 mb-0">Không còn điểm đến khả dụng để thêm.</p>
                           )}
                         </div>
                       </section>
