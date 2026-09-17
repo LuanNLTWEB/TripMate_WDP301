@@ -26,6 +26,5 @@ router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivi
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
-router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 
 export default router;
