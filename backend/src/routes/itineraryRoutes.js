@@ -5,7 +5,8 @@ import {
   addActivity,
   createItinerary,
   getItinerary,
-  listItineraries
+  listItineraries,
+  deleteItinerary
 } from '../controllers/itineraryController.js';
 import {
   activityValidation,
@@ -22,5 +23,6 @@ router.get('/', ...customerAccess, listItineraries);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
+router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 
 export default router;

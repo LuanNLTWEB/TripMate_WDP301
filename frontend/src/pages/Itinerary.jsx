@@ -24,6 +24,7 @@ function Itinerary() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -89,6 +90,18 @@ function Itinerary() {
       setError(requestError.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteItinerary = async (id) => {
+    try {
+      await itineraryApi.delete(id);
+      setItineraries((current) => current.filter((it) => it._id !== id));
+      if (selected?._id === id) setSelected(null);
+      setPendingDeleteId(null);
+    } catch (requestError) {
+      setError(requestError.message);
+      setPendingDeleteId(null);
     }
   };
 
@@ -167,10 +180,24 @@ function Itinerary() {
 
                   <div className="list-group shadow-sm">
                     {itineraries.map((itinerary) => (
-                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); }}>
-                        <span className="fw-semibold d-block">{itinerary.title}</span>
-                        <small>{itinerary.activities.length} hoạt động</small>
-                      </button>
+                      <div key={itinerary._id} className={`list-group-item d-flex justify-content-between align-items-center ${selected?._id === itinerary._id ? 'active' : ''}`}>
+                        <button
+                          className="btn btn-link text-start p-0 flex-grow-1 text-decoration-none"
+                          style={{ color: 'inherit' }}
+                          onClick={() => { setSelected(itinerary); setDestinationId(''); }}
+                        >
+                          <span className="fw-semibold d-block">{itinerary.title}</span>
+                          <small>{itinerary.activities.length} hoạt động</small>
+                        </button>
+                        <button
+                          className="btn btn-sm btn-link p-0 ms-2"
+                          style={{ color: 'inherit', opacity: 0.7 }}
+                          onClick={() => setPendingDeleteId(itinerary._id)}
+                          title="Xóa lịch trình"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
                     ))}
                     {!loading && itineraries.length === 0 && <div className="list-group-item text-muted">Chưa có lịch trình.</div>}
                   </div>
@@ -283,6 +310,30 @@ function Itinerary() {
         </div>
       </main>
       <Footer />
+
+      {/* Confirm Delete Modal */}
+      {pendingDeleteId && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Xác nhận xóa</h5>
+                  <button type="button" className="btn-close" onClick={() => setPendingDeleteId(null)} aria-label="Close"></button>
+                </div>
+                <div className="modal-body">
+                  Bạn có chắc muốn xóa lịch trình <strong>{itineraries.find((it) => it._id === pendingDeleteId)?.title}</strong> không? Hành động này không thể hoàn tác.
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setPendingDeleteId(null)}>Hủy</button>
+                  <button type="button" className="btn btn-danger" onClick={() => deleteItinerary(pendingDeleteId)}>Xóa</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

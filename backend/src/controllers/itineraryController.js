@@ -147,3 +147,24 @@ export const addDestination = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể thêm điểm đến vào lịch trình' });
   }
 };
+
+/**
+ * Delete a personal itinerary (owner only).
+ * @route DELETE /api/itineraries/:id
+ * @access Customer
+ */
+export const deleteItinerary = async (req, res) => {
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !itinerary.owner.equals(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    await Itinerary.findByIdAndDelete(req.params.id);
+
+    return res.json({ success: true, message: 'Đã xóa lịch trình' });
+  } catch (error) {
+    console.error('Delete itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa lịch trình' });
+  }
+};
