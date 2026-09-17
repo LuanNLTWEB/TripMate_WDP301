@@ -7,13 +7,15 @@ import {
   getActivityConflicts,
   getItinerary,
   listItineraries,
-  listSharedItineraries
+  listSharedItineraries,
+  removeDestination
 } from '../controllers/itineraryController.js';
 import {
   activityValidation,
   itineraryDestinationValidation,
   itineraryIdValidation,
-  itineraryValidation
+  itineraryValidation,
+  removeDestinationValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -26,5 +28,6 @@ router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivi
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
+router.delete('/:id/destinations/:destinationId', ...customerAccess, removeDestinationValidation, removeDestination);
 
 export default router;

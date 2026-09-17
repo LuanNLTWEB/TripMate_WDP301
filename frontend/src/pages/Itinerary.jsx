@@ -27,6 +27,8 @@ function Itinerary() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [message, setMessage] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -123,10 +125,31 @@ function Itinerary() {
 
     setSaving(true);
     setError('');
+    setMessage('');
     try {
       const response = await itineraryApi.addDestination(selected._id, destinationId);
       applyItinerary(response.itinerary);
       setDestinationId('');
+      setMessage(response.message);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeDestination = async () => {
+    const destination = confirmModal.destination;
+    if (!selected || !destination) return;
+
+    setConfirmModal({ open: false, destination: null });
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      const response = await itineraryApi.removeDestination(selected._id, destination._id);
+      applyItinerary(response.itinerary);
+      setMessage(response.message);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -206,6 +229,7 @@ function Itinerary() {
                   </button>
                 </li>
               </ul>
+              {message && <div className="alert alert-success">{message}</div>}
               <div className="row g-4">
                 <div className="col-lg-4">
                   {activeTab === 'mine' && (
@@ -321,7 +345,20 @@ function Itinerary() {
                               {selected.destinations.map((destination) => (
                                 <div className="col-md-6" key={destination._id || destination}>
                                   <div className="border rounded p-3 h-100">
-                                    <div className="fw-semibold">{destination.name}</div>
+                                    <div className="d-flex justify-content-between align-items-start">
+                                      <div className="fw-semibold">{destination.name}</div>
+                                      {canEditSelected && (
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-danger"
+                                          disabled={saving}
+                                          onClick={() => setConfirmModal({ open: true, destination })}
+                                          title="Xóa điểm đến khỏi lịch trình"
+                                        >
+                                          <i className="bi bi-trash"></i>
+                                        </button>
+                                      )}
+                                    </div>
                                     <div className="small text-muted">
                                       <i className="bi bi-geo-alt me-1"></i>
                                       {destination.location}
@@ -416,6 +453,27 @@ function Itinerary() {
             </div>
           </div>
         </>
+      )}
+      {confirmModal.open && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Xác nhận xóa</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmModal({ open: false, destination: null })}></button>
+              </div>
+              <div className="modal-body">
+                Bạn có chắc muốn xóa <strong>{confirmModal.destination?.name}</strong> khỏi lịch trình?
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ open: false, destination: null })}>Hủy</button>
+                <button type="button" className="btn btn-danger" disabled={saving} onClick={removeDestination}>
+                  {saving ? 'Đang xóa...' : 'Xóa'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

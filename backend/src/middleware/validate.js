@@ -213,6 +213,11 @@ export const itineraryDestinationValidation = [
     .isMongoId().withMessage('Mã điểm đến không hợp lệ')
 ];
 
+export const removeDestinationValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('destinationId').isMongoId().withMessage('Mã điểm đến không hợp lệ')
+];
+
 /**
  * Validate destination category creation.
  */
