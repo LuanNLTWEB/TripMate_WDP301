@@ -210,6 +210,46 @@ export const getDestinationById = async (req, res) => {
   }
 };
 
+/**
+ * Toggle save/unsave a destination for the current customer.
+ * @route POST /api/destinations/:id/favorite
+ * @access Private (Customer)
+ */
+export const toggleFavorite = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const destinationId = req.params.id;
+    const alreadySaved = user.favoriteDestinations.some(
+      (fav) => fav.toString() === destinationId
+    );
+
+    if (alreadySaved) {
+      // Unsave
+      user.favoriteDestinations = user.favoriteDestinations.filter(
+        (fav) => fav.toString() !== destinationId
+      );
+    } else {
+      // Save
+      user.favoriteDestinations.push(destinationId);
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      isFavorite: !alreadySaved,
+      message: alreadySaved ? 'Đã bỏ yêu thích' : 'Đã lưu yêu thích'
+    });
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật yêu thích' });
+  }
+};
+
 // @desc    Get favorite destinations of current user
 // @route   GET /api/destinations/favorites
 // @access  Private (Customer)

@@ -10,6 +10,7 @@ const FavoriteDestinations = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [toggling, setToggling] = useState(null);
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -32,6 +33,20 @@ const FavoriteDestinations = () => {
 
     fetchFavorites();
   }, [isAuthenticated, user?.role]);
+
+  const handleUnsave = async (e, destId) => {
+    e.preventDefault();
+    if (toggling === destId) return;
+    setToggling(destId);
+    try {
+      await destinationApi.toggleFavorite(destId);
+      setFavorites((prev) => prev.filter((d) => d._id !== destId));
+    } catch {
+      // bỏ qua lỗi
+    } finally {
+      setToggling(null);
+    }
+  };
 
   return (
     <>
@@ -72,19 +87,30 @@ const FavoriteDestinations = () => {
                 <div className="row row-cols-1 row-cols-md-3 g-4">
                   {favorites.map((dest) => (
                     <div key={dest._id} className="col">
-                      <div className="card h-100 shadow-sm">
-                        {dest.images?.[0] ? (
-                          <img
-                            src={dest.images[0]}
-                            className="card-img-top"
-                            alt={dest.name}
-                            style={{ height: '250px', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '250px' }}>
-                            <i className="bi bi-image fs-1"></i>
+                    <div className="card h-100 shadow-sm">
+                          <div className="position-relative">
+                            {dest.images?.[0] ? (
+                              <img
+                                src={dest.images[0]}
+                                className="card-img-top"
+                                alt={dest.name}
+                                style={{ height: '250px', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '250px' }}>
+                                <i className="bi bi-image fs-1"></i>
+                              </div>
+                            )}
+                            <button
+                              className="btn btn-light border-0 rounded-circle p-1 position-absolute"
+                              style={{ top: '10px', right: '10px', width: '36px', height: '36px', lineHeight: 1 }}
+                              onClick={(e) => handleUnsave(e, dest._id)}
+                              disabled={toggling === dest._id}
+                              title="Bỏ yêu thích"
+                            >
+                              <i className="bi bi-heart-fill text-danger"></i>
+                            </button>
                           </div>
-                        )}
                         <div className="card-body">
                           <h5 className="card-title">{dest.name}</h5>
                           <p className="card-text text-muted mb-2">
@@ -111,6 +137,7 @@ const FavoriteDestinations = () => {
                         </div>
                       </div>
                     </div>
+
                   ))}
                 </div>
               )}
