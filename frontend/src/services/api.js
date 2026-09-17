@@ -135,9 +135,15 @@ export const destinationCategoryApi = {
 
 export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
+  listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
+  get: (id) => apiRequest(`/itineraries/${id}`, { method: 'GET' }),
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
     body: JSON.stringify(itinerary)
+  }),
+  update: (id, payload) => apiRequest(`/itineraries/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   }),
   addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
     method: 'POST',
@@ -146,7 +152,19 @@ export const itineraryApi = {
   addDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations`, {
     method: 'POST',
     body: JSON.stringify({ destinationId })
+  }),
+  addCollaborator: (id, payload) => apiRequest(`/itineraries/${id}/collaborators`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  updateCollaboratorPermission: (id, collaboratorId, permission) => apiRequest(`/itineraries/${id}/collaborators/${collaboratorId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ permission })
   })
+};
+
+export const statsApi = {
+  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
 export const tourApi = {
