@@ -9,10 +9,9 @@ const initialItinerary = { title: '', budget: '' };
 const initialActivity = {
   title: '', date: '', startTime: '', endTime: '', location: '', estimatedCost: '', notes: ''
 };
-const initialShare = { email: '', permission: 'view' };
 
 /**
- * Customer-facing personal itinerary workspace (own + shared, conflict detection).
+ * Customer-facing personal itinerary workspace (view shared + conflict detection).
  */
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
@@ -21,10 +20,7 @@ function Itinerary() {
   const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
   const [itineraryForm, setItineraryForm] = useState(initialItinerary);
-  const [editForm, setEditForm] = useState(initialItinerary);
-  const [showEdit, setShowEdit] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
-  const [shareForm, setShareForm] = useState(initialShare);
   const [destinations, setDestinations] = useState([]);
   const [destinationId, setDestinationId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -88,26 +84,6 @@ function Itinerary() {
     }
   };
 
-  const updateItinerary = async (event) => {
-    event.preventDefault();
-    if (!selected) return;
-
-    setSaving(true);
-    setError('');
-    try {
-      const response = await itineraryApi.update(selected._id, {
-        title: editForm.title,
-        budget: Number(editForm.budget || 0)
-      });
-      applyItinerary(response.itinerary);
-      setShowEdit(false);
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const addActivity = async (event) => {
     event.preventDefault();
     if (!selected) return;
@@ -142,38 +118,6 @@ function Itinerary() {
       setError(requestError.message);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const shareItinerary = async (event) => {
-    event.preventDefault();
-    if (!selected) return;
-
-    setSaving(true);
-    setError('');
-    try {
-      const response = await itineraryApi.addCollaborator(selected._id, {
-        email: shareForm.email,
-        permission: shareForm.permission
-      });
-      applyItinerary(response.itinerary);
-      setShareForm(initialShare);
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const changeCollaboratorPermission = async (collaboratorId, permission) => {
-    if (!selected) return;
-
-    setError('');
-    try {
-      const response = await itineraryApi.updateCollaboratorPermission(selected._id, collaboratorId, permission);
-      applyItinerary(response.itinerary);
-    } catch (requestError) {
-      setError(requestError.message);
     }
   };
 
@@ -227,7 +171,7 @@ function Itinerary() {
           <div className="mb-4">
             <p className="text-primary text-uppercase fw-semibold small mb-2">Personal planning</p>
             <h1 className="fw-bold mb-2">Lịch trình của tôi</h1>
-            <p className="text-muted mb-0">Tạo, chia sẻ và quản lý lịch trình cá nhân của bạn.</p>
+            <p className="text-muted mb-0">Tạo và quản lý lịch trình cá nhân, xem lịch trình được chia sẻ với bạn.</p>
           </div>
 
           {!isAuthenticated ? (
@@ -266,7 +210,7 @@ function Itinerary() {
 
                   <div className="list-group shadow-sm">
                     {visibleItineraries.map((itinerary) => (
-                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); setShowEdit(false); }}>
+                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); }}>
                         <span className="fw-semibold d-block">{itinerary.title}</span>
                         <small>{itinerary.activities.length} hoạt động</small>
                         {activeTab === 'shared' && itinerary.owner?.username && (
@@ -304,31 +248,6 @@ function Itinerary() {
                               </button>
                             </div>
                           </div>
-
-                          {canEditSelected && (
-                            <button type="button" className="btn btn-outline-secondary btn-sm mb-3" onClick={() => { setEditForm({ title: selected.title, budget: selected.budget }); setShowEdit((current) => !current); }}>
-                              <i className="bi bi-pencil me-1"></i>
-                              Chỉnh sửa lịch trình
-                            </button>
-                          )}
-
-                          {showEdit && canEditSelected && (
-                            <form className="border rounded p-3 mb-3" onSubmit={updateItinerary}>
-                              <div className="row g-2">
-                                <div className="col-md-6">
-                                  <label className="form-label" htmlFor="edit-title">Tên lịch trình</label>
-                                  <input id="edit-title" className="form-control" value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} required />
-                                </div>
-                                <div className="col-md-4">
-                                  <label className="form-label" htmlFor="edit-budget">Ngân sách</label>
-                                  <input id="edit-budget" type="number" min="0" className="form-control" value={editForm.budget} onChange={(event) => setEditForm({ ...editForm, budget: event.target.value })} />
-                                </div>
-                                <div className="col-md-2 d-flex align-items-end">
-                                  <button className="btn btn-primary w-100" disabled={saving}>Lưu</button>
-                                </div>
-                              </div>
-                            </form>
-                          )}
 
                           {(selected.conflicts || []).length > 0 && (
                             <div className="alert alert-warning mb-3">
@@ -375,57 +294,6 @@ function Itinerary() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        </section>
-                      )}
-
-                      {isOwner && (
-                        <section className="card border-0 shadow-sm mb-4">
-                          <div className="card-body p-4">
-                            <h2 className="h5 fw-bold mb-3">Chia sẻ lịch trình</h2>
-                            <form className="row g-2 align-items-end mb-3" onSubmit={shareItinerary}>
-                              <div className="col-md-5">
-                                <label className="form-label" htmlFor="share-email">Email người nhận</label>
-                                <input id="share-email" type="email" className="form-control" value={shareForm.email} onChange={(event) => setShareForm({ ...shareForm, email: event.target.value })} required />
-                              </div>
-                              <div className="col-md-4">
-                                <label className="form-label" htmlFor="share-permission">Quyền</label>
-                                <select id="share-permission" className="form-select" value={shareForm.permission} onChange={(event) => setShareForm({ ...shareForm, permission: event.target.value })}>
-                                  <option value="view">Chỉ xem</option>
-                                  <option value="edit">Chỉnh sửa</option>
-                                </select>
-                              </div>
-                              <div className="col-md-3">
-                                <button className="btn btn-primary w-100" disabled={saving}>Chia sẻ</button>
-                              </div>
-                            </form>
-
-                            {(selected.collaborators || []).length === 0 ? (
-                              <p className="text-muted mb-0">Chưa chia sẻ cho ai.</p>
-                            ) : (
-                              <div className="vstack gap-2">
-                                {selected.collaborators.map((collaborator) => (
-                                  <div className="d-flex justify-content-between align-items-center border rounded p-2 px-3" key={String(collaborator.user?._id || collaborator.user)}>
-                                    <div>
-                                      <div className="fw-semibold">{String(collaborator.user?._id || collaborator.user) === String(user?._id) ? 'Bạn' : (collaborator.user?.username || 'Người dùng')}</div>
-                                      <div className="small text-muted">{collaborator.user?.email || ''}</div>
-                                    </div>
-                                    <div className="d-flex align-items-center gap-2">
-                                      <select
-                                        className="form-select form-select-sm"
-                                        style={{ width: 'auto' }}
-                                        value={collaborator.permission}
-                                        onChange={(event) => changeCollaboratorPermission(String(collaborator.user?._id || collaborator.user), event.target.value)}
-                                        disabled={String(collaborator.user?._id || collaborator.user) === String(user?._id)}
-                                      >
-                                        <option value="view">Chỉ xem</option>
-                                        <option value="edit">Chỉnh sửa</option>
-                                      </select>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </section>
                       )}

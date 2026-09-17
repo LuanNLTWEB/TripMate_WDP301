@@ -1,7 +1,6 @@
 import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
-import User from '../models/User.js';
 
 const destinationFields = 'name location images status';
 
@@ -146,38 +145,6 @@ export const getActivityConflicts = async (req, res) => {
 };
 
 /**
- * Update itinerary title, budget, or dates.
- * @route PATCH /api/itineraries/:id
- * @access Customer (owner or edit-collaborator)
- */
-export const updateItinerary = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
-  }
-
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-    if (!itinerary || !canEdit(itinerary, req.user._id)) {
-      return res.status(404).json({ success: false, message: 'Editable itinerary not found' });
-    }
-
-    const { title, budget, startDate, endDate } = req.body;
-    if (title !== undefined) itinerary.title = title;
-    if (budget !== undefined) itinerary.budget = budget;
-    if (startDate !== undefined) itinerary.startDate = startDate;
-    if (endDate !== undefined) itinerary.endDate = endDate;
-    await itinerary.save();
-
-    const populated = await findByIdPopulated(itinerary._id);
-    return res.json({ success: true, itinerary: hydrateItinerary(populated) });
-  } catch (error) {
-    console.error('Update itinerary error:', error);
-    return res.status(500).json({ success: false, message: 'Unable to update itinerary' });
-  }
-};
-
-/**
  * Add an activity to an owned or edit-enabled shared itinerary.
  * @route POST /api/itineraries/:id/activities
  * @access Customer
@@ -253,80 +220,5 @@ export const addDestination = async (req, res) => {
   } catch (error) {
     console.error('Add itinerary destination error:', error);
     return res.status(500).json({ success: false, message: 'Không thể thêm điểm đến vào lịch trình' });
-  }
-};
-
-/**
- * Share an itinerary by adding a collaborator (owner-only).
- * @route POST /api/itineraries/:id/collaborators
- * @access Customer (owner)
- */
-export const addCollaborator = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
-  }
-
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-    if (!itinerary || !itinerary.owner.equals(req.user._id)) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
-    }
-
-    const { email, permission = 'view' } = req.body;
-    const targetUser = await User.findOne({ email });
-    if (!targetUser) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
-    }
-    if (itinerary.owner.equals(targetUser._id)) {
-      return res.status(400).json({ success: false, message: 'Không thể chia sẻ với chính mình' });
-    }
-    if (itinerary.collaborators.some((c) => c.user.equals(targetUser._id))) {
-      return res.status(400).json({ success: false, message: 'Người dùng này đã là cộng tác viên' });
-    }
-
-    itinerary.collaborators.push({ user: targetUser._id, permission });
-    await itinerary.save();
-
-    const populated = await findByIdPopulated(itinerary._id);
-    return res.json({ success: true, message: 'Đã chia sẻ lịch trình', itinerary: hydrateItinerary(populated) });
-  } catch (error) {
-    console.error('Add collaborator error:', error);
-    return res.status(500).json({ success: false, message: 'Không thể chia sẻ lịch trình' });
-  }
-};
-
-/**
- * Update a collaborator's permission (owner-only).
- * @route PATCH /api/itineraries/:id/collaborators/:collaboratorId
- * @access Customer (owner)
- */
-export const updateCollaboratorPermission = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
-  }
-
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-    if (!itinerary || !itinerary.owner.equals(req.user._id)) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
-    }
-
-    const collaborator = itinerary.collaborators.find(
-      (c) => String(c.user) === req.params.collaboratorId
-    );
-    if (!collaborator) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy cộng tác viên' });
-    }
-
-    collaborator.permission = req.body.permission;
-    await itinerary.save();
-
-    const populated = await findByIdPopulated(itinerary._id);
-    return res.json({ success: true, message: 'Đã cập nhật quyền', itinerary: hydrateItinerary(populated) });
-  } catch (error) {
-    console.error('Update collaborator error:', error);
-    return res.status(500).json({ success: false, message: 'Không thể cập nhật cộng tác viên' });
   }
 };
