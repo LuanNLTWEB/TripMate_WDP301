@@ -117,7 +117,8 @@ export const destinationApi = {
     method: 'PUT',
     body: JSON.stringify(destination)
   }),
-  getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' })
+  getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' }),
+  toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' })
 };
 
 export const destinationCategoryApi = {
