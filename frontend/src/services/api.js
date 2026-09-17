@@ -1,15 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-/**
- * Retrieve the current stored token
- */
 export const getToken = () => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
 
-/**
- * Save auth token and user
- */
 export const setAuthData = (token, user, rememberMe = true) => {
   if (rememberMe) {
     localStorage.setItem('token', token);
@@ -24,9 +18,6 @@ export const setAuthData = (token, user, rememberMe = true) => {
   }
 };
 
-/**
- * Clear stored auth token and user
- */
 export const clearAuthData = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
@@ -34,9 +25,6 @@ export const clearAuthData = () => {
   sessionStorage.removeItem('user');
 };
 
-/**
- * Fetch wrapper with default headers and auth token
- */
 export const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
   
@@ -63,7 +51,6 @@ export const apiRequest = async (endpoint, options = {}) => {
   return data;
 };
 
-// Auth API endpoints
 export const authApi = {
   login: (credentials) => apiRequest('/auth/login', {
     method: 'POST',
@@ -160,10 +147,7 @@ export const itineraryApi = {
 };
 
 export const statsApi = {
-  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' }),
-  removeDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations/${destinationId}`, {
-    method: 'DELETE'
-  })
+  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
 export const tourApi = {
@@ -181,6 +165,19 @@ export const tourApi = {
     return apiRequest(`/tours${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/tours/management${queryString}`, { method: 'GET' });
+  },
+  setStatus: (id, status, reason = '') => apiRequest(`/tours/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, reason })
+  }),
   getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
   saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
   removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' })

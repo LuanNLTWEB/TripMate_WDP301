@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationCategoryApi } from '../services/api';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 function StaffDestinationCategories() {
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,14 +26,6 @@ function StaffDestinationCategories() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { replace: true, state: { from: { pathname: '/staff/destination-categories' } } });
-    } else if (user?.role !== 'staff' && user?.role !== 'admin') {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthenticated, navigate, user]);
 
   useEffect(() => {
     if (user?.role !== 'staff' && user?.role !== 'admin') return;
@@ -105,13 +93,9 @@ function StaffDestinationCategories() {
     }
   };
 
-  if (!isAuthenticated || (user?.role !== 'staff' && user?.role !== 'admin')) return null;
-
   return (
-    <>
-      <Navbar />
-      <main className="py-5 bg-light flex-grow-1">
-        <div className="container">
+    <section className="management-page-section">
+      <div className="container-fluid px-0">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
               <h1 className="h3 fw-bold mb-1">Quản lý danh mục điểm đến</h1>
@@ -231,9 +215,7 @@ function StaffDestinationCategories() {
             </div>
           </div>
         </div>
-      </main>
-      <Footer />
-    </>
+    </section>
   );
 }
 

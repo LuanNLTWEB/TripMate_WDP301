@@ -50,6 +50,27 @@ const tourSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Rating must be at least 0'],
     max: [5, 'Rating cannot exceed 5']
+  },
+  status: {
+    type: String,
+    enum: ['active', 'suspended'],
+    default: 'active',
+    index: true
+  },
+  suspensionReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Suspension reason cannot exceed 500 characters'],
+    default: ''
+  },
+  suspendedAt: {
+    type: Date,
+    default: null
+  },
+  suspendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

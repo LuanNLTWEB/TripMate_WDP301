@@ -11,9 +11,6 @@ const initialActivity = {
   title: '', date: '', startTime: '', endTime: '', location: '', estimatedCost: '', notes: ''
 };
 
-/**
- * Customer-facing personal itinerary workspace (view shared + conflict detection).
- */
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
@@ -205,7 +202,7 @@ function Itinerary() {
     <>
       <Navbar />
       <ItineraryPrintView itinerary={selected} />
-      <main className="bg-light py-5 flex-grow-1">
+      <main className="bg-light py-5 flex-grow-1" style={{ minHeight: 'calc(100vh - 160px)' }}>
         <div className="container">
           <div className="mb-4">
             <p className="text-primary text-uppercase fw-semibold small mb-2">Personal planning</p>
@@ -433,7 +430,6 @@ function Itinerary() {
       </main>
       <Footer />
 
-      {/* Confirm Delete Modal */}
       {pendingDeleteId && (
         <>
           <div className="modal-backdrop fade show"></div>

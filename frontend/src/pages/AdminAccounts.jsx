@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { accountApi } from '../services/api';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 const emptyForm = {
   username: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'other', role: 'customer'
@@ -151,8 +148,7 @@ function AccountForm({ account, onClose, onSaved }) {
 }
 
 function AdminAccounts() {
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const [accounts, setAccounts] = useState([]);
   const [search, setSearch] = useState('');
@@ -174,14 +170,6 @@ function AdminAccounts() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { replace: true, state: { from: { pathname: '/admin/accounts' } } });
-    } else if (user?.role !== 'admin') {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthenticated, navigate, user]);
 
   useEffect(() => {
     if (user?.role !== 'admin') return;
@@ -240,13 +228,10 @@ function AdminAccounts() {
     }
   };
 
-  if (!isAuthenticated || user?.role !== 'admin') return null;
-
   return (
     <>
-      <Navbar />
-      <main className="py-5 bg-light flex-grow-1">
-        <div className="container">
+      <section className="management-page-section">
+        <div className="container-fluid px-0">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
               <h1 className="h3 fw-bold mb-1">Quản lý tài khoản</h1>
@@ -283,8 +268,7 @@ function AdminAccounts() {
             </div>
           </div>
         </div>
-      </main>
-      <Footer />
+      </section>
       {isFormOpen && <><div className="modal-backdrop fade show"></div><AccountForm account={selectedAccount} onClose={() => setIsFormOpen(false)} onSaved={handleSaved} /></>}
     </>
   );
