@@ -147,7 +147,8 @@ export const itineraryApi = {
   addDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations`, {
     method: 'POST',
     body: JSON.stringify({ destinationId })
-  })
+  }),
+  delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
 export const tourApi = {
