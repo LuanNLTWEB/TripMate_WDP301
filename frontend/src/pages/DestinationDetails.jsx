@@ -3,12 +3,16 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const DestinationDetails = () => {
   const { id } = useParams();
+  const { user, isAuthenticated } = useAuth();
   const [destination, setDestination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     const fetchDestination = async () => {
@@ -26,6 +30,30 @@ const DestinationDetails = () => {
       fetchDestination();
     }
   }, [id]);
+
+  // Load trạng thái yêu thích ban đầu
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'customer') return;
+    destinationApi.getFavorites()
+      .then((res) => {
+        const favIds = (res.data || []).map((d) => d._id);
+        setIsFavorite(favIds.includes(id));
+      })
+      .catch(() => {});
+  }, [id, isAuthenticated, user?.role]);
+
+  const handleToggleFavorite = async () => {
+    if (isToggling) return;
+    setIsToggling(true);
+    try {
+      const res = await destinationApi.toggleFavorite(id);
+      setIsFavorite(res.isFavorite);
+    } catch {
+      // bỏ qua lỗi
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -67,21 +95,34 @@ const DestinationDetails = () => {
         {/* Header Section */}
         <div className="mb-4">
           <h1 className="fw-bold mb-2">{destination.name}</h1>
-          <div className="d-flex align-items-center text-muted">
-            <span className="me-3">
-              <i className="bi bi-star-fill text-warning me-1"></i>
-              <span className="fw-medium text-dark">{destination.averageRating}</span> 
-              <span className="ms-1">(Đánh giá)</span>
-            </span>
-            <span>
-              <i className="bi bi-geo-alt-fill text-danger me-1"></i>
-              <span className="text-decoration-underline">{destination.location}</span>
-            </span>
-            {destination.categoryId?.name && (
-              <span className="ms-3">
-                <i className="bi bi-tag-fill text-info me-1"></i>
-                {destination.categoryId.name}
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center text-muted">
+              <span className="me-3">
+                <i className="bi bi-star-fill text-warning me-1"></i>
+                <span className="fw-medium text-dark">{destination.averageRating}</span> 
+                <span className="ms-1">(Đánh giá)</span>
               </span>
+              <span>
+                <i className="bi bi-geo-alt-fill text-danger me-1"></i>
+                <span className="text-decoration-underline">{destination.location}</span>
+              </span>
+              {destination.categoryId?.name && (
+                <span className="ms-3">
+                  <i className="bi bi-tag-fill text-info me-1"></i>
+                  {destination.categoryId.name}
+                </span>
+              )}
+            </div>
+            {isAuthenticated && user?.role === 'customer' && (
+              <button
+                className={`btn btn-sm d-flex align-items-center gap-2 ${isFavorite ? 'btn-danger' : 'btn-outline-danger'}`}
+                onClick={handleToggleFavorite}
+                disabled={isToggling}
+                title={isFavorite ? 'Bỏ yêu thích' : 'Lưu yêu thích'}
+              >
+                <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'}`}></i>
+                {isFavorite ? 'Đã lưu' : 'Lưu yêu thích'}
+              </button>
             )}
           </div>
         </div>

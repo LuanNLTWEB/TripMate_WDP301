@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const Destinations = () => {
+  const { user, isAuthenticated } = useAuth();
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [toggling, setToggling] = useState(null); // lưu id đang toggling
 
   // Hàm lấy danh sách điểm đến từ API theo từ khóa tìm kiếm
   const fetchDestinations = async (search = '') => {
@@ -28,6 +32,36 @@ const Destinations = () => {
   useEffect(() => {
     fetchDestinations();
   }, []);
+
+  // Load danh sách yêu thích nếu là customer
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'customer') return;
+    destinationApi.getFavorites()
+      .then((res) => {
+        const ids = new Set((res.data || []).map((d) => d._id));
+        setFavoriteIds(ids);
+      })
+      .catch(() => {});
+  }, [isAuthenticated, user?.role]);
+
+  const handleToggleFavorite = async (e, destId) => {
+    e.preventDefault(); // không navigate vào link
+    if (toggling === destId) return;
+    setToggling(destId);
+    try {
+      const res = await destinationApi.toggleFavorite(destId);
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (res.isFavorite) next.add(destId);
+        else next.delete(destId);
+        return next;
+      });
+    } catch {
+      // bỏ qua lỗi
+    } finally {
+      setToggling(null);
+    }
+  };
 
   // Xử lý khi người dùng nhấn Tìm kiếm
   const handleSearch = (e) => {
@@ -160,18 +194,31 @@ const Destinations = () => {
               {destinations.map((destination) => (
                 <div key={destination._id} className="col">
                   <div className="card h-100 shadow-sm">
-                    {destination.images?.[0] ? (
-                      <img
-                        src={destination.images[0]}
-                        className="card-img-top"
-                        alt={destination.name}
-                        style={{ height: '250px', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '250px' }}>
-                        <i className="bi bi-image fs-1"></i>
-                      </div>
-                    )}
+                    <div className="position-relative">
+                      {destination.images?.[0] ? (
+                        <img
+                          src={destination.images[0]}
+                          className="card-img-top"
+                          alt={destination.name}
+                          style={{ height: '250px', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '250px' }}>
+                          <i className="bi bi-image fs-1"></i>
+                        </div>
+                      )}
+                      {isAuthenticated && user?.role === 'customer' && (
+                        <button
+                          className="btn btn-light border-0 rounded-circle p-1 position-absolute"
+                          style={{ top: '10px', right: '10px', width: '36px', height: '36px', lineHeight: 1 }}
+                          onClick={(e) => handleToggleFavorite(e, destination._id)}
+                          disabled={toggling === destination._id}
+                          title={favoriteIds.has(destination._id) ? 'Bỏ yêu thích' : 'Lưu yêu thích'}
+                        >
+                          <i className={`bi ${favoriteIds.has(destination._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-danger'}`}></i>
+                        </button>
+                      )}
+                    </div>
                     <div className="card-body">
                       <h5 className="card-title">{destination.name}</h5>
                       <p className="card-text text-muted mb-2">
