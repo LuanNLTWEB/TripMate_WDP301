@@ -10,16 +10,26 @@ import Destinations from './pages/Destinations'
 import DestinationDetails from './pages/DestinationDetails'
 import StaffDestinations from './pages/StaffDestinations'
 import Tours from './pages/Tours'
+import TourDetails from './pages/TourDetails'
 import StaffDestinationCategories from './pages/StaffDestinationCategories'
 import Itinerary from './pages/Itinerary'
 import FavoriteDestinations from './pages/FavoriteDestinations'
 import Stats from './pages/Stats'
+import AboutVietnam from './pages/AboutVietnam'
+import Settings from './pages/Settings'
 
 function AdminRouteGate({ children }) {
   const { user, isAuthenticated } = useAuth()
   const location = useLocation()
 
-  const adminAllowedPaths = ['/admin/accounts', '/profile', '/staff/destinations', '/staff/destination-categories', '/stats']
+  const adminAllowedPaths = [
+    '/admin/accounts',
+    '/profile',
+    '/staff/destinations',
+    '/staff/destination-categories',
+    '/stats',
+    '/settings'
+  ]
 
   if (isAuthenticated && user?.role === 'admin' && !adminAllowedPaths.includes(location.pathname)) {
     return <Navigate to="/admin/accounts" replace />
@@ -38,6 +48,7 @@ function App() {
             <Route path="/destinations" element={<Destinations />} />
             <Route path="/destinations/:id" element={<DestinationDetails />} />
             <Route path="/tours" element={<Tours />} />
+            <Route path="/tours/:id" element={<TourDetails />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />
@@ -47,6 +58,8 @@ function App() {
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/about" element={<AboutVietnam />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </AdminRouteGate>
       </BrowserRouter>

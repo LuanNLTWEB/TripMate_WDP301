@@ -206,6 +206,10 @@ export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
 
+export const tourIdValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
 export const itineraryDestinationValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('destinationId')

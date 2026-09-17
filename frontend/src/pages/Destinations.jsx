@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi } from '../services/api';
+import destinationsBanner from '../assets/destinations_banner.jpg';
 import { useAuth } from '../hooks/useAuth';
 
 const Destinations = () => {
@@ -85,7 +86,7 @@ const Destinations = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.05) 100%), url('/src/assets/destinations_banner.jpg')`,
+            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.05) 100%), url(${destinationsBanner})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',

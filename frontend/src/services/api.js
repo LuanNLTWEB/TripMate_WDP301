@@ -171,7 +171,10 @@ export const tourApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/tours${queryString}`, { method: 'GET' });
   },
-  getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' })
+  getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
+  getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
+  saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
+  removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' })
 };
 
 export default authApi;
