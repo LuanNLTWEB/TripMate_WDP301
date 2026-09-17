@@ -149,11 +149,17 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify({ destinationId })
   }),
+  removeDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations/${destinationId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
 export const statsApi = {
-  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
+  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' }),
+  removeDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations/${destinationId}`, {
+    method: 'DELETE'
+  })
 };
 
 export const tourApi = {

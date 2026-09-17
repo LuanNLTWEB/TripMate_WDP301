@@ -222,3 +222,44 @@ export const addDestination = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể thêm điểm đến vào lịch trình' });
   }
 };
+
+/**
+ * Remove a destination from an owned or edit-enabled shared itinerary.
+ * @route DELETE /api/itineraries/:id/destinations/:destinationId
+ * @access Customer
+ */
+export const removeDestination = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const destinationId = req.params.destinationId;
+    const destinationIndex = itinerary.destinations.findIndex(
+      (id) => id.equals(destinationId)
+    );
+
+    if (destinationIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Điểm đến không có trong lịch trình' });
+    }
+
+    itinerary.destinations.splice(destinationIndex, 1);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã xóa điểm đến khỏi lịch trình',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove itinerary destination error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa điểm đến khỏi lịch trình' });
+  }
+};
