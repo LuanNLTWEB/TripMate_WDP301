@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { accountApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -27,6 +28,7 @@ const roleBadgeClasses = {
 };
 
 function AccountForm({ account, onClose, onSaved }) {
+  const toast = useToast();
   const isEditing = Boolean(account);
   const [formData, setFormData] = useState(account ? {
     phone: account.phone || '',
@@ -61,7 +63,7 @@ function AccountForm({ account, onClose, onSaved }) {
         : await accountApi.create(data);
       onSaved(response.message);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể lưu tài khoản.');
+      toast.error(requestError.message || 'Không thể lưu tài khoản.');
     } finally {
       setIsSaving(false);
     }
@@ -151,11 +153,11 @@ function AccountForm({ account, onClose, onSaved }) {
 function AdminAccounts() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [accounts, setAccounts] = useState([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [processingId, setProcessingId] = useState('');
@@ -199,7 +201,7 @@ function AdminAccounts() {
       setSelectedAccount(response.account);
       setIsFormOpen(true);
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải thông tin tài khoản.');
+      toast.error(requestError.message || 'Không thể tải thông tin tài khoản.');
     } finally {
       setProcessingId('');
     }
@@ -207,7 +209,7 @@ function AdminAccounts() {
 
   const handleSaved = async (savedMessage) => {
     setIsFormOpen(false);
-    setMessage(savedMessage);
+    toast.success(savedMessage || 'Đã lưu tài khoản.');
     await loadAccounts();
   };
 
@@ -215,10 +217,10 @@ function AdminAccounts() {
     setProcessingId(account.id);
     try {
       const response = await accountApi.setStatus(account.id, !account.isActive);
-      setMessage(response.message);
+      toast.success(response.message || 'Đã cập nhật trạng thái tài khoản.');
       await loadAccounts();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể cập nhật trạng thái tài khoản.');
+      toast.error(requestError.message || 'Không thể cập nhật trạng thái tài khoản.');
     } finally {
       setProcessingId('');
     }
@@ -229,10 +231,10 @@ function AdminAccounts() {
     setProcessingId(account.id);
     try {
       const response = await accountApi.remove(account.id);
-      setMessage(response.message);
+      toast.success(response.message || 'Đã xóa tài khoản.');
       await loadAccounts();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể xóa tài khoản.');
+      toast.error(requestError.message || 'Không thể xóa tài khoản.');
     } finally {
       setProcessingId('');
     }
@@ -252,7 +254,6 @@ function AdminAccounts() {
             <button className="btn btn-primary" onClick={openCreateForm}><i className="bi bi-person-plus me-2"></i>Tạo tài khoản</button>
           </div>
           {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
-          {message && <div className="alert alert-success alert-dismissible fade show" role="alert">{message}<button type="button" className="btn-close" onClick={() => setMessage('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
               <div className="input-group mb-4">

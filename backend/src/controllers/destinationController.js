@@ -1,6 +1,9 @@
 import Destination from '../models/Destination.js';
 import User from '../models/User.js';
 import { validationResult } from 'express-validator';
+import mongoose from 'mongoose';
+
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * Create a destination in the Staff catalogue.
@@ -58,7 +61,10 @@ export const updateDestination = async (req, res) => {
   }
 
   try {
-    const destination = await Destination.findById(req.params.id);
+    const destination = await Destination.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true }
+    });
     if (!destination) {
       return res.status(404).json({ success: false, message: 'Destination not found' });
     }
@@ -104,8 +110,8 @@ export const updateDestinationStatus = async (req, res) => {
   }
 
   try {
-    const destination = await Destination.findByIdAndUpdate(
-      req.params.id,
+    const destination = await Destination.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
       { status: req.body.status },
       { new: true, runValidators: true }
     );
@@ -133,29 +139,56 @@ export const updateDestinationStatus = async (req, res) => {
 // @access  Public (Guest)
 export const getAllDestinations = async (req, res) => {
   try {
-    const { isPopular, search, page = 1, limit = 10 } = req.query;
-    let query = {};
+    const {
+      isPopular,
+      search,
+      categoryId,
+      minRating,
+      sort = 'newest',
+      page = 1,
+      limit = 10
+    } = req.query;
+    const query = { isDeleted: { $ne: true } };
     
     if (isPopular === 'true') {
       query.isPopular = true;
     }
 
     if (search) {
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { location: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return res.status(400).json({ success: false, message: 'Danh mục điểm đến không hợp lệ' });
+      }
+      query.categoryId = categoryId;
+    }
+
+    const parsedMinRating = Number(minRating);
+    if (minRating !== undefined && minRating !== '' && Number.isFinite(parsedMinRating)) {
+      query.averageRating = { $gte: Math.min(Math.max(parsedMinRating, 0), 5) };
+    }
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
     const startIndex = (pageNum - 1) * limitNum;
+    const sortOptions = {
+      newest: { createdAt: -1 },
+      rating: { averageRating: -1 },
+      nameAsc: { name: 1 }
+    };
 
     const total = await Destination.countDocuments(query);
     const destinations = await Destination.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortOptions[sort] || sortOptions.newest)
       .skip(startIndex)
-      .limit(limitNum);
+      .limit(limitNum)
+      .populate('categoryId', 'name');
     
     res.status(200).json({
       success: true,
@@ -179,7 +212,10 @@ export const getAllDestinations = async (req, res) => {
 // @access  Public (Guest)
 export const getDestinationById = async (req, res) => {
   try {
-    const destination = await Destination.findById(req.params.id).populate('categoryId');
+    const destination = await Destination.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true }
+    }).populate('categoryId');
 
     if (!destination) {
       return res.status(404).json({
@@ -233,6 +269,18 @@ export const toggleFavorite = async (req, res) => {
         (fav) => fav.toString() !== destinationId
       );
     } else {
+      const destination = await Destination.findOne({
+        _id: destinationId,
+        status: 'active',
+        isDeleted: { $ne: true }
+      });
+      if (!destination) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy điểm đến đang hoạt động'
+        });
+      }
+
       // Save
       user.favoriteDestinations.push(destinationId);
     }
@@ -255,7 +303,10 @@ export const toggleFavorite = async (req, res) => {
 // @access  Private (Customer)
 export const getFavoriteDestinations = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('favoriteDestinations');
+    const user = await User.findById(req.user._id).populate({
+      path: 'favoriteDestinations',
+      match: { isDeleted: { $ne: true } }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -264,16 +315,66 @@ export const getFavoriteDestinations = async (req, res) => {
       });
     }
 
+    const favoriteDestinations = (user.favoriteDestinations || []).filter(Boolean);
+
     res.status(200).json({
       success: true,
-      count: user.favoriteDestinations.length,
-      data: user.favoriteDestinations
+      count: favoriteDestinations.length,
+      data: favoriteDestinations
     });
   } catch (error) {
     console.error('Error fetching favorite destinations:', error);
     res.status(500).json({
       success: false,
       message: 'Server error while fetching favorite destinations'
+    });
+  }
+};
+
+export const deleteDestination = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const destination = await Destination.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: { $ne: true } },
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+        status: 'inactive',
+        isPopular: false
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!destination) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy điểm đến'
+      });
+    }
+
+    await User.updateMany(
+      { favoriteDestinations: destination._id },
+      { $pull: { favoriteDestinations: destination._id } }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Đã xóa điểm đến',
+      destinationId: destination._id
+    });
+  } catch (error) {
+    console.error('Error deleting destination:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xóa điểm đến'
     });
   }
 };

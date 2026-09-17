@@ -256,6 +256,10 @@ export const categoryIdValidation = [
   param('id').isMongoId().withMessage('Mã danh mục không hợp lệ')
 ];
 
+export const destinationIdValidation = [
+  param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ')
+];
+
 /**
  * Validate destination update.
  */

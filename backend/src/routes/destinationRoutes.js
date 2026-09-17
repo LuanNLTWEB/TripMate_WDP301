@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import {
 	createDestination,
+	deleteDestination,
 	getAllDestinations,
 	getDestinationById,
 	updateDestination,
@@ -11,6 +12,7 @@ import {
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
+	destinationIdValidation,
 	updateDestinationValidation,
 	updateDestinationStatusValidation
 } from '../middleware/validate.js';
@@ -25,7 +27,13 @@ router.get('/favorites', protect, authorize('customer'), getFavoriteDestinations
 // @route   POST /api/destinations/:id/favorite
 // @desc    Toggle save/unsave a destination
 // @access  Private (Customer)
-router.post('/:id/favorite', protect, authorize('customer'), toggleFavorite);
+router.post(
+	'/:id/favorite',
+	protect,
+	authorize('customer'),
+	destinationIdValidation,
+	toggleFavorite
+);
 
 // @route   GET /api/destinations
 // @desc    Get all destinations
@@ -54,6 +62,14 @@ router.put(
 	authorize('staff', 'admin'),
 	updateDestinationValidation,
 	updateDestination
+);
+
+router.delete(
+	'/:id',
+	protect,
+	authorize('staff', 'admin'),
+	destinationIdValidation,
+	deleteDestination
 );
 
 // @route   GET /api/destinations/:id

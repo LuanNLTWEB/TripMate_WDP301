@@ -4,6 +4,7 @@ import Footer from '../components/Footer';
 import ItineraryPrintView from '../components/ItineraryPrintView';
 import { destinationApi, itineraryApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 
 const initialItinerary = { title: '', budget: '' };
 const initialActivity = {
@@ -15,6 +16,7 @@ const initialActivity = {
  */
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [itineraries, setItineraries] = useState([]);
   const [sharedItineraries, setSharedItineraries] = useState([]);
   const [activeTab, setActiveTab] = useState('mine');
@@ -27,7 +29,6 @@ function Itinerary() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
-  const [message, setMessage] = useState('');
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
 
   const loadItineraries = async () => {
@@ -80,8 +81,9 @@ function Itinerary() {
       setItineraries((current) => [response.itinerary, ...current]);
       setSelected(response.itinerary);
       setActiveTab('mine');
+      toast.success('Đã tạo lịch trình mới.');
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể tạo lịch trình.');
     } finally {
       setSaving(false);
     }
@@ -100,8 +102,9 @@ function Itinerary() {
       });
       applyItinerary(response.itinerary);
       setActivityForm(initialActivity);
+      toast.success('Đã thêm hoạt động vào lịch trình.');
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể thêm hoạt động.');
     } finally {
       setSaving(false);
     }
@@ -113,8 +116,9 @@ function Itinerary() {
       setItineraries((current) => current.filter((it) => it._id !== id));
       if (selected?._id === id) setSelected(null);
       setPendingDeleteId(null);
+      toast.success('Đã xóa lịch trình.');
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể xóa lịch trình.');
       setPendingDeleteId(null);
     }
   };
@@ -125,14 +129,13 @@ function Itinerary() {
 
     setSaving(true);
     setError('');
-    setMessage('');
     try {
       const response = await itineraryApi.addDestination(selected._id, destinationId);
       applyItinerary(response.itinerary);
       setDestinationId('');
-      setMessage(response.message);
+      toast.success(response.message || 'Đã thêm điểm đến vào lịch trình.');
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể thêm điểm đến vào lịch trình.');
     } finally {
       setSaving(false);
     }
@@ -145,13 +148,12 @@ function Itinerary() {
     setConfirmModal({ open: false, destination: null });
     setSaving(true);
     setError('');
-    setMessage('');
     try {
       const response = await itineraryApi.removeDestination(selected._id, destination._id);
       applyItinerary(response.itinerary);
-      setMessage(response.message);
+      toast.success(response.message || 'Đã xóa điểm đến khỏi lịch trình.');
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể xóa điểm đến khỏi lịch trình.');
     } finally {
       setSaving(false);
     }
@@ -166,6 +168,7 @@ function Itinerary() {
 
     try {
       window.print();
+      toast.info('Đã mở bản xem trước để bạn in hoặc lưu thành PDF.');
     } finally {
       document.title = previousTitle;
     }
@@ -229,7 +232,6 @@ function Itinerary() {
                   </button>
                 </li>
               </ul>
-              {message && <div className="alert alert-success">{message}</div>}
               <div className="row g-4">
                 <div className="col-lg-4">
                   {activeTab === 'mine' && (

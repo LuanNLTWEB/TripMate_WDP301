@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 function ProfileForm({ user, onUpdateProfile }) {
+  const toast = useToast();
   const initialValues = {
     username: user?.username || '',
     email: user?.email || '',
@@ -18,8 +20,6 @@ function ProfileForm({ user, onUpdateProfile }) {
   const [isDirty, setIsDirty] = useState(false);
 
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -72,27 +72,16 @@ function ProfileForm({ user, onUpdateProfile }) {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
-    if (serverError) {
-      setServerError('');
-    }
-    if (successMessage) {
-      setSuccessMessage('');
-    }
   };
 
   const handleReset = () => {
     setFormData(originalData);
     setErrors({});
-    setServerError('');
-    setSuccessMessage('');
     setIsEditMode(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setServerError('');
-    setSuccessMessage('');
-
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -115,9 +104,9 @@ function ProfileForm({ user, onUpdateProfile }) {
       setFormData(updatedData);
       setOriginalData(updatedData);
       setIsEditMode(false);
-      setSuccessMessage(res.message || 'Cập nhật thông tin thành công!');
+      toast.success(res.message || 'Cập nhật thông tin thành công!');
     } catch (error) {
-      setServerError(error.message || 'Cập nhật thông tin thất bại. Vui lòng thử lại.');
+      toast.error(error.message || 'Cập nhật thông tin thất bại. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -182,33 +171,6 @@ function ProfileForm({ user, onUpdateProfile }) {
                 </div>
                 <i className="bi bi-person-gear fs-3 text-muted"></i>
               </div>
-
-              {/* Feedback alerts */}
-              {serverError && (
-                <div className="alert alert-danger alert-dismissible fade show small" role="alert">
-                  <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                  {serverError}
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setServerError('')}
-                    aria-label="Đóng"
-                  ></button>
-                </div>
-              )}
-
-              {successMessage && (
-                <div className="alert alert-success alert-dismissible fade show small" role="alert">
-                  <i className="bi bi-check-circle-fill me-2"></i>
-                  {successMessage}
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setSuccessMessage('')}
-                    aria-label="Đóng"
-                  ></button>
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} noValidate>
                 <div className="row g-3">

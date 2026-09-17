@@ -1,35 +1,65 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import toursBanner from '../assets/banner_tours.jpg';
+
+const DEFAULT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80';
+const DESTINATION_OPTIONS = [
+  'Hạ Long',
+  'Đà Nẵng',
+  'Hội An',
+  'Phú Quốc',
+  'Sapa',
+  'Đà Lạt',
+  'Huế',
+  'Nha Trang',
+  'Cần Thơ',
+  'Ninh Bình',
+  'Quy Nhơn',
+  'Phan Thiết',
+  'Vũng Tàu',
+  'Hà Nội',
+  'TP. Hồ Chí Minh'
+];
+
+const getPaginationItems = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+};
 
 const Tours = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const toast = useToast();
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [favoriteTourIds, setFavoriteTourIds] = useState(new Set());
   const [favoriteOwnerId, setFavoriteOwnerId] = useState('');
   const [savingFavoriteId, setSavingFavoriteId] = useState('');
-  const [favoriteMessage, setFavoriteMessage] = useState('');
-  const [favoriteError, setFavoriteError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTours, setTotalTours] = useState(0);
 
-  const today = new Date().toISOString().split('T')[0];
-
-  // Search states
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('');
-  const [travelDate, setTravelDate] = useState(today);
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minSeats, setMinSeats] = useState('');
+  const [sort, setSort] = useState('newest');
 
-  // Dropdown 
-  const [showDepartureList, setShowDepartureList] = useState(false);
-  const [showDestinationList, setShowDestinationList] = useState(false);
-
-  // Danh sách tỉnh/thành (lấy từ API công khai)
   const [provinces, setProvinces] = useState(['Tất cả']);
 
   useEffect(() => {
@@ -40,28 +70,19 @@ const Tours = () => {
         setProvinces(['Tất cả', ...names]);
       })
       .catch(() => {
-        // fallback nếu API lỗi
         setProvinces(['Tất cả', 'TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng']);
       });
   }, []);
 
-  // Danh sách điểm đến trong nước
-  const destinationOptions = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hội An', 'Phú Quốc', 'Nha Trang', 'Đà Lạt', 'Sapa', 'Hạ Long', 'Huế', 'Phan Thiết', 'Vũng Tàu'];
-
-  // Lọc danh sách theo giá trị đang gõ
-  const filteredDeparture = provinces.filter((o) =>
-    o.toLowerCase().includes(departure.toLowerCase())
-  );
-  const filteredDestination = destinationOptions.filter((o) =>
-    o.toLowerCase().includes(destination.toLowerCase())
-  );
-
-  const fetchTours = async (search = '') => {
+  const fetchTours = async (filters = {}, pageNum = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await tourApi.getAll({ search });
+      const response = await tourApi.getAll({ ...filters, page: pageNum, limit: 6 });
       setTours(response.data || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalTours(response.total !== undefined ? response.total : (response.data || []).length);
+      setCurrentPage(response.currentPage || pageNum);
     } catch (err) {
       setError(err.message || 'Không thể tải danh sách tour.');
     } finally {
@@ -70,8 +91,19 @@ const Tours = () => {
   };
 
   useEffect(() => {
-    fetchTours();
-  }, []);
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch) {
+      const matched = DESTINATION_OPTIONS.find(
+        (d) => d.toLowerCase().includes(urlSearch.toLowerCase()) || urlSearch.toLowerCase().includes(d.toLowerCase())
+      );
+      if (matched) {
+        setDestination(matched);
+      }
+      fetchTours({ search: urlSearch });
+    } else {
+      fetchTours();
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'customer') return;
@@ -86,14 +118,14 @@ const Tours = () => {
       })
       .catch((err) => {
         if (isMounted) {
-          setFavoriteError(err.message || 'Không thể tải danh sách tour yêu thích.');
+          toast.error(err.message || 'Không thể tải danh sách tour yêu thích.');
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated, user?.role, user?.id, user?._id]);
+  }, [isAuthenticated, user?.role, user?.id, user?._id, toast]);
 
   const isFavoriteTour = (tourId) => (
     favoriteOwnerId === String(user?.id || user?._id || '')
@@ -108,14 +140,11 @@ const Tours = () => {
     }
 
     if (user?.role !== 'customer') {
-      setFavoriteError('Chức năng yêu thích chỉ dành cho khách hàng.');
+      toast.warning('Chức năng yêu thích chỉ dành cho khách hàng.');
       return;
     }
 
     setSavingFavoriteId(normalizedTourId);
-    setFavoriteMessage('');
-    setFavoriteError('');
-
     const isFav = isFavoriteTour(normalizedTourId);
 
     try {
@@ -127,7 +156,7 @@ const Tours = () => {
           return updatedIds;
         });
         setFavoriteOwnerId(String(user?.id || user?._id || ''));
-        setFavoriteMessage(response.message || 'Đã bỏ lưu tour yêu thích.');
+        toast.success(response.message || 'Đã bỏ lưu tour yêu thích.');
       } else {
         const response = await tourApi.saveFavorite(normalizedTourId);
         setFavoriteTourIds((currentIds) => {
@@ -136,28 +165,61 @@ const Tours = () => {
           return updatedIds;
         });
         setFavoriteOwnerId(String(user?.id || user?._id || ''));
-        setFavoriteMessage(response.message || 'Đã lưu tour yêu thích.');
+        toast.success(response.message || 'Đã lưu tour yêu thích.');
       }
     } catch (err) {
-      setFavoriteError(err.message || (isFav ? 'Không thể bỏ lưu tour yêu thích.' : 'Không thể lưu tour yêu thích.'));
+      toast.error(err.message || (isFav ? 'Không thể bỏ lưu tour yêu thích.' : 'Không thể lưu tour yêu thích.'));
     } finally {
       setSavingFavoriteId('');
     }
   };
 
-  // Xử lý submit tìm kiếm
   const handleSearch = (e) => {
     e.preventDefault();
-    const keyword = [departure === 'Tất cả' ? '' : departure, destination].filter(Boolean).join(' ');
-    fetchTours(keyword.trim());
+    setCurrentPage(1);
+    fetchTours({
+      departure: departure === 'Tất cả' ? '' : departure.trim(),
+      destination: destination.trim(),
+      maxPrice,
+      minSeats,
+      sort
+    }, 1);
   };
 
-  // Xử lý reset
   const handleReset = () => {
     setDeparture('');
     setDestination('');
-    setTravelDate('');
-    fetchTours('');
+    setMaxPrice('');
+    setMinSeats('');
+    setSort('newest');
+    setCurrentPage(1);
+    fetchTours({ sort: 'newest' }, 1);
+  };
+
+  const handleSortChange = (event) => {
+    const nextSort = event.target.value;
+    setSort(nextSort);
+    setCurrentPage(1);
+    fetchTours({
+      departure: departure === 'Tất cả' ? '' : departure.trim(),
+      destination: destination.trim(),
+      maxPrice,
+      minSeats,
+      sort: nextSort
+    }, 1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    setCurrentPage(newPage);
+    fetchTours({
+      departure: departure === 'Tất cả' ? '' : departure.trim(),
+      destination: destination.trim(),
+      maxPrice,
+      minSeats,
+      sort
+    }, newPage);
+    window.scrollTo({ top: 380, behavior: 'smooth' });
   };
 
   return (
@@ -165,7 +227,6 @@ const Tours = () => {
       <Navbar />
       <div className="container py-4 py-md-5" style={{ minHeight: '80vh' }}>
 
-        {/* Banner */}
         <div
           className="position-relative overflow-hidden text-white shadow-sm"
           style={{
@@ -189,193 +250,127 @@ const Tours = () => {
           </div>
         </div>
 
-        {/* Thanh tìm kiếm nổi */}
-        <div className="row justify-content-center" style={{ marginTop: '-42px', position: 'relative', zIndex: 2 }}>
+        <div className="row justify-content-center" style={{ marginTop: '-42px', position: 'relative', zIndex: 10 }}>
           <div className="col-12 col-lg-11">
-            <div className="card border-0 shadow-lg p-3 p-md-4" style={{ borderRadius: '18px' }}>
-
+            <div className="card border-0 shadow-lg p-3 p-md-4 bg-white" style={{ borderRadius: '20px' }}>
               <form onSubmit={handleSearch}>
-                <div className="row g-2 align-items-center">
-
-                  {/* Điểm khởi hành */}
-                  <div className="col-12 col-md-4 col-lg-4 position-relative">
-                    <label className="form-label text-muted small fw-semibold mb-1">
-                      <i className="bi bi-geo-alt me-1 text-primary"></i>Khởi hành từ
+                <div className="row g-3 align-items-end">
+                  <div className="col-12 col-md-6 col-lg-3">
+                    <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="tour-departure-select">
+                      <i className="bi bi-geo-alt text-primary"></i>
+                      <span>Khởi hành từ</span>
                     </label>
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control form-control-lg fs-6 border-0 bg-light"
-                        placeholder="Chọn điểm khởi hành"
-                        value={departure}
-                        onChange={(e) => {
-                          setDeparture(e.target.value);
-                          setShowDepartureList(true);
-                        }}
-                        onFocus={() => setShowDepartureList(true)}
-                        onBlur={() => setTimeout(() => setShowDepartureList(false), 200)}
-                      />
-                      <button
-                        type="button"
-                        className="btn bg-light border-0 text-muted"
-                        onClick={() => setShowDepartureList(!showDepartureList)}
-                        tabIndex={-1}
-                      >
-                        <i className="bi bi-chevron-down small"></i>
-                      </button>
-                    </div>
-
-                    {showDepartureList && (
-                      <div
-                        className="dropdown-menu show w-100 shadow border-0 mt-1 py-1"
-                        style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1000 }}
-                      >
-                        {filteredDeparture.length > 0 ? (
-                          filteredDeparture.map((opt) => (
-                            <button
-                              key={opt}
-                              type="button"
-                              className="dropdown-item py-2 small"
-                              onMouseDown={() => {
-                                setDeparture(opt);
-                                setShowDepartureList(false);
-                              }}
-                            >
-                              {opt}
-                            </button>
-                          ))
-                        ) : (
-                          <div className="dropdown-item text-muted small py-2">Không tìm thấy</div>
-                        )}
-                      </div>
-                    )}
+                    <select
+                      id="tour-departure-select"
+                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
+                      style={{ height: '48px' }}
+                      value={departure}
+                      onChange={(e) => setDeparture(e.target.value)}
+                    >
+                      <option value="">Tất cả điểm khởi hành</option>
+                      {provinces.filter((p) => p !== 'Tất cả').map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Điểm đến */}
-                  <div className="col-12 col-md-3 col-lg-3 position-relative">
-                    <label className="form-label text-muted small fw-semibold mb-1">
-                      <i className="bi bi-pin-map me-1 text-primary"></i>Bạn muốn đi đâu?
+                  <div className="col-12 col-md-6 col-lg-3">
+                    <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="tour-destination-select">
+                      <i className="bi bi-pin-map text-primary"></i>
+                      <span>Bạn muốn đi đâu?</span>
                     </label>
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control form-control-lg fs-6 border-0 bg-light"
-                        placeholder="Chọn điểm đến"
-                        value={destination}
-                        onChange={(e) => {
-                          setDestination(e.target.value);
-                          setShowDestinationList(true);
-                        }}
-                        onFocus={() => setShowDestinationList(true)}
-                        onBlur={() => setTimeout(() => setShowDestinationList(false), 200)}
-                      />
-                      <button
-                        type="button"
-                        className="btn bg-light border-0 text-muted"
-                        onClick={() => setShowDestinationList(!showDestinationList)}
-                        tabIndex={-1}
-                      >
-                        <i className="bi bi-chevron-down small"></i>
-                      </button>
-                    </div>
-
-                    {showDestinationList && (
-                      <div
-                        className="dropdown-menu show w-100 shadow border-0 mt-1 py-1"
-                        style={{ maxHeight: '200px', overflowY: 'auto', zIndex: 1000 }}
-                      >
-                        {filteredDestination.length > 0 ? (
-                          filteredDestination.map((opt) => (
-                            <button
-                              key={opt}
-                              type="button"
-                              className="dropdown-item py-2 small"
-                              onMouseDown={() => {
-                                setDestination(opt);
-                                setShowDestinationList(false);
-                              }}
-                            >
-                              {opt}
-                            </button>
-                          ))
-                        ) : (
-                          <div className="dropdown-item text-muted small py-2">Không tìm thấy</div>
-                        )}
-                      </div>
-                    )}
+                    <select
+                      id="tour-destination-select"
+                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
+                      style={{ height: '48px' }}
+                      value={destination}
+                      onChange={(e) => setDestination(e.target.value)}
+                    >
+                      <option value="">Tất cả điểm đến</option>
+                      {DESTINATION_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Ngày khởi hành */}
-                  <div className="col-12 col-md-3 col-lg-3">
-                    <label className="form-label text-muted small fw-semibold mb-1">
-                      <i className="bi bi-calendar3 me-1 text-primary"></i>Ngày khởi hành
+                  <div className="col-6 col-md-3 col-lg-2">
+                    <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="tour-max-price">
+                      <i className="bi bi-cash-stack text-primary"></i>
+                      <span>Giá tối đa</span>
                     </label>
                     <input
-                      type="date"
-                      className="form-control form-control-lg fs-6 border-0 bg-light"
-                      value={travelDate}
-                      min={today}
-                      onChange={(e) => setTravelDate(e.target.value)}
+                      id="tour-max-price"
+                      type="number"
+                      className="form-control form-control-lg fs-6 bg-light border-light-subtle rounded-3"
+                      style={{ height: '48px' }}
+                      value={maxPrice}
+                      min="0"
+                      step="100000"
+                      placeholder="Không giới hạn"
+                      onChange={(e) => setMaxPrice(e.target.value)}
                     />
                   </div>
 
-                  {/* Nút Tìm kiếm */}
-                  <div className="col-12 col-md-2 col-lg-2 d-flex align-items-end">
+                  <div className="col-6 col-md-3 col-lg-2">
+                    <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="tour-min-seats">
+                      <i className="bi bi-people text-primary"></i>
+                      <span>Số chỗ còn</span>
+                    </label>
+                    <input
+                      id="tour-min-seats"
+                      type="number"
+                      className="form-control form-control-lg fs-6 bg-light border-light-subtle rounded-3"
+                      style={{ height: '48px' }}
+                      value={minSeats}
+                      min="1"
+                      placeholder="Tối thiểu 1"
+                      onChange={(e) => setMinSeats(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6 col-lg-2">
                     <button
                       type="submit"
-                      className="btn w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 rounded-pill text-white"
-                      style={{ backgroundColor: '#0057e7', borderColor: '#0057e7' }}
+                      className="btn btn-primary btn-lg w-100 fs-6 fw-semibold d-flex align-items-center justify-content-center gap-2 rounded-pill shadow-sm text-white"
+                      style={{ height: '48px' }}
                     >
                       <i className="bi bi-search"></i>
                       <span>Tìm kiếm</span>
                     </button>
                   </div>
-
                 </div>
               </form>
-
             </div>
           </div>
         </div>
 
-        {/* Danh sách Tour */}
         <div className="mt-5">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h4 className="fw-bold mb-0">Các Tour đang mở</h4>
-            {(departure || destination || travelDate) && (
-              <button
-                type="button"
-                className="btn btn-link btn-sm text-decoration-none"
-                onClick={handleReset}
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-2 border-bottom border-light-subtle">
+            <div>
+              <h3 className="fw-bold mb-1 font-display">Các Tour du lịch</h3>
+              <p className="text-muted small mb-0">
+                Tìm thấy <span className="fw-bold text-primary">{totalTours}</span> hành trình khám phá phù hợp
+              </p>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <label className="text-muted small fw-medium text-nowrap d-flex align-items-center gap-1">
+                <i className="bi bi-arrow-down-up"></i>
+                <span>Sắp xếp:</span>
+              </label>
+              <select
+                className="form-select form-select-sm rounded-pill px-3 shadow-none border-secondary-subtle"
+                style={{ width: '160px', height: '38px' }}
+                value={sort}
+                onChange={handleSortChange}
+                aria-label="Sắp xếp tour"
               >
-                <i className="bi bi-arrow-counterclockwise me-1"></i>Xem tất cả
-              </button>
-            )}
+                <option value="newest">Mới nhất</option>
+                <option value="priceAsc">Giá tăng dần</option>
+                <option value="priceDesc">Giá giảm dần</option>
+                <option value="rating">Đánh giá cao</option>
+              </select>
+            </div>
           </div>
-
-          {favoriteMessage && (
-            <div className="alert alert-success alert-dismissible" role="alert">
-              {favoriteMessage}
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Đóng"
-                onClick={() => setFavoriteMessage('')}
-              ></button>
-            </div>
-          )}
-
-          {favoriteError && (
-            <div className="alert alert-danger alert-dismissible" role="alert">
-              {favoriteError}
-              <button
-                type="button"
-                className="btn-close"
-                aria-label="Đóng"
-                onClick={() => setFavoriteError('')}
-              ></button>
-            </div>
-          )}
 
           {loading ? (
             <div className="text-center py-5">
@@ -388,17 +383,20 @@ const Tours = () => {
               {error}
             </div>
           ) : tours.length === 0 ? (
-            <div className="text-center text-muted py-5 border rounded bg-light">
+            <div className="text-center text-muted py-5 border rounded-4 bg-light">
               <i className="bi bi-compass fs-1 text-secondary mb-3 d-block"></i>
-              <h5 className="fw-bold">Hiện chưa có tour nào</h5>
-              <p>Xin lỗi, hiện tại chúng tôi chưa có tour nào.</p>
+              <h5 className="fw-bold">Không tìm thấy tour nào</h5>
+              <p className="small mb-3">Xin lỗi, hiện tại chưa có tour nào phù hợp với điều kiện tìm kiếm của bạn.</p>
+              <button className="btn btn-outline-primary btn-sm rounded-pill px-4" onClick={handleReset}>
+                Đặt lại bộ lọc
+              </button>
             </div>
           ) : (
-            <div className="row row-cols-1 row-cols-md-3 g-4">
+            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
               {tours.map((tour) => (
                 <div key={tour._id} className="col">
                   <div
-                    className="card h-100 shadow-sm border-0 position-relative overflow-hidden"
+                    className="editorial-card h-100 overflow-hidden d-flex flex-column cursor-pointer"
                     role="link"
                     tabIndex={0}
                     aria-label={`Xem chi tiết tour ${tour.title}`}
@@ -410,32 +408,29 @@ const Tours = () => {
                         navigate(`/tours/${tour._id}`);
                       }
                     }}
-                    style={{ cursor: 'pointer' }}
                   >
-                    <div className="position-relative">
-                      {tour.images?.[0] ? (
-                        <img
-                          src={tour.images[0]}
-                          className="card-img-top"
-                          alt={tour.title}
-                          style={{ height: '220px', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div className="card-img-top bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '220px' }}>
-                          <i className="bi bi-image fs-1"></i>
-                        </div>
-                      )}
+                    <div className="editorial-zoom-img position-relative" style={{ height: '230px' }}>
+                      <img
+                        src={tour.images?.[0] || DEFAULT_IMAGE_FALLBACK}
+                        className="w-100 h-100"
+                        alt={tour.title}
+                        style={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = DEFAULT_IMAGE_FALLBACK;
+                        }}
+                      />
 
-                      {/* Phần giá nằm bên trái giống như ở trong phần yêu thích */}
-                      <span className="position-absolute bottom-0 start-0 bg-primary text-white px-3 py-1 fw-semibold">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tour.price)}
-                      </span>
+                      <div className="position-absolute top-0 start-0 m-3 d-flex flex-wrap gap-1" style={{ zIndex: 2 }}>
+                        <span className="badge bg-dark bg-opacity-75 text-white rounded-pill px-3 py-1.5 shadow-sm fw-normal">
+                          <i className="bi bi-clock me-1"></i>{tour.duration}
+                        </span>
+                      </div>
 
-                      {/* Phần tim nằm ở trên cùng bên phải giống như ở trong phần yêu thích, thích/hủy thích trực tiếp */}
                       <button
                         type="button"
                         className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center"
-                        style={{ width: '40px', height: '40px', zIndex: 2 }}
+                        style={{ width: '38px', height: '38px', zIndex: 3 }}
                         onClick={(event) => {
                           event.stopPropagation();
                           handleToggleFavorite(tour._id);
@@ -447,42 +442,116 @@ const Tours = () => {
                         {savingFavoriteId === String(tour._id) ? (
                           <span className="spinner-border spinner-border-sm text-danger" aria-hidden="true"></span>
                         ) : (
-                          <i className={`bi ${isFavoriteTour(tour._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-5`}></i>
+                          <i className={`bi ${isFavoriteTour(tour._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-6`}></i>
                         )}
                       </button>
+
+                      <span className="position-absolute bottom-0 start-0 m-3 badge bg-primary text-white shadow px-3 py-2 fs-6 rounded-pill fw-bold" style={{ zIndex: 2 }}>
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tour.price)}
+                      </span>
                     </div>
 
-                    <div className="card-body">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="badge bg-light text-dark border">
-                          <i className="bi bi-clock me-1"></i>{tour.duration}
+                    <div className="p-4 d-flex flex-column flex-grow-1">
+                      <div className="text-muted small fw-medium mb-2 d-flex align-items-center">
+                        <i className="bi bi-geo-alt-fill text-danger me-1 flex-shrink-0"></i>
+                        <span className="text-truncate">
+                          {tour.departureLocation
+                            ? `${tour.departureLocation} → ${tour.destinationLocation || tour.location}`
+                            : (tour.destinationLocation || tour.location)}
                         </span>
-                        <div className="text-warning small fw-bold">
-                          <i className="bi bi-star-fill me-1"></i>{tour.averageRating}
-                        </div>
                       </div>
-                      <h5 className="card-title fw-bold mb-1">{tour.title}</h5>
-                      <p className="card-text text-muted small mb-3">
-                        <i className="bi bi-geo-alt-fill me-1"></i>{tour.location}
-                      </p>
-                      <p className="card-text text-secondary" style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        fontSize: '0.9rem'
-                      }}>
+                      <h5 className="font-display fw-bold text-dark mb-2 text-truncate" title={tour.title}>
+                        {tour.title}
+                      </h5>
+                      <p
+                        className="text-secondary small mb-3 flex-grow-1"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: '1.6'
+                        }}
+                      >
                         {tour.description}
                       </p>
-                      <div className="mt-3 pt-3 border-top">
-                        <span className="text-muted small">
-                          <i className="bi bi-person-check me-1"></i>Còn {tour.availableSeats} chỗ
+                      <div className="pt-3 border-top border-light-subtle mt-auto d-flex justify-content-between align-items-center">
+                        <span className="small text-muted d-inline-flex align-items-center">
+                          <i className="bi bi-check-circle-fill text-success me-1.5"></i>Còn {tour.availableSeats ?? 0} chỗ
                         </span>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="small fw-bold text-warning d-inline-flex align-items-center">
+                            <i className="bi bi-star-fill me-1"></i>{tour.averageRating ? tour.averageRating.toFixed(1) : '5.0'}
+                          </span>
+                          <span className="text-primary small fw-semibold d-inline-flex align-items-center gap-1">
+                            Chi tiết <i className="bi bi-arrow-right"></i>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-5 pt-4 border-top border-light-subtle">
+              <span className="text-muted small">
+                Trang <strong className="text-dark">{currentPage}</strong> trên <strong className="text-dark">{totalPages}</strong> (Tổng cộng {totalTours} tour)
+              </span>
+              <nav aria-label="Phân trang tour du lịch">
+                <ul className="pagination pagination-sm mb-0 gap-1 align-items-center">
+                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 d-flex align-items-center gap-1 shadow-none"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <i className="bi bi-chevron-left"></i>
+                      <span className="d-none d-sm-inline">Trước</span>
+                    </button>
+                  </li>
+                  {getPaginationItems(currentPage, totalPages).map((item, idx) => {
+                    if (item === '...') {
+                      return (
+                        <li key={`ellipsis-${idx}`} className="page-item px-1">
+                          <span className="text-muted small user-select-none">…</span>
+                        </li>
+                      );
+                    }
+                    const isActive = item === currentPage;
+                    return (
+                      <li key={item} className="page-item">
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-circle d-flex align-items-center justify-content-center shadow-none ${
+                            isActive
+                              ? 'btn-primary text-white fw-bold shadow-sm'
+                              : 'btn-outline-secondary text-dark border-0'
+                          }`}
+                          style={{ width: '36px', height: '36px' }}
+                          onClick={() => handlePageChange(item)}
+                        >
+                          {item}
+                        </button>
+                      </li>
+                    );
+                  })}
+                  <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 d-flex align-items-center gap-1 shadow-none"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <span className="d-none d-sm-inline">Sau</span>
+                      <i className="bi bi-chevron-right"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
             </div>
           )}
         </div>

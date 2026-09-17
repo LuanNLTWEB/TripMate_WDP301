@@ -16,6 +16,16 @@ const tourSchema = new mongoose.Schema({
     required: [true, 'Tour location is required'],
     trim: true
   },
+  departureLocation: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  destinationLocation: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   price: {
     type: Number,
     required: [true, 'Tour price is required'],

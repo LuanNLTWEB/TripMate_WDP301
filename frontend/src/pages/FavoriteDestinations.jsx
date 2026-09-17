@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -13,6 +14,7 @@ const formatPrice = (price) => new Intl.NumberFormat('vi-VN', {
 const FavoriteDestinations = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [favoriteDestinations, setFavoriteDestinations] = useState([]);
   const [favoriteTours, setFavoriteTours] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,8 +85,9 @@ const FavoriteDestinations = () => {
     try {
       await destinationApi.toggleFavorite(destinationId);
       setFavoriteDestinations((current) => current.filter((destination) => destination._id !== destinationId));
+      toast.success('Đã bỏ lưu điểm đến yêu thích.');
     } catch (err) {
-      setError(err.message || 'Không thể bỏ lưu điểm đến yêu thích.');
+      toast.error(err.message || 'Không thể bỏ lưu điểm đến yêu thích.');
     } finally {
       setRemovingKey('');
     }
@@ -99,8 +102,9 @@ const FavoriteDestinations = () => {
     try {
       await tourApi.removeFavorite(tourId);
       setFavoriteTours((current) => current.filter((tour) => tour._id !== tourId));
+      toast.success('Đã bỏ lưu tour yêu thích.');
     } catch (err) {
-      setError(err.message || 'Không thể bỏ lưu tour yêu thích.');
+      toast.error(err.message || 'Không thể bỏ lưu tour yêu thích.');
     } finally {
       setRemovingKey('');
     }
@@ -324,7 +328,12 @@ const FavoriteDestinations = () => {
                                 <span className="text-warning"><i className="bi bi-star-fill me-1"></i>{tour.averageRating}</span>
                               </div>
                               <h3 className="h5 card-title fw-bold">{tour.title}</h3>
-                              <p className="text-muted small mb-2"><i className="bi bi-geo-alt-fill me-1"></i>{tour.location}</p>
+                              <p className="text-muted small mb-2">
+                                <i className="bi bi-geo-alt-fill me-1"></i>
+                                {tour.departureLocation
+                                  ? `${tour.departureLocation} → ${tour.destinationLocation || tour.location}`
+                                  : (tour.destinationLocation || tour.location)}
+                              </p>
                               <p className="card-text text-secondary flex-grow-1" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                 {tour.description}
                               </p>
