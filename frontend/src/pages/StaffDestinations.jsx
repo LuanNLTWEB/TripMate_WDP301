@@ -16,6 +16,7 @@ function StaffDestinations() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [destinationToDelete, setDestinationToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
@@ -135,6 +136,7 @@ function StaffDestinations() {
 
   const openEditForm = (dest) => {
     setEditingId(dest._id);
+    setShowUpdateConfirm(false);
     setFormData({
       name: dest.name,
       description: dest.description,
@@ -147,8 +149,14 @@ function StaffDestinations() {
     setError('');
   };
 
-  const handleEditSubmit = async (event) => {
+  const handleEditSubmit = (event) => {
     event.preventDefault();
+    setShowUpdateConfirm(true);
+  };
+
+  const handleConfirmUpdate = async () => {
+    if (!editingId || isSaving) return;
+
     setIsSaving(true);
     setError('');
 
@@ -161,6 +169,7 @@ function StaffDestinations() {
         categoryId: formData.categoryId || null,
         isPopular: formData.isPopular
       });
+      setShowUpdateConfirm(false);
       setEditingId(null);
       setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
       setShowCreateForm(false);
@@ -168,6 +177,7 @@ function StaffDestinations() {
       await loadDestinations(search, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể cập nhật điểm đến.');
+      setShowUpdateConfirm(false);
     } finally {
       setIsSaving(false);
     }
@@ -182,7 +192,7 @@ function StaffDestinations() {
               <h1 className="h3 fw-bold mb-1">Quản lý điểm đến</h1>
               <p className="text-muted mb-0">Xem danh sách các điểm đến trên hệ thống</p>
             </div>
-            <button className="btn btn-primary" onClick={() => { setShowCreateForm((current) => !current); setEditingId(null); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); setError(''); }}>
+            <button className="btn btn-primary" onClick={() => { setShowCreateForm((current) => !current); setEditingId(null); setShowUpdateConfirm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); setError(''); }}>
               <i className="bi bi-plus-circle me-2"></i>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}
             </button>
           </div>
@@ -228,7 +238,7 @@ function StaffDestinations() {
                   {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Lưu điểm đến')}
                 </button>
                 {editingId && (
-                  <button type="button" className="btn btn-outline-secondary mt-3 ms-2" onClick={() => { setEditingId(null); setShowCreateForm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); }}>
+                  <button type="button" className="btn btn-outline-secondary mt-3 ms-2" onClick={() => { setEditingId(null); setShowUpdateConfirm(false); setShowCreateForm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); }}>
                     Hủy
                   </button>
                 )}
@@ -433,6 +443,72 @@ function StaffDestinations() {
                       <>
                         <i className="bi bi-trash me-2"></i>
                         Xóa điểm đến
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
+
+      {showUpdateConfirm && (
+        <>
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="update-destination-title"
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header">
+                  <h2 id="update-destination-title" className="modal-title h5 fw-bold">
+                    Xác nhận cập nhật điểm đến
+                  </h2>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowUpdateConfirm(false)}
+                    disabled={isSaving}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <p className="mb-2">
+                    Bạn có chắc chắn muốn lưu các thay đổi cho điểm đến <strong>{formData.name}</strong>?
+                  </p>
+                  <p className="text-muted small mb-0">
+                    Thông tin điểm đến sau khi cập nhật sẽ được hiển thị cho khách hàng và áp dụng trên toàn hệ thống.
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowUpdateConfirm(false)}
+                    disabled={isSaving}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleConfirmUpdate}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Đang lưu...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-check-circle me-2"></i>
+                        Xác nhận cập nhật
                       </>
                     )}
                   </button>

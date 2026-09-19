@@ -376,3 +376,59 @@ export const removeTour = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa tour khỏi lịch trình' });
   }
 };
+
+/**
+ * Duplicate an owned or shared itinerary into a new personal itinerary.
+ * @route POST /api/itineraries/:id/duplicate
+ * @access Customer
+ */
+export const duplicateItinerary = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const source = await Itinerary.findById(req.params.id);
+    if (!source || !canView(source, req.user._id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch trình hoặc bạn không có quyền sao chép'
+      });
+    }
+
+    const customTitle = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const newTitle = customTitle || `${source.title} (Bản sao)`;
+
+    const duplicated = await Itinerary.create({
+      owner: req.user._id,
+      title: newTitle.slice(0, 120),
+      startDate: source.startDate,
+      endDate: source.endDate,
+      budget: source.budget || 0,
+      destinations: [...(source.destinations || [])],
+      tours: [...(source.tours || [])],
+      activities: (source.activities || []).map((activity) => ({
+        title: activity.title,
+        date: activity.date,
+        startTime: activity.startTime,
+        endTime: activity.endTime,
+        location: activity.location || '',
+        estimatedCost: activity.estimatedCost || 0,
+        notes: activity.notes || ''
+      })),
+      collaborators: []
+    });
+
+    const populated = await findByIdPopulated(duplicated._id);
+    return res.status(201).json({
+      success: true,
+      message: 'Đã nhân bản lịch trình thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Duplicate itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể sao chép lịch trình' });
+  }
+};
+

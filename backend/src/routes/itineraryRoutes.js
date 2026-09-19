@@ -6,6 +6,7 @@ import {
   addTour,
   createItinerary,
   deleteItinerary,
+  duplicateItinerary,
   getActivityConflicts,
   getItinerary,
   listItineraries,
@@ -31,6 +32,7 @@ router.get('/', ...customerAccess, listItineraries);
 router.get('/shared', ...customerAccess, listSharedItineraries);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
+router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);

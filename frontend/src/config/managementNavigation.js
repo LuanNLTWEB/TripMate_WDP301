@@ -34,6 +34,14 @@ const managementNavigation = [
     roles: MANAGEMENT_ROLES
   },
   {
+    key: 'tour-categories',
+    label: 'Danh mục tour',
+    description: 'Phân loại các tour du lịch',
+    icon: 'bi-bookmark',
+    path: '/management/tour-categories',
+    roles: MANAGEMENT_ROLES
+  },
+  {
     key: 'tours',
     label: 'Quản lý tour',
     description: 'Theo dõi và tạm ngưng tour vi phạm',
