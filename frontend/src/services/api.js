@@ -202,6 +202,7 @@ export const tourApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/tours/management${queryString}`, { method: 'GET' });
   },
+  getManagedById: (id) => apiRequest(`/tours/management/${id}`, { method: 'GET' }),
   setStatus: (id, status, reason = '') => apiRequest(`/tours/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status, reason })

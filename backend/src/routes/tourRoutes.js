@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getAllTours,
   getFavoriteTours,
+  getManagedTourById,
   getManagedTours,
   getTourById,
   removeFavoriteTour,
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.get('/', getAllTours);
 router.get('/management', protect, authorize('staff', 'admin'), getManagedTours);
+router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize('customer'), tourIdValidation, saveFavoriteTour);
 router.delete('/:id/favorite', protect, authorize('customer'), tourIdValidation, removeFavoriteTour);

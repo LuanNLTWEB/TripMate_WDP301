@@ -299,6 +299,49 @@ export const getManagedTours = async (req, res) => {
   }
 };
 
+export const getManagedTourById = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id)
+      .populate('categoryId', 'name')
+      .populate('suspendedBy', 'username email');
+
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error fetching managed tour by ID:', error);
+
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải thông tin tour'
+    });
+  }
+};
+
 export const updateTourStatus = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
