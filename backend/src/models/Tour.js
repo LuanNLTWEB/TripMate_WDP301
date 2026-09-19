@@ -71,6 +71,11 @@ const tourSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'TourCategory',
+    default: null
   }
 }, {
   timestamps: true

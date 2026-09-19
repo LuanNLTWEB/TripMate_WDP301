@@ -125,6 +125,19 @@ export const destinationCategoryApi = {
   remove: (id) => apiRequest(`/destination-categories/${id}`, { method: 'DELETE' })
 };
 
+export const tourCategoryApi = {
+  getAll: () => apiRequest('/tour-categories', { method: 'GET' }),
+  create: (category) => apiRequest('/tour-categories', {
+    method: 'POST',
+    body: JSON.stringify(category)
+  }),
+  update: (id, category) => apiRequest(`/tour-categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(category)
+  }),
+  remove: (id) => apiRequest(`/tour-categories/${id}`, { method: 'DELETE' })
+};
+
 export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
@@ -149,6 +162,10 @@ export const itineraryApi = {
   }),
   removeTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours/${tourId}`, {
     method: 'DELETE'
+  }),
+  duplicate: (id, payload = {}) => apiRequest(`/itineraries/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };

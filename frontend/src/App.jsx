@@ -15,6 +15,7 @@ import StaffDestinations from './pages/StaffDestinations';
 import Tours from './pages/Tours';
 import TourDetails from './pages/TourDetails';
 import StaffDestinationCategories from './pages/StaffDestinationCategories';
+import StaffTourCategories from './pages/StaffTourCategories';
 import Itinerary from './pages/Itinerary';
 import FavoriteDestinations from './pages/FavoriteDestinations';
 import Stats from './pages/Stats';
@@ -53,6 +54,7 @@ function App() {
                 />
                 <Route path="destinations" element={<StaffDestinations />} />
                 <Route path="destination-categories" element={<StaffDestinationCategories />} />
+                <Route path="tour-categories" element={<StaffTourCategories />} />
                 <Route path="tours" element={<StaffTours />} />
                 <Route path="statistics" element={<Stats />} />
               </Route>
@@ -61,6 +63,7 @@ function App() {
             <Route path="/admin/accounts" element={<Navigate to="/management/accounts" replace />} />
             <Route path="/staff/destinations" element={<Navigate to="/management/destinations" replace />} />
             <Route path="/staff/destination-categories" element={<Navigate to="/management/destination-categories" replace />} />
+            <Route path="/staff/tour-categories" element={<Navigate to="/management/tour-categories" replace />} />
             <Route path="/staff/tours" element={<Navigate to="/management/tours" replace />} />
             <Route path="/stats" element={<Navigate to="/management/statistics" replace />} />
           </Routes>
