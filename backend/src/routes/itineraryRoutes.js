@@ -12,7 +12,8 @@ import {
   listItineraries,
   listSharedItineraries,
   removeDestination,
-  removeTour
+  removeTour,
+  removeActivity
 } from '../controllers/itineraryController.js';
 import {
   activityValidation,
@@ -21,7 +22,8 @@ import {
   itineraryTourValidation,
   itineraryValidation,
   removeDestinationValidation,
-  removeTourFromItineraryValidation
+  removeTourFromItineraryValidation,
+  removeActivityFromItineraryValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -35,6 +37,7 @@ router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
+router.delete('/:id/activities/:activityId', ...customerAccess, removeActivityFromItineraryValidation, removeActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
 router.delete('/:id/destinations/:destinationId', ...customerAccess, removeDestinationValidation, removeDestination);
 router.post('/:id/tours', ...customerAccess, itineraryTourValidation, addTour);

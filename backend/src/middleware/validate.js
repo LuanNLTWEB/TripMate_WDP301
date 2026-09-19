@@ -224,6 +224,11 @@ export const removeDestinationValidation = [
   param('destinationId').isMongoId().withMessage('Mã điểm đến không hợp lệ')
 ];
 
+export const removeActivityFromItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('activityId').isMongoId().withMessage('Mã hoạt động không hợp lệ')
+];
+
 export const itineraryTourValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('tourId')

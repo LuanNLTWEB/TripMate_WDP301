@@ -206,6 +206,43 @@ export const addActivity = async (req, res) => {
 };
 
 /**
+ * Remove an activity from an owned or edit-enabled shared itinerary.
+ * @route DELETE /api/itineraries/:id/activities/:activityId
+ * @access Customer
+ */
+export const removeActivity = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const activity = itinerary.activities.id(req.params.activityId);
+    if (!activity) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hoạt động trong lịch trình' });
+    }
+
+    itinerary.activities.pull(req.params.activityId);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã xóa hoạt động khỏi lịch trình',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove itinerary activity error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to remove activity' });
+  }
+};
+
+/**
  * Add an active destination to an owned or edit-enabled shared itinerary.
  * @route POST /api/itineraries/:id/destinations
  * @access Customer

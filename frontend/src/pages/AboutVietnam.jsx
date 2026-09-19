@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import haLongHeroImage from '../assets/about-vietnam/ha-long-hero.webp';
-import haLongBoatsImage from '../assets/about-vietnam/ha-long-boats.webp';
-import sonDoongImage from '../assets/about-vietnam/son-doong.webp';
-import trangAnImage from '../assets/about-vietnam/trang-an.webp';
+const haLongHeroImage = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823915/tripmate_assets/azeu5jrituyutaiaselh.webp';
+const haLongBoatsImage = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823914/tripmate_assets/of6h9l69tbbltwdrzsne.webp';
+const sonDoongImage = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823917/tripmate_assets/ehvvatjfmtfqnu5kevyd.webp';
+const trangAnImage = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823918/tripmate_assets/lshwv5kf5oupn6qlqrzl.webp';
 import './AboutVietnam.css';
 
 const INTRO_SESSION_KEY = 'tripmate.aboutVietnamIntroSeen';

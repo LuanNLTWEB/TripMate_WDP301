@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { tourApi, destinationApi } from '../services/api';
 
-const DEFAULT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80';
+const DEFAULT_IMAGE_FALLBACK = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789824275/tripmate_assets/g6tkjy46skan17hyreku.jpg';
 
 function Home() {
   const navigate = useNavigate();
