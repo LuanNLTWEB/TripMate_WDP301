@@ -6,9 +6,9 @@ import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { DEPARTURE_LOCATIONS } from '../constants/provinces';
-import toursBanner from '../assets/banner_tours.jpg';
+const toursBanner = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823910/tripmate_assets/xsta5gss7727bf5g22wv.jpg';
 
-const DEFAULT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80';
+const DEFAULT_IMAGE_FALLBACK = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789824275/tripmate_assets/g6tkjy46skan17hyreku.jpg';
 const DESTINATION_OPTIONS = [
   'Hạ Long',
   'Đà Nẵng',

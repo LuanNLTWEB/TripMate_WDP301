@@ -23,6 +23,7 @@ import AboutVietnam from './pages/AboutVietnam';
 import ManagementOverview from './pages/ManagementOverview';
 import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
+import StaffPendingTours from './pages/StaffPendingTours';
 
 function App() {
   return (
@@ -58,6 +59,14 @@ function App() {
                 <Route path="tour-categories" element={<StaffTourCategories />} />
                 <Route path="tours" element={<StaffTours />} />
                 <Route path="tours/:id" element={<ReviewTourSubmission />} />
+                <Route
+                  path="pending-tours"
+                  element={(
+                    <ProtectedRoute allowedRoles={['staff']}>
+                      <StaffPendingTours />
+                    </ProtectedRoute>
+                  )}
+                />
                 <Route path="statistics" element={<Stats />} />
               </Route>
             </Route>

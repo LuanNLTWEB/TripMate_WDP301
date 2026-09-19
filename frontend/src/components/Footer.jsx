@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import logo from '../assets/logo.png';
+const logo = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823913/tripmate_assets/d4gczttux14p0fwdvxst.png';
 
 function Footer() {
   return (

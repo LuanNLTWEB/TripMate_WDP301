@@ -115,6 +115,22 @@ function Itinerary() {
     }
   };
 
+  const removeActivity = async (activityId) => {
+    if (!selected || !window.confirm('Bạn có chắc chắn muốn xóa hoạt động này?')) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      const response = await itineraryApi.removeActivity(selected._id, activityId);
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã xóa hoạt động khỏi lịch trình.');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa hoạt động.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteItinerary = async (id) => {
     setSaving(true);
     try {
@@ -518,15 +534,28 @@ function Itinerary() {
                                             {activity.title}
                                             {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
                                           </div>
-                                          <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
-                                          {activity.notes && <div className="small mt-1">{activity.notes}</div>}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                  <div className="d-flex justify-content-between align-items-center mt-1">
+                                    <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
+                                    {canEditSelected && !reorderMode && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger border-0 p-1"
+                                        onClick={() => removeActivity(activity._id)}
+                                        title="Xóa hoạt động"
+                                        disabled={saving}
+                                      >
+                                        <i className="bi bi-trash"></i>
+                                      </button>
+                                    )}
+                                  </div>
+                                  {activity.notes && <div className="small mt-1">{activity.notes}</div>}
+                                </div>
                               </div>
-                            </>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                           )}
                         </div>
                       </section>
@@ -564,7 +593,7 @@ function Itinerary() {
                                       {canEditSelected && (
                                         <button
                                           type="button"
-                                          className="btn btn-sm btn-outline-danger"
+                                          className="btn btn-sm btn-outline-danger border-0 p-1"
                                           disabled={saving}
                                           onClick={() => setConfirmModal({ open: true, destination })}
                                           title="Xóa điểm đến khỏi lịch trình"
@@ -633,7 +662,7 @@ function Itinerary() {
                                       {isOwner && (
                                         <button
                                           type="button"
-                                          className="btn btn-sm btn-outline-danger"
+                                          className="btn btn-sm btn-outline-danger border-0 p-1"
                                           disabled={saving}
                                           onClick={() => setConfirmTourModal({ open: true, tour })}
                                           title="Xóa tour khỏi lịch trình"

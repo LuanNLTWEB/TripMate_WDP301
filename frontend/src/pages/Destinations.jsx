@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi, destinationCategoryApi } from '../services/api';
-import destinationsBanner from '../assets/destinations_banner.jpg';
+const destinationsBanner = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823911/tripmate_assets/jmgdqrgkput0yvptbvyr.jpg';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
-const DEFAULT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80';
+const DEFAULT_IMAGE_FALLBACK = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789824275/tripmate_assets/g6tkjy46skan17hyreku.jpg';
 
 const getPaginationItems = (currentPage, totalPages) => {
   if (totalPages <= 7) {

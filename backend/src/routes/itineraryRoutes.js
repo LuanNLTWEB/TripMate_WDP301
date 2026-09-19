@@ -13,7 +13,8 @@ import {
   listSharedItineraries,
   reorderActivities,
   removeDestination,
-  removeTour
+  removeTour,
+  removeActivity
 } from '../controllers/itineraryController.js';
 import {
   activityValidation,
@@ -23,7 +24,8 @@ import {
   itineraryValidation,
   removeDestinationValidation,
   removeTourFromItineraryValidation,
-  reorderActivitiesValidation
+  reorderActivitiesValidation,
+  removeActivityFromItineraryValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -38,6 +40,7 @@ router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicat
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);
+router.delete('/:id/activities/:activityId', ...customerAccess, removeActivityFromItineraryValidation, removeActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
 router.delete('/:id/destinations/:destinationId', ...customerAccess, removeDestinationValidation, removeDestination);
 router.post('/:id/tours', ...customerAccess, itineraryTourValidation, addTour);
