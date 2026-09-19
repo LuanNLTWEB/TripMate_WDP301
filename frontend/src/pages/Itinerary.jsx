@@ -171,9 +171,10 @@ function Itinerary() {
     }
   };
 
-  const isOwner = selected && String(selected.owner?._id || selected.owner) === String(user?._id);
+  const currentUserId = String(user?.id || '');
+  const isOwner = selected && String(selected.owner?._id || selected.owner) === currentUserId;
   const myPermission = selected?.collaborators?.find(
-    (collaborator) => String(collaborator.user?._id || collaborator.user) === String(user?._id)
+    (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
 
