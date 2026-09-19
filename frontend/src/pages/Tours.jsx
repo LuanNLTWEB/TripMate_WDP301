@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { DEPARTURE_LOCATIONS } from '../constants/provinces';
 import toursBanner from '../assets/banner_tours.jpg';
 
 const DEFAULT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80';
@@ -59,20 +60,6 @@ const Tours = () => {
   const [maxPrice, setMaxPrice] = useState('');
   const [minSeats, setMinSeats] = useState('');
   const [sort, setSort] = useState('newest');
-
-  const [provinces, setProvinces] = useState(['Tất cả']);
-
-  useEffect(() => {
-    fetch('https://provinces.open-api.vn/api/p/')
-      .then((res) => res.json())
-      .then((data) => {
-        const names = data.map((p) => p.name);
-        setProvinces(['Tất cả', ...names]);
-      })
-      .catch(() => {
-        setProvinces(['Tất cả', 'TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Cần Thơ', 'Hải Phòng']);
-      });
-  }, []);
 
   const fetchTours = async (filters = {}, pageNum = 1) => {
     setLoading(true);
@@ -268,7 +255,7 @@ const Tours = () => {
                       onChange={(e) => setDeparture(e.target.value)}
                     >
                       <option value="">Tất cả điểm khởi hành</option>
-                      {provinces.filter((p) => p !== 'Tất cả').map((p) => (
+                      {DEPARTURE_LOCATIONS.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
@@ -298,23 +285,79 @@ const Tours = () => {
                       <i className="bi bi-cash-stack text-primary"></i>
                       <span>Giá tối đa</span>
                     </label>
-                    <input
-                      id="tour-max-price"
-                      type="number"
-                      className="form-control form-control-lg fs-6 bg-light border-light-subtle rounded-3"
-                      style={{ height: '48px' }}
-                      value={maxPrice}
-                      min="0"
-                      step="100000"
-                      placeholder="Không giới hạn"
-                      onChange={(e) => setMaxPrice(e.target.value)}
-                    />
+                    <div className="position-relative">
+                      <input
+                        id="tour-max-price"
+                        type="text"
+                        inputMode="numeric"
+                        className="form-control form-control-lg fs-6 bg-light border-light-subtle rounded-3 pe-4"
+                        style={{ height: '48px' }}
+                        value={maxPrice ? Number(maxPrice).toLocaleString('vi-VN') : ''}
+                        placeholder="Không giới hạn"
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '');
+                          setMaxPrice(raw);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            const cur = maxPrice ? Number(maxPrice) : 0;
+                            setMaxPrice(String(cur + 100000));
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            const cur = maxPrice ? Number(maxPrice) : 0;
+                            const next = Math.max(0, cur - 100000);
+                            setMaxPrice(next > 0 ? String(next) : '');
+                          }
+                        }}
+                      />
+                      <div
+                        className="position-absolute end-0 top-50 translate-middle-y d-flex flex-column align-items-center justify-content-center me-2 pe-1"
+                        style={{
+                          width: '15px',
+                          zIndex: 2,
+                          userSelect: 'none'
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="btn p-0 border-0 d-flex align-items-center justify-content-center bg-transparent"
+                          style={{ width: '13px', height: '9px', lineHeight: 1 }}
+                          onClick={() => {
+                            const cur = maxPrice ? Number(maxPrice) : 0;
+                            setMaxPrice(String(cur + 100000));
+                          }}
+                          tabIndex={-1}
+                          aria-label="Tăng giá"
+                        >
+                          <svg width="7" height="4" viewBox="0 0 7 4" fill="#64748b">
+                            <path d="M3.5 0L7 4H0L3.5 0Z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn p-0 border-0 d-flex align-items-center justify-content-center bg-transparent"
+                          style={{ width: '13px', height: '9px', lineHeight: 1, marginTop: '2px' }}
+                          onClick={() => {
+                            const cur = maxPrice ? Number(maxPrice) : 0;
+                            const next = Math.max(0, cur - 100000);
+                            setMaxPrice(next > 0 ? String(next) : '');
+                          }}
+                          tabIndex={-1}
+                          aria-label="Giảm giá"
+                        >
+                          <svg width="7" height="4" viewBox="0 0 7 4" fill="#64748b">
+                            <path d="M3.5 4L0 0H7L3.5 4Z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="col-6 col-md-3 col-lg-2">
                     <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="tour-min-seats">
                       <i className="bi bi-people text-primary"></i>
-                      <span>Số chỗ còn</span>
+                      <span>Số chỗ</span>
                     </label>
                     <input
                       id="tour-min-seats"

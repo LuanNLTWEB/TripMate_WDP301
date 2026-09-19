@@ -75,6 +75,10 @@ const itinerarySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Destination'
   }],
+  tours: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tour'
+  }],
   activities: [activitySchema],
   collaborators: [collaboratorSchema]
 }, { timestamps: true });
