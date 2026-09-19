@@ -50,6 +50,14 @@ const managementNavigation = [
     roles: MANAGEMENT_ROLES
   },
   {
+    key: 'pending-tours',
+    label: 'Duyệt Tour Chờ',
+    description: 'Kiểm duyệt các tour do khách hàng đề xuất',
+    icon: 'bi-inbox',
+    path: '/management/pending-tours',
+    roles: ['staff']
+  },
+  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',
