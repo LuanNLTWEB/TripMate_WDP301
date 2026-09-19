@@ -149,6 +149,10 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(activity)
   }),
+  reorderActivities: (id, activities) => apiRequest(`/itineraries/${id}/activities/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ activities })
+  }),
   addDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations`, {
     method: 'POST',
     body: JSON.stringify({ destinationId })

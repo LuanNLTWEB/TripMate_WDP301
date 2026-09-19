@@ -206,6 +206,56 @@ export const addActivity = async (req, res) => {
 };
 
 /**
+ * Reorder activities in an owned or edit-enabled shared itinerary.
+ * @route PUT /api/itineraries/:id/activities/reorder
+ * @access Customer
+ */
+export const reorderActivities = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const requestIds = req.body.activities.map(String);
+    const currentIds = itinerary.activities.map((a) => String(a._id));
+
+    if (requestIds.length !== currentIds.length) {
+      return res.status(400).json({ success: false, message: 'Danh sách hoạt động không hợp lệ' });
+    }
+
+    const hasDuplicate = new Set(requestIds).size !== requestIds.length;
+    if (hasDuplicate) {
+      return res.status(400).json({ success: false, message: 'Không được trùng lặp hoạt động' });
+    }
+
+    const allExist = requestIds.every((id) => currentIds.includes(id));
+    if (!allExist) {
+      return res.status(400).json({ success: false, message: 'Hoạt động không thuộc lịch trình' });
+    }
+
+    const activityMap = new Map(itinerary.activities.map((a) => [String(a._id), a]));
+    itinerary.activities = requestIds.map((id) => activityMap.get(id));
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã sắp xếp lại hoạt động',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Reorder activities error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể sắp xếp lại hoạt động' });
+  }
+};
+
+/**
  * Add an active destination to an owned or edit-enabled shared itinerary.
  * @route POST /api/itineraries/:id/destinations
  * @access Customer

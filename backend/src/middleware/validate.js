@@ -236,6 +236,14 @@ export const removeTourFromItineraryValidation = [
   param('tourId').isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
+export const reorderActivitiesValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('activities')
+    .isArray({ min: 1 }).withMessage('Danh sách hoạt động không hợp lệ'),
+  body('activities.*')
+    .isMongoId().withMessage('Mã hoạt động không hợp lệ')
+];
+
 export const createCategoryValidation = [
   body('name')
     .trim()

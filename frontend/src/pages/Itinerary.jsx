@@ -31,6 +31,8 @@ function Itinerary() {
   const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reorderList, setReorderList] = useState([]);
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -218,6 +220,40 @@ function Itinerary() {
       toast.info('Đã mở bản xem trước để bạn in hoặc lưu thành PDF.');
     } finally {
       document.title = previousTitle;
+    }
+  };
+
+  const startReorder = () => {
+    setReorderList(selected.activities.map((a) => a._id));
+    setReorderMode(true);
+  };
+
+  const cancelReorder = () => {
+    setReorderMode(false);
+    setReorderList([]);
+  };
+
+  const moveActivity = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= reorderList.length) return;
+    const updated = [...reorderList];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setReorderList(updated);
+  };
+
+  const saveReorder = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const response = await itineraryApi.reorderActivities(selected._id, reorderList);
+      applyItinerary(response.itinerary);
+      setReorderMode(false);
+      setReorderList([]);
+      toast.success(response.message || 'Đã sắp xếp lại hoạt động.');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể sắp xếp lại hoạt động.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -443,21 +479,54 @@ function Itinerary() {
                           )}
 
                           {selected.activities.length === 0 ? <p className="text-muted mb-0">Chưa có hoạt động.</p> : (
-                            <div className="vstack gap-3">
-                              {selected.activities.map((activity) => {
-                                const conflicted = conflictedActivityIds.has(String(activity._id));
-                                return (
-                                  <div className="border-start border-primary border-3 ps-3" key={activity._id}>
-                                    <div className="fw-semibold d-flex align-items-center gap-2">
-                                      {activity.title}
-                                      {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
+                            <>
+                              {canEditSelected && !reorderMode && (
+                                <div className="d-flex justify-content-end mb-3">
+                                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={startReorder}>
+                                    <i className="bi bi-arrows-move me-1"></i>
+                                    Sắp xếp lại
+                                  </button>
+                                </div>
+                              )}
+                              {reorderMode && (
+                                <div className="d-flex justify-content-end gap-2 mb-3">
+                                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={cancelReorder}>Hủy</button>
+                                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveReorder}>
+                                    {saving ? 'Đang lưu...' : 'Lưu thứ tự'}
+                                  </button>
+                                </div>
+                              )}
+                              <div className="vstack gap-2">
+                                {(reorderMode ? reorderList.map((id) => selected.activities.find((a) => a._id === id)).filter(Boolean) : selected.activities).map((activity, index) => {
+                                  const conflicted = conflictedActivityIds.has(String(activity._id));
+                                  return (
+                                    <div className={`border rounded p-3 ${reorderMode ? 'bg-white' : 'border-start border-primary border-3'}`} key={activity._id}>
+                                      <div className="d-flex align-items-center gap-2">
+                                        {reorderMode && (
+                                          <div className="d-flex flex-column gap-1">
+                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === 0} onClick={() => moveActivity(index, -1)} title="Di chuyển lên">
+                                              <i className="bi bi-chevron-up"></i>
+                                            </button>
+                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === reorderList.length - 1} onClick={() => moveActivity(index, 1)} title="Di chuyển xuống">
+                                              <i className="bi bi-chevron-down"></i>
+                                            </button>
+                                          </div>
+                                        )}
+                                        <div className="flex-grow-1">
+                                          <div className="fw-semibold d-flex align-items-center gap-2">
+                                            {reorderMode && <span className="text-muted small me-1">{index + 1}.</span>}
+                                            {activity.title}
+                                            {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
+                                          </div>
+                                          <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
+                                          {activity.notes && <div className="small mt-1">{activity.notes}</div>}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
-                                    {activity.notes && <div className="small mt-1">{activity.notes}</div>}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                  );
+                                })}
+                              </div>
+                            </>
                           )}
                         </div>
                       </section>
