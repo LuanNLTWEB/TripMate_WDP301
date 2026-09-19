@@ -224,6 +224,18 @@ export const removeDestinationValidation = [
   param('destinationId').isMongoId().withMessage('Mã điểm đến không hợp lệ')
 ];
 
+export const itineraryTourValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour')
+    .isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
+export const removeTourFromItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('tourId').isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
 export const createCategoryValidation = [
   body('name')
     .trim()

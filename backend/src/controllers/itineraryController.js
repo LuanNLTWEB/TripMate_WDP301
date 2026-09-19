@@ -1,8 +1,10 @@
 import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
+import Tour from '../models/Tour.js';
 
 const destinationFields = 'name location images status';
+const tourFields = 'title price images departureLocation destinationLocation location duration status';
 
 /**
  * Detect overlapping activities within an itinerary (same date, time overlap).
@@ -70,11 +72,13 @@ export const createItinerary = async (req, res) => {
 
 const findAllPopulated = (filter) => Itinerary.find(filter)
   .populate('destinations', destinationFields)
+  .populate('tours', tourFields)
   .populate('owner', 'username email')
   .populate('collaborators.user', 'username email');
 
 const findByIdPopulated = (id) => Itinerary.findById(id)
   .populate('destinations', destinationFields)
+  .populate('tours', tourFields)
   .populate('owner', 'username email')
   .populate('collaborators.user', 'username email');
 
@@ -90,6 +94,31 @@ export const listItineraries = async (req, res) => {
   } catch (error) {
     console.error('List itineraries error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itineraries' });
+  }
+};
+
+/**
+ * Delete a personal itinerary (owner only).
+ * @route DELETE /api/itineraries/:id
+ * @access Customer (owner only)
+ */
+export const deleteItinerary = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền xóa' });
+    }
+
+    await Itinerary.findByIdAndDelete(req.params.id);
+    return res.json({ success: true, message: 'Đã xóa lịch trình' });
+  } catch (error) {
+    console.error('Delete itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa lịch trình' });
   }
 };
 
@@ -262,5 +291,88 @@ export const removeDestination = async (req, res) => {
   } catch (error) {
     console.error('Remove itinerary destination error:', error);
     return res.status(500).json({ success: false, message: 'Không thể xóa điểm đến khỏi lịch trình' });
+  }
+};
+
+/**
+ * Add an active tour to an owned itinerary (owner only).
+ * @route POST /api/itineraries/:id/tours
+ * @access Customer (owner only)
+ */
+export const addTour = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền chỉnh sửa' });
+    }
+
+    const tour = await Tour.findOne({ _id: req.body.tourId, status: { $ne: 'suspended' } });
+    if (!tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour đang hoạt động' });
+    }
+
+    if (!itinerary.tours) itinerary.tours = [];
+
+    const alreadyAdded = itinerary.tours.some((tourId) => tourId.equals(tour._id));
+    if (alreadyAdded) {
+      return res.status(400).json({ success: false, message: 'Tour đã có trong lịch trình' });
+    }
+
+    itinerary.tours.push(tour._id);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(201).json({
+      success: true,
+      message: 'Đã thêm tour vào lịch trình',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Add tour to itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể thêm tour vào lịch trình' });
+  }
+};
+
+/**
+ * Remove a tour from an owned itinerary (owner only).
+ * @route DELETE /api/itineraries/:id/tours/:tourId
+ * @access Customer (owner only)
+ */
+export const removeTour = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền chỉnh sửa' });
+    }
+
+    if (!itinerary.tours) itinerary.tours = [];
+
+    const tourIndex = itinerary.tours.findIndex((id) => id.equals(req.params.tourId));
+    if (tourIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Tour không có trong lịch trình' });
+    }
+
+    itinerary.tours.splice(tourIndex, 1);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã xóa tour khỏi lịch trình',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove tour from itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa tour khỏi lịch trình' });
   }
 };

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ItineraryPrintView from '../components/ItineraryPrintView';
-import { destinationApi, itineraryApi } from '../services/api';
+import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -22,11 +22,14 @@ function Itinerary() {
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [destinations, setDestinations] = useState([]);
   const [destinationId, setDestinationId] = useState('');
+  const [tours, setTours] = useState([]);
+  const [tourId, setTourId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
+  const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -35,15 +38,17 @@ function Itinerary() {
     }
 
     try {
-      const [itineraryResponse, sharedResponse, destinationResponse] = await Promise.all([
+      const [itineraryResponse, sharedResponse, destinationResponse, tourResponse] = await Promise.all([
         itineraryApi.list(),
         itineraryApi.listShared(),
-        destinationApi.getAll({ limit: 100 })
+        destinationApi.getAll({ limit: 100 }),
+        tourApi.getAll({ limit: 100, status: 'active' })
       ]);
       setItineraries(itineraryResponse.itineraries || []);
       setSharedItineraries(sharedResponse.itineraries || []);
       setSelected(itineraryResponse.itineraries?.[0] || null);
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
+      setTours((tourResponse.data || []).filter((tour) => tour.status !== 'suspended'));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -108,15 +113,23 @@ function Itinerary() {
   };
 
   const deleteItinerary = async (id) => {
+    setSaving(true);
     try {
       await itineraryApi.delete(id);
-      setItineraries((current) => current.filter((it) => it._id !== id));
-      if (selected?._id === id) setSelected(null);
+      setItineraries((current) => {
+        const updated = current.filter((it) => it._id !== id);
+        if (selected?._id === id) {
+          setSelected(updated[0] || null);
+        }
+        return updated;
+      });
       setPendingDeleteId(null);
       toast.success('Đã xóa lịch trình.');
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa lịch trình.');
       setPendingDeleteId(null);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -156,6 +169,42 @@ function Itinerary() {
     }
   };
 
+  const addTour = async (event) => {
+    event.preventDefault();
+    if (!selected || !tourId) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      const response = await itineraryApi.addTour(selected._id, tourId);
+      applyItinerary(response.itinerary);
+      setTourId('');
+      toast.success(response.message || 'Đã thêm tour vào lịch trình.');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể thêm tour vào lịch trình.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeTour = async () => {
+    const tour = confirmTourModal.tour;
+    if (!selected || !tour) return;
+
+    setConfirmTourModal({ open: false, tour: null });
+    setSaving(true);
+    setError('');
+    try {
+      const response = await itineraryApi.removeTour(selected._id, tour._id);
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã xóa tour khỏi lịch trình.');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa tour khỏi lịch trình.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const exportItinerary = () => {
     if (!selected) return;
 
@@ -189,6 +238,13 @@ function Itinerary() {
   );
   const selectableDestinations = destinations.filter(
     (destination) => !addedDestinationIds.has(String(destination._id))
+  );
+
+  const addedTourIds = new Set(
+    (selected?.tours || []).map((tour) => String(tour._id || tour))
+  );
+  const selectableTours = tours.filter(
+    (tour) => !addedTourIds.has(String(tour._id))
   );
 
   const switchTab = (tab) => {
@@ -246,15 +302,42 @@ function Itinerary() {
                   )}
 
                   <div className="list-group shadow-sm">
-                    {visibleItineraries.map((itinerary) => (
-                      <button key={itinerary._id} className={`list-group-item list-group-item-action ${selected?._id === itinerary._id ? 'active' : ''}`} onClick={() => { setSelected(itinerary); setDestinationId(''); }}>
-                        <span className="fw-semibold d-block">{itinerary.title}</span>
-                        <small>{itinerary.activities.length} hoạt động</small>
-                        {activeTab === 'shared' && itinerary.owner?.username && (
-                          <small className="d-block text-primary">chia sẻ bởi {itinerary.owner.username}</small>
-                        )}
-                      </button>
-                    ))}
+                    {visibleItineraries.map((itinerary) => {
+                      const isItemActive = selected?._id === itinerary._id;
+                      return (
+                        <div
+                          key={itinerary._id}
+                          className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${isItemActive ? 'active' : ''}`}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => { setSelected(itinerary); setDestinationId(''); }}
+                        >
+                          <div className="flex-grow-1 text-truncate pe-2">
+                            <span className="fw-semibold d-block text-truncate">{itinerary.title}</span>
+                            <small className={isItemActive ? 'text-white-50' : 'text-muted'}>
+                              {itinerary.activities?.length || 0} hoạt động
+                            </small>
+                            {activeTab === 'shared' && itinerary.owner?.username && (
+                              <small className={`d-block ${isItemActive ? 'text-white' : 'text-primary'}`}>
+                                chia sẻ bởi {itinerary.owner.username}
+                              </small>
+                            )}
+                          </div>
+                          {activeTab === 'mine' && (
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-danger'} border-0`}
+                              title="Xóa lịch trình"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setPendingDeleteId(itinerary._id);
+                              }}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                     {!loading && visibleItineraries.length === 0 && (
                       <div className="list-group-item text-muted">
                         {activeTab === 'shared' ? 'Chưa có lịch trình nào được chia sẻ với bạn.' : 'Chưa có lịch trình.'}
@@ -283,6 +366,16 @@ function Itinerary() {
                                 <i className="bi bi-printer me-1"></i>
                                 Xuất lịch trình
                               </button>
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => setPendingDeleteId(selected._id)}
+                                >
+                                  <i className="bi bi-trash me-1"></i>
+                                  Xóa lịch trình
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -404,6 +497,82 @@ function Itinerary() {
                         </div>
                       </section>
 
+                      <section className="card border-0 shadow-sm mb-4">
+                        <div className="card-body p-4">
+                          <h2 className="h5 fw-bold mb-3">Tour trong lịch trình</h2>
+                          {(selected.tours || []).length === 0 ? (
+                            <p className="text-muted">Chưa có tour trong lịch trình.</p>
+                          ) : (
+                            <div className="row g-3 mb-4">
+                              {selected.tours.map((tour) => (
+                                <div className="col-md-6" key={tour._id || tour}>
+                                  <div className="border rounded p-3 h-100">
+                                    <div className="d-flex justify-content-between align-items-start">
+                                      <div className="fw-semibold">{tour.title}</div>
+                                      {isOwner && (
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-danger"
+                                          disabled={saving}
+                                          onClick={() => setConfirmTourModal({ open: true, tour })}
+                                          title="Xóa tour khỏi lịch trình"
+                                        >
+                                          <i className="bi bi-trash"></i>
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="small text-muted">
+                                      <i className="bi bi-geo-alt me-1"></i>
+                                      {tour.departureLocation && tour.destinationLocation
+                                        ? `${tour.departureLocation} → ${tour.destinationLocation}`
+                                        : tour.location || ''}
+                                    </div>
+                                    {tour.price !== undefined && (
+                                      <div className="small text-primary fw-semibold mt-1">
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tour.price)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {isOwner ? (
+                            <form className="row g-2 align-items-end" onSubmit={addTour}>
+                              <div className="col-md-9">
+                                <label className="form-label" htmlFor="itinerary-tour">Thêm tour</label>
+                                <select
+                                  id="itinerary-tour"
+                                  className="form-select"
+                                  value={tourId}
+                                  onChange={(event) => setTourId(event.target.value)}
+                                  disabled={saving || selectableTours.length === 0}
+                                  required
+                                >
+                                  <option value="">Chọn tour</option>
+                                  {selectableTours.map((tour) => (
+                                    <option value={tour._id} key={tour._id}>
+                                      {tour.title}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-md-3">
+                                <button className="btn btn-outline-primary w-100" disabled={saving || !tourId}>
+                                  Thêm
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <p className="small text-muted mb-0">Chỉ chủ sở hữu mới có thể thêm tour.</p>
+                          )}
+                          {isOwner && selectableTours.length === 0 && (selected.tours || []).length > 0 && (
+                            <p className="small text-muted mt-2 mb-0">Không còn tour khả dụng để thêm.</p>
+                          )}
+                        </div>
+                      </section>
+
                       {canEditSelected && (
                         <form className="card border-0 shadow-sm" onSubmit={addActivity}>
                           <div className="card-body p-4">
@@ -467,6 +636,27 @@ function Itinerary() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ open: false, destination: null })}>Hủy</button>
                 <button type="button" className="btn btn-danger" disabled={saving} onClick={removeDestination}>
+                  {saving ? 'Đang xóa...' : 'Xóa'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmTourModal.open && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Xác nhận xóa</h5>
+                <button type="button" className="btn-close" onClick={() => setConfirmTourModal({ open: false, tour: null })}></button>
+              </div>
+              <div className="modal-body">
+                Bạn có chắc muốn xóa <strong>{confirmTourModal.tour?.title}</strong> khỏi lịch trình?
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setConfirmTourModal({ open: false, tour: null })}>Hủy</button>
+                <button type="button" className="btn btn-danger" disabled={saving} onClick={removeTour}>
                   {saving ? 'Đang xóa...' : 'Xóa'}
                 </button>
               </div>
