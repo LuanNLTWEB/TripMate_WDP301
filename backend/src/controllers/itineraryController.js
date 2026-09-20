@@ -398,7 +398,7 @@ export const addTour = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền chỉnh sửa' });
     }
 
-    const tour = await Tour.findOne({ _id: req.body.tourId, status: { $ne: 'suspended' } });
+    const tour = await Tour.findOne({ _id: req.body.tourId, status: 'active' });
     if (!tour) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour đang hoạt động' });
     }

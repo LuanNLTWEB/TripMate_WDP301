@@ -53,8 +53,8 @@ const tourSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'suspended'],
-    default: 'active',
+    enum: ['pending', 'active', 'suspended'],
+    default: 'pending',
     index: true
   },
   suspensionReason: {

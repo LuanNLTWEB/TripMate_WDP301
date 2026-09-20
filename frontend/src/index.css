@@ -746,6 +746,16 @@ main {
   background: #f04438;
 }
 
+.staff-tour-status.is-pending {
+  color: #b54708;
+  background: #fffaeb;
+  border: 1px solid #fecdca;
+}
+
+.staff-tour-status.is-pending > span {
+  background: #f79009;
+}
+
 .staff-tour-actions {
   display: flex;
   gap: 8px;

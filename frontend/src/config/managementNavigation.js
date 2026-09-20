@@ -47,6 +47,7 @@ const managementNavigation = [
     description: 'Theo dõi và tạm ngưng tour vi phạm',
     icon: 'bi-map',
     path: '/management/tours',
+    end: true,
     roles: MANAGEMENT_ROLES
   },
   {

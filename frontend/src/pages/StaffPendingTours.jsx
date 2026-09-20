@@ -1,36 +1,30 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { tourApi } from '../services/api';
 
-const DUMMY_PENDING_TOURS = [
-  {
-    _id: 'pending1',
-    title: 'Khám phá Mộc Châu mùa hoa mận',
-    duration: '2 ngày 1 đêm',
-    departureLocation: 'Hà Nội',
-    destinationLocation: 'Mộc Châu',
-    price: 1500000,
-    availableSeats: 20,
-    customerName: 'Nguyễn Văn A',
-    submittedAt: '2026-09-19T10:00:00Z',
-    images: ['https://res.cloudinary.com/fkjcxcyn/image/upload/c_fill,w_100,h_100/v1726599187/demo/sa-pa.webp']
-  },
-  {
-    _id: 'pending2',
-    title: 'Tour nghỉ dưỡng biển Phú Quốc',
-    duration: '3 ngày 2 đêm',
-    departureLocation: 'Hồ Chí Minh',
-    destinationLocation: 'Phú Quốc',
-    price: 4500000,
-    availableSeats: 15,
-    customerName: 'Trần Thị B',
-    submittedAt: '2026-09-18T14:30:00Z',
-    images: ['https://res.cloudinary.com/fkjcxcyn/image/upload/c_fill,w_100,h_100/v1726599187/demo/phu-quoc.webp']
-  }
-];
+const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 
 export default function StaffPendingTours() {
-  const [tours, setTours] = useState(DUMMY_PENDING_TOURS);
+  const [tours, setTours] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  const loadPendingTours = async () => {
+    setIsLoading(true);
+    try {
+      const response = await tourApi.getManaged({ status: 'pending', limit: 50 });
+      setTours(response.data || []);
+      setError('');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể tải danh sách tour chờ duyệt.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPendingTours();
+  }, []);
 
   return (
     <section className="management-page-section">
@@ -39,6 +33,13 @@ export default function StaffPendingTours() {
         <h1>Duyệt Tour Chờ</h1>
         <p>Kiểm tra và phê duyệt các tour do khách hàng đề xuất lên hệ thống.</p>
       </div>
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
+        </div>
+      )}
 
       <div className="card border-0 shadow-sm staff-tour-card">
         <div className="table-responsive">
@@ -55,12 +56,20 @@ export default function StaffPendingTours() {
                 <th className="px-4 py-3">Thông tin Tour</th>
                 <th className="py-3">Hành trình</th>
                 <th className="py-3">Giá & Chỗ</th>
-                <th className="py-3">Người đề xuất</th>
+                <th className="py-3">Ngày gửi</th>
                 <th className="px-4 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {tours.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-5">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Đang tải...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : tours.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="text-center text-muted py-5">
                     <i className="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
@@ -94,26 +103,33 @@ export default function StaffPendingTours() {
                   </td>
                   <td className="py-3">
                     <div className="staff-tour-route">
-                      <span>{tour.departureLocation}</span>
+                      <span>{tour.departureLocation || '—'}</span>
                       <i className="bi bi-arrow-right"></i>
-                      <span>{tour.destinationLocation}</span>
+                      <span>{tour.destinationLocation || tour.location}</span>
                     </div>
                   </td>
                   <td className="py-3">
                     <div className="staff-tour-price">{formatCurrency(tour.price)}</div>
                     <div className="staff-tour-seats">
                       <i className="bi bi-people"></i>
-                      {tour.availableSeats} chỗ
+                      {tour.availableSeats || 0} chỗ
                     </div>
                   </td>
                   <td className="py-3">
-                    <div className="fw-semibold text-primary">{tour.customerName}</div>
                     <div className="small text-muted">
-                      Ngày gửi: {new Date(tour.submittedAt).toLocaleDateString('vi-VN')}
+                      {new Date(tour.createdAt).toLocaleDateString('vi-VN')}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="d-flex justify-content-center align-items-center gap-2">
+                      <Link
+                        to={`/management/tours/${tour._id}`}
+                        className="staff-tour-view-button"
+                        title="Rà soát tour submission"
+                        aria-label={`Rà soát ${tour.title}`}
+                      >
+                        <i className="bi bi-clipboard-check"></i>
+                      </Link>
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-success border-0 px-2"

@@ -66,14 +66,17 @@ function ReviewTourSubmission() {
     return (
       <section className="management-page-section">
         <div className="alert alert-danger">{error || 'Không tìm thấy tour.'}</div>
-        <Link to="/management/tours" className="btn btn-outline-primary">
-          <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
+        <Link to="/management/pending-tours" className="btn btn-outline-primary">
+          <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách duyệt tour
         </Link>
       </section>
     );
   }
 
   const isSuspended = tour.status === 'suspended';
+  const isPending = tour.status === 'pending';
+  const statusClass = isSuspended ? 'is-suspended' : isPending ? 'is-pending' : 'is-active';
+  const statusLabel = isSuspended ? 'Tạm ngưng' : isPending ? 'Chờ duyệt' : 'Đang hoạt động';
   const categoryName = tour.categoryId && typeof tour.categoryId === 'object'
     ? (tour.categoryId.name || '—')
     : (tour.categoryId || '—');
@@ -96,8 +99,8 @@ function ReviewTourSubmission() {
         </div>
       )}
 
-      <Link to="/management/tours" className="btn btn-outline-secondary btn-sm mb-3">
-        <i className="bi bi-arrow-left me-1"></i>Quay lại danh sách tour
+        <Link to="/management/pending-tours" className="btn btn-outline-secondary btn-sm mb-3">
+        <i className="bi bi-arrow-left me-1"></i>Quay lại danh sách duyệt tour
       </Link>
 
       <div className="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
@@ -122,9 +125,9 @@ function ReviewTourSubmission() {
                   : (tour.destinationLocation || tour.location)}
               </div>
             </div>
-            <span className={`staff-tour-status ${isSuspended ? 'is-suspended' : 'is-active'}`}>
+            <span className={`staff-tour-status ${statusClass}`}>
               <span></span>
-              {isSuspended ? 'Tạm ngưng' : 'Đang hoạt động'}
+              {statusLabel}
             </span>
           </div>
 

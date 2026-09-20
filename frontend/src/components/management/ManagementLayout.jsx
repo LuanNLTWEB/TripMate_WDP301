@@ -52,7 +52,7 @@ function ManagementLayout() {
               <NavLink
                 key={item.key}
                 to={item.path}
-                end={item.path === '/management'}
+                end={item.end || item.path === '/management'}
                 className={({ isActive }) => `management-nav-link ${isActive ? 'active' : ''}`}
                 onClick={() => setIsSidebarOpen(false)}
               >

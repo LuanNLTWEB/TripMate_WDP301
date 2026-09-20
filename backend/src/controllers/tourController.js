@@ -8,7 +8,7 @@ export const getFavoriteTours = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'favoriteTours',
-      match: { status: { $ne: 'suspended' } }
+      match: { status: 'active' }
     });
 
     if (!user) {
@@ -78,7 +78,7 @@ export const saveFavoriteTour = async (req, res) => {
   try {
     const tour = await Tour.findOne({
       _id: req.params.id,
-      status: { $ne: 'suspended' }
+      status: 'active'
     });
     if (!tour) {
       return res.status(404).json({
@@ -123,7 +123,7 @@ export const getAllTours = async (req, res) => {
       page = 1,
       limit = 10
     } = req.query;
-    const filters = [{ status: { $ne: 'suspended' } }];
+    const filters = [{ status: 'active' }];
 
     if (search) {
       const safeSearch = escapeRegex(search);
@@ -210,7 +210,7 @@ export const getTourById = async (req, res) => {
   try {
     const tour = await Tour.findOne({
       _id: req.params.id,
-      status: { $ne: 'suspended' }
+      status: 'active'
     });
 
     if (!tour) {
@@ -266,7 +266,11 @@ export const getManagedTours = async (req, res) => {
     if (status === 'suspended') {
       filters.push({ status: 'suspended' });
     } else if (status === 'active') {
-      filters.push({ status: { $ne: 'suspended' } });
+      filters.push({ status: 'active' });
+    } else if (status === 'pending') {
+      filters.push({ status: 'pending' });
+    } else {
+      filters.push({ status: { $ne: 'pending' } });
     }
 
     const query = filters.length > 0 ? { $and: filters } : {};
