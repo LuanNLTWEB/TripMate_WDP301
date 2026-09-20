@@ -1094,6 +1094,15 @@ main {
   font-weight: 600;
 }
 
+.sticky-sidebar {
+  position: sticky;
+  top: 80px;
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
 .footer-dark {
   background-color: #0b1120;
   color: #94a3b8;

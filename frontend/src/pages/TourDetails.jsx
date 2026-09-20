@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { tourApi } from '../services/api';
+import { tourApi, reviewApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -20,6 +20,10 @@ const TourDetails = () => {
   const [error, setError] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [updatingFavorite, setUpdatingFavorite] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsError, setReviewsError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -36,6 +40,34 @@ const TourDetails = () => {
     };
 
     loadTour();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    let isMounted = true;
+    setReviewsLoading(true);
+
+    reviewApi.getByTour(id)
+      .then((response) => {
+        if (isMounted) {
+          setReviews(response.reviews || []);
+          setReviewStats({
+            averageRating: response.averageRating || 0,
+            totalReviews: response.totalReviews || 0
+          });
+        }
+      })
+      .catch(() => {
+        if (isMounted) setReviewsError('Không thể tải đánh giá.');
+      })
+      .finally(() => {
+        if (isMounted) setReviewsLoading(false);
+      });
+
     return () => {
       isMounted = false;
     };
@@ -112,7 +144,7 @@ const TourDetails = () => {
   return (
     <>
       <Navbar />
-      <main className="bg-light py-4 py-md-5" style={{ minHeight: '80vh' }}>
+      <main className="bg-light py-4 py-md-5">
         <div className="container">
           {error && <div className="alert alert-danger">{error}</div>}
 
@@ -126,9 +158,9 @@ const TourDetails = () => {
             )}
           </div>
 
-          <div className="row g-4">
+          <div className="row g-4 mb-4">
             <div className="col-lg-8">
-              <div className="card border-0 shadow-sm rounded-4 h-100">
+              <div className="card border-0 shadow-sm rounded-4">
                 <div className="card-body p-4 p-md-5">
                   <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                     <div>
@@ -176,7 +208,7 @@ const TourDetails = () => {
             </div>
 
             <div className="col-lg-4">
-              <div className="card border-0 shadow-sm rounded-4">
+              <div className="card border-0 shadow-sm rounded-4 sticky-sidebar">
                 <div className="card-body p-4">
                   <p className="text-muted mb-1">Giá tour</p>
                   <p className="fs-3 fw-bold text-primary mb-3">{formatPrice(tour.price)}</p>
@@ -187,6 +219,63 @@ const TourDetails = () => {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="card border-0 shadow-sm rounded-4 mb-4">
+            <div className="card-body p-4 p-md-5">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <h2 className="h4 fw-bold mb-0">Đánh giá từ khách hàng</h2>
+                {reviewStats.totalReviews > 0 && (
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge text-bg-warning text-dark px-3 py-2">
+                      <i className="bi bi-star-fill me-1"></i>{reviewStats.averageRating}
+                    </span>
+                    <span className="text-muted small">{reviewStats.totalReviews} đánh giá</span>
+                  </div>
+                )}
+              </div>
+
+              {reviewsLoading ? (
+                <div className="text-center py-4">
+                  <div className="spinner-border spinner-border-sm text-primary" role="status">
+                    <span className="visually-hidden">Đang tải...</span>
+                  </div>
+                </div>
+              ) : reviewsError ? (
+                <div className="alert alert-warning small mb-0">{reviewsError}</div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center text-muted py-4">
+                  <i className="bi bi-chat-dots fs-3 d-block mb-2"></i>
+                  Chưa có đánh giá nào cho tour này.
+                </div>
+              ) : (
+                <div className="row g-3">
+                  {reviews.map((review) => (
+                    <div key={review._id} className="col-md-6">
+                      <div className="border rounded-3 p-3 h-100">
+                        <div className="d-flex align-items-center gap-2 mb-2">
+                          <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+                            {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div className="min-width-0">
+                            <div className="fw-semibold text-truncate">{review.userId?.username || 'Ẩn danh'}</div>
+                            <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
+                          </div>
+                          <div className="text-warning ms-auto flex-shrink-0">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-secondary mb-0 small">{review.comment}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

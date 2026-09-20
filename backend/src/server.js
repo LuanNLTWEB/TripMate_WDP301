@@ -10,6 +10,7 @@ import itineraryRoutes from './routes/itineraryRoutes.js';
 import destinationCategoryRoutes from './routes/destinationCategoryRoutes.js';
 import tourCategoryRoutes from './routes/tourCategoryRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/itineraries', itineraryRoutes);
 app.use('/api/destination-categories', destinationCategoryRoutes);
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

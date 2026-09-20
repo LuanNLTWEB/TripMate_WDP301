@@ -181,6 +181,10 @@ export const statsApi = {
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
+export const reviewApi = {
+  getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' })
+};
+
 export const tourApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();
