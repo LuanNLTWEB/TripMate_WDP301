@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import AdminAccounts from './pages/AdminAccounts';
+import AdminRoles from './pages/AdminRoles';
 import Destinations from './pages/Destinations';
 import DestinationDetails from './pages/DestinationDetails';
 import StaffDestinations from './pages/StaffDestinations';
@@ -54,24 +55,28 @@ function App() {
                     </ProtectedRoute>
                   )}
                 />
-                <Route path="destinations" element={<StaffDestinations />} />
-                <Route path="destination-categories" element={<StaffDestinationCategories />} />
-                <Route path="tour-categories" element={<StaffTourCategories />} />
-                <Route path="tours" element={<StaffTours />} />
-                <Route path="tours/:id" element={<ReviewTourSubmission />} />
                 <Route
-                  path="pending-tours"
+                  path="roles"
                   element={(
-                    <ProtectedRoute allowedRoles={['staff']}>
-                      <StaffPendingTours />
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminRoles />
                     </ProtectedRoute>
                   )}
                 />
-                <Route path="statistics" element={<Stats />} />
+                <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
+                  <Route path="destinations" element={<StaffDestinations />} />
+                  <Route path="destination-categories" element={<StaffDestinationCategories />} />
+                  <Route path="tour-categories" element={<StaffTourCategories />} />
+                  <Route path="tours" element={<StaffTours />} />
+                  <Route path="tours/:id" element={<ReviewTourSubmission />} />
+                  <Route path="pending-tours" element={<StaffPendingTours />} />
+                  <Route path="statistics" element={<Stats />} />
+                </Route>
               </Route>
             </Route>
 
             <Route path="/admin/accounts" element={<Navigate to="/management/accounts" replace />} />
+            <Route path="/admin/roles" element={<Navigate to="/management/roles" replace />} />
             <Route path="/staff/destinations" element={<Navigate to="/management/destinations" replace />} />
             <Route path="/staff/destination-categories" element={<Navigate to="/management/destination-categories" replace />} />
             <Route path="/staff/tour-categories" element={<Navigate to="/management/tour-categories" replace />} />

@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import Role from '../models/Role.js';
 
 export const createDestinationValidation = [
   body('name')
@@ -153,13 +154,26 @@ export const accountValidation = [
       return true;
     }),
   body('gender').optional().isIn(['male', 'female', 'other']).withMessage('Giới tính không hợp lệ'),
-  body('role').optional().isIn(['admin', 'staff', 'tourProvider', 'customer']).withMessage('Vai trò không hợp lệ')
+  body('role')
+    .optional()
+    .trim()
+    .custom(async (value) => {
+      if (!value) return true;
+      const roleExists = await Role.findOne({ name: value });
+      if (!roleExists) throw new Error('Vai trò không hợp lệ');
+      return true;
+    })
 ];
 
 export const updateAccountRoleValidation = [
   body('role')
+    .trim()
     .notEmpty().withMessage('Vui lòng chọn vai trò')
-    .isIn(['admin', 'staff', 'tourProvider', 'customer']).withMessage('Vai trò không hợp lệ')
+    .custom(async (value) => {
+      const roleExists = await Role.findOne({ name: value });
+      if (!roleExists) throw new Error('Vai trò không hợp lệ');
+      return true;
+    })
 ];
 
 export const itineraryValidation = [

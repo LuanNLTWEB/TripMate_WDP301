@@ -81,6 +81,13 @@ export const accountApi = {
   remove: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'DELETE' })
 };
 
+export const roleApi = {
+  getAll: () => apiRequest('/admin/roles', { method: 'GET' }),
+  create: (roleData) => apiRequest('/admin/roles', { method: 'POST', body: JSON.stringify(roleData) }),
+  update: (id, roleData) => apiRequest(`/admin/roles/${id}`, { method: 'PUT', body: JSON.stringify(roleData) }),
+  remove: (id) => apiRequest(`/admin/roles/${id}`, { method: 'DELETE' })
+};
+
 export const destinationApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();

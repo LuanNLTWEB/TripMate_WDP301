@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { accountApi } from '../services/api';
+import { accountApi, roleApi } from '../services/api';
 
 const emptyForm = {
   username: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'other', role: 'customer'
@@ -10,7 +10,7 @@ const emptyForm = {
 const formatDate = (date) => date ? new Date(date).toLocaleDateString('vi-VN') : '—';
 const genderLabels = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 
-const roleLabels = {
+const defaultRoleLabels = {
   admin: 'Quản trị viên',
   staff: 'Nhân viên',
   tourProvider: 'Tour Provider',
@@ -24,7 +24,7 @@ const roleBadgeClasses = {
   customer: 'bg-secondary'
 };
 
-function AccountForm({ account, onClose, onSaved }) {
+function AccountForm({ account, roles, onClose, onSaved }) {
   const toast = useToast();
   const isEditing = Boolean(account);
   const [formData, setFormData] = useState(account ? {
@@ -88,10 +88,9 @@ function AccountForm({ account, onClose, onSaved }) {
                     </div>
                     <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
                     <select className="form-select" id="account-role" name="role" value={formData.role} onChange={handleChange} disabled={isSaving}>
-                      <option value="admin">Quản trị viên</option>
-                      <option value="staff">Nhân viên</option>
-                      <option value="tourProvider">Tour Provider</option>
-                      <option value="customer">Khách hàng</option>
+                      {roles.map((r) => (
+                        <option key={r._id} value={r.name}>{defaultRoleLabels[r.name] || r.name}</option>
+                      ))}
                     </select>
                   </div>
                 ) : <>
@@ -125,10 +124,9 @@ function AccountForm({ account, onClose, onSaved }) {
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
                   <select className="form-select" id="account-role" name="role" value={formData.role} onChange={handleChange} disabled={isSaving}>
-                    <option value="admin">Quản trị viên</option>
-                    <option value="staff">Nhân viên</option>
-                    <option value="tourProvider">Tour Provider</option>
-                    <option value="customer">Khách hàng</option>
+                    {roles.map((r) => (
+                      <option key={r._id} value={r.name}>{defaultRoleLabels[r.name] || r.name}</option>
+                    ))}
                   </select>
                 </div>
                 </>}
@@ -151,12 +149,28 @@ function AdminAccounts() {
   const { user } = useAuth();
   const toast = useToast();
   const [accounts, setAccounts] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [processingId, setProcessingId] = useState('');
+
+  const loadRoles = async () => {
+    try {
+      const response = await roleApi.getAll();
+      setRoles(response.roles || []);
+    } catch (requestError) {
+      console.error('Không thể tải danh sách vai trò:', requestError);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      loadRoles();
+    }
+  }, [user?.role]);
 
   const loadAccounts = async (searchTerm = search) => {
     setIsLoading(true);
@@ -252,7 +266,7 @@ function AdminAccounts() {
                     {isLoading ? <tr><td colSpan="5" className="text-center py-5"><span className="spinner-border spinner-border-sm me-2"></span>Đang tải...</td></tr> : accounts.length === 0 ? <tr><td colSpan="5" className="text-center text-muted py-5">Không tìm thấy tài khoản phù hợp.</td></tr> : accounts.map((account) => (
                       <tr key={account.id}>
                         <td><div className="fw-semibold">{account.username}</div><div className="small text-muted">{account.email}</div></td>
-                        <td><span className={`badge ${roleBadgeClasses[account.role] || 'bg-secondary'}`}>{roleLabels[account.role] || account.role}</span></td>
+                        <td><span className={`badge ${roleBadgeClasses[account.role] || 'bg-secondary'}`}>{defaultRoleLabels[account.role] || account.role}</span></td>
                         <td><span className={`badge ${account.isActive ? 'bg-success' : 'bg-danger'}`}>{account.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}</span></td>
                         <td className="small text-muted">{formatDate(account.createdAt)}</td>
                         <td><div className="d-flex justify-content-end gap-2 flex-wrap">
@@ -269,7 +283,7 @@ function AdminAccounts() {
           </div>
         </div>
       </section>
-      {isFormOpen && <><div className="modal-backdrop fade show"></div><AccountForm account={selectedAccount} onClose={() => setIsFormOpen(false)} onSaved={handleSaved} /></>}
+      {isFormOpen && <><div className="modal-backdrop fade show"></div><AccountForm account={selectedAccount} roles={roles} onClose={() => setIsFormOpen(false)} onSaved={handleSaved} /></>}
     </>
   );
 }

@@ -11,13 +11,15 @@ import destinationCategoryRoutes from './routes/destinationCategoryRoutes.js';
 import tourCategoryRoutes from './routes/tourCategoryRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import { seedDefaultRoles } from './models/Role.js';
 
 dotenv.config();
 
 const app = express();
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => seedDefaultRoles());
 
 // Middleware
 app.use(cors({
@@ -37,6 +39,7 @@ app.use('/api/destination-categories', destinationCategoryRoutes);
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin/roles', roleRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

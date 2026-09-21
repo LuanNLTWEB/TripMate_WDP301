@@ -18,12 +18,20 @@ const managementNavigation = [
     roles: ['admin']
   },
   {
+    key: 'roles',
+    label: 'Quản lý vai trò',
+    description: 'Tạo và quản lý các vai trò trong hệ thống',
+    icon: 'bi-shield-lock',
+    path: '/management/roles',
+    roles: ['admin']
+  },
+  {
     key: 'destinations',
     label: 'Quản lý điểm đến',
     description: 'Tạo và cập nhật thông tin điểm đến',
     icon: 'bi-geo-alt',
     path: '/management/destinations',
-    roles: MANAGEMENT_ROLES
+    roles: ['staff']
   },
   {
     key: 'categories',
@@ -31,7 +39,7 @@ const managementNavigation = [
     description: 'Sắp xếp danh mục điểm đến',
     icon: 'bi-tags',
     path: '/management/destination-categories',
-    roles: MANAGEMENT_ROLES
+    roles: ['staff']
   },
   {
     key: 'tour-categories',
@@ -39,7 +47,7 @@ const managementNavigation = [
     description: 'Phân loại các tour du lịch',
     icon: 'bi-bookmark',
     path: '/management/tour-categories',
-    roles: MANAGEMENT_ROLES
+    roles: ['staff']
   },
   {
     key: 'tours',
@@ -48,7 +56,7 @@ const managementNavigation = [
     icon: 'bi-map',
     path: '/management/tours',
     end: true,
-    roles: MANAGEMENT_ROLES
+    roles: ['staff']
   },
   {
     key: 'pending-tours',
@@ -64,7 +72,7 @@ const managementNavigation = [
     description: 'Theo dõi số liệu toàn hệ thống',
     icon: 'bi-bar-chart',
     path: '/management/statistics',
-    roles: MANAGEMENT_ROLES
+    roles: ['staff']
   }
 ];
 
