@@ -86,6 +86,16 @@ export const loginValidation = [
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
 ];
 
+export const changePasswordValidation = [
+  body('currentPassword')
+    .notEmpty().withMessage('Vui lòng nhập mật khẩu hiện tại'),
+
+  body('newPassword')
+    .notEmpty().withMessage('Vui lòng nhập mật khẩu mới')
+    .isLength({ min: 6 }).withMessage('Mật khẩu mới phải có ít nhất 6 ký tự')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số')
+];
+
 export const updateProfileValidation = [
   body('username')
     .optional()
