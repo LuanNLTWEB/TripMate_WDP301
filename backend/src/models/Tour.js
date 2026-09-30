@@ -53,7 +53,7 @@ const tourSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended'],
+    enum: ['pending', 'active', 'suspended', 'needs_revision'],
     default: 'pending',
     index: true
   },
@@ -75,6 +75,21 @@ const tourSchema = new mongoose.Schema({
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'TourCategory',
+    default: null
+  },
+  revisionNote: {
+    type: String,
+    trim: true,
+    maxlength: [1000, 'Revision note cannot exceed 1000 characters'],
+    default: ''
+  },
+  revisionRequestedAt: {
+    type: Date,
+    default: null
+  },
+  revisionRequestedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     default: null
   }
 }, {
