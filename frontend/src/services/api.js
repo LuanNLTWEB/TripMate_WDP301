@@ -228,7 +228,11 @@ export const tourApi = {
   }),
   getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
   saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
-  removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' })
+  removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' }),
+  requestRevision: (id, note) => apiRequest(`/tours/${id}/revision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ note })
+  })
 };
 
 export default authApi;

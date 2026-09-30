@@ -269,8 +269,11 @@ export const getManagedTours = async (req, res) => {
       filters.push({ status: 'active' });
     } else if (status === 'pending') {
       filters.push({ status: 'pending' });
+    } else if (status === 'needs_revision') {
+      filters.push({ status: 'needs_revision' });
     } else {
-      filters.push({ status: { $ne: 'pending' } });
+      // 'all' — không hiện pending, chỉ hiện active/suspended/needs_revision
+      filters.push({ status: { $in: ['active', 'suspended', 'needs_revision'] } });
     }
 
     const query = filters.length > 0 ? { $and: filters } : {};
@@ -316,7 +319,8 @@ export const getManagedTourById = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id)
       .populate('categoryId', 'name')
-      .populate('suspendedBy', 'username email');
+      .populate('suspendedBy', 'username email')
+      .populate('revisionRequestedBy', 'username email');
 
     if (!tour) {
       return res.status(404).json({
@@ -399,6 +403,55 @@ export const updateTourStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể cập nhật trạng thái tour'
+    });
+  }
+};
+
+export const requestTourRevision = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    if (tour.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể yêu cầu chỉnh sửa tour đang ở trạng thái chờ duyệt'
+      });
+    }
+
+    tour.status = 'needs_revision';
+    tour.revisionNote = req.body.note.trim();
+    tour.revisionRequestedAt = new Date();
+    tour.revisionRequestedBy = req.user._id;
+
+    await tour.save();
+    await tour.populate('revisionRequestedBy', 'username email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã gửi yêu cầu chỉnh sửa tour',
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error requesting tour revision:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể gửi yêu cầu chỉnh sửa'
     });
   }
 };

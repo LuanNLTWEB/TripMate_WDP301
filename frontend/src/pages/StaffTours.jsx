@@ -142,6 +142,7 @@ function StaffTours() {
               >
                 <option value="all">Tất cả trạng thái</option>
                 <option value="active">Đang hoạt động</option>
+                <option value="needs_revision">Cần chỉnh sửa</option>
                 <option value="suspended">Tạm ngưng</option>
               </select>
             </div>
@@ -182,6 +183,9 @@ function StaffTours() {
                   </tr>
                 ) : tours.map((tour) => {
                   const isSuspended = tour.status === 'suspended';
+                  const isNeedsRevision = tour.status === 'needs_revision';
+                  const statusClass = isSuspended ? 'is-suspended' : isNeedsRevision ? 'is-revision' : 'is-active';
+                  const statusLabel = isSuspended ? 'Tạm ngưng' : isNeedsRevision ? 'Cần chỉnh sửa' : 'Đang hoạt động';
                   return (
                     <tr key={tour._id}>
                       <td className="px-4 py-3">
@@ -221,9 +225,9 @@ function StaffTours() {
                         </div>
                       </td>
                       <td className="py-3">
-                        <span className={`staff-tour-status ${isSuspended ? 'is-suspended' : 'is-active'}`}>
+                        <span className={`staff-tour-status ${statusClass}`}>
                           <span></span>
-                          {isSuspended ? 'Tạm ngưng' : 'Đang hoạt động'}
+                          {statusLabel}
                         </span>
                         {isSuspended && (
                           <div className="small text-muted mt-2">
@@ -233,11 +237,17 @@ function StaffTours() {
                             <div>{formatDateTime(tour.suspendedAt)}</div>
                           </div>
                         )}
+
                       </td>
                       <td className="px-4 py-3 text-end">
                         <div className="staff-tour-actions">
                           {!isSuspended && (
-                            <Link className="staff-tour-view-button" to={`/tours/${tour._id}`} title="Xem tour" aria-label={`Xem ${tour.title}`}>
+                            <Link
+                              className="staff-tour-view-button"
+                              to={isNeedsRevision ? `/management/tours/${tour._id}` : `/tours/${tour._id}`}
+                              title="Xem tour"
+                              aria-label={`Xem ${tour.title}`}
+                            >
                               <i className="bi bi-eye"></i>
                             </Link>
                           )}

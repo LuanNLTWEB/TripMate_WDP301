@@ -325,3 +325,11 @@ export const updateDestinationValidation = [
     .optional()
     .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
 ];
+
+export const requestRevisionValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('note')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung yêu cầu chỉnh sửa')
+    .isLength({ min: 10, max: 1000 }).withMessage('Nội dung phải từ 10 đến 1000 ký tự')
+];
