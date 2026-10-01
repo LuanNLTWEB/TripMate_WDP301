@@ -117,8 +117,9 @@ function ReviewTourSubmission() {
   const isSuspended = tour.status === 'suspended';
   const isPending = tour.status === 'pending';
   const isNeedsRevision = tour.status === 'needs_revision';
-  const statusClass = isSuspended ? 'is-suspended' : isPending ? 'is-pending' : isNeedsRevision ? 'is-revision' : 'is-active';
-  const statusLabel = isSuspended ? 'Tạm ngưng' : isPending ? 'Chờ duyệt' : isNeedsRevision ? 'Cần chỉnh sửa' : 'Đang hoạt động';
+  const isRejected = tour.status === 'rejected';
+  const statusClass = isSuspended ? 'is-suspended' : isPending ? 'is-pending' : isNeedsRevision ? 'is-revision' : isRejected ? 'is-rejected' : 'is-active';
+  const statusLabel = isSuspended ? 'Tạm ngưng' : isPending ? 'Chờ duyệt' : isNeedsRevision ? 'Cần chỉnh sửa' : isRejected ? 'Đã từ chối' : 'Đang hoạt động';
   const categoryName = tour.categoryId && typeof tour.categoryId === 'object'
     ? (tour.categoryId.name || '—')
     : (tour.categoryId || '—');
@@ -127,6 +128,9 @@ function ReviewTourSubmission() {
     : '—';
   const revisionRequestedByName = tour.revisionRequestedBy && typeof tour.revisionRequestedBy === 'object'
     ? tour.revisionRequestedBy.username
+    : '—';
+  const rejectedByName = tour.rejectedBy && typeof tour.rejectedBy === 'object'
+    ? tour.rejectedBy.username
     : '—';
 
   return (
@@ -143,10 +147,6 @@ function ReviewTourSubmission() {
           <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
         </div>
       )}
-
-        <Link to="/management/pending-tours" className="btn btn-outline-secondary btn-sm mb-3">
-        <i className="bi bi-arrow-left me-1"></i>Quay lại danh sách duyệt tour
-      </Link>
 
       <div className="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
         {tour.images?.[0] ? (
@@ -245,6 +245,22 @@ function ReviewTourSubmission() {
                 </div>
                 <div className="col-md-3">
                   <DetailItem label="Người yêu cầu" value={revisionRequestedByName} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isRejected && (
+            <div className="mt-4 p-3 rounded-3 bg-danger-subtle border border-danger-subtle">
+              <h3 className="h6 fw-bold text-danger mb-3">
+                <i className="bi bi-x-circle me-1"></i>Thông tin từ chối
+              </h3>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <DetailItem label="Thời gian từ chối" value={formatDate(tour.rejectedAt)} />
+                </div>
+                <div className="col-md-6">
+                  <DetailItem label="Người từ chối" value={rejectedByName} />
                 </div>
               </div>
             </div>

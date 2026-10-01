@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import CustomSelect from '../components/CustomSelect';
@@ -394,7 +394,16 @@ const Tours = () => {
                 Tìm thấy <span className="fw-bold text-primary">{totalTours}</span> hành trình khám phá phù hợp
               </p>
             </div>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {user?.role === 'tourProvider' && (
+                <Link
+                  to="/provider/create-tour"
+                  className="btn btn-primary btn-sm rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm text-decoration-none"
+                >
+                  <i className="bi bi-plus-lg"></i>
+                  <span>Tạo tour mới</span>
+                </Link>
+              )}
               <label className="text-muted small fw-medium text-nowrap d-flex align-items-center gap-1">
                 <i className="bi bi-arrow-down-up"></i>
                 <span>Sắp xếp:</span>

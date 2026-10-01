@@ -40,8 +40,11 @@ app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin/roles', roleRoutes);
+import uploadRoutes from './routes/uploadRoutes.js';
 
 // Health check
+app.use('/api/upload', uploadRoutes);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'TripMate API is running' });
 });

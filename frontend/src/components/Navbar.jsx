@@ -72,6 +72,11 @@ function Navbar() {
             Nhân viên
           </span>
         )}
+        {user?.role === 'tourProvider' && (
+          <span className="badge bg-primary text-white text-uppercase small" style={{ fontSize: '10px' }}>
+            Nhà cung cấp
+          </span>
+        )}
         <i
           className="bi bi-chevron-down small text-white-50 ms-1"
           style={{
@@ -96,6 +101,16 @@ function Navbar() {
             >
               <i className="bi bi-speedometer2 fs-6"></i>
               <span>Trang quản lý</span>
+            </Link>
+          )}
+
+          {user?.role === 'tourProvider' && (
+            <Link
+              to="/provider/create-tour"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <span>Tạo tour mới</span>
             </Link>
           )}
 
@@ -179,6 +194,13 @@ function Navbar() {
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/tours') ? 'active' : ''}`} to="/tours">Tour du lịch</Link>
                 </li>
+                {user?.role === 'tourProvider' && (
+                  <li className="nav-item">
+                    <Link className={`nav-pill-link ${isActiveRoute('/provider/create-tour') ? 'active' : ''}`} to="/provider/create-tour">
+                      Tạo tour
+                    </Link>
+                  </li>
+                )}
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/itinerary') ? 'active' : ''}`} to="/itinerary">Lịch trình của tôi</Link>
                 </li>

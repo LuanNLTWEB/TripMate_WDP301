@@ -53,7 +53,7 @@ const tourSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended', 'needs_revision'],
+    enum: ['pending', 'active', 'suspended', 'needs_revision', 'rejected'],
     default: 'pending',
     index: true
   },
@@ -68,6 +68,21 @@ const tourSchema = new mongoose.Schema({
     default: null
   },
   suspendedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
+    default: ''
+  },
+  rejectedAt: {
+    type: Date,
+    default: null
+  },
+  rejectedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
@@ -91,6 +106,12 @@ const tourSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  providerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    index: true
   }
 }, {
   timestamps: true

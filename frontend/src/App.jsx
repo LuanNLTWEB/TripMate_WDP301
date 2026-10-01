@@ -26,6 +26,7 @@ import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
+import ProviderCreateTour from './pages/ProviderCreateTour';
 
 function App() {
   return (
@@ -44,6 +45,14 @@ function App() {
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/about" element={<AboutVietnam />} />
+            <Route
+              path="/provider/create-tour"
+              element={(
+                <ProtectedRoute allowedRoles={['tourProvider']}>
+                  <ProviderCreateTour />
+                </ProtectedRoute>
+              )}
+            />
 
             <Route element={<ProtectedRoute allowedRoles={MANAGEMENT_ROLES} />}>
               <Route path="/management" element={<ManagementLayout />}>

@@ -29,10 +29,13 @@ export const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
   
   const headers = {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers
   };
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -237,6 +240,10 @@ export const tourApi = {
     return apiRequest(`/tours${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
+  create: (tour) => apiRequest('/tours', {
+    method: 'POST',
+    body: JSON.stringify(tour)
+  }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -257,6 +264,12 @@ export const tourApi = {
   requestRevision: (id, note) => apiRequest(`/tours/${id}/revision`, {
     method: 'PATCH',
     body: JSON.stringify({ note })
+  })
+};
+export const uploadApi = {
+  uploadImage: (formData) => apiRequest('/upload', {
+    method: 'POST',
+    body: formData
   })
 };
 
