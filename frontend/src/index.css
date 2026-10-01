@@ -1499,3 +1499,924 @@ main {
   font-size: 0.85rem;
   color: #64748b;
 }
+
+/* ========================================================
+   UNIFIED TRIPMATE LIST DESIGN SYSTEM
+   Custom list styling for all lists across the system
+   ======================================================== */
+
+
+
+/* 2. Dedicated TripMate Custom List (.tm-list) */
+.tm-list-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.tm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tm-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  text-decoration: none;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.tm-list-item:hover {
+  border-color: #bae6fd;
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
+}
+
+.tm-list-item.active {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
+}
+
+.tm-list-item.active .tm-list-title {
+  color: #ffffff;
+}
+
+.tm-list-item.active .tm-list-subtitle,
+.tm-list-item.active small {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Collaborator & User List Component */
+.tm-collaborator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tm-collaborator-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.tm-collaborator-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.tm-collaborator-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+}
+
+.tm-collaborator-meta {
+  flex: 1;
+  min-width: 0;
+  padding-left: 12px;
+}
+
+.tm-collaborator-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.tm-collaborator-email {
+  font-size: 0.78rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-collaborator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tm-collaborator-badge.badge-view {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.tm-collaborator-badge.badge-edit {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+/* Empty List State */
+.tm-list-empty {
+  padding: 24px 16px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.tm-list-empty-icon {
+  font-size: 1.6rem;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* ========================================================
+   UNIFIED TRIPMATE CUSTOM DROPDOWN / SELECT SYSTEM
+   Modern, elevated dropdown select UI
+   ======================================================== */
+
+/* Global normalization for standard form-select & option to prevent OS dark-grey background */
+select,
+select.form-select,
+select.form-select option {
+  color-scheme: light !important;
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+select.form-select {
+  border-radius: 10px;
+  border-color: #cbd5e1;
+  padding: 9px 36px 9px 14px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+select.form-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  outline: none;
+}
+
+/* Custom Dropdown Component (.tm-custom-select) */
+.tm-custom-select {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.tm-select-trigger {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  text-align: left;
+}
+
+.tm-select-trigger:hover:not(:disabled) {
+  border-color: #38bdf8;
+  background-color: #f8fafc;
+}
+
+.tm-select-trigger.is-open {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  background-color: #ffffff;
+}
+
+.tm-select-trigger:disabled {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.tm-select-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.tm-select-placeholder {
+  color: #94a3b8;
+}
+
+.tm-select-arrow {
+  color: #64748b;
+  font-size: 0.82rem;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.tm-select-trigger.is-open .tm-select-arrow {
+  transform: rotate(180deg);
+  color: #0284c7;
+}
+
+/* Floating Dropdown Menu */
+.tm-select-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 1060;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 8px 12px -6px rgba(15, 23, 42, 0.06);
+  padding: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  animation: tmSelectSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tmSelectSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tm-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+.tm-select-dropdown::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.tm-select-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+.tm-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Individual Option in Custom Dropdown */
+.tm-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #1e293b;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.tm-select-option:hover {
+  background-color: #f0f9ff;
+  color: #0284c7;
+}
+
+.tm-select-option.is-selected {
+  background-color: #eff6ff;
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.tm-select-option.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.tm-select-check {
+  color: #0284c7;
+  font-size: 0.95rem;
+  font-weight: bold;
+}
+
+/* Custom Time Picker Component (.tm-custom-timepicker) */
+.tm-custom-timepicker {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.tm-timepicker-trigger {
+  min-height: 42px;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.tm-timepicker-trigger:hover:not(.is-disabled) {
+  border-color: #38bdf8;
+  background-color: #f8fafc;
+}
+
+.tm-timepicker-trigger.is-focused {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+  background-color: #ffffff;
+}
+
+.tm-timepicker-trigger.is-disabled {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.tm-timepicker-val-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.tm-timepicker-icon {
+  color: #0284c7;
+  font-size: 1.05rem;
+  display: inline-flex;
+}
+
+.tm-time-display-val {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.tm-time-period-tag {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: normal;
+}
+
+.tm-time-placeholder {
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.tm-time-clear-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.tm-time-clear-btn:hover {
+  color: #ef4444;
+}
+
+.tm-timepicker-arrow {
+  color: #64748b;
+  font-size: 0.82rem;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 4px;
+}
+
+.tm-timepicker-arrow.is-open {
+  transform: rotate(180deg);
+  color: #0284c7;
+}
+
+/* Time Picker Popover Card */
+.tm-timepicker-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1070;
+  width: 290px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.16), 0 6px 16px -4px rgba(15, 23, 42, 0.08);
+  padding: 14px;
+  animation: tmSelectSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tm-timepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 10px;
+}
+
+.tm-timepicker-title span.small {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tm-time-now-btn {
+  font-size: 0.75rem !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  font-weight: 500;
+}
+
+.tm-timepicker-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.tm-preset-chip {
+  font-size: 0.75rem;
+  padding: 3px 9px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.tm-preset-chip:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+.tm-preset-chip.is-active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  font-weight: 600;
+}
+
+/* Time Columns (Hour : Minute) */
+.tm-timepicker-columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.tm-time-col {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.tm-time-col-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.tm-time-col-list {
+  max-height: 165px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 4px;
+}
+
+.tm-time-col-list::-webkit-scrollbar {
+  width: 5px;
+}
+.tm-time-col-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+.tm-time-col-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+.tm-time-col-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.tm-time-col-separator {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #cbd5e1;
+  align-self: center;
+  margin-top: 18px;
+  user-select: none;
+}
+
+.tm-time-cell {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 6px 0;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: center;
+}
+
+.tm-time-cell:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.tm-time-cell.is-selected {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+}
+
+.tm-timepicker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Fallback native input[type="time"] styling */
+input[type="time"] {
+  color-scheme: light !important;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+input[type="time"]:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  outline: none;
+}
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(35%) sepia(85%) saturate(800%) hue-rotate(175deg) brightness(90%) contrast(90%);
+  transition: transform 0.15s ease;
+}
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+}
+
+/* Custom Date Picker Component (.tm-custom-datepicker) */
+.tm-custom-datepicker {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.tm-datepicker-trigger {
+  min-height: 42px;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  cursor: pointer;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.tm-datepicker-trigger:hover:not(.is-disabled) {
+  border-color: #38bdf8;
+  background-color: #f8fafc;
+}
+
+.tm-datepicker-trigger.is-focused {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+  background-color: #ffffff;
+}
+
+.tm-datepicker-trigger.is-disabled {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.tm-datepicker-val-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.tm-datepicker-icon {
+  color: #0284c7;
+  font-size: 1.05rem;
+  display: inline-flex;
+}
+
+.tm-datepicker-placeholder {
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.tm-datepicker-clear-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.tm-datepicker-clear-btn:hover {
+  color: #ef4444;
+}
+
+.tm-datepicker-arrow {
+  color: #64748b;
+  font-size: 0.82rem;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 4px;
+}
+
+.tm-datepicker-arrow.is-open {
+  transform: rotate(180deg);
+  color: #0284c7;
+}
+
+/* Date Picker Popover Card */
+.tm-datepicker-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1070;
+  width: 310px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.16), 0 6px 16px -4px rgba(15, 23, 42, 0.08);
+  padding: 14px;
+  animation: tmSelectSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tm-datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.tm-datepicker-nav-btn {
+  border: none;
+  background: #f8fafc;
+  color: #475569;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tm-datepicker-nav-btn:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.tm-datepicker-title-btn {
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tm-datepicker-title-btn:hover {
+  background: #f1f5f9;
+  color: #0284c7;
+}
+
+.tm-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.tm-datepicker-weekday {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 3px 0;
+}
+
+.tm-datepicker-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.tm-datepicker-day-cell {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #1e293b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.tm-datepicker-day-cell:hover:not(:disabled) {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.tm-datepicker-day-cell.is-other-month {
+  color: #cbd5e1;
+}
+
+.tm-datepicker-day-cell.is-today {
+  border: 1px solid #38bdf8;
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.tm-datepicker-day-cell.is-selected {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+}
+
+.tm-datepicker-day-cell.is-disabled {
+  color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+/* Months & Years Grid */
+.tm-datepicker-grid-months,
+.tm-datepicker-grid-years {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.tm-datepicker-month-chip,
+.tm-datepicker-year-chip {
+  padding: 10px 4px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.tm-datepicker-month-chip:hover,
+.tm-datepicker-year-chip:hover {
+  background: #e0f2fe;
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+.tm-datepicker-month-chip.is-selected,
+.tm-datepicker-year-chip.is-selected {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  font-weight: 700;
+}
+
+.tm-datepicker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Fallback native input[type="date"] styling */
+input[type="date"] {
+  color-scheme: light !important;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+input[type="date"]:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  outline: none;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(35%) sepia(85%) saturate(800%) hue-rotate(175deg) brightness(90%) contrast(90%);
+  transition: transform 0.15s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+}
+
+
+
+

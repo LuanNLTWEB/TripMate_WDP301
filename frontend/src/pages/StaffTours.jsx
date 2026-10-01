@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { tourApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -132,18 +133,19 @@ function StaffTours() {
             <label htmlFor="tour-status-filter" className="small text-muted fw-semibold mb-0 text-nowrap">
               <i className="bi bi-funnel me-1"></i>Trạng thái:
             </label>
-            <select
+            <CustomSelect
               id="tour-status-filter"
-              className="form-select form-select-sm"
-              style={{ width: 'auto', minWidth: '160px' }}
+              style={{ width: '190px' }}
+              triggerStyle={{ height: '36px', fontSize: '0.86rem' }}
               value={status}
               onChange={handleFilterChange}
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="needs_revision">Cần chỉnh sửa</option>
-              <option value="suspended">Tạm ngưng</option>
-            </select>
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'active', label: 'Đang hoạt động', icon: 'bi bi-check-circle text-success' },
+                { value: 'needs_revision', label: 'Cần chỉnh sửa', icon: 'bi bi-pencil-square text-warning' },
+                { value: 'suspended', label: 'Tạm ngưng', icon: 'bi bi-slash-circle text-danger' }
+              ]}
+            />
           </div>
         </div>
 

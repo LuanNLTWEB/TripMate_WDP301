@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationApi, destinationCategoryApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 
 function StaffDestinations() {
   const { user } = useAuth();
@@ -227,12 +228,16 @@ function StaffDestinations() {
                 </div>
                 <div className="col-md-4">
                   <label className="form-label fw-semibold" htmlFor="destination-category">Danh mục</label>
-                  <select id="destination-category" name="categoryId" className="form-select" value={formData.categoryId} onChange={handleCreateChange}>
-                    <option value="">— Không chọn —</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    id="destination-category"
+                    name="categoryId"
+                    value={formData.categoryId}
+                    onChange={handleCreateChange}
+                    options={[
+                      { value: '', label: '— Không chọn —' },
+                      ...categories.map((cat) => ({ value: cat._id, label: cat.name }))
+                    ]}
+                  />
                 </div>
                 <div className="col-md-4">
                   <label className="form-label fw-semibold" htmlFor="destination-image">URL hình ảnh</label>

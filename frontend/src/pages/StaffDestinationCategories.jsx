@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationCategoryApi } from '../services/api';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 function StaffDestinationCategories() {
   const { user } = useAuth();
@@ -14,6 +15,8 @@ function StaffDestinationCategories() {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [search, setSearch] = useState('');
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadCategories = async () => {
     setIsLoading(true);
@@ -80,17 +83,18 @@ function StaffDestinationCategories() {
     }
   };
 
-  const handleDelete = async (category) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${category.name}"?`)) {
-      return;
-    }
-
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setIsDeleting(true);
     try {
-      await destinationCategoryApi.remove(category._id);
-      toast.success(`Đã xóa danh mục "${category.name}".`);
+      await destinationCategoryApi.remove(categoryToDelete._id);
+      toast.success(`Đã xóa danh mục "${categoryToDelete.name}".`);
+      setCategoryToDelete(null);
       await loadCategories();
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa danh mục.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -240,7 +244,7 @@ function StaffDestinationCategories() {
                         <button
                           type="button"
                           className="management-action-btn btn-delete"
-                          onClick={() => handleDelete(category)}
+                          onClick={() => setCategoryToDelete(category)}
                           title="Xóa danh mục"
                         >
                           <i className="bi bi-trash"></i>
@@ -254,6 +258,18 @@ function StaffDestinationCategories() {
           </table>
         </div>
       </div>
+      <ConfirmDeleteModal
+        isOpen={Boolean(categoryToDelete)}
+        title="Xác nhận xóa danh mục điểm đến"
+        message={
+          <>
+            Bạn có chắc chắn muốn xóa danh mục <strong>{categoryToDelete?.name}</strong>?
+          </>
+        }
+        loading={isDeleting}
+        onConfirm={confirmDeleteCategory}
+        onClose={() => setCategoryToDelete(null)}
+      />
     </section>
   );
 }

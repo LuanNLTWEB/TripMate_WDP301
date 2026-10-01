@@ -270,6 +270,16 @@ export const removeActivityFromItineraryValidation = [
   param('activityId').isMongoId().withMessage('Mã hoạt động không hợp lệ')
 ];
 
+export const updateActivityValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('activityId').isMongoId().withMessage('Mã hoạt động không hợp lệ'),
+  body('title').optional().trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
+  body('date').optional().isISO8601().withMessage('Ngày hoạt động không hợp lệ'),
+  body('startTime').optional().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ bắt đầu phải có dạng HH:mm'),
+  body('endTime').optional().matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ kết thúc phải có dạng HH:mm'),
+  body('estimatedCost').optional().isFloat({ min: 0 }).withMessage('Chi phí không được âm')
+];
+
 export const itineraryTourValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('tourId')

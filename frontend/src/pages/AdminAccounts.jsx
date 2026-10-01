@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { accountApi, roleApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
+import CustomDatePicker from '../components/CustomDatePicker';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const emptyForm = {
   username: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'other', role: 'customer'
@@ -87,11 +90,17 @@ function AccountForm({ account, roles, onClose, onSaved }) {
                       <div className="col-md-4"><span className="text-muted d-block">Giới tính</span>{genderLabels[account.gender] || 'Chưa cập nhật'}</div>
                     </div>
                     <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
-                    <select className="form-select" id="account-role" name="role" value={formData.role} onChange={handleChange} disabled={isSaving}>
-                      {roles.map((r) => (
-                        <option key={r._id} value={r.name}>{defaultRoleLabels[r.name] || r.name}</option>
-                      ))}
-                    </select>
+                    <CustomSelect
+                      id="account-role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      disabled={isSaving}
+                      options={roles.map((r) => ({
+                        value: r.name,
+                        label: defaultRoleLabels[r.name] || r.name
+                      }))}
+                    />
                   </div>
                 ) : <>
                 <div className="col-md-6">
@@ -113,21 +122,43 @@ function AccountForm({ account, roles, onClose, onSaved }) {
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-dob">Ngày sinh</label>
-                  <input type="date" className="form-control" id="account-dob" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} max={new Date().toISOString().split('T')[0]} disabled={isSaving} />
+                  <CustomDatePicker
+                    id="account-dob"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    disabled={isSaving}
+                  />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-gender">Giới tính</label>
-                  <select className="form-select" id="account-gender" name="gender" value={formData.gender} onChange={handleChange} disabled={isSaving}>
-                    <option value="male">Nam</option><option value="female">Nữ</option><option value="other">Khác</option>
-                  </select>
+                  <CustomSelect
+                    id="account-gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    options={[
+                      { value: 'male', label: 'Nam' },
+                      { value: 'female', label: 'Nữ' },
+                      { value: 'other', label: 'Khác' }
+                    ]}
+                  />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
-                  <select className="form-select" id="account-role" name="role" value={formData.role} onChange={handleChange} disabled={isSaving}>
-                    {roles.map((r) => (
-                      <option key={r._id} value={r.name}>{defaultRoleLabels[r.name] || r.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    id="account-role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    options={roles.map((r) => ({
+                      value: r.name,
+                      label: defaultRoleLabels[r.name] || r.name
+                    }))}
+                  />
                 </div>
                 </>}
               </div>
@@ -154,6 +185,7 @@ function AdminAccounts() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [accountToDelete, setAccountToDelete] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [processingId, setProcessingId] = useState('');
 
@@ -228,12 +260,13 @@ function AdminAccounts() {
     }
   };
 
-  const handleDelete = async (account) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa tài khoản ${account.username}?`)) return;
-    setProcessingId(account.id);
+  const confirmDeleteAccount = async () => {
+    if (!accountToDelete) return;
+    setProcessingId(accountToDelete.id);
     try {
-      const response = await accountApi.remove(account.id);
+      const response = await accountApi.remove(accountToDelete.id);
       toast.success(response.message || 'Đã xóa tài khoản.');
+      setAccountToDelete(null);
       await loadAccounts();
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa tài khoản.');
@@ -272,7 +305,7 @@ function AdminAccounts() {
                         <td><div className="d-flex justify-content-end gap-2 flex-wrap">
                           <button className="btn btn-sm btn-outline-primary" onClick={() => openRoleForm(account)} disabled={processingId === account.id || account.id === user.id}>Role</button>
                           <button className={`btn btn-sm ${account.isActive ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleStatus(account)} disabled={processingId === account.id || account.id === user.id}>{account.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}</button>
-                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(account)} disabled={processingId === account.id || account.id === user.id}>Xóa</button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => setAccountToDelete(account)} disabled={processingId === account.id || account.id === user.id}>Xóa</button>
                         </div></td>
                       </tr>
                     ))}
@@ -284,6 +317,18 @@ function AdminAccounts() {
         </div>
       </section>
       {isFormOpen && <><div className="modal-backdrop fade show"></div><AccountForm account={selectedAccount} roles={roles} onClose={() => setIsFormOpen(false)} onSaved={handleSaved} /></>}
+      <ConfirmDeleteModal
+        isOpen={Boolean(accountToDelete)}
+        title="Xác nhận xóa tài khoản"
+        message={
+          <>
+            Bạn có chắc muốn xóa tài khoản <strong>{accountToDelete?.username}</strong>? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={Boolean(processingId)}
+        onConfirm={confirmDeleteAccount}
+        onClose={() => setAccountToDelete(null)}
+      />
     </>
   );
 }

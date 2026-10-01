@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
 import { destinationApi, destinationCategoryApi } from '../services/api';
 const destinationsBanner = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823911/tripmate_assets/jmgdqrgkput0yvptbvyr.jpg';
 import { useAuth } from '../hooks/useAuth';
@@ -219,18 +220,17 @@ const Destinations = () => {
                       <i className="bi bi-grid text-primary"></i>
                       <span>Danh mục</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="destination-category-filter"
-                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
-                      style={{ height: '48px' }}
+                      triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
                       value={categoryId}
-                      onChange={(event) => setCategoryId(event.target.value)}
-                    >
-                      <option value="">Tất cả danh mục</option>
-                      {categories.map((category) => (
-                        <option key={category._id} value={category._id}>{category.name}</option>
-                      ))}
-                    </select>
+                      onChange={(e, val) => setCategoryId(val !== undefined ? val : e.target.value)}
+                      placeholder="Tất cả danh mục"
+                      options={[
+                        { value: '', label: 'Tất cả danh mục' },
+                        ...categories.map((c) => ({ value: c._id, label: c.name }))
+                      ]}
+                    />
                   </div>
 
                   <div className="col-6 col-md-3 col-lg-2">
@@ -238,18 +238,19 @@ const Destinations = () => {
                       <i className="bi bi-star-fill text-warning"></i>
                       <span>Đánh giá</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="destination-rating-filter"
-                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
-                      style={{ height: '48px' }}
+                      triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
                       value={minRating}
-                      onChange={(event) => setMinRating(event.target.value)}
-                    >
-                      <option value="">Tất cả đánh giá</option>
-                      <option value="4">Từ 4 sao trở lên</option>
-                      <option value="3">Từ 3 sao trở lên</option>
-                      <option value="2">Từ 2 sao trở lên</option>
-                    </select>
+                      onChange={(e, val) => setMinRating(val !== undefined ? val : e.target.value)}
+                      placeholder="Tất cả đánh giá"
+                      options={[
+                        { value: '', label: 'Tất cả đánh giá' },
+                        { value: '4', label: 'Từ 4 sao trở lên', icon: 'bi bi-star-fill text-warning' },
+                        { value: '3', label: 'Từ 3 sao trở lên', icon: 'bi bi-star-fill text-warning' },
+                        { value: '2', label: 'Từ 2 sao trở lên', icon: 'bi bi-star-fill text-warning' }
+                      ]}
+                    />
                   </div>
 
                   <div className="col-6 col-md-6 col-lg-2">
@@ -306,17 +307,18 @@ const Destinations = () => {
                 <i className="bi bi-arrow-down-up"></i>
                 <span>Sắp xếp:</span>
               </label>
-              <select
-                className="form-select form-select-sm rounded-pill px-3 shadow-none border-secondary-subtle"
-                style={{ width: '160px', height: '38px' }}
+              <CustomSelect
+                id="destination-sort-select"
+                style={{ width: '160px' }}
+                triggerStyle={{ height: '38px', borderRadius: '50px', fontSize: '0.85rem' }}
                 value={sort}
                 onChange={handleSortChange}
-                aria-label="Sắp xếp điểm đến"
-              >
-                <option value="newest">Mới nhất</option>
-                <option value="rating">Đánh giá cao</option>
-                <option value="nameAsc">Tên A–Z</option>
-              </select>
+                options={[
+                  { value: 'newest', label: 'Mới nhất', icon: 'bi bi-sparkles' },
+                  { value: 'rating', label: 'Đánh giá cao', icon: 'bi bi-star-fill text-warning' },
+                  { value: 'nameAsc', label: 'Tên A–Z', icon: 'bi bi-sort-alpha-down' }
+                ]}
+              />
             </div>
           </div>
 

@@ -168,6 +168,10 @@ export const itineraryApi = {
   removeActivity: (id, activityId) => apiRequest(`/itineraries/${id}/activities/${activityId}`, {
     method: 'DELETE'
   }),
+  updateActivity: (id, activityId, activity) => apiRequest(`/itineraries/${id}/activities/${activityId}`, {
+    method: 'PUT',
+    body: JSON.stringify(activity)
+  }),
   addDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations`, {
     method: 'POST',
     body: JSON.stringify({ destinationId })

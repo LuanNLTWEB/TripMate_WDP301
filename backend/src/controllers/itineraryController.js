@@ -318,6 +318,58 @@ export const removeActivity = async (req, res) => {
 };
 
 /**
+ * Update an activity in an owned or edit-enabled shared itinerary.
+ * @route PUT /api/itineraries/:id/activities/:activityId
+ * @access Customer
+ */
+export const updateActivity = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const activity = itinerary.activities.id(req.params.activityId);
+    if (!activity) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy hoạt động trong lịch trình' });
+    }
+
+    const newStart = req.body.startTime !== undefined ? req.body.startTime : activity.startTime;
+    const newEnd = req.body.endTime !== undefined ? req.body.endTime : activity.endTime;
+    if (newEnd <= newStart) {
+      return res.status(400).json({ success: false, message: 'Giờ kết thúc phải sau giờ bắt đầu' });
+    }
+
+    if (req.body.title !== undefined) activity.title = req.body.title.trim();
+    if (req.body.date !== undefined) activity.date = req.body.date;
+    if (req.body.startTime !== undefined) activity.startTime = req.body.startTime;
+    if (req.body.endTime !== undefined) activity.endTime = req.body.endTime;
+    if (req.body.location !== undefined) activity.location = req.body.location ? req.body.location.trim() : '';
+    if (req.body.estimatedCost !== undefined) {
+      activity.estimatedCost = req.body.estimatedCost === '' || req.body.estimatedCost === null ? 0 : Number(req.body.estimatedCost);
+    }
+    if (req.body.notes !== undefined) activity.notes = req.body.notes ? req.body.notes.trim() : '';
+
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã cập nhật hoạt động thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Update itinerary activity error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật hoạt động' });
+  }
+};
+
+/**
  * Add an active destination to an owned or edit-enabled shared itinerary.
  * @route POST /api/itineraries/:id/destinations
  * @access Customer

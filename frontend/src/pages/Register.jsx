@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 function Register() {
   const navigate = useNavigate();
@@ -213,9 +215,7 @@ function Register() {
                       
                       <div className="col-md-6">
                         <label htmlFor="dateOfBirth" className="form-label fw-medium small">Ngày sinh (Không bắt buộc)</label>
-                        <input
-                          type="date"
-                          className={`form-control ${errors.dateOfBirth ? 'is-invalid' : ''}`}
+                        <CustomDatePicker
                           id="dateOfBirth"
                           name="dateOfBirth"
                           value={formData.dateOfBirth}
@@ -223,23 +223,23 @@ function Register() {
                           max={new Date().toISOString().split('T')[0]}
                           disabled={isLoading}
                         />
-                        {errors.dateOfBirth && <div className="invalid-feedback">{errors.dateOfBirth}</div>}
+                        {errors.dateOfBirth && <div className="invalid-feedback d-block">{errors.dateOfBirth}</div>}
                       </div>
                       
                       <div className="col-md-6">
                         <label htmlFor="gender" className="form-label fw-medium small">Giới tính</label>
-                        <select
-                          className="form-select"
+                        <CustomSelect
                           id="gender"
                           name="gender"
                           value={formData.gender}
                           onChange={handleChange}
                           disabled={isLoading}
-                        >
-                          <option value="male">Nam</option>
-                          <option value="female">Nữ</option>
-                          <option value="other">Khác</option>
-                        </select>
+                          options={[
+                            { value: 'male', label: 'Nam' },
+                            { value: 'female', label: 'Nữ' },
+                            { value: 'other', label: 'Khác' }
+                          ]}
+                        />
                       </div>
                       
                       <div className="col-md-6">

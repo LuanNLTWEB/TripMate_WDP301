@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ItineraryPrintView from '../components/ItineraryPrintView';
+import CustomSelect from '../components/CustomSelect';
+import CustomTimePicker from '../components/CustomTimePicker';
+import CustomDatePicker from '../components/CustomDatePicker';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
@@ -29,6 +33,8 @@ function Itinerary() {
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
+  const [editingActivityId, setEditingActivityId] = useState(null);
+  const activityFormRef = useRef(null);
   const [destinations, setDestinations] = useState([]);
   const [destinationId, setDestinationId] = useState('');
   const [tours, setTours] = useState([]);
@@ -37,6 +43,8 @@ function Itinerary() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [pendingDeleteActivity, setPendingDeleteActivity] = useState(null);
+  const [pendingRemoveCollaborator, setPendingRemoveCollaborator] = useState(null);
   const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
@@ -96,35 +104,88 @@ function Itinerary() {
     setActiveTab('mine');
   };
 
-  const addActivity = async (event) => {
+  const handleStartEditActivity = (activity) => {
+    setEditingActivityId(activity._id);
+    const dateFormatted = activity.date ? new Date(activity.date).toISOString().split('T')[0] : '';
+    setActivityForm({
+      title: activity.title || '',
+      date: dateFormatted,
+      startTime: activity.startTime || '',
+      endTime: activity.endTime || '',
+      location: activity.location || '',
+      estimatedCost: activity.estimatedCost !== undefined && activity.estimatedCost !== null && activity.estimatedCost !== '' ? String(activity.estimatedCost) : '',
+      notes: activity.notes || ''
+    });
+
+    // Smooth scroll down to the activity form and focus title input
+    setTimeout(() => {
+      if (activityFormRef.current) {
+        activityFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      const titleInput = document.getElementById('activity-title');
+      if (titleInput) {
+        titleInput.focus();
+      }
+    }, 50);
+  };
+
+  const handleCancelEditActivity = () => {
+    setEditingActivityId(null);
+    setActivityForm(initialActivity);
+  };
+
+  const handleActivitySubmit = async (event) => {
     event.preventDefault();
     if (!selected) return;
+
+    if (activityForm.endTime <= activityForm.startTime) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu.');
+      return;
+    }
 
     setSaving(true);
     setError('');
     try {
-      const response = await itineraryApi.addActivity(selected._id, {
-        ...activityForm,
-        estimatedCost: Number(activityForm.estimatedCost || 0)
-      });
-      applyItinerary(response.itinerary);
-      setActivityForm(initialActivity);
-      toast.success('Đã thêm hoạt động vào lịch trình.');
+      const payload = {
+        title: activityForm.title.trim(),
+        date: activityForm.date,
+        startTime: activityForm.startTime,
+        endTime: activityForm.endTime,
+        location: activityForm.location ? activityForm.location.trim() : '',
+        estimatedCost: activityForm.estimatedCost === '' || activityForm.estimatedCost === null ? 0 : Number(activityForm.estimatedCost),
+        notes: activityForm.notes ? activityForm.notes.trim() : ''
+      };
+
+      if (editingActivityId) {
+        const response = await itineraryApi.updateActivity(selected._id, editingActivityId, payload);
+        applyItinerary(response.itinerary);
+        setEditingActivityId(null);
+        setActivityForm(initialActivity);
+        toast.success(response.message || 'Đã cập nhật hoạt động thành công.');
+      } else {
+        const response = await itineraryApi.addActivity(selected._id, payload);
+        applyItinerary(response.itinerary);
+        setActivityForm(initialActivity);
+        toast.success('Đã thêm hoạt động vào lịch trình.');
+      }
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể thêm hoạt động.');
+      toast.error(requestError.message || (editingActivityId ? 'Không thể cập nhật hoạt động.' : 'Không thể thêm hoạt động.'));
     } finally {
       setSaving(false);
     }
   };
 
   const removeActivity = async (activityId) => {
-    if (!selected || !window.confirm('Bạn có chắc chắn muốn xóa hoạt động này?')) return;
+    if (!selected) return;
 
     setSaving(true);
     setError('');
     try {
       const response = await itineraryApi.removeActivity(selected._id, activityId);
       applyItinerary(response.itinerary);
+      if (editingActivityId === activityId) {
+        handleCancelEditActivity();
+      }
       toast.success(response.message || 'Đã xóa hoạt động khỏi lịch trình.');
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa hoạt động.');
@@ -347,7 +408,7 @@ function Itinerary() {
   };
 
   const handleRemoveCollaborator = async (userId) => {
-    if (!selected || !window.confirm('Bạn có chắc muốn hủy chia sẻ với người dùng này không?')) return;
+    if (!selected) return;
 
     setRemovingCollaboratorId(userId);
     try {
@@ -498,8 +559,9 @@ function Itinerary() {
                       );
                     })}
                     {!loading && visibleItineraries.length === 0 && (
-                      <div className="list-group-item text-muted">
-                        {activeTab === 'shared' ? 'Chưa có lịch trình nào được chia sẻ với bạn.' : 'Chưa có lịch trình.'}
+                      <div className="tm-list-empty py-4 my-2">
+                        <i className="bi bi-calendar2-range tm-list-empty-icon"></i>
+                        {activeTab === 'shared' ? 'Chưa có lịch trình nào được chia sẻ với bạn.' : 'Chưa có lịch trình nào.'}
                       </div>
                     )}
                   </div>
@@ -512,53 +574,80 @@ function Itinerary() {
                     <>
                       <section className="card border-0 shadow-sm mb-4">
                         <div className="card-body p-4">
-                          <div className="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                              <h2 className="h4 fw-bold mb-1">{selected.title}</h2>
-                              <p className="text-muted mb-0">Ngân sách: {selected.budget || 0} · Điểm đến: {(selected.destinations || []).length} · Hoạt động: {selected.activities.length}</p>
-                            </div>
-                            <div className="d-flex align-items-center gap-2">
-                              <span className={`badge ${isOwner ? 'text-bg-primary' : canEditSelected ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                          <div className="mb-3">
+                            <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
+                              <h2 className="h4 fw-bold mb-0 text-dark text-break">{selected.title}</h2>
+                              <span className={`badge rounded-pill ${isOwner ? 'text-bg-primary' : canEditSelected ? 'text-bg-success' : 'text-bg-secondary'}`} style={{ fontSize: '0.75rem', padding: '0.35em 0.7em' }}>
                                 {isOwner ? 'Chủ sở hữu' : canEditSelected ? 'Có thể chỉnh sửa' : 'Chỉ xem'}
                               </span>
+                            </div>
+                            <div className="d-flex align-items-center flex-wrap gap-2">
                               {isOwner && (
                                 <button
                                   type="button"
-                                  className="btn btn-outline-success btn-sm"
+                                  className="btn btn-outline-success btn-sm text-nowrap d-inline-flex align-items-center"
                                   onClick={openShareModal}
                                   title="Chia sẻ lịch trình với người khác"
                                 >
                                   <i className="bi bi-share me-1"></i>
-                                  Chia sẻ
+                                  <span>Chia sẻ</span>
                                 </button>
                               )}
-                              <button type="button" className="btn btn-outline-primary btn-sm" onClick={exportItinerary}>
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
+                                onClick={exportItinerary}
+                                title="Xuất lịch trình ra bản in hoặc PDF"
+                              >
                                 <i className="bi bi-printer me-1"></i>
-                                Xuất lịch trình
+                                <span>Xuất lịch trình</span>
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-outline-secondary btn-sm"
+                                className="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={() => setDuplicateModal({
                                   open: true,
                                   itinerary: selected,
                                   title: `${selected.title} (Bản sao)`
                                 })}
+                                title="Tạo bản sao lịch trình"
                               >
                                 <i className="bi bi-copy me-1"></i>
-                                Nhân bản
+                                <span>Nhân bản</span>
                               </button>
                               {isOwner && (
                                 <button
                                   type="button"
-                                  className="btn btn-outline-danger btn-sm"
+                                  className="btn btn-outline-danger btn-sm text-nowrap d-inline-flex align-items-center"
                                   onClick={() => setPendingDeleteId(selected._id)}
+                                  title="Xóa lịch trình này"
                                 >
                                   <i className="bi bi-trash me-1"></i>
-                                  Xóa lịch trình
+                                  <span>Xóa lịch trình</span>
                                 </button>
                               )}
                             </div>
+                          </div>
+
+                          <div className="d-flex align-items-center flex-wrap gap-2 pb-3 mb-3 border-bottom text-muted small">
+                            <span className="badge bg-light text-secondary border fw-normal py-1 px-2 d-inline-flex align-items-center">
+                              <i className="bi bi-wallet2 text-success me-1"></i>
+                              <span>Ngân sách: <strong className="text-dark ms-1">{Number(selected.budget || 0).toLocaleString('vi-VN')} ₫</strong></span>
+                            </span>
+                            <span className="badge bg-light text-secondary border fw-normal py-1 px-2 d-inline-flex align-items-center">
+                              <i className="bi bi-geo-alt text-danger me-1"></i>
+                              <span>Điểm đến: <strong className="text-dark ms-1">{(selected.destinations || []).length}</strong></span>
+                            </span>
+                            <span className="badge bg-light text-secondary border fw-normal py-1 px-2 d-inline-flex align-items-center">
+                              <i className="bi bi-calendar-check text-primary me-1"></i>
+                              <span>Hoạt động: <strong className="text-dark ms-1">{selected.activities.length}</strong></span>
+                            </span>
+                            {formatDateRange(selected.startDate, selected.endDate) && (
+                              <span className="badge bg-light text-secondary border fw-normal py-1 px-2 d-inline-flex align-items-center">
+                                <i className="bi bi-calendar3 text-info me-1"></i>
+                                <span>Thời gian: <strong className="text-dark ms-1">{formatDateRange(selected.startDate, selected.endDate)}</strong></span>
+                              </span>
+                            )}
                           </div>
 
                           {(selected.collaborators || []).length > 0 && (
@@ -582,7 +671,7 @@ function Itinerary() {
                                         style={{ fontSize: '0.75rem', lineHeight: 1 }}
                                         title="Hủy chia sẻ"
                                         disabled={removingCollaboratorId === collabId}
-                                        onClick={() => handleRemoveCollaborator(collabId)}
+                                        onClick={() => setPendingRemoveCollaborator(c)}
                                       >
                                         <i className="bi bi-x"></i>
                                       </button>
@@ -594,9 +683,32 @@ function Itinerary() {
                           )}
 
                           {(selected.conflicts || []).length > 0 && (
-                            <div className="alert alert-warning mb-3">
-                              <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                              <strong>Xung đột lịch trình:</strong> phát hiện {(selected.conflicts || []).length} cặp hoạt động trùng thời gian.
+                            <div className="alert alert-warning mb-3 border border-warning-subtle">
+                              <div className="d-flex align-items-center mb-2">
+                                <i className="bi bi-exclamation-triangle-fill me-2 text-warning fs-5"></i>
+                                <div className="fw-semibold">
+                                  <strong>Xung đột lịch trình:</strong> phát hiện {(selected.conflicts || []).length} cặp hoạt động trùng thời gian:
+                                </div>
+                              </div>
+                              <div className="vstack gap-2">
+                                {selected.conflicts.map((conflict, index) => (
+                                  <div
+                                    key={index}
+                                    className="bg-white bg-opacity-75 border border-warning rounded p-2 px-3 small d-flex align-items-center flex-wrap gap-2 text-dark"
+                                  >
+                                    <i className="bi bi-clock-history text-warning"></i>
+                                    <strong>{conflict.first.title}</strong>
+                                    <span className="badge text-bg-light border">
+                                      {conflict.first.startTime} - {conflict.first.endTime}
+                                    </span>
+                                    <span className="text-muted fw-semibold">trùng với</span>
+                                    <strong>{conflict.second.title}</strong>
+                                    <span className="badge text-bg-light border">
+                                      {conflict.second.startTime} - {conflict.second.endTime}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
 
@@ -625,8 +737,18 @@ function Itinerary() {
                               <div className="vstack gap-2">
                                 {(reorderMode ? reorderList.map((id) => selected.activities.find((a) => a._id === id)).filter(Boolean) : selected.activities).map((activity, index) => {
                                   const conflicted = conflictedActivityIds.has(String(activity._id));
+                                  const isEditingThis = editingActivityId === activity._id;
                                   return (
-                                    <div className={`border rounded p-3 ${reorderMode ? 'bg-white' : 'border-start border-primary border-3'}`} key={activity._id}>
+                                    <div
+                                      className={`border rounded p-3 transition-all ${
+                                        isEditingThis
+                                          ? 'border-primary border-2 shadow-sm bg-primary-subtle bg-opacity-10'
+                                          : reorderMode
+                                            ? 'bg-white'
+                                            : 'border-start border-primary border-3'
+                                      }`}
+                                      key={activity._id}
+                                    >
                                       <div className="d-flex align-items-center gap-2">
                                         {reorderMode && (
                                           <div className="d-flex flex-column gap-1">
@@ -639,27 +761,55 @@ function Itinerary() {
                                           </div>
                                         )}
                                         <div className="flex-grow-1">
-                                          <div className="fw-semibold d-flex align-items-center gap-2">
-                                            {reorderMode && <span className="text-muted small me-1">{index + 1}.</span>}
-                                            {activity.title}
-                                            {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
+                                          <div className="d-flex justify-content-between align-items-start">
+                                            <div className="fw-semibold d-flex align-items-center gap-2 flex-wrap">
+                                              {reorderMode && <span className="text-muted small me-1">{index + 1}.</span>}
+                                              <span>{activity.title}</span>
+                                              {conflicted && <span className="badge text-bg-warning">Xung đột</span>}
+                                              {isEditingThis && (
+                                                <span className="badge bg-primary">
+                                                  <i className="bi bi-pencil-fill me-1"></i>Đang sửa bên dưới
+                                                </span>
+                                              )}
+                                              {activity.estimatedCost !== undefined && activity.estimatedCost !== null && activity.estimatedCost > 0 ? (
+                                                <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold">
+                                                  <i className="bi bi-wallet2 me-1"></i>
+                                                  {Number(activity.estimatedCost).toLocaleString('vi-VN')} ₫
+                                                </span>
+                                              ) : null}
+                                            </div>
+
+                                            {canEditSelected && !reorderMode && (
+                                              <div className="d-flex align-items-center gap-1 ms-2">
+                                                <button
+                                                  type="button"
+                                                  className={`btn btn-sm ${isEditingThis ? 'btn-primary text-white shadow-sm' : 'btn-outline-primary border-0'} p-1`}
+                                                  onClick={() => handleStartEditActivity(activity)}
+                                                  title={isEditingThis ? 'Đang chỉnh sửa ở form bên dưới' : 'Chỉnh sửa hoạt động'}
+                                                  disabled={saving}
+                                                >
+                                                  <i className="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-sm btn-outline-danger border-0 p-1"
+                                                  onClick={() => setPendingDeleteActivity(activity)}
+                                                  title="Xóa hoạt động"
+                                                  disabled={saving}
+                                                >
+                                                  <i className="bi bi-trash"></i>
+                                                </button>
+                                              </div>
+                                            )}
                                           </div>
-                                  <div className="d-flex justify-content-between align-items-center mt-1">
-                                    <div className="small text-muted">{new Date(activity.date).toLocaleDateString()} · {activity.startTime} - {activity.endTime}{activity.location ? ` · ${activity.location}` : ''}</div>
-                                    {canEditSelected && !reorderMode && (
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-danger border-0 p-1"
-                                        onClick={() => removeActivity(activity._id)}
-                                        title="Xóa hoạt động"
-                                        disabled={saving}
-                                      >
-                                        <i className="bi bi-trash"></i>
-                                      </button>
-                                    )}
-                                  </div>
-                                  {activity.notes && <div className="small mt-1">{activity.notes}</div>}
-                                </div>
+
+                                          <div className="small text-muted mt-1">
+                                            <i className="bi bi-calendar-event me-1"></i>
+                                            {new Date(activity.date).toLocaleDateString('vi-VN')} · <i className="bi bi-clock me-1"></i>{activity.startTime} - {activity.endTime}
+                                            {activity.location ? ` · ${activity.location}` : ''}
+                                          </div>
+                                          {activity.notes && <div className="small text-secondary mt-1 bg-light p-2 rounded">{activity.notes}</div>}
+                                        </div>
                               </div>
                             </div>
                           );
@@ -670,23 +820,7 @@ function Itinerary() {
                         </div>
                       </section>
 
-                      {selected.conflicts?.length > 0 && (
-                        <section className="card border-0 shadow-sm mb-4">
-                          <div className="card-body p-4">
-                            <h2 className="h5 fw-bold mb-3">Cặp hoạt động trùng thời gian</h2>
-                            <div className="vstack gap-2">
-                              {selected.conflicts.map((conflict, index) => (
-                                <div className="border rounded p-2 px-3 bg-warning-subtle" key={index}>
-                                  <i className="bi bi-clock-history me-2"></i>
-                                  <strong>{conflict.first.title}</strong> ({conflict.first.startTime} - {conflict.first.endTime})
-                                  {' … '}
-                                  <strong>{conflict.second.title}</strong> ({conflict.second.startTime} - {conflict.second.endTime})
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </section>
-                      )}
+
 
                       <section className="card border-0 shadow-sm mb-4">
                         <div className="card-body p-4">
@@ -726,21 +860,21 @@ function Itinerary() {
                             <form className="row g-2 align-items-end" onSubmit={addDestination}>
                               <div className="col-md-9">
                                 <label className="form-label" htmlFor="itinerary-destination">Thêm điểm đến</label>
-                                <select
+                                <CustomSelect
                                   id="itinerary-destination"
-                                  className="form-select"
                                   value={destinationId}
-                                  onChange={(event) => setDestinationId(event.target.value)}
+                                  onChange={(e, val) => setDestinationId(val || e.target.value)}
                                   disabled={saving || selectableDestinations.length === 0}
-                                  required
-                                >
-                                  <option value="">Chọn điểm đến</option>
-                                  {selectableDestinations.map((destination) => (
-                                    <option value={destination._id} key={destination._id}>
-                                      {destination.name} — {destination.location}
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="Chọn điểm đến"
+                                  options={[
+                                    { value: '', label: 'Chọn điểm đến' },
+                                    ...selectableDestinations.map((destination) => ({
+                                      value: destination._id,
+                                      label: `${destination.name} — ${destination.location}`,
+                                      icon: 'bi bi-geo-alt'
+                                    }))
+                                  ]}
+                                />
                               </div>
                               <div className="col-md-3">
                                 <button className="btn btn-outline-primary w-100" disabled={saving || !destinationId}>
@@ -802,21 +936,21 @@ function Itinerary() {
                             <form className="row g-2 align-items-end" onSubmit={addTour}>
                               <div className="col-md-9">
                                 <label className="form-label" htmlFor="itinerary-tour">Thêm tour</label>
-                                <select
+                                <CustomSelect
                                   id="itinerary-tour"
-                                  className="form-select"
                                   value={tourId}
-                                  onChange={(event) => setTourId(event.target.value)}
+                                  onChange={(e, val) => setTourId(val || e.target.value)}
                                   disabled={saving || selectableTours.length === 0}
-                                  required
-                                >
-                                  <option value="">Chọn tour</option>
-                                  {selectableTours.map((tour) => (
-                                    <option value={tour._id} key={tour._id}>
-                                      {tour.title}
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="Chọn tour"
+                                  options={[
+                                    { value: '', label: 'Chọn tour' },
+                                    ...selectableTours.map((tour) => ({
+                                      value: tour._id,
+                                      label: tour.title,
+                                      icon: 'bi bi-compass'
+                                    }))
+                                  ]}
+                                />
                               </div>
                               <div className="col-md-3">
                                 <button className="btn btn-outline-primary w-100" disabled={saving || !tourId}>
@@ -834,19 +968,165 @@ function Itinerary() {
                       </section>
 
                       {canEditSelected && (
-                        <form className="card border-0 shadow-sm" onSubmit={addActivity}>
+                        <form
+                          ref={activityFormRef}
+                          className={`card border-0 shadow-sm transition-all ${editingActivityId ? 'border border-2 border-primary shadow' : ''}`}
+                          onSubmit={handleActivitySubmit}
+                        >
                           <div className="card-body p-4">
-                            <h2 className="h5 fw-bold mb-3">Thêm hoạt động</h2>
-                            <div className="row g-3">
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-title">Hoạt động</label><input id="activity-title" className="form-control" value={activityForm.title} onChange={(event) => setActivityForm({ ...activityForm, title: event.target.value })} required /></div>
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-date">Ngày</label><input id="activity-date" type="date" className="form-control" value={activityForm.date} onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })} required /></div>
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-start">Giờ bắt đầu</label><input id="activity-start" type="time" className="form-control" value={activityForm.startTime} onChange={(event) => setActivityForm({ ...activityForm, startTime: event.target.value })} required /></div>
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-end">Giờ kết thúc</label><input id="activity-end" type="time" className="form-control" value={activityForm.endTime} onChange={(event) => setActivityForm({ ...activityForm, endTime: event.target.value })} required /></div>
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-location">Địa điểm</label><input id="activity-location" className="form-control" value={activityForm.location} onChange={(event) => setActivityForm({ ...activityForm, location: event.target.value })} /></div>
-                              <div className="col-md-6"><label className="form-label" htmlFor="activity-cost">Chi phí dự kiến</label><input id="activity-cost" type="number" min="0" className="form-control" value={activityForm.estimatedCost} onChange={(event) => setActivityForm({ ...activityForm, estimatedCost: event.target.value })} /></div>
-                              <div className="col-12"><label className="form-label" htmlFor="activity-notes">Ghi chú</label><textarea id="activity-notes" className="form-control" rows="2" value={activityForm.notes} onChange={(event) => setActivityForm({ ...activityForm, notes: event.target.value })} /></div>
+                            <div className="d-flex align-items-center justify-content-between mb-3">
+                              <h2 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+                                {editingActivityId ? (
+                                  <>
+                                    <i className="bi bi-pencil-square text-primary"></i>
+                                    <span>Chỉnh sửa hoạt động</span>
+                                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 fw-normal small">
+                                      Đang chỉnh sửa
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-plus-circle text-primary"></i>
+                                    <span>Thêm hoạt động</span>
+                                  </>
+                                )}
+                              </h2>
+                              {editingActivityId && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={handleCancelEditActivity}
+                                  disabled={saving}
+                                >
+                                  <i className="bi bi-x me-1"></i>Hủy chỉnh sửa
+                                </button>
+                              )}
                             </div>
-                            <button className="btn btn-primary mt-3" disabled={saving}>Thêm hoạt động</button>
+
+                            <div className="row g-3">
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-title">
+                                  Hoạt động <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  id="activity-title"
+                                  className="form-control"
+                                  value={activityForm.title}
+                                  onChange={(event) => setActivityForm({ ...activityForm, title: event.target.value })}
+                                  placeholder="Ví dụ: Đi cáp treo Fansipan..."
+                                  required
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-date">
+                                  Ngày <span className="text-danger">*</span>
+                                </label>
+                                <CustomDatePicker
+                                  id="activity-date"
+                                  name="date"
+                                  value={activityForm.date}
+                                  onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })}
+                                  required
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-start">
+                                  Giờ bắt đầu <span className="text-danger">*</span>
+                                </label>
+                                <CustomTimePicker
+                                  id="activity-start"
+                                  name="startTime"
+                                  value={activityForm.startTime}
+                                  onChange={(event) => setActivityForm({ ...activityForm, startTime: event.target.value })}
+                                  required
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-end">
+                                  Giờ kết thúc <span className="text-danger">*</span>
+                                </label>
+                                <CustomTimePicker
+                                  id="activity-end"
+                                  name="endTime"
+                                  value={activityForm.endTime}
+                                  onChange={(event) => setActivityForm({ ...activityForm, endTime: event.target.value })}
+                                  required
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-location">Địa điểm</label>
+                                <input
+                                  id="activity-location"
+                                  className="form-control"
+                                  value={activityForm.location}
+                                  onChange={(event) => setActivityForm({ ...activityForm, location: event.target.value })}
+                                  placeholder="Ví dụ: Sa Pa, Lào Cai"
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-md-6">
+                                <label className="form-label" htmlFor="activity-cost">Chi phí dự kiến (₫)</label>
+                                <input
+                                  id="activity-cost"
+                                  type="number"
+                                  min="0"
+                                  step="1000"
+                                  className="form-control"
+                                  value={activityForm.estimatedCost}
+                                  onChange={(event) => setActivityForm({ ...activityForm, estimatedCost: event.target.value })}
+                                  placeholder="Ví dụ: 150000"
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div className="col-12">
+                                <label className="form-label" htmlFor="activity-notes">Ghi chú</label>
+                                <textarea
+                                  id="activity-notes"
+                                  className="form-control"
+                                  rows="2"
+                                  value={activityForm.notes}
+                                  onChange={(event) => setActivityForm({ ...activityForm, notes: event.target.value })}
+                                  placeholder="Thêm ghi chú nếu có..."
+                                  disabled={saving}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="d-flex align-items-center gap-2 mt-3">
+                              <button className="btn btn-primary" disabled={saving}>
+                                {saving ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                                    Đang lưu...
+                                  </>
+                                ) : editingActivityId ? (
+                                  <>
+                                    <i className="bi bi-check2-circle me-1"></i>
+                                    Lưu thay đổi
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-plus-lg me-1"></i>
+                                    Thêm hoạt động
+                                  </>
+                                )}
+                              </button>
+
+                              {editingActivityId && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary"
+                                  onClick={handleCancelEditActivity}
+                                  disabled={saving}
+                                >
+                                  Hủy bỏ
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </form>
                       )}
@@ -866,70 +1146,84 @@ function Itinerary() {
         onCreated={handleCreated}
       />
 
-      {pendingDeleteId && (
-        <>
-          <div className="modal-backdrop fade show"></div>
-          <div className="modal fade show d-block" tabIndex="-1" role="dialog">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Xác nhận xóa</h5>
-                  <button type="button" className="btn-close" onClick={() => setPendingDeleteId(null)} aria-label="Close"></button>
-                </div>
-                <div className="modal-body">
-                  Bạn có chắc muốn xóa lịch trình <strong>{itineraries.find((it) => it._id === pendingDeleteId)?.title}</strong> không? Hành động này không thể hoàn tác.
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setPendingDeleteId(null)}>Hủy</button>
-                  <button type="button" className="btn btn-danger" onClick={() => deleteItinerary(pendingDeleteId)}>Xóa</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-      {confirmModal.open && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Xác nhận xóa</h5>
-                <button type="button" className="btn-close" onClick={() => setConfirmModal({ open: false, destination: null })}></button>
-              </div>
-              <div className="modal-body">
-                Bạn có chắc muốn xóa <strong>{confirmModal.destination?.name}</strong> khỏi lịch trình?
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ open: false, destination: null })}>Hủy</button>
-                <button type="button" className="btn btn-danger" disabled={saving} onClick={removeDestination}>
-                  {saving ? 'Đang xóa...' : 'Xóa'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {confirmTourModal.open && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Xác nhận xóa</h5>
-                <button type="button" className="btn-close" onClick={() => setConfirmTourModal({ open: false, tour: null })}></button>
-              </div>
-              <div className="modal-body">
-                Bạn có chắc muốn xóa <strong>{confirmTourModal.tour?.title}</strong> khỏi lịch trình?
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setConfirmTourModal({ open: false, tour: null })}>Hủy</button>
-                <button type="button" className="btn btn-danger" disabled={saving} onClick={removeTour}>
-                  {saving ? 'Đang xóa...' : 'Xóa'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteId)}
+        title="Xác nhận xóa lịch trình"
+        message={
+          <>
+            Bạn có chắc muốn xóa lịch trình <strong>{itineraries.find((it) => it._id === pendingDeleteId)?.title}</strong> không? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={saving}
+        onConfirm={() => deleteItinerary(pendingDeleteId)}
+        onClose={() => setPendingDeleteId(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeleteActivity)}
+        title="Xác nhận xóa hoạt động"
+        message={
+          <>
+            Bạn có chắc muốn xóa hoạt động <strong>{pendingDeleteActivity?.title || 'này'}</strong> khỏi lịch trình? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={saving}
+        onConfirm={async () => {
+          if (pendingDeleteActivity) {
+            const id = pendingDeleteActivity._id;
+            setPendingDeleteActivity(null);
+            await removeActivity(id);
+          }
+        }}
+        onClose={() => setPendingDeleteActivity(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingRemoveCollaborator)}
+        title="Xác nhận hủy quyền cộng tác viên"
+        confirmText="Hủy quyền"
+        message={
+          <>
+            Bạn có chắc muốn hủy chia sẻ lịch trình với người dùng{' '}
+            <strong>{pendingRemoveCollaborator?.user?.username || pendingRemoveCollaborator?.user?.email || 'này'}</strong> không?
+          </>
+        }
+        loading={Boolean(removingCollaboratorId)}
+        onConfirm={async () => {
+          if (pendingRemoveCollaborator) {
+            const collabId = pendingRemoveCollaborator.user?._id || pendingRemoveCollaborator.user;
+            setPendingRemoveCollaborator(null);
+            await handleRemoveCollaborator(collabId);
+          }
+        }}
+        onClose={() => setPendingRemoveCollaborator(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={confirmModal.open}
+        title="Xác nhận xóa điểm đến"
+        message={
+          <>
+            Bạn có chắc muốn xóa <strong>{confirmModal.destination?.name}</strong> khỏi lịch trình?
+          </>
+        }
+        loading={saving}
+        onConfirm={removeDestination}
+        onClose={() => setConfirmModal({ open: false, destination: null })}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={confirmTourModal.open}
+        title="Xác nhận xóa tour"
+        message={
+          <>
+            Bạn có chắc muốn xóa <strong>{confirmTourModal.tour?.title}</strong> khỏi lịch trình?
+          </>
+        }
+        loading={saving}
+        onConfirm={removeTour}
+        onClose={() => setConfirmTourModal({ open: false, tour: null })}
+      />
 
       {duplicateModal.open && (
         <>
@@ -1047,16 +1341,16 @@ function Itinerary() {
                       <label className="form-label fw-semibold" htmlFor="share-permission">
                         Quyền truy cập
                       </label>
-                      <select
+                      <CustomSelect
                         id="share-permission"
-                        className="form-select"
                         value={shareModal.permission}
-                        onChange={(e) => setShareModal((prev) => ({ ...prev, permission: e.target.value }))}
+                        onChange={(e, val) => setShareModal((prev) => ({ ...prev, permission: val || e.target.value }))}
                         disabled={shareModal.submitting}
-                      >
-                        <option value="view">Chỉ xem (View) - Người nhận có thể xem và xuất lịch trình</option>
-                        <option value="edit">Được chỉnh sửa (Edit) - Người nhận có thể thêm/xóa hoạt động, sắp xếp lại</option>
-                      </select>
+                        options={[
+                          { value: 'view', label: 'Chỉ xem (View)', icon: 'bi bi-eye' },
+                          { value: 'edit', label: 'Chỉnh sửa (Edit)', icon: 'bi bi-pencil-square' }
+                        ]}
+                      />
                     </div>
 
                     <div className="border-top pt-3">
@@ -1064,38 +1358,46 @@ function Itinerary() {
                         Người tham gia hiện tại ({(selected?.collaborators || []).length})
                       </h6>
                       {(!selected?.collaborators || selected.collaborators.length === 0) ? (
-                        <p className="text-muted small mb-0 fst-italic">Chưa có người nào được chia sẻ lịch trình này.</p>
+                        <div className="tm-list-empty py-3">
+                          <i className="bi bi-people tm-list-empty-icon" style={{ fontSize: '1.4rem' }}></i>
+                          Chưa có người nào được chia sẻ lịch trình này.
+                        </div>
                       ) : (
-                        <div className="list-group list-group-flush border rounded">
+                        <div className="tm-collaborator-list">
                           {selected.collaborators.map((c) => {
                             const collabUserId = c.user?._id || c.user;
                             const isRemoving = removingCollaboratorId === collabUserId;
+                            const displayName = c.user?.username || 'Người dùng';
+                            const initial = displayName.charAt(0).toUpperCase();
                             return (
-                              <div key={collabUserId} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                                <div>
-                                  <div className="fw-semibold small">
-                                    {c.user?.username || 'Người dùng'}
-                                    {c.user?.email && <span className="text-muted fw-normal ms-1">({c.user.email})</span>}
+                              <div key={collabUserId} className="tm-collaborator-item">
+                                <div className="d-flex align-items-center min-w-0 flex-grow-1">
+                                  <div className="tm-collaborator-avatar">{initial}</div>
+                                  <div className="tm-collaborator-meta">
+                                    <div className="tm-collaborator-name">{displayName}</div>
+                                    {c.user?.email && <div className="tm-collaborator-email">{c.user.email}</div>}
                                   </div>
-                                  <span className={`badge ${c.permission === 'edit' ? 'text-bg-warning' : 'text-bg-secondary'}`} style={{ fontSize: '0.7rem' }}>
-                                    {c.permission === 'edit' ? 'Được chỉnh sửa' : 'Chỉ xem'}
-                                  </span>
                                 </div>
-                                {isOwner && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-danger btn-sm py-0 px-2"
-                                    title="Hủy chia sẻ"
-                                    disabled={isRemoving || shareModal.submitting}
-                                    onClick={() => handleRemoveCollaborator(collabUserId)}
-                                  >
-                                    {isRemoving ? (
-                                      <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                                    ) : (
-                                      <i className="bi bi-person-x me-1"> Xóa</i>
-                                    )}
-                                  </button>
-                                )}
+                                <div className="d-flex align-items-center gap-2 ms-2">
+                                  <span className={`tm-collaborator-badge ${c.permission === 'edit' ? 'badge-edit' : 'badge-view'}`}>
+                                    {c.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
+                                  </span>
+                                  {isOwner && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-danger btn-sm py-1 px-2 border-0"
+                                      title="Hủy chia sẻ"
+                                      disabled={isRemoving || shareModal.submitting}
+                                      onClick={() => handleRemoveCollaborator(collabUserId)}
+                                    >
+                                      {isRemoving ? (
+                                        <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                      ) : (
+                                        <i className="bi bi-trash3 text-danger"></i>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}

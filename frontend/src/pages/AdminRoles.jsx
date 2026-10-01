@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { roleApi } from '../services/api';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const emptyForm = { name: '', description: '' };
 
@@ -73,6 +74,7 @@ function AdminRoles() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState(null);
+  const [roleToDelete, setRoleToDelete] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [processingId, setProcessingId] = useState('');
 
@@ -109,12 +111,13 @@ function AdminRoles() {
     await loadRoles();
   };
 
-  const handleDelete = async (role) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa vai trò "${role.name}"?`)) return;
-    setProcessingId(role._id);
+  const confirmDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setProcessingId(roleToDelete._id);
     try {
-      const response = await roleApi.remove(role._id);
+      const response = await roleApi.remove(roleToDelete._id);
       toast.success(response.message || 'Đã xóa vai trò.');
+      setRoleToDelete(null);
       await loadRoles();
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa vai trò.');
@@ -153,7 +156,7 @@ function AdminRoles() {
                             ) : (
                               <>
                                 <button className="btn btn-sm btn-outline-primary" onClick={() => openEditForm(role)} disabled={processingId === role._id}>Sửa</button>
-                                <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(role)} disabled={processingId === role._id}>Xóa</button>
+                                <button className="btn btn-sm btn-outline-danger" onClick={() => setRoleToDelete(role)} disabled={processingId === role._id}>Xóa</button>
                               </>
                             )}
                           </div>
@@ -168,6 +171,18 @@ function AdminRoles() {
         </div>
       </section>
       {isFormOpen && <><div className="modal-backdrop fade show"></div><RoleForm role={selectedRole} onClose={() => setIsFormOpen(false)} onSaved={handleSaved} /></>}
+      <ConfirmDeleteModal
+        isOpen={Boolean(roleToDelete)}
+        title="Xác nhận xóa vai trò"
+        message={
+          <>
+            Bạn có chắc muốn xóa vai trò <strong>{roleToDelete?.name}</strong>?
+          </>
+        }
+        loading={Boolean(processingId)}
+        onConfirm={confirmDeleteRole}
+        onClose={() => setRoleToDelete(null)}
+      />
     </>
   );
 }
