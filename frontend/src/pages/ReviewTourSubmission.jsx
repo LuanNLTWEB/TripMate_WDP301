@@ -148,10 +148,6 @@ function ReviewTourSubmission() {
         </div>
       )}
 
-        <Link to="/management/pending-tours" className="btn btn-outline-secondary btn-sm mb-3">
-        <i className="bi bi-arrow-left me-1"></i>Quay lại danh sách duyệt tour
-      </Link>
-
       <div className="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
         {tour.images?.[0] ? (
           <img src={tour.images[0]} alt={tour.title} className="w-100" style={{ height: '280px', objectFit: 'cover' }} />
