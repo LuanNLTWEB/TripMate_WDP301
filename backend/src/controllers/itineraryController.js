@@ -51,7 +51,8 @@ const canEdit = (itinerary, userId) => (
 );
 
 /**
- * Create an empty personal itinerary owned by the authenticated customer.
+ * Create a personal itinerary owned by the authenticated customer.
+ * Guards against double-submit (same title from the same owner within 3 seconds).
  * @route POST /api/itineraries
  * @access Customer
  */
@@ -62,8 +63,31 @@ export const createItinerary = async (req, res) => {
   }
 
   try {
-    const itinerary = await Itinerary.create({ ...req.body, owner: req.user._id });
-    return res.status(201).json({ success: true, itinerary });
+    const { title, budget, startDate, endDate } = req.body;
+    const normalizedTitle = String(title).trim();
+
+    const recentDuplicate = await Itinerary.findOne({
+      owner: req.user._id,
+      title: normalizedTitle,
+      createdAt: { $gte: new Date(Date.now() - 3000) }
+    });
+    if (recentDuplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Lịch trình tương tự vừa được tạo, vui lòng chờ trong giây lát'
+      });
+    }
+
+    const itinerary = await Itinerary.create({
+      title: normalizedTitle,
+      budget,
+      startDate,
+      endDate,
+      owner: req.user._id
+    });
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated) });
   } catch (error) {
     console.error('Create itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Unable to create itinerary' });

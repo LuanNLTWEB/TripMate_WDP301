@@ -190,16 +190,22 @@ export const itineraryValidation = [
   body('title')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập tên lịch trình')
-    .isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+    .isLength({ min: 3, max: 120 }).withMessage('Tên lịch trình phải từ 3 đến 120 ký tự'),
   body('budget')
-    .optional()
-    .isFloat({ min: 0 }).withMessage('Ngân sách không được âm'),
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0, max: 500000000 }).withMessage('Ngân sách không hợp lệ'),
   body('startDate')
     .optional({ values: 'falsy' })
     .isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
   body('endDate')
     .optional({ values: 'falsy' })
     .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
+    .custom((endDate, { req }) => {
+      if (req.body.startDate && new Date(endDate) < new Date(req.body.startDate)) {
+        throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
+      }
+      return true;
+    })
 ];
 
 export const activityValidation = [

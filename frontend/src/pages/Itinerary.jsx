@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ItineraryPrintView from '../components/ItineraryPrintView';
+import CreateItineraryModal from './CreateItineraryModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
-const initialItinerary = { title: '', budget: '' };
 const initialActivity = {
   title: '', date: '', startTime: '', endTime: '', location: '', estimatedCost: '', notes: ''
+};
+
+const formatDateRange = (startDate, endDate) => {
+  if (!startDate && !endDate) return '';
+  const format = (value) => new Date(value).toLocaleDateString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+  if (startDate && endDate) return `${format(startDate)} - ${format(endDate)}`;
+  return format(startDate || endDate);
 };
 
 function Itinerary() {
@@ -18,7 +27,7 @@ function Itinerary() {
   const [sharedItineraries, setSharedItineraries] = useState([]);
   const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
-  const [itineraryForm, setItineraryForm] = useState(initialItinerary);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [destinations, setDestinations] = useState([]);
   const [destinationId, setDestinationId] = useState('');
@@ -73,25 +82,10 @@ function Itinerary() {
     )));
   };
 
-  const createItinerary = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const response = await itineraryApi.create({
-        title: itineraryForm.title,
-        budget: Number(itineraryForm.budget || 0)
-      });
-      setItineraryForm(initialItinerary);
-      setItineraries((current) => [response.itinerary, ...current]);
-      setSelected(response.itinerary);
-      setActiveTab('mine');
-      toast.success('Đã tạo lịch trình mới.');
-    } catch (requestError) {
-      toast.error(requestError.message || 'Không thể tạo lịch trình.');
-    } finally {
-      setSaving(false);
-    }
+  const handleCreated = (itinerary) => {
+    setItineraries((current) => [itinerary, ...current]);
+    setSelected(itinerary);
+    setActiveTab('mine');
   };
 
   const addActivity = async (event) => {
@@ -364,21 +358,21 @@ function Itinerary() {
               <div className="row g-4">
                 <div className="col-lg-4">
                   {activeTab === 'mine' && (
-                    <form className="card border-0 shadow-sm mb-4" onSubmit={createItinerary}>
-                      <div className="card-body p-4">
-                        <h2 className="h5 fw-bold mb-3">Tạo lịch trình</h2>
-                        <label className="form-label" htmlFor="itinerary-title">Tên lịch trình</label>
-                        <input id="itinerary-title" className="form-control mb-3" value={itineraryForm.title} onChange={(event) => setItineraryForm({ ...itineraryForm, title: event.target.value })} required />
-                        <label className="form-label" htmlFor="itinerary-budget">Ngân sách dự kiến</label>
-                        <input id="itinerary-budget" type="number" min="0" className="form-control mb-3" value={itineraryForm.budget} onChange={(event) => setItineraryForm({ ...itineraryForm, budget: event.target.value })} />
-                        <button className="btn btn-primary w-100" disabled={saving}>Tạo lịch trình</button>
+                    <div className="card border-0 shadow-sm mb-4">
+                      <div className="card-body p-4 text-center">
+                        <h2 className="h5 fw-bold mb-2">Tạo lịch trình</h2>
+                        <p className="text-muted small mb-3">Bắt đầu lên kế hoạch cho chuyến đi của bạn.</p>
+                        <button type="button" className="btn btn-primary w-100" onClick={() => setCreateModalOpen(true)}>
+                          <i className="bi bi-calendar-plus me-1"></i>Tạo lịch trình
+                        </button>
                       </div>
-                    </form>
+                    </div>
                   )}
 
                   <div className="list-group shadow-sm">
                     {visibleItineraries.map((itinerary) => {
                       const isItemActive = selected?._id === itinerary._id;
+                      const dateRange = formatDateRange(itinerary.startDate, itinerary.endDate);
                       return (
                         <div
                           key={itinerary._id}
@@ -390,6 +384,7 @@ function Itinerary() {
                             <span className="fw-semibold d-block text-truncate">{itinerary.title}</span>
                             <small className={isItemActive ? 'text-white-50' : 'text-muted'}>
                               {itinerary.activities?.length || 0} hoạt động
+                              {dateRange && <span> · {dateRange}</span>}
                             </small>
                             {activeTab === 'shared' && itinerary.owner?.username && (
                               <small className={`d-block ${isItemActive ? 'text-white' : 'text-primary'}`}>
@@ -749,6 +744,12 @@ function Itinerary() {
         </div>
       </main>
       <Footer />
+
+      <CreateItineraryModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={handleCreated}
+      />
 
       {pendingDeleteId && (
         <>
