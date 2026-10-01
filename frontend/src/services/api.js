@@ -194,7 +194,8 @@ export const statsApi = {
 };
 
 export const reviewApi = {
-  getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' })
+  getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' })
 };
 
 export const tourApi = {
