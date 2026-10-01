@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { tourApi, tourCategoryApi } from '../services/api';
+import { tourApi, tourCategoryApi, uploadApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
 export default function ProviderCreateTour() {
@@ -12,6 +12,8 @@ export default function ProviderCreateTour() {
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [imageFile, setImageFile] = useState(null);
+  const [fileName, setFileName] = useState('Chưa có tệp nào được chọn');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -19,9 +21,9 @@ export default function ProviderCreateTour() {
     departureLocation: '',
     destinationLocation: '',
     location: '',
-    duration: '3 ngày 2 đêm',
+    duration: '',
     price: '',
-    availableSeats: '20',
+    availableSeats: '',
     imageUrl: '',
     description: ''
   });
@@ -41,6 +43,28 @@ export default function ProviderCreateTour() {
       }
       return updated;
     });
+  };
+
+  const handlePriceChange = (e) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    setFormData((prev) => ({ ...prev, price: rawValue }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Kích thước ảnh không được vượt quá 5MB.');
+        return;
+      }
+      setImageFile(file);
+      setFileName(file.name);
+      const previewUrl = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, imageUrl: previewUrl }));
+      setError('');
+    } else {
+      setFileName('Chưa có tệp nào được chọn');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -64,26 +88,44 @@ export default function ProviderCreateTour() {
       setError('Giá tour phải là một số hợp lệ lớn hơn hoặc bằng 0.');
       return;
     }
+    const numSeats = Number(formData.availableSeats);
+    if (!formData.availableSeats || isNaN(numSeats) || numSeats <= 0) {
+      setError('Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).');
+      return;
+    }
     if (!formData.description.trim()) {
       setError('Vui lòng nhập mô tả chi tiết tour.');
       return;
     }
-
-    const payload = {
-      title: formData.title.trim(),
-      categoryId: formData.categoryId || null,
-      departureLocation: formData.departureLocation.trim(),
-      destinationLocation: formData.destinationLocation.trim(),
-      location: (formData.location || formData.destinationLocation).trim(),
-      duration: formData.duration.trim(),
-      price: numPrice,
-      availableSeats: Number(formData.availableSeats) || 0,
-      description: formData.description.trim(),
-      images: formData.imageUrl.trim() ? [formData.imageUrl.trim()] : []
-    };
+    if (!imageFile && !formData.imageUrl) {
+      setError('Vui lòng chọn hình ảnh đại diện.');
+      return;
+    }
 
     setIsSubmitting(true);
+    let uploadedImageUrl = formData.imageUrl;
+
     try {
+      if (imageFile) {
+        const uploadData = new FormData();
+        uploadData.append('image', imageFile);
+        const uploadRes = await uploadApi.uploadImage(uploadData);
+        uploadedImageUrl = uploadRes.url;
+      }
+
+      const payload = {
+        title: formData.title.trim(),
+        categoryId: formData.categoryId || null,
+        departureLocation: formData.departureLocation.trim(),
+        destinationLocation: formData.destinationLocation.trim(),
+        location: (formData.location || formData.destinationLocation).trim(),
+        duration: formData.duration.trim(),
+        price: numPrice,
+        availableSeats: Number(formData.availableSeats) || 0,
+        description: formData.description.trim(),
+        images: uploadedImageUrl.trim() ? [uploadedImageUrl.trim()] : []
+      };
+
       const response = await tourApi.create(payload);
       toast.success(response.message || 'Tạo tour thành công! Tour đã được gửi chờ kiểm duyệt.');
       navigate('/tours');
@@ -91,6 +133,9 @@ export default function ProviderCreateTour() {
       setError(err.message || 'Không thể tạo tour. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
+      if (imageFile && formData.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.imageUrl);
+      }
     }
   };
 
@@ -233,29 +278,22 @@ export default function ProviderCreateTour() {
                     </label>
                     <div className="input-group">
                       <input
-                        type="number"
+                        type="text"
                         id="price"
                         name="price"
                         className="form-control"
-                        placeholder="Ví dụ: 3500000"
-                        min="0"
-                        step="10000"
-                        value={formData.price}
-                        onChange={handleChange}
+                        placeholder="Ví dụ: 3.500.000"
+                        value={formData.price ? new Intl.NumberFormat('vi-VN').format(Number(formData.price)) : ''}
+                        onChange={handlePriceChange}
                         required
                       />
                       <span className="input-group-text">₫</span>
                     </div>
-                    {formData.price && !isNaN(Number(formData.price)) && (
-                      <div className="form-text text-primary fw-medium">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(formData.price))}
-                      </div>
-                    )}
                   </div>
 
                   <div className="col-md-6">
                     <label className="form-label fw-semibold" htmlFor="availableSeats">
-                      Số lượng chỗ còn trống
+                      Số lượng chỗ còn trống <span className="text-danger">*</span>
                     </label>
                     <input
                       type="number"
@@ -263,9 +301,10 @@ export default function ProviderCreateTour() {
                       name="availableSeats"
                       className="form-control"
                       placeholder="Ví dụ: 20"
-                      min="0"
+                      min="1"
                       value={formData.availableSeats}
                       onChange={handleChange}
+                      required
                     />
                   </div>
                 </div>
@@ -278,20 +317,25 @@ export default function ProviderCreateTour() {
 
                 <div className="row g-3 mb-4">
                   <div className="col-12">
-                    <label className="form-label fw-semibold" htmlFor="imageUrl">
-                      URL Hình ảnh đại diện
+                    <label className="form-label fw-semibold d-block">
+                      Hình ảnh đại diện <span className="text-danger">*</span>
                     </label>
+                    <div className="d-flex align-items-center gap-3">
+                      <label htmlFor="imageFile" className="btn btn-outline-primary mb-0">
+                        <i className="bi bi-upload me-2"></i>Chọn tệp
+                      </label>
+                      <span className="text-muted small">{fileName}</span>
+                    </div>
                     <input
-                      type="url"
-                      id="imageUrl"
-                      name="imageUrl"
-                      className="form-control"
-                      placeholder="https://images.unsplash.com/..."
-                      value={formData.imageUrl}
-                      onChange={handleChange}
+                      type="file"
+                      id="imageFile"
+                      name="imageFile"
+                      className="d-none"
+                      accept="image/jpeg, image/png, image/webp"
+                      onChange={handleImageChange}
                     />
-                    <div className="form-text">
-                      Nhập đường dẫn ảnh trực tiếp (Unsplash, Cloudinary, Imgur...).
+                    <div className="form-text mt-2">
+                      Chọn file ảnh từ thiết bị của bạn (tối đa 5MB, định dạng JPG, PNG, WEBP).
                     </div>
 
                     {formData.imageUrl && (

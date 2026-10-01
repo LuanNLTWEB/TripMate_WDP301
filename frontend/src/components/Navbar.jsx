@@ -110,7 +110,6 @@ function Navbar() {
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
               onClick={() => setIsDropdownOpen(false)}
             >
-              <i className="bi bi-plus-circle fs-6"></i>
               <span>Tạo tour mới</span>
             </Link>
           )}
@@ -198,7 +197,7 @@ function Navbar() {
                 {user?.role === 'tourProvider' && (
                   <li className="nav-item">
                     <Link className={`nav-pill-link ${isActiveRoute('/provider/create-tour') ? 'active' : ''}`} to="/provider/create-tour">
-                      <i className="bi bi-plus-circle me-1"></i>Tạo tour
+                      Tạo tour
                     </Link>
                   </li>
                 )}

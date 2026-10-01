@@ -29,10 +29,13 @@ export const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
   
   const headers = {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers
   };
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -237,6 +240,12 @@ export const tourApi = {
   requestRevision: (id, note) => apiRequest(`/tours/${id}/revision`, {
     method: 'PATCH',
     body: JSON.stringify({ note })
+  })
+};
+export const uploadApi = {
+  uploadImage: (formData) => apiRequest('/upload', {
+    method: 'POST',
+    body: formData
   })
 };
 
