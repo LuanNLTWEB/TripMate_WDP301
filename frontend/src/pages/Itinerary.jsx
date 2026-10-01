@@ -42,6 +42,14 @@ function Itinerary() {
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderList, setReorderList] = useState([]);
+  const [shareModal, setShareModal] = useState({
+    open: false,
+    email: '',
+    permission: 'view',
+    submitting: false,
+    error: ''
+  });
+  const [removingCollaboratorId, setRemovingCollaboratorId] = useState(null);
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -289,7 +297,71 @@ function Itinerary() {
     }
   };
 
-  const currentUserId = String(user?.id || '');
+  const openShareModal = () => {
+    setShareModal({
+      open: true,
+      email: '',
+      permission: 'view',
+      submitting: false,
+      error: ''
+    });
+  };
+
+  const closeShareModal = () => {
+    if (shareModal.submitting) return;
+    setShareModal({
+      open: false,
+      email: '',
+      permission: 'view',
+      submitting: false,
+      error: ''
+    });
+  };
+
+  const handleShareItinerary = async (e) => {
+    e.preventDefault();
+    if (!selected || !shareModal.email.trim()) return;
+
+    setShareModal((prev) => ({ ...prev, submitting: true, error: '' }));
+    try {
+      const response = await itineraryApi.share(selected._id, {
+        email: shareModal.email.trim().toLowerCase(),
+        permission: shareModal.permission
+      });
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã chia sẻ lịch trình thành công.');
+      setShareModal({
+        open: false,
+        email: '',
+        permission: 'view',
+        submitting: false,
+        error: ''
+      });
+    } catch (err) {
+      setShareModal((prev) => ({
+        ...prev,
+        submitting: false,
+        error: err.message || 'Không thể chia sẻ lịch trình.'
+      }));
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId) => {
+    if (!selected || !window.confirm('Bạn có chắc muốn hủy chia sẻ với người dùng này không?')) return;
+
+    setRemovingCollaboratorId(userId);
+    try {
+      const response = await itineraryApi.removeCollaborator(selected._id, userId);
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã hủy quyền cộng tác viên thành công.');
+    } catch (err) {
+      toast.error(err.message || 'Không thể hủy quyền cộng tác viên.');
+    } finally {
+      setRemovingCollaboratorId(null);
+    }
+  };
+
+  const currentUserId = String(user?._id || user?.id || '');
   const isOwner = selected && String(selected.owner?._id || selected.owner) === currentUserId;
   const myPermission = selected?.collaborators?.find(
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
@@ -449,6 +521,17 @@ function Itinerary() {
                               <span className={`badge ${isOwner ? 'text-bg-primary' : canEditSelected ? 'text-bg-success' : 'text-bg-secondary'}`}>
                                 {isOwner ? 'Chủ sở hữu' : canEditSelected ? 'Có thể chỉnh sửa' : 'Chỉ xem'}
                               </span>
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-success btn-sm"
+                                  onClick={openShareModal}
+                                  title="Chia sẻ lịch trình với người khác"
+                                >
+                                  <i className="bi bi-share me-1"></i>
+                                  Chia sẻ
+                                </button>
+                              )}
                               <button type="button" className="btn btn-outline-primary btn-sm" onClick={exportItinerary}>
                                 <i className="bi bi-printer me-1"></i>
                                 Xuất lịch trình
@@ -477,6 +560,38 @@ function Itinerary() {
                               )}
                             </div>
                           </div>
+
+                          {(selected.collaborators || []).length > 0 && (
+                            <div className="d-flex align-items-center flex-wrap gap-2 mb-3 p-2 bg-light rounded border">
+                              <small className="text-muted fw-semibold">
+                                <i className="bi bi-people me-1"></i>Người tham gia ({selected.collaborators.length}):
+                              </small>
+                              {selected.collaborators.map((c) => {
+                                const collabId = c.user?._id || c.user;
+                                return (
+                                  <span key={collabId} className="badge bg-white text-dark border d-flex align-items-center gap-1 py-1 px-2">
+                                    <i className="bi bi-person-fill text-primary"></i>
+                                    <span>{c.user?.username || c.user?.email || 'Người dùng'}</span>
+                                    <span className={`badge ${c.permission === 'edit' ? 'text-bg-warning' : 'text-bg-secondary'}`} style={{ fontSize: '0.65rem' }}>
+                                      {c.permission === 'edit' ? 'Sửa' : 'Xem'}
+                                    </span>
+                                    {isOwner && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-link p-0 text-danger ms-1"
+                                        style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                                        title="Hủy chia sẻ"
+                                        disabled={removingCollaboratorId === collabId}
+                                        onClick={() => handleRemoveCollaborator(collabId)}
+                                      >
+                                        <i className="bi bi-x"></i>
+                                      </button>
+                                    )}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           {(selected.conflicts || []).length > 0 && (
                             <div className="alert alert-warning mb-3">
@@ -866,6 +981,147 @@ function Itinerary() {
                         <>
                           <i className="bi bi-copy me-1"></i>
                           Xác nhận nhân bản
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {shareModal.open && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bold">
+                    <i className="bi bi-share me-2 text-primary"></i>
+                    Chia sẻ lịch trình cá nhân
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={closeShareModal}
+                    disabled={shareModal.submitting}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <form onSubmit={handleShareItinerary}>
+                  <div className="modal-body">
+                    <p className="text-muted small mb-3">
+                      Chia sẻ lịch trình <strong>{selected?.title}</strong> với người dùng khác qua địa chỉ email đã đăng ký trên hệ thống.
+                    </p>
+
+                    {shareModal.error && (
+                      <div className="alert alert-danger py-2 small mb-3">
+                        <i className="bi bi-exclamation-circle me-1"></i>
+                        {shareModal.error}
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold" htmlFor="share-email">
+                        Email người nhận <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text"><i className="bi bi-envelope"></i></span>
+                        <input
+                          id="share-email"
+                          type="email"
+                          className="form-control"
+                          placeholder="nguoidung@example.com"
+                          value={shareModal.email}
+                          onChange={(e) => setShareModal((prev) => ({ ...prev, email: e.target.value, error: '' }))}
+                          required
+                          disabled={shareModal.submitting}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold" htmlFor="share-permission">
+                        Quyền truy cập
+                      </label>
+                      <select
+                        id="share-permission"
+                        className="form-select"
+                        value={shareModal.permission}
+                        onChange={(e) => setShareModal((prev) => ({ ...prev, permission: e.target.value }))}
+                        disabled={shareModal.submitting}
+                      >
+                        <option value="view">Chỉ xem (View) - Người nhận có thể xem và xuất lịch trình</option>
+                        <option value="edit">Được chỉnh sửa (Edit) - Người nhận có thể thêm/xóa hoạt động, sắp xếp lại</option>
+                      </select>
+                    </div>
+
+                    <div className="border-top pt-3">
+                      <h6 className="fw-semibold small text-uppercase text-muted mb-2">
+                        Người tham gia hiện tại ({(selected?.collaborators || []).length})
+                      </h6>
+                      {(!selected?.collaborators || selected.collaborators.length === 0) ? (
+                        <p className="text-muted small mb-0 fst-italic">Chưa có người nào được chia sẻ lịch trình này.</p>
+                      ) : (
+                        <div className="list-group list-group-flush border rounded">
+                          {selected.collaborators.map((c) => {
+                            const collabUserId = c.user?._id || c.user;
+                            const isRemoving = removingCollaboratorId === collabUserId;
+                            return (
+                              <div key={collabUserId} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                  <div className="fw-semibold small">
+                                    {c.user?.username || 'Người dùng'}
+                                    {c.user?.email && <span className="text-muted fw-normal ms-1">({c.user.email})</span>}
+                                  </div>
+                                  <span className={`badge ${c.permission === 'edit' ? 'text-bg-warning' : 'text-bg-secondary'}`} style={{ fontSize: '0.7rem' }}>
+                                    {c.permission === 'edit' ? 'Được chỉnh sửa' : 'Chỉ xem'}
+                                  </span>
+                                </div>
+                                {isOwner && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-danger btn-sm py-0 px-2"
+                                    title="Hủy chia sẻ"
+                                    disabled={isRemoving || shareModal.submitting}
+                                    onClick={() => handleRemoveCollaborator(collabUserId)}
+                                  >
+                                    {isRemoving ? (
+                                      <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                    ) : (
+                                      <i className="bi bi-person-x me-1"> Xóa</i>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={closeShareModal}
+                      disabled={shareModal.submitting}
+                    >
+                      Đóng
+                    </button>
+                    <button type="submit" className="btn btn-primary" disabled={shareModal.submitting}>
+                      {shareModal.submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-share me-1"></i>
+                          Chia sẻ ngay
                         </>
                       )}
                     </button>

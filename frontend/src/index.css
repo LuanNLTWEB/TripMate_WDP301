@@ -843,6 +843,312 @@ main {
   border-top: 1px solid #e5eaf2;
 }
 
+/* ========================================================
+   UNIFIED MANAGEMENT TABLE DESIGN SYSTEM
+   ======================================================== */
+.management-table-card {
+  background: #ffffff;
+  border: 1px solid #e5eaf2;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(18, 22, 42, 0.04);
+  overflow: hidden;
+}
+
+.management-table-toolbar {
+  padding: 16px 22px;
+  background: #ffffff;
+  border-bottom: 1px solid #edf2f7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.management-search-box {
+  position: relative;
+  min-width: 260px;
+  max-width: 420px;
+  flex: 1;
+}
+
+.management-search-box .bi-search {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+.management-search-box input {
+  width: 100%;
+  padding-left: 40px;
+  padding-right: 14px;
+  height: 40px;
+  font-size: 0.88rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+
+.management-search-box input:focus {
+  background: #ffffff;
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.management-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.management-table thead th {
+  padding: 14px 20px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+  border-top: none;
+  white-space: nowrap;
+}
+
+.management-table tbody td {
+  padding: 16px 20px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 0.9rem;
+  transition: background-color 0.15s ease;
+}
+
+.management-table tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+.management-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Action Buttons */
+.management-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.management-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.92rem;
+  transition: all 0.18s ease;
+  cursor: pointer;
+  padding: 0;
+}
+
+.management-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.management-action-btn.btn-view {
+  color: #0284c7;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+.management-action-btn.btn-view:hover {
+  color: #0369a1;
+  background: #e0f2fe;
+}
+
+.management-action-btn.btn-edit {
+  color: #4f46e5;
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+.management-action-btn.btn-edit:hover {
+  color: #4338ca;
+  background: #e0e7ff;
+}
+
+.management-action-btn.btn-delete {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.management-action-btn.btn-delete:hover {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.management-action-btn.btn-approve {
+  color: #16a34a;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+.management-action-btn.btn-approve:hover {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.management-action-btn.btn-flag {
+  color: #d97706;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.management-action-btn.btn-flag:hover {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+/* Status Badges */
+.management-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.management-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.management-badge.badge-success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.management-badge.badge-success .management-badge-dot {
+  background: #10b981;
+}
+
+.management-badge.badge-danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.management-badge.badge-danger .management-badge-dot {
+  background: #ef4444;
+}
+
+.management-badge.badge-warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.management-badge.badge-warning .management-badge-dot {
+  background: #f59e0b;
+}
+
+.management-badge.badge-secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+.management-badge.badge-secondary .management-badge-dot {
+  background: #94a3b8;
+}
+
+.management-badge.badge-info {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+.management-badge.badge-info .management-badge-dot {
+  background: #0ea5e9;
+}
+
+.management-badge.badge-primary {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+.management-badge.badge-primary .management-badge-dot {
+  background: #2563eb;
+}
+
+/* Empty State */
+.management-empty-state {
+  padding: 42px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.management-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+/* Thumbnail preview in table */
+.management-table-thumb {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.management-table-thumb-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 1.25rem;
+}
+
+/* Pagination Bar */
+.management-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 22px;
+  background: #ffffff;
+  border-top: 1px solid #edf2f7;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
 .management-sidebar-toggle {
   display: none;
 }

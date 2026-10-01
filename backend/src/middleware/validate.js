@@ -221,6 +221,17 @@ export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
 
+export const shareItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('email').isEmail().withMessage('Email người nhận không hợp lệ').normalizeEmail(),
+  body('permission').isIn(['view', 'edit']).withMessage('Quyền hạn phải là "view" hoặc "edit"')
+];
+
+export const removeCollaboratorValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('userId').isMongoId().withMessage('Mã người dùng không hợp lệ')
+];
+
 export const tourIdValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ')
 ];

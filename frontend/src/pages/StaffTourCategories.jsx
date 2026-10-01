@@ -13,6 +13,7 @@ function StaffTourCategories() {
   const [editingId, setEditingId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [search, setSearch] = useState('');
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -108,128 +109,164 @@ function StaffTourCategories() {
     }
   };
 
+  const filteredCategories = categories.filter((cat) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return cat.name?.toLowerCase().includes(q) || cat.description?.toLowerCase().includes(q);
+  });
+
   return (
     <section className="management-page-section">
-      <div className="container-fluid px-0">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-          <div>
-            <h1 className="h3 fw-bold mb-1">Quản lý danh mục tour</h1>
-            <p className="text-muted mb-0">Xem và quản lý các danh mục phân loại tour du lịch</p>
+      <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <span className="management-page-kicker">Tour Categories</span>
+          <h1>Quản lý danh mục tour</h1>
+          <p>Xem, tạo mới và phân loại các danh mục tour du lịch trên hệ thống.</p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary d-inline-flex align-items-center gap-2"
+          onClick={showForm ? handleCancel : openCreateForm}
+        >
+          <i className={`bi ${showForm ? 'bi-x-lg' : 'bi-plus-circle'}`}></i>
+          <span>{showForm ? 'Đóng biểu mẫu' : 'Thêm danh mục tour'}</span>
+        </button>
+      </div>
+
+      {showForm && (
+        <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={handleSubmit}>
+          <div className="card-body p-4">
+            <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa danh mục tour' : 'Tạo danh mục tour mới'}</h2>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="category-name">Tên danh mục tour</label>
+                <input
+                  id="category-name"
+                  name="name"
+                  className="form-control"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  placeholder="VD: Du lịch sinh thái, Nghỉ dưỡng, Mạo hiểm..."
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="category-description">Mô tả</label>
+                <input
+                  id="category-description"
+                  name="description"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={handleFormChange}
+                  placeholder="Mô tả ngắn về danh mục này..."
+                />
+              </div>
+            </div>
+            <div className="d-flex gap-2 mt-4">
+              <button className="btn btn-primary" type="submit" disabled={isSaving}>
+                {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật danh mục' : 'Lưu danh mục')}
+              </button>
+              <button className="btn btn-outline-secondary" type="button" onClick={handleCancel}>
+                Hủy
+              </button>
+            </div>
           </div>
-          <button className="btn btn-primary" onClick={showForm ? handleCancel : openCreateForm}>
-            <i className="bi bi-plus-circle me-2"></i>{showForm ? 'Đóng biểu mẫu' : 'Thêm danh mục tour'}
-          </button>
+        </form>
+      )}
+
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          {error}
+          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
+        </div>
+      )}
+
+      <div className="management-table-card">
+        <div className="management-table-toolbar">
+          <div className="management-search-box">
+            <i className="bi bi-search"></i>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm danh mục theo tên hoặc mô tả..."
+              aria-label="Tìm kiếm danh mục tour"
+            />
+          </div>
+          <div className="text-muted small">
+            Hiển thị <strong>{filteredCategories.length}</strong> / {categories.length} danh mục
+          </div>
         </div>
 
-        {showForm && (
-          <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={handleSubmit}>
-            <div className="card-body p-4">
-              <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa danh mục tour' : 'Tạo danh mục tour'}</h2>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="category-name">Tên danh mục tour</label>
-                  <input
-                    id="category-name"
-                    name="name"
-                    className="form-control"
-                    value={formData.name}
-                    onChange={handleFormChange}
-                    placeholder="VD: Du lịch sinh thái, Nghỉ dưỡng, Mạo hiểm..."
-                    required
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="category-description">Mô tả</label>
-                  <input
-                    id="category-description"
-                    name="description"
-                    className="form-control"
-                    value={formData.description}
-                    onChange={handleFormChange}
-                    placeholder="Mô tả ngắn về danh mục này..."
-                  />
-                </div>
-              </div>
-              <div className="d-flex gap-2 mt-3">
-                <button className="btn btn-primary" type="submit" disabled={isSaving}>
-                  {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Lưu danh mục')}
-                </button>
-                {editingId && (
-                  <button className="btn btn-outline-secondary" type="button" onClick={handleCancel}>
-                    Hủy
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
-        )}
-
-        {error && (
-          <div className="alert alert-danger alert-dismissible fade show" role="alert">
-            {error}
-            <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-          </div>
-        )}
-
-        <div className="card shadow-sm border-0 rounded-3">
-          <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table align-middle table-hover mb-0">
-                <thead className="table-light text-muted small text-uppercase">
-                  <tr>
-                    <th className="px-4 py-3" style={{ width: '15%' }}>Mã danh mục</th>
-                    <th className="py-3" style={{ width: '30%' }}>Tên danh mục tour</th>
-                    <th className="py-3" style={{ width: '35%' }}>Mô tả</th>
-                    <th className="px-4 py-3 text-end" style={{ width: '20%' }}>Thao tác</th>
+        <div className="table-responsive">
+          <table className="management-table">
+            <thead>
+              <tr>
+                <th style={{ width: '130px' }}>Mã danh mục</th>
+                <th style={{ width: '30%' }}>Tên danh mục tour</th>
+                <th>Mô tả</th>
+                <th className="text-end" style={{ width: '130px' }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-5 text-muted">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Đang tải danh mục tour...
+                  </td>
+                </tr>
+              ) : filteredCategories.length === 0 ? (
+                <tr>
+                  <td colSpan="4">
+                    <div className="management-empty-state">
+                      <div className="management-empty-icon">
+                        <i className="bi bi-bookmark fs-2"></i>
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1">Chưa có danh mục tour nào</h6>
+                      <p className="small text-muted mb-0">Thử tìm kiếm với từ khóa khác hoặc bấm "Thêm danh mục tour" để tạo mới.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredCategories.map((category) => (
+                  <tr key={category._id}>
+                    <td>
+                      <span className="badge bg-light text-secondary border font-monospace py-1 px-2">
+                        #{category._id.slice(-6).toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="fw-bold text-dark">{category.name}</div>
+                    </td>
+                    <td className="text-muted">
+                      {category.description || <span className="text-muted fst-italic">Không có mô tả</span>}
+                    </td>
+                    <td className="text-end">
+                      <div className="management-actions">
+                        <button
+                          type="button"
+                          className="management-action-btn btn-edit"
+                          onClick={() => openEditForm(category)}
+                          title="Chỉnh sửa danh mục"
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="management-action-btn btn-delete"
+                          onClick={() => setCategoryToDelete(category)}
+                          title="Xóa danh mục"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-5">
-                        <div className="spinner-border text-primary" role="status">
-                          <span className="visually-hidden">Đang tải...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : categories.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="text-center text-muted py-5">
-                        <i className="bi bi-inbox fs-2 d-block mb-3"></i>
-                        Chưa có danh mục tour nào.
-                      </td>
-                    </tr>
-                  ) : categories.map((category) => (
-                    <tr key={category._id}>
-                      <td className="px-4 py-3 text-muted small font-monospace">{category._id.slice(-8)}</td>
-                      <td className="py-3">
-                        <div className="fw-bold text-dark">{category.name}</div>
-                      </td>
-                      <td className="py-3 text-muted">{category.description || '—'}</td>
-                      <td className="px-4 py-3 text-end">
-                        <div className="d-flex justify-content-end gap-2">
-                          <button
-                            className="btn btn-sm btn-light border"
-                            onClick={() => openEditForm(category)}
-                            title="Chỉnh sửa"
-                          >
-                            <i className="bi bi-pencil text-primary"></i>
-                          </button>
-                          <button
-                            className="btn btn-sm btn-light border"
-                            onClick={() => setCategoryToDelete(category)}
-                            title="Xóa"
-                          >
-                            <i className="bi bi-trash text-danger"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

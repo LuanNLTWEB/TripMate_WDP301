@@ -67,6 +67,14 @@ const managementNavigation = [
     roles: ['staff']
   },
   {
+    key: 'reviews',
+    label: 'Kiểm duyệt đánh giá',
+    description: 'Kiểm tra và phê duyệt phản hồi tour của khách',
+    icon: 'bi-chat-square-quote',
+    path: '/management/reviews',
+    roles: ['admin', 'staff']
+  },
+  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',

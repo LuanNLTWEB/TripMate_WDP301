@@ -186,205 +186,255 @@ function StaffDestinations() {
   return (
     <>
       <section className="management-page-section">
-        <div className="container-fluid px-0">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-            <div>
-              <h1 className="h3 fw-bold mb-1">Quản lý điểm đến</h1>
-              <p className="text-muted mb-0">Xem danh sách các điểm đến trên hệ thống</p>
-            </div>
-            <button className="btn btn-primary" onClick={() => { setShowCreateForm((current) => !current); setEditingId(null); setShowUpdateConfirm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); setError(''); }}>
-              <i className="bi bi-plus-circle me-2"></i>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}
-            </button>
+        <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+          <div>
+            <span className="management-page-kicker">Destinations Management</span>
+            <h1>Quản lý điểm đến</h1>
+            <p>Xem danh sách, thêm mới và quản lý các điểm đến du lịch trên hệ thống.</p>
           </div>
+          <button
+            type="button"
+            className="btn btn-primary d-inline-flex align-items-center gap-2"
+            onClick={() => {
+              setShowCreateForm((current) => !current);
+              setEditingId(null);
+              setShowUpdateConfirm(false);
+              setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
+              setError('');
+            }}
+          >
+            <i className={`bi ${showCreateForm ? 'bi-x-lg' : 'bi-plus-circle'}`}></i>
+            <span>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}</span>
+          </button>
+        </div>
 
-          {showCreateForm && (
-            <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={editingId ? handleEditSubmit : handleCreate}>
-              <div className="card-body p-4">
-                <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa điểm đến' : 'Tạo điểm đến'}</h2>
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <label className="form-label" htmlFor="destination-name">Tên điểm đến</label>
-                    <input id="destination-name" name="name" className="form-control" value={formData.name} onChange={handleCreateChange} required />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label" htmlFor="destination-location">Vị trí</label>
-                    <input id="destination-location" name="location" className="form-control" value={formData.location} onChange={handleCreateChange} required />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label" htmlFor="destination-description">Mô tả</label>
-                    <textarea id="destination-description" name="description" className="form-control" rows="3" value={formData.description} onChange={handleCreateChange} required />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label" htmlFor="destination-category">Danh mục</label>
-                    <select id="destination-category" name="categoryId" className="form-select" value={formData.categoryId} onChange={handleCreateChange}>
-                      <option value="">— Không chọn —</option>
-                      {categories.map((cat) => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label" htmlFor="destination-image">URL hình ảnh</label>
-                    <input id="destination-image" name="imageUrl" type="url" className="form-control" value={formData.imageUrl} onChange={handleCreateChange} required />
-                  </div>
-                  <div className="col-md-4 d-flex align-items-end">
-                    <div className="form-check mb-2">
-                      <input id="destination-popular" name="isPopular" type="checkbox" className="form-check-input" checked={formData.isPopular} onChange={handleCreateChange} />
-                      <label className="form-check-label" htmlFor="destination-popular">Đánh dấu phổ biến</label>
-                    </div>
+        {showCreateForm && (
+          <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={editingId ? handleEditSubmit : handleCreate}>
+            <div className="card-body p-4">
+              <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa điểm đến' : 'Tạo điểm đến'}</h2>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold" htmlFor="destination-name">Tên điểm đến</label>
+                  <input id="destination-name" name="name" className="form-control" value={formData.name} onChange={handleCreateChange} required />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold" htmlFor="destination-location">Vị trí</label>
+                  <input id="destination-location" name="location" className="form-control" value={formData.location} onChange={handleCreateChange} required />
+                </div>
+                <div className="col-12">
+                  <label className="form-label fw-semibold" htmlFor="destination-description">Mô tả</label>
+                  <textarea id="destination-description" name="description" className="form-control" rows="3" value={formData.description} onChange={handleCreateChange} required />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold" htmlFor="destination-category">Danh mục</label>
+                  <select id="destination-category" name="categoryId" className="form-select" value={formData.categoryId} onChange={handleCreateChange}>
+                    <option value="">— Không chọn —</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold" htmlFor="destination-image">URL hình ảnh</label>
+                  <input id="destination-image" name="imageUrl" type="url" className="form-control" value={formData.imageUrl} onChange={handleCreateChange} required />
+                </div>
+                <div className="col-md-4 d-flex align-items-end">
+                  <div className="form-check mb-2">
+                    <input id="destination-popular" name="isPopular" type="checkbox" className="form-check-input" checked={formData.isPopular} onChange={handleCreateChange} />
+                    <label className="form-check-label fw-semibold" htmlFor="destination-popular">Đánh dấu phổ biến</label>
                   </div>
                 </div>
-                <button className="btn btn-primary mt-3" disabled={isSaving}>
-                  {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Lưu điểm đến')}
+              </div>
+              <div className="mt-4 d-flex gap-2">
+                <button className="btn btn-primary" disabled={isSaving}>
+                  {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật điểm đến' : 'Lưu điểm đến')}
                 </button>
                 {editingId && (
-                  <button type="button" className="btn btn-outline-secondary mt-3 ms-2" onClick={() => { setEditingId(null); setShowUpdateConfirm(false); setShowCreateForm(false); setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false }); }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => {
+                      setEditingId(null);
+                      setShowUpdateConfirm(false);
+                      setShowCreateForm(false);
+                      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
+                    }}
+                  >
                     Hủy
                   </button>
                 )}
               </div>
-            </form>
-          )}
-          
-          {error && (
-            <div className="alert alert-danger alert-dismissible fade show" role="alert">
-              {error}
-              <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
             </div>
-          )}
-          
-          <div className="card shadow-sm border-0 rounded-3">
-            <div className="card-body p-0">
-              <div className="p-4 border-bottom bg-white rounded-top">
-                <div className="input-group" style={{ maxWidth: '400px' }}>
-                  <span className="input-group-text bg-white border-end-0 text-muted"><i className="bi bi-search"></i></span>
-                  <input 
-                    type="search" 
-                    className="form-control border-start-0 ps-0" 
-                    value={search} 
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Tìm kiếm theo tên hoặc vị trí..." 
-                    aria-label="Tìm kiếm điểm đến" 
-                  />
-                </div>
-              </div>
-              <div className="table-responsive">
-                <table className="table align-middle table-hover mb-0">
-                  <thead className="table-light text-muted small text-uppercase">
-                    <tr>
-                      <th className="px-4 py-3" style={{ width: '10%' }}>Hình ảnh</th>
-                      <th className="py-3" style={{ width: '25%' }}>Tên điểm đến</th>
-                      <th className="py-3" style={{ width: '20%' }}>Vị trí</th>
-                      <th className="py-3" style={{ width: '15%' }}>Đánh giá</th>
-                      <th className="py-3" style={{ width: '15%' }}>Trạng thái</th>
-                      <th className="px-4 py-3 text-end" style={{ width: '15%' }}>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr>
-                        <td colSpan="6" className="text-center py-5">
-                          <div className="spinner-border text-primary" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : destinations.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="text-center text-muted py-5">
-                          <i className="bi bi-inbox fs-2 d-block mb-3"></i>
-                          Không tìm thấy điểm đến nào.
-                        </td>
-                      </tr>
-                    ) : destinations.map((dest) => (
-                      <tr key={dest._id}>
-                        <td className="px-4 py-3">
-                          {dest.images?.[0] ? (
-                            <img 
-                              src={dest.images[0]} 
-                              alt={dest.name} 
-                              className="rounded shadow-sm" 
-                              style={{ width: '60px', height: '60px', objectFit: 'cover' }} 
-                            />
-                          ) : (
-                            <div className="rounded bg-light border d-flex align-items-center justify-content-center text-muted" style={{ width: '60px', height: '60px' }}>
-                              <i className="bi bi-image fs-5"></i>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3">
-                          <div className="fw-bold text-dark">{dest.name}</div>
-                        </td>
-                        <td className="py-3">
-                          <div className="text-muted"><i className="bi bi-geo-alt-fill text-danger me-1"></i>{dest.location}</div>
-                        </td>
-                        <td className="py-3">
-                          <div className="d-inline-flex align-items-center bg-warning bg-opacity-10 text-warning px-2 py-1 rounded fw-medium">
-                            <i className="bi bi-star-fill me-1"></i>{dest.averageRating}
-                          </div>
-                        </td>
-                        <td className="py-3">
-                          <span className={`badge rounded-pill ${dest.isPopular ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'}`}>
-                            {dest.status === 'inactive' ? 'Tạm ẩn' : (dest.isPopular ? 'Phổ biến' : 'Đang hoạt động')}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-end">
-                          <div className="d-flex justify-content-end gap-2">
-                            <Link to={`/destinations/${dest._id}`} className="btn btn-sm btn-light border" title="Xem trước trang khách">
-                              <i className="bi bi-eye text-info"></i>
-                            </Link>
-                            <button className="btn btn-sm btn-light border" onClick={() => openEditForm(dest)} title="Chỉnh sửa">
-                              <i className="bi bi-pencil text-primary"></i>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-light border"
-                              onClick={() => setDestinationToDelete(dest)}
-                              disabled={isDeleting}
-                              title="Xóa điểm đến"
-                            >
-                              <i className="bi bi-trash text-danger"></i>
-                            </button>
-                            <button className="btn btn-sm btn-light border" onClick={() => handleStatusChange(dest)} title={dest.status === 'inactive' ? 'Kích hoạt' : 'Tạm ẩn'}>
-                              <i className={dest.status === 'inactive' ? 'bi bi-toggle-off text-secondary' : 'bi bi-toggle-on text-success'}></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {!isLoading && totalPages > 1 && (
-                <div className="p-4 border-top bg-white rounded-bottom d-flex align-items-center justify-content-between flex-wrap gap-3">
-                  <div className="text-muted small">
-                    Trang {currentPage} trên {totalPages}
-                  </div>
-                  <nav aria-label="Page navigation">
-                    <ul className="pagination pagination-sm mb-0">
-                      <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                        <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>Trước</button>
-                      </li>
-                      {[...Array(totalPages)].map((_, idx) => (
-                        <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                          <button className="page-link" onClick={() => handlePageChange(idx + 1)}>
-                            {idx + 1}
-                          </button>
-                        </li>
-                      ))}
-                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                        <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>Sau</button>
-                      </li>
-                    </ul>
-                  </nav>
-                </div>
-              )}
+          </form>
+        )}
+        
+        {error && (
+          <div className="alert alert-danger alert-dismissible fade show" role="alert">
+            {error}
+            <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
+          </div>
+        )}
+        
+        <div className="management-table-card">
+          <div className="management-table-toolbar">
+            <div className="management-search-box">
+              <i className="bi bi-search"></i>
+              <input 
+                type="search" 
+                value={search} 
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Tìm kiếm theo tên hoặc vị trí..." 
+                aria-label="Tìm kiếm điểm đến" 
+              />
+            </div>
+            <div className="text-muted small">
+              Hiển thị <strong>{destinations.length}</strong> điểm đến
             </div>
           </div>
+
+          <div className="table-responsive">
+            <table className="management-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '80px' }}>Hình ảnh</th>
+                  <th>Tên điểm đến</th>
+                  <th>Vị trí</th>
+                  <th style={{ width: '120px' }}>Đánh giá</th>
+                  <th style={{ width: '150px' }}>Trạng thái</th>
+                  <th className="text-end" style={{ width: '160px' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-5 text-muted">
+                      <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                      Đang tải danh sách điểm đến...
+                    </td>
+                  </tr>
+                ) : destinations.length === 0 ? (
+                  <tr>
+                    <td colSpan="6">
+                      <div className="management-empty-state">
+                        <div className="management-empty-icon">
+                          <i className="bi bi-geo-alt fs-2"></i>
+                        </div>
+                        <h6 className="fw-bold text-dark mb-1">Không tìm thấy điểm đến nào</h6>
+                        <p className="small text-muted mb-0">Thử tìm kiếm với từ khóa khác hoặc bấm "Thêm điểm đến" để tạo mới.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  destinations.map((dest) => (
+                    <tr key={dest._id}>
+                      <td>
+                        {dest.images?.[0] ? (
+                          <img 
+                            src={dest.images[0]} 
+                            alt={dest.name} 
+                            className="management-table-thumb" 
+                          />
+                        ) : (
+                          <div className="management-table-thumb-empty">
+                            <i className="bi bi-image"></i>
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div className="fw-bold text-dark">{dest.name}</div>
+                      </td>
+                      <td>
+                        <div className="text-muted">
+                          <i className="bi bi-geo-alt-fill text-danger me-1"></i>
+                          {dest.location}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="d-inline-flex align-items-center bg-warning bg-opacity-10 text-warning px-2 py-1 rounded fw-semibold small">
+                          <i className="bi bi-star-fill me-1"></i>
+                          {dest.averageRating || 0}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`management-badge ${dest.status === 'inactive' ? 'badge-secondary' : dest.isPopular ? 'badge-success' : 'badge-primary'}`}>
+                          <span className="management-badge-dot"></span>
+                          {dest.status === 'inactive' ? 'Tạm ẩn' : (dest.isPopular ? 'Phổ biến' : 'Đang hoạt động')}
+                        </span>
+                      </td>
+                      <td className="text-end">
+                        <div className="management-actions">
+                          <Link
+                            to={`/destinations/${dest._id}`}
+                            className="management-action-btn btn-view"
+                            title="Xem trước trang khách"
+                          >
+                            <i className="bi bi-eye"></i>
+                          </Link>
+                          <button
+                            type="button"
+                            className="management-action-btn btn-edit"
+                            onClick={() => openEditForm(dest)}
+                            title="Chỉnh sửa điểm đến"
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="management-action-btn btn-delete"
+                            onClick={() => setDestinationToDelete(dest)}
+                            disabled={isDeleting}
+                            title="Xóa điểm đến"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="management-action-btn"
+                            onClick={() => handleStatusChange(dest)}
+                            title={dest.status === 'inactive' ? 'Kích hoạt' : 'Tạm ẩn'}
+                          >
+                            <i className={dest.status === 'inactive' ? 'bi bi-toggle-off text-muted fs-5' : 'bi bi-toggle-on text-success fs-5'}></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {!isLoading && totalPages > 1 && (
+            <div className="management-pagination-bar">
+              <div>
+                Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong>
+              </div>
+              <nav aria-label="Page navigation">
+                <ul className="pagination pagination-sm mb-0">
+                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
+                      <i className="bi bi-chevron-left me-1"></i>Trước
+                    </button>
+                  </li>
+                  {[...Array(totalPages)].map((_, idx) => (
+                    <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
+                      <button className="page-link" onClick={() => handlePageChange(idx + 1)}>
+                        {idx + 1}
+                      </button>
+                    </li>
+                  ))}
+                  <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                    <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
+                      Sau<i className="bi bi-chevron-right ms-1"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
         </div>
       </section>
 

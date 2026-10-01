@@ -186,6 +186,13 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
+  share: (id, payload) => apiRequest(`/itineraries/${id}/share`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
@@ -195,7 +202,20 @@ export const statsApi = {
 
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
-  delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' })
+  delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  getForModeration: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/reviews/moderation${queryString}`, { method: 'GET' });
+  },
+  moderate: (id, payload) => apiRequest(`/reviews/${id}/moderate`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
 };
 
 export const tourApi = {

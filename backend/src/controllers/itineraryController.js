@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
 import Tour from '../models/Tour.js';
+import User from '../models/User.js';
 
 const destinationFields = 'name location images status';
 const tourFields = 'title price images departureLocation destinationLocation location duration status';
@@ -540,6 +541,115 @@ export const duplicateItinerary = async (req, res) => {
   } catch (error) {
     console.error('Duplicate itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Không thể sao chép lịch trình' });
+  }
+};
+
+/**
+ * Share a personal itinerary with another user via email (owner only).
+ * @route POST /api/itineraries/:id/share
+ * @access Customer (owner only)
+ */
+export const shareItinerary = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const { email, permission } = req.body;
+    const itinerary = await Itinerary.findById(req.params.id);
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền chia sẻ lịch trình này' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const targetUser = await User.findOne({ email: normalizedEmail, isDeleted: { $ne: true } });
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng với email này' });
+    }
+
+    if (String(targetUser._id) === String(req.user._id)) {
+      return res.status(400).json({ success: false, message: 'Không thể tự chia sẻ lịch trình cho chính mình' });
+    }
+
+    if (!itinerary.collaborators) {
+      itinerary.collaborators = [];
+    }
+
+    const existingIndex = itinerary.collaborators.findIndex(
+      (c) => String(c.user?._id || c.user) === String(targetUser._id)
+    );
+
+    if (existingIndex !== -1) {
+      itinerary.collaborators[existingIndex].permission = permission;
+    } else {
+      itinerary.collaborators.push({
+        user: targetUser._id,
+        permission
+      });
+    }
+
+    await itinerary.save();
+    const populated = await findByIdPopulated(itinerary._id);
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã chia sẻ lịch trình với ${targetUser.username || targetUser.email}`,
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Share itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể chia sẻ lịch trình' });
+  }
+};
+
+/**
+ * Remove a collaborator from an owned itinerary (owner only).
+ * @route DELETE /api/itineraries/:id/collaborators/:userId
+ * @access Customer (owner only)
+ */
+export const removeCollaborator = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền quản lý người tham gia lịch trình này' });
+    }
+
+    if (!itinerary.collaborators) {
+      itinerary.collaborators = [];
+    }
+
+    itinerary.collaborators = itinerary.collaborators.filter(
+      (c) => String(c.user?._id || c.user) !== String(req.params.userId)
+    );
+
+    await itinerary.save();
+    const populated = await findByIdPopulated(itinerary._id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa quyền cộng tác viên',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove collaborator error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa cộng tác viên' });
   }
 };
 
