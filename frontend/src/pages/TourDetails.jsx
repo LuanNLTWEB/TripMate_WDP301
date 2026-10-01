@@ -24,6 +24,35 @@ const TourDetails = () => {
   const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState('');
+  const [reviewToDelete, setReviewToDelete] = useState(null);
+  const [isDeletingReview, setIsDeletingReview] = useState(false);
+
+  const handleDeleteReview = async () => {
+    if (!reviewToDelete || isDeletingReview) return;
+
+    setIsDeletingReview(true);
+    try {
+      const response = await reviewApi.delete(reviewToDelete._id);
+      toast.success(response.message || 'Đã xóa đánh giá thành công.');
+      const updatedReviews = reviews.filter((r) => r._id !== reviewToDelete._id);
+      setReviews(updatedReviews);
+      if (response.totalReviews !== undefined) {
+        setReviewStats({
+          averageRating: response.averageRating,
+          totalReviews: response.totalReviews
+        });
+      } else {
+        const total = updatedReviews.length;
+        const avg = total > 0 ? Math.round((updatedReviews.reduce((sum, r) => sum + r.rating, 0) / total) * 10) / 10 : 0;
+        setReviewStats({ averageRating: avg, totalReviews: total });
+      }
+      setReviewToDelete(null);
+    } catch (err) {
+      toast.error(err.message || 'Không thể xóa đánh giá.');
+    } finally {
+      setIsDeletingReview(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -251,34 +280,110 @@ const TourDetails = () => {
                 </div>
               ) : (
                 <div className="row g-3">
-                  {reviews.map((review) => (
-                    <div key={review._id} className="col-md-6">
-                      <div className="border rounded-3 p-3 h-100">
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
-                            {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
+                  {reviews.map((review) => {
+                    const currentUserId = user?.id || user?._id;
+                    const isMyReview = currentUserId && (
+                      String(review.userId?._id || review.userId) === String(currentUserId)
+                    );
+
+                    return (
+                      <div key={review._id} className="col-md-6">
+                        <div className="border rounded-3 p-3 h-100">
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+                              {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                            <div className="min-width-0">
+                              <div className="fw-semibold text-truncate">
+                                {review.userId?.username || 'Ẩn danh'}
+                                {isMyReview && <span className="badge text-bg-light border text-muted ms-2 small">Bạn</span>}
+                              </div>
+                              <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
+                            </div>
+                            <div className="text-warning ms-auto flex-shrink-0 d-flex align-items-center gap-2">
+                              <div>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
+                                ))}
+                              </div>
+                              {isMyReview && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
+                                  title="Xóa đánh giá"
+                                  aria-label="Xóa đánh giá"
+                                  onClick={() => setReviewToDelete(review)}
+                                >
+                                  <i className="bi bi-trash"></i>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="min-width-0">
-                            <div className="fw-semibold text-truncate">{review.userId?.username || 'Ẩn danh'}</div>
-                            <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
-                          </div>
-                          <div className="text-warning ms-auto flex-shrink-0">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
-                            ))}
-                          </div>
+                          {review.comment && (
+                            <p className="text-secondary mb-0 small">{review.comment}</p>
+                          )}
                         </div>
-                        {review.comment && (
-                          <p className="text-secondary mb-0 small">{review.comment}</p>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {reviewToDelete && (
+          <>
+            <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content border-0 shadow">
+                  <div className="modal-header">
+                    <h2 className="modal-title h5 fw-bold">Xác nhận xóa đánh giá</h2>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => !isDeletingReview && setReviewToDelete(null)}
+                      disabled={isDeletingReview}
+                      aria-label="Đóng"
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p className="mb-2">Bạn có chắc muốn xóa đánh giá của mình?</p>
+                    <p className="text-muted small mb-0">
+                      Đánh giá sẽ bị xóa vĩnh viễn và điểm đánh giá trung bình của tour sẽ được cập nhật lại.
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setReviewToDelete(null)}
+                      disabled={isDeletingReview}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleDeleteReview}
+                      disabled={isDeletingReview}
+                    >
+                      {isDeletingReview ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                          Đang xóa...
+                        </>
+                      ) : (
+                        'Xác nhận xóa'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-backdrop fade show"></div>
+          </>
+        )}
       </main>
       <Footer />
     </>

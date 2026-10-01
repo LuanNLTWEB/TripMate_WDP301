@@ -75,13 +75,17 @@ function ReviewTourSubmission() {
 
   const isSuspended = tour.status === 'suspended';
   const isPending = tour.status === 'pending';
-  const statusClass = isSuspended ? 'is-suspended' : isPending ? 'is-pending' : 'is-active';
-  const statusLabel = isSuspended ? 'Tạm ngưng' : isPending ? 'Chờ duyệt' : 'Đang hoạt động';
+  const isRejected = tour.status === 'rejected';
+  const statusClass = isSuspended ? 'is-suspended' : isPending ? 'is-pending' : isRejected ? 'is-rejected' : 'is-active';
+  const statusLabel = isSuspended ? 'Tạm ngưng' : isPending ? 'Chờ duyệt' : isRejected ? 'Đã từ chối' : 'Đang hoạt động';
   const categoryName = tour.categoryId && typeof tour.categoryId === 'object'
     ? (tour.categoryId.name || '—')
     : (tour.categoryId || '—');
   const suspendedByName = tour.suspendedBy && typeof tour.suspendedBy === 'object'
     ? tour.suspendedBy.username
+    : '—';
+  const rejectedByName = tour.rejectedBy && typeof tour.rejectedBy === 'object'
+    ? tour.rejectedBy.username
     : '—';
 
   return (
@@ -181,6 +185,22 @@ function ReviewTourSubmission() {
                 </div>
                 <div className="col-md-4">
                   <DetailItem label="Người tạm ngưng" value={suspendedByName} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isRejected && (
+            <div className="mt-4 p-3 rounded-3 bg-danger-subtle border border-danger-subtle">
+              <h3 className="h6 fw-bold text-danger mb-3">
+                <i className="bi bi-x-circle me-1"></i>Thông tin từ chối
+              </h3>
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <DetailItem label="Thời gian từ chối" value={formatDate(tour.rejectedAt)} />
+                </div>
+                <div className="col-md-6">
+                  <DetailItem label="Người từ chối" value={rejectedByName} />
                 </div>
               </div>
             </div>

@@ -756,6 +756,16 @@ main {
   background: #f79009;
 }
 
+.staff-tour-status.is-rejected {
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+}
+
+.staff-tour-status.is-rejected > span {
+  background: #f04438;
+}
+
 .staff-tour-actions {
   display: flex;
   gap: 8px;

@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
 import { tourApi } from '../services/api';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 
 export default function StaffPendingTours() {
+  const toast = useToast();
   const [tours, setTours] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [rejectingTour, setRejectingTour] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadPendingTours = async () => {
     setIsLoading(true);
@@ -25,6 +29,32 @@ export default function StaffPendingTours() {
   useEffect(() => {
     loadPendingTours();
   }, []);
+
+  const handleOpenReject = (tour) => {
+    setRejectingTour(tour);
+  };
+
+  const handleCloseReject = () => {
+    if (isSubmitting) return;
+    setRejectingTour(null);
+  };
+
+  const handleConfirmReject = async (e) => {
+    e.preventDefault();
+    if (!rejectingTour || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await tourApi.setStatus(rejectingTour._id, 'rejected');
+      toast.success(response.message || 'Đã từ chối duyệt tour thành công.');
+      setTours((prevTours) => prevTours.filter((t) => t._id !== rejectingTour._id));
+      setRejectingTour(null);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể từ chối tour.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <section className="management-page-section">
@@ -141,6 +171,7 @@ export default function StaffPendingTours() {
                         type="button"
                         className="btn btn-sm btn-outline-danger border-0 px-2"
                         title="Từ chối"
+                        onClick={() => handleOpenReject(tour)}
                       >
                         <i className="bi bi-x-lg fs-5"></i>
                       </button>
@@ -152,6 +183,57 @@ export default function StaffPendingTours() {
           </table>
         </div>
       </div>
+
+      {rejectingTour && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <form onSubmit={handleConfirmReject}>
+                  <div className="modal-header">
+                    <h2 className="modal-title h5 fw-bold">
+                      Từ chối duyệt tour
+                    </h2>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={handleCloseReject}
+                      disabled={isSubmitting}
+                      aria-label="Đóng"
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p className="mb-2">
+                      Bạn có chắc muốn từ chối duyệt tour <strong>{rejectingTour.title}</strong>?
+                    </p>
+                    <p className="text-muted small mb-0">
+                      Tour sau khi bị từ chối sẽ không được hiển thị công khai trên hệ thống.
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={handleCloseReject}
+                      disabled={isSubmitting}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-danger"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
     </section>
   );
 }

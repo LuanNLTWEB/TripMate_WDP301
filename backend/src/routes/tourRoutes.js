@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  createTour,
   getAllTours,
   getFavoriteTours,
   getManagedTourById,
@@ -10,11 +11,12 @@ import {
   updateTourStatus
 } from '../controllers/tourController.js';
 import { protect, authorize } from '../middleware/auth.js';
-import { tourIdValidation, updateTourStatusValidation } from '../middleware/validate.js';
+import { createTourValidation, tourIdValidation, updateTourStatusValidation } from '../middleware/validate.js';
 
 const router = express.Router();
 
 router.get('/', getAllTours);
+router.post('/', protect, authorize('tourProvider'), createTourValidation, createTour);
 router.get('/management', protect, authorize('staff', 'admin'), getManagedTours);
 router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);

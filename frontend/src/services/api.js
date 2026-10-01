@@ -182,7 +182,8 @@ export const statsApi = {
 };
 
 export const reviewApi = {
-  getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' })
+  getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' })
 };
 
 export const tourApi = {
@@ -200,6 +201,10 @@ export const tourApi = {
     return apiRequest(`/tours${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
+  create: (tour) => apiRequest('/tours', {
+    method: 'POST',
+    body: JSON.stringify(tour)
+  }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);

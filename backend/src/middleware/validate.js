@@ -198,15 +198,16 @@ export const tourIdValidation = [
 export const updateTourStatusValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('status')
-    .isIn(['active', 'suspended']).withMessage('Trạng thái tour không hợp lệ'),
+    .isIn(['active', 'suspended', 'rejected']).withMessage('Trạng thái tour không hợp lệ'),
   body('reason')
+    .optional({ values: 'falsy' })
     .custom((value, { req }) => {
       const reason = typeof value === 'string' ? value.trim() : '';
       if (req.body.status === 'suspended' && reason.length < 5) {
         throw new Error('Lý do tạm ngưng phải có ít nhất 5 ký tự');
       }
       if (reason.length > 500) {
-        throw new Error('Lý do tạm ngưng không được vượt quá 500 ký tự');
+        throw new Error('Lý do không được vượt quá 500 ký tự');
       }
       return true;
     })
@@ -300,4 +301,38 @@ export const updateDestinationValidation = [
   body('isPopular')
     .optional()
     .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
+];
+
+export const createTourValidation = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên tour')
+    .isLength({ max: 100 }).withMessage('Tên tour không được vượt quá 100 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập giới thiệu tour'),
+  body('location')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập địa điểm'),
+  body('departureLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm khởi hành'),
+  body('destinationLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm đến'),
+  body('price')
+    .notEmpty().withMessage('Vui lòng nhập giá tour')
+    .isFloat({ min: 0 }).withMessage('Giá tour phải là số dương'),
+  body('duration')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập thời lượng tour (ví dụ: 3 ngày 2 đêm)'),
+  body('availableSeats')
+    .optional({ values: 'falsy' })
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm'),
+  body('categoryId')
+    .optional({ values: 'falsy' })
+    .isMongoId().withMessage('Mã danh mục không hợp lệ'),
+  body('images')
+    .optional()
+    .isArray().withMessage('Hình ảnh phải là một mảng URL')
 ];
