@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { itineraryApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 const initialForm = { title: '', startDate: '', endDate: '', budget: '' };
 
@@ -90,21 +91,20 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
                 <div className="row g-2">
                   <div className="col-6">
                     <label className="form-label" htmlFor="itinerary-create-start">Ngày bắt đầu</label>
-                    <input
+                    <CustomDatePicker
                       id="itinerary-create-start"
-                      type="date"
-                      className="form-control"
+                      name="startDate"
                       value={form.startDate}
                       onChange={(event) => update('startDate', event.target.value)}
                     />
                   </div>
                   <div className="col-6">
                     <label className="form-label" htmlFor="itinerary-create-end">Ngày kết thúc</label>
-                    <input
+                    <CustomDatePicker
                       id="itinerary-create-end"
-                      type="date"
-                      className={`form-control ${errors.endDate ? 'is-invalid' : ''}`}
+                      name="endDate"
                       value={form.endDate}
+                      min={form.startDate || undefined}
                       onChange={(event) => update('endDate', event.target.value)}
                     />
                     {errors.endDate && <div className="invalid-feedback d-block">{errors.endDate}</div>}

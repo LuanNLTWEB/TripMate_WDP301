@@ -22,6 +22,21 @@ const reviewSchema = new mongoose.Schema({
     trim: true,
     maxlength: [1000, 'Comment cannot exceed 1000 characters'],
     default: ''
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'flagged'],
+    default: 'approved'
+  },
+  moderatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  moderationReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Moderation reason cannot exceed 500 characters'],
+    default: ''
   }
 }, {
   timestamps: true

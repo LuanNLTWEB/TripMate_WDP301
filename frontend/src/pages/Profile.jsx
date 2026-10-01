@@ -5,6 +5,8 @@ import { useToast } from '../hooks/useToast';
 import { authApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
+import CustomDatePicker from '../components/CustomDatePicker';
 
 function ProfileForm({ user, onUpdateProfile }) {
   const toast = useToast();
@@ -254,24 +256,17 @@ function ProfileForm({ user, onUpdateProfile }) {
                     <label htmlFor="dateOfBirth" className="form-label fw-medium small">
                       Ngày sinh
                     </label>
-                    <div className="input-group">
-                      <span className="input-group-text bg-white text-muted">
-                        <i className="bi bi-calendar-event"></i>
-                      </span>
-                      <input
-                        type="date"
-                        className={`form-control ${errors.dateOfBirth ? 'is-invalid' : ''}`}
-                        id="dateOfBirth"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth}
-                        onChange={handleChange}
-                        max={new Date().toISOString().split('T')[0]}
-                        disabled={isLoading || !isEditMode}
-                      />
-                      {errors.dateOfBirth && (
-                        <div className="invalid-feedback">{errors.dateOfBirth}</div>
-                      )}
-                    </div>
+                    <CustomDatePicker
+                      id="dateOfBirth"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleChange}
+                      max={new Date().toISOString().split('T')[0]}
+                      disabled={isLoading || !isEditMode}
+                    />
+                    {errors.dateOfBirth && (
+                      <div className="invalid-feedback d-block">{errors.dateOfBirth}</div>
+                    )}
                   </div>
 
                   {/* Gender */}
@@ -279,18 +274,18 @@ function ProfileForm({ user, onUpdateProfile }) {
                     <label htmlFor="gender" className="form-label fw-medium small">
                       Giới tính
                     </label>
-                    <select
-                      className="form-select"
+                    <CustomSelect
                       id="gender"
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
                       disabled={isLoading || !isEditMode}
-                    >
-                      <option value="male">Nam</option>
-                      <option value="female">Nữ</option>
-                      <option value="other">Khác</option>
-                    </select>
+                      options={[
+                        { value: 'male', label: 'Nam' },
+                        { value: 'female', label: 'Nữ' },
+                        { value: 'other', label: 'Khác' }
+                      ]}
+                    />
                   </div>
 
                   

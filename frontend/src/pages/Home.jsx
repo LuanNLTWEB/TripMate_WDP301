@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
+import CustomDatePicker from '../components/CustomDatePicker';
 import { tourApi, destinationApi } from '../services/api';
 
 const DEFAULT_IMAGE_FALLBACK = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789824275/tripmate_assets/g6tkjy46skan17hyreku.jpg';
@@ -210,12 +212,12 @@ function Home() {
                       <label htmlFor="homeSearchDate" className="form-label small text-secondary text-uppercase fw-semibold mb-1">
                         <i className="bi bi-calendar-event me-1 text-primary"></i>Ngày khởi hành
                       </label>
-                      <input
+                      <CustomDatePicker
                         id="homeSearchDate"
-                        type="date"
-                        className="form-control form-control-lg fs-6 bg-light border-light-subtle"
+                        name="searchDate"
                         value={searchDate}
                         onChange={(e) => setSearchDate(e.target.value)}
+                        placeholder="Chọn ngày khởi hành"
                       />
                     </div>
 
@@ -223,17 +225,19 @@ function Home() {
                       <label htmlFor="homeSearchDuration" className="form-label small text-secondary text-uppercase fw-semibold mb-1">
                         <i className="bi bi-clock me-1 text-primary"></i>Thời lượng dự kiến
                       </label>
-                      <select
+                      <CustomSelect
                         id="homeSearchDuration"
-                        className="form-select form-select-lg fs-6 bg-light border-light-subtle"
+                        triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
                         value={searchDuration}
-                        onChange={(e) => setSearchDuration(e.target.value)}
-                      >
-                        <option value="">Tất cả thời lượng</option>
-                        <option value="2 ngày">2 ngày 1 đêm</option>
-                        <option value="3 ngày">3 ngày 2 đêm</option>
-                        <option value="4 ngày">4 ngày 3 đêm</option>
-                      </select>
+                        onChange={(e, val) => setSearchDuration(val !== undefined ? val : e.target.value)}
+                        placeholder="Tất cả thời lượng"
+                        options={[
+                          { value: '', label: 'Tất cả thời lượng' },
+                          { value: '2 ngày', label: '2 ngày 1 đêm' },
+                          { value: '3 ngày', label: '3 ngày 2 đêm' },
+                          { value: '4 ngày', label: '4 ngày 3 đêm' }
+                        ]}
+                      />
                     </div>
 
                     <div className="col-12 col-md-2">

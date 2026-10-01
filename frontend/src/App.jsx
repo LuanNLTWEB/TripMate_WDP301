@@ -25,6 +25,7 @@ import ManagementOverview from './pages/ManagementOverview';
 import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
+import ManagementReviews from './pages/ManagementReviews';
 import ProviderCreateTour from './pages/ProviderCreateTour';
 
 function App() {
@@ -69,6 +70,14 @@ function App() {
                   element={(
                     <ProtectedRoute allowedRoles={['admin']}>
                       <AdminRoles />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="reviews"
+                  element={(
+                    <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                      <ManagementReviews />
                     </ProtectedRoute>
                   )}
                 />

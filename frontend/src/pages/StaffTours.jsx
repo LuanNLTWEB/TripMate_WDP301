@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { tourApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -113,185 +114,186 @@ function StaffTours() {
         </div>
       )}
 
-      <div className="card border-0 shadow-sm staff-tour-card">
-        <div className="card-body p-0">
-          <div className="staff-tour-toolbar">
-            <div className="staff-tour-search">
-              <i className="bi bi-search"></i>
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Tìm theo tên tour, điểm đi hoặc điểm đến..."
-                aria-label="Tìm kiếm tour"
-              />
-            </div>
-            <div className="staff-tour-status-filter">
-              <label htmlFor="tour-status-filter">
-                <i className="bi bi-funnel"></i>
-                Trạng thái
-              </label>
-              <select
-                id="tour-status-filter"
-                className="form-select"
-                value={status}
-                onChange={handleFilterChange}
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="active">Đang hoạt động</option>
-                <option value="needs_revision">Cần chỉnh sửa</option>
-                <option value="suspended">Tạm ngưng</option>
-              </select>
-            </div>
+      <div className="management-table-card">
+        <div className="management-table-toolbar">
+          <div className="management-search-box">
+            <i className="bi bi-search"></i>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Tìm theo tên tour, điểm đi hoặc điểm đến..."
+              aria-label="Tìm kiếm tour"
+            />
           </div>
+          <div className="d-flex align-items-center gap-2">
+            <label htmlFor="tour-status-filter" className="small text-muted fw-semibold mb-0 text-nowrap">
+              <i className="bi bi-funnel me-1"></i>Trạng thái:
+            </label>
+            <CustomSelect
+              id="tour-status-filter"
+              style={{ width: '190px' }}
+              triggerStyle={{ height: '36px', fontSize: '0.86rem' }}
+              value={status}
+              onChange={handleFilterChange}
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'active', label: 'Đang hoạt động', icon: 'bi bi-check-circle text-success' },
+                { value: 'needs_revision', label: 'Cần chỉnh sửa', icon: 'bi bi-pencil-square text-warning' },
+                { value: 'suspended', label: 'Tạm ngưng', icon: 'bi bi-slash-circle text-danger' }
+              ]}
+            />
+          </div>
+        </div>
 
-          <div className="table-responsive">
-            <table className="table align-middle table-hover mb-0 staff-tour-table">
-              <colgroup>
-                <col className="staff-tour-col-main" />
-                <col className="staff-tour-col-route" />
-                <col className="staff-tour-col-price" />
-                <col className="staff-tour-col-status" />
-                <col className="staff-tour-col-actions" />
-              </colgroup>
-              <thead className="table-light text-muted small text-uppercase">
+        <div className="table-responsive">
+          <table className="management-table">
+            <thead>
+              <tr>
+                <th style={{ width: '30%' }}>Tour</th>
+                <th style={{ width: '25%' }}>Hành trình</th>
+                <th style={{ width: '18%' }}>Giá và chỗ</th>
+                <th style={{ width: '15%' }}>Trạng thái</th>
+                <th className="text-end" style={{ width: '12%' }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
                 <tr>
-                  <th className="px-4 py-3">Tour</th>
-                  <th className="py-3">Hành trình</th>
-                  <th className="py-3">Giá và chỗ</th>
-                  <th className="py-3">Trạng thái</th>
-                  <th className="px-4 py-3 text-end">Thao tác</th>
+                  <td colSpan="5" className="text-center py-5 text-muted">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Đang tải danh sách tour...
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan="5" className="text-center py-5">
-                      <span className="spinner-border spinner-border-sm text-primary me-2"></span>
-                      Đang tải danh sách tour...
-                    </td>
-                  </tr>
-                ) : tours.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="text-center text-muted py-5">
-                      <i className="bi bi-map fs-2 d-block mb-2"></i>
-                      Không tìm thấy tour phù hợp.
-                    </td>
-                  </tr>
-                ) : tours.map((tour) => {
-                  const isSuspended = tour.status === 'suspended';
-                  const isNeedsRevision = tour.status === 'needs_revision';
-                  const statusClass = isSuspended ? 'is-suspended' : isNeedsRevision ? 'is-revision' : 'is-active';
-                  const statusLabel = isSuspended ? 'Tạm ngưng' : isNeedsRevision ? 'Cần chỉnh sửa' : 'Đang hoạt động';
-                  return (
-                    <tr key={tour._id}>
-                      <td className="px-4 py-3">
-                        <div className="staff-tour-main-cell">
-                          {tour.images?.[0] ? (
-                            <img
-                              src={tour.images[0]}
-                              alt={tour.title}
-                              className="staff-tour-thumbnail"
-                            />
-                          ) : (
-                            <span className="staff-tour-thumbnail staff-tour-thumbnail-empty">
-                              <i className="bi bi-image"></i>
-                            </span>
-                          )}
-                          <div className="staff-tour-copy">
-                            <div className="staff-tour-title">{tour.title}</div>
-                            <div className="staff-tour-duration">
-                              <i className="bi bi-clock"></i>
-                              {tour.duration}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <div className="staff-tour-route">
-                          <span>{tour.departureLocation || 'Chưa cập nhật'}</span>
-                          <i className="bi bi-arrow-right"></i>
-                          <span>{tour.destinationLocation || tour.location}</span>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <div className="staff-tour-price">{formatCurrency(tour.price)}</div>
-                        <div className="staff-tour-seats">
-                          <i className="bi bi-people"></i>
-                          Còn {tour.availableSeats || 0} chỗ
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <span className={`staff-tour-status ${statusClass}`}>
-                          <span></span>
-                          {statusLabel}
-                        </span>
-                        {isSuspended && (
-                          <div className="small text-muted mt-2">
-                            <div className="text-truncate" style={{ maxWidth: '240px' }} title={tour.suspensionReason}>
-                              {tour.suspensionReason}
-                            </div>
-                            <div>{formatDateTime(tour.suspendedAt)}</div>
+              ) : tours.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    <div className="management-empty-state">
+                      <div className="management-empty-icon">
+                        <i className="bi bi-map fs-2"></i>
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1">Không tìm thấy tour phù hợp</h6>
+                      <p className="small text-muted mb-0">Thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : tours.map((tour) => {
+                const isSuspended = tour.status === 'suspended';
+                const isNeedsRevision = tour.status === 'needs_revision';
+                const statusLabel = isSuspended ? 'Tạm ngưng' : isNeedsRevision ? 'Cần chỉnh sửa' : 'Đang hoạt động';
+                const badgeVariant = isSuspended ? 'badge-danger' : isNeedsRevision ? 'badge-warning' : 'badge-success';
+
+                return (
+                  <tr key={tour._id}>
+                    <td>
+                      <div className="d-flex align-items-center gap-3">
+                        {tour.images?.[0] ? (
+                          <img
+                            src={tour.images[0]}
+                            alt={tour.title}
+                            className="management-table-thumb"
+                          />
+                        ) : (
+                          <div className="management-table-thumb-empty">
+                            <i className="bi bi-image"></i>
                           </div>
                         )}
-
-                      </td>
-                      <td className="px-4 py-3 text-end">
-                        <div className="staff-tour-actions">
-                          {!isSuspended && (
-                            <Link
-                              className="staff-tour-view-button"
-                              to={isNeedsRevision ? `/management/tours/${tour._id}` : `/tours/${tour._id}`}
-                              title="Xem tour"
-                              aria-label={`Xem ${tour.title}`}
-                            >
-                              <i className="bi bi-eye"></i>
-                            </Link>
-                          )}
-                          <button
-                            type="button"
-                            className={`staff-tour-status-button ${isSuspended ? 'is-activate' : 'is-suspend'}`}
-                            onClick={() => openStatusDialog(tour)}
-                          >
-                            <i className={`bi ${isSuspended ? 'bi-play-circle' : 'bi-pause-circle'} me-1`}></i>
-                            {isSuspended ? 'Kích hoạt' : 'Tạm ngưng'}
-                          </button>
+                        <div>
+                          <div className="fw-bold text-dark">{tour.title}</div>
+                          <div className="small text-muted">
+                            <i className="bi bi-clock me-1"></i>
+                            {tour.duration}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {!isLoading && totalPages > 1 && (
-            <div className="staff-tour-pagination">
-              <span className="small text-muted">Trang {currentPage} trên {totalPages}</span>
-              <div className="btn-group btn-group-sm">
-                <button
-                  type="button"
-                  className="btn btn-outline-primary"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((page) => page - 1)}
-                >
-                  Trước
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((page) => page + 1)}
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
-          )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2 small">
+                        <span className="text-dark fw-medium">{tour.departureLocation || 'Chưa cập nhật'}</span>
+                        <i className="bi bi-arrow-right text-muted"></i>
+                        <span className="text-primary fw-medium">{tour.destinationLocation || tour.location}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="fw-bold text-dark">{formatCurrency(tour.price)}</div>
+                      <div className="small text-muted">
+                        <i className="bi bi-people me-1"></i>
+                        Còn {tour.availableSeats || 0} chỗ
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`management-badge ${badgeVariant}`}>
+                        <span className="management-badge-dot"></span>
+                        {statusLabel}
+                      </span>
+                      {isSuspended && tour.suspensionReason && (
+                        <div className="small text-muted mt-1 text-truncate" style={{ maxWidth: '200px' }} title={tour.suspensionReason}>
+                          <i className="bi bi-info-circle me-1"></i>{tour.suspensionReason}
+                        </div>
+                      )}
+                    </td>
+                    <td className="text-end">
+                      <div className="management-actions">
+                        {!isSuspended && (
+                          <Link
+                            className="management-action-btn btn-view"
+                            to={isNeedsRevision ? `/management/tours/${tour._id}` : `/tours/${tour._id}`}
+                            title="Xem chi tiết tour"
+                            aria-label={`Xem ${tour.title}`}
+                          >
+                            <i className="bi bi-eye"></i>
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${isSuspended ? 'btn-outline-success' : 'btn-outline-danger'} d-inline-flex align-items-center gap-1 rounded-3 py-1 px-2 fw-semibold`}
+                          style={{ fontSize: '0.78rem' }}
+                          onClick={() => openStatusDialog(tour)}
+                          title={isSuspended ? 'Kích hoạt lại tour' : 'Tạm ngưng tour'}
+                        >
+                          <i className={`bi ${isSuspended ? 'bi-play-circle' : 'bi-pause-circle'}`}></i>
+                          <span>{isSuspended ? 'Kích hoạt' : 'Tạm ngưng'}</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+
+        {!isLoading && totalPages > 1 && (
+          <div className="management-pagination-bar">
+            <div>
+              Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong>
+            </div>
+            <nav aria-label="Phân trang">
+              <ul className="pagination pagination-sm mb-0">
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}>
+                    <i className="bi bi-chevron-left me-1"></i>Trước
+                  </button>
+                </li>
+                {[...Array(totalPages)].map((_, idx) => (
+                  <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
+                    <button className="page-link" onClick={() => setCurrentPage(idx + 1)}>
+                      {idx + 1}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button className="page-link" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}>
+                    Sau<i className="bi bi-chevron-right ms-1"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
       </div>
 
       {pendingTour && (

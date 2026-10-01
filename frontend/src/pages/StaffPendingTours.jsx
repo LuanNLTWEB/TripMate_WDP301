@@ -8,6 +8,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'curre
 export default function StaffPendingTours() {
   const toast = useToast();
   const [tours, setTours] = useState([]);
+  const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [rejectingTour, setRejectingTour] = useState(null);
@@ -29,6 +30,17 @@ export default function StaffPendingTours() {
   useEffect(() => {
     loadPendingTours();
   }, []);
+
+  const filteredTours = tours.filter((tour) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      tour.title?.toLowerCase().includes(q) ||
+      tour.departureLocation?.toLowerCase().includes(q) ||
+      tour.destinationLocation?.toLowerCase().includes(q) ||
+      tour.location?.toLowerCase().includes(q)
+    );
+  });
 
   const handleOpenReject = (tour) => {
     setRejectingTour(tour);
@@ -58,10 +70,10 @@ export default function StaffPendingTours() {
 
   return (
     <section className="management-page-section">
-      <div className="management-page-heading staff-tour-heading">
+      <div className="management-page-heading">
         <span className="management-page-kicker">Tour Approvals</span>
         <h1>Duyệt Tour Chờ</h1>
-        <p>Kiểm tra và phê duyệt các tour do khách hàng đề xuất lên hệ thống.</p>
+        <p>Kiểm tra và phê duyệt các tour do đối tác hoặc khách hàng đề xuất lên hệ thống.</p>
       </div>
 
       {error && (
@@ -71,114 +83,122 @@ export default function StaffPendingTours() {
         </div>
       )}
 
-      <div className="card border-0 shadow-sm staff-tour-card">
+      <div className="management-table-card">
+        <div className="management-table-toolbar">
+          <div className="management-search-box">
+            <i className="bi bi-search"></i>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo tên tour, điểm đi hoặc điểm đến..."
+              aria-label="Tìm kiếm tour chờ duyệt"
+            />
+          </div>
+          <div className="text-muted small">
+            Hiển thị <strong>{filteredTours.length}</strong> / {tours.length} tour chờ duyệt
+          </div>
+        </div>
+
         <div className="table-responsive">
-          <table className="table align-middle table-hover mb-0 staff-tour-table">
-            <colgroup>
-              <col className="staff-tour-col-main" />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '20%' }} />
-              <col className="staff-tour-col-actions" />
-            </colgroup>
-            <thead className="table-light text-muted small text-uppercase">
+          <table className="management-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Thông tin Tour</th>
-                <th className="py-3">Hành trình</th>
-                <th className="py-3">Giá & Chỗ</th>
-                <th className="py-3">Ngày gửi</th>
-                <th className="px-4 py-3 text-center">Thao tác</th>
+                <th style={{ width: '32%' }}>Thông tin Tour</th>
+                <th style={{ width: '25%' }}>Hành trình</th>
+                <th style={{ width: '18%' }}>Giá & Chỗ</th>
+                <th style={{ width: '15%' }}>Ngày gửi</th>
+                <th className="text-end" style={{ width: '10%' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-5">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Đang tải...</span>
+                  <td colSpan="5" className="text-center py-5 text-muted">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Đang tải danh sách tour chờ duyệt...
+                  </td>
+                </tr>
+              ) : filteredTours.length === 0 ? (
+                <tr>
+                  <td colSpan="5">
+                    <div className="management-empty-state">
+                      <div className="management-empty-icon">
+                        <i className="bi bi-inbox fs-2"></i>
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1">Không có tour nào đang chờ duyệt</h6>
+                      <p className="small text-muted mb-0">Tất cả đề xuất tour đã được xử lý hoặc chưa có yêu cầu mới.</p>
                     </div>
                   </td>
                 </tr>
-              ) : tours.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center text-muted py-5">
-                    <i className="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
-                    Không có tour nào đang chờ duyệt.
-                  </td>
-                </tr>
-              ) : tours.map((tour) => (
-                <tr key={tour._id}>
-                  <td className="px-4 py-3">
-                    <div className="d-flex align-items-center gap-3">
-                      {tour.images?.[0] ? (
-                        <img
-                          src={tour.images[0]}
-                          alt={tour.title}
-                          className="rounded shadow-sm"
-                          style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div className="rounded bg-light border d-flex align-items-center justify-content-center text-muted" style={{ width: '60px', height: '60px' }}>
-                          <i className="bi bi-image fs-5"></i>
-                        </div>
-                      )}
-                      <div>
-                        <div className="fw-bold text-dark mb-1">{tour.title}</div>
-                        <div className="text-muted small">
-                          <i className="bi bi-clock me-1"></i>
-                          {tour.duration}
+              ) : (
+                filteredTours.map((tour) => (
+                  <tr key={tour._id}>
+                    <td>
+                      <div className="d-flex align-items-center gap-3">
+                        {tour.images?.[0] ? (
+                          <img
+                            src={tour.images[0]}
+                            alt={tour.title}
+                            className="management-table-thumb"
+                          />
+                        ) : (
+                          <div className="management-table-thumb-empty">
+                            <i className="bi bi-image"></i>
+                          </div>
+                        )}
+                        <div>
+                          <div className="fw-bold text-dark">{tour.title}</div>
+                          <div className="small text-muted">
+                            <i className="bi bi-clock me-1"></i>
+                            {tour.duration}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div className="staff-tour-route">
-                      <span>{tour.departureLocation || '—'}</span>
-                      <i className="bi bi-arrow-right"></i>
-                      <span>{tour.destinationLocation || tour.location}</span>
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div className="staff-tour-price">{formatCurrency(tour.price)}</div>
-                    <div className="staff-tour-seats">
-                      <i className="bi bi-people"></i>
-                      {tour.availableSeats || 0} chỗ
-                    </div>
-                  </td>
-                  <td className="py-3">
-                    <div className="small text-muted">
-                      {new Date(tour.createdAt).toLocaleDateString('vi-VN')}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="d-flex justify-content-center align-items-center gap-2">
-                      <Link
-                        to={`/management/tours/${tour._id}`}
-                        className="staff-tour-view-button"
-                        title="Rà soát tour submission"
-                        aria-label={`Rà soát ${tour.title}`}
-                      >
-                        <i className="bi bi-clipboard-check"></i>
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-success border-0 px-2"
-                        title="Duyệt"
-                      >
-                        <i className="bi bi-check-lg fs-5"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger border-0 px-2"
-                        title="Từ chối"
-                        onClick={() => handleOpenReject(tour)}
-                      >
-                        <i className="bi bi-x-lg fs-5"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2 small">
+                        <span className="text-dark fw-medium">{tour.departureLocation || '—'}</span>
+                        <i className="bi bi-arrow-right text-muted"></i>
+                        <span className="text-primary fw-medium">{tour.destinationLocation || tour.location}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="fw-bold text-dark">{formatCurrency(tour.price)}</div>
+                      <div className="small text-muted">
+                        <i className="bi bi-people me-1"></i>
+                        Còn {tour.availableSeats || 0} chỗ
+                      </div>
+                    </td>
+                    <td>
+                      <div className="small text-muted">
+                        <i className="bi bi-calendar3 me-1"></i>
+                        {new Date(tour.createdAt).toLocaleDateString('vi-VN')}
+                      </div>
+                    </td>
+                    <td className="text-end">
+                      <div className="management-actions">
+                        <Link
+                          to={`/management/tours/${tour._id}`}
+                          className="management-action-btn btn-view"
+                          title="Rà soát chi tiết & phê duyệt"
+                          aria-label={`Rà soát ${tour.title}`}
+                        >
+                          <i className="bi bi-clipboard-check"></i>
+                        </Link>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger border-0 px-2"
+                          title="Từ chối duyệt tour"
+                          onClick={() => handleOpenReject(tour)}
+                        >
+                          <i className="bi bi-x-lg fs-5"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

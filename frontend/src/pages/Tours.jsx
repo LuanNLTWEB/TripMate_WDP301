@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
 import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -247,18 +248,17 @@ const Tours = () => {
                       <i className="bi bi-geo-alt text-primary"></i>
                       <span>Khởi hành từ</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="tour-departure-select"
-                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
-                      style={{ height: '48px' }}
+                      triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
                       value={departure}
-                      onChange={(e) => setDeparture(e.target.value)}
-                    >
-                      <option value="">Tất cả điểm khởi hành</option>
-                      {DEPARTURE_LOCATIONS.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
+                      onChange={(e, val) => setDeparture(val !== undefined ? val : e.target.value)}
+                      placeholder="Tất cả điểm khởi hành"
+                      options={[
+                        { value: '', label: 'Tất cả điểm khởi hành' },
+                        ...DEPARTURE_LOCATIONS.map((p) => ({ value: p, label: p }))
+                      ]}
+                    />
                   </div>
 
                   <div className="col-12 col-md-6 col-lg-3">
@@ -266,18 +266,17 @@ const Tours = () => {
                       <i className="bi bi-pin-map text-primary"></i>
                       <span>Bạn muốn đi đâu?</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="tour-destination-select"
-                      className="form-select form-select-lg fs-6 bg-light border-light-subtle rounded-3"
-                      style={{ height: '48px' }}
+                      triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
                       value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                    >
-                      <option value="">Tất cả điểm đến</option>
-                      {DESTINATION_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                      onChange={(e, val) => setDestination(val !== undefined ? val : e.target.value)}
+                      placeholder="Tất cả điểm đến"
+                      options={[
+                        { value: '', label: 'Tất cả điểm đến' },
+                        ...DESTINATION_OPTIONS.map((opt) => ({ value: opt, label: opt }))
+                      ]}
+                    />
                   </div>
 
                   <div className="col-6 col-md-3 col-lg-2">
@@ -409,18 +408,19 @@ const Tours = () => {
                 <i className="bi bi-arrow-down-up"></i>
                 <span>Sắp xếp:</span>
               </label>
-              <select
-                className="form-select form-select-sm rounded-pill px-3 shadow-none border-secondary-subtle"
-                style={{ width: '160px', height: '38px' }}
+              <CustomSelect
+                id="tour-sort-select"
+                style={{ width: '160px' }}
+                triggerStyle={{ height: '38px', borderRadius: '50px', fontSize: '0.85rem' }}
                 value={sort}
                 onChange={handleSortChange}
-                aria-label="Sắp xếp tour"
-              >
-                <option value="newest">Mới nhất</option>
-                <option value="priceAsc">Giá tăng dần</option>
-                <option value="priceDesc">Giá giảm dần</option>
-                <option value="rating">Đánh giá cao</option>
-              </select>
+                options={[
+                  { value: 'newest', label: 'Mới nhất', icon: 'bi bi-sparkles' },
+                  { value: 'priceAsc', label: 'Giá tăng dần', icon: 'bi bi-sort-numeric-down' },
+                  { value: 'priceDesc', label: 'Giá giảm dần', icon: 'bi bi-sort-numeric-down-alt' },
+                  { value: 'rating', label: 'Đánh giá cao', icon: 'bi bi-star-fill text-warning' }
+                ]}
+              />
             </div>
           </div>
 
