@@ -20,6 +20,7 @@ import {
   removeCollaborator
 } from '../controllers/itineraryController.js';
 import {
+  changeCollaboratorRole,
   inviteCollaborator,
   listCollaborators,
   listReceivedInvitations,
@@ -39,7 +40,8 @@ import {
   shareItineraryValidation,
   removeCollaboratorValidation,
   inviteCollaboratorValidation,
-  respondInvitationValidation
+  respondInvitationValidation,
+  changeCollaboratorRoleValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -58,6 +60,7 @@ router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItin
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
 router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
+router.put('/:id/collaborators/:userId', ...customerAccess, changeCollaboratorRoleValidation, changeCollaboratorRole);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);
 router.put('/:id/activities/:activityId', ...customerAccess, updateActivityValidation, updateActivity);

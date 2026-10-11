@@ -251,3 +251,61 @@ export const listCollaborators = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải danh sách cộng tác viên' });
   }
 };
+
+/**
+ * Change a collaborator's permission level (view <-> edit) on an owned itinerary (owner only).
+ * @route PUT /api/itineraries/:id/collaborators/:userId
+ * @access Customer (owner only)
+ */
+export const changeCollaboratorRole = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const { permission } = req.body;
+
+    const itinerary = await Itinerary.findById(req.params.id);
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền quản lý người tham gia lịch trình này' });
+    }
+
+    if (!itinerary.collaborators) {
+      itinerary.collaborators = [];
+    }
+
+    const collaborator = itinerary.collaborators.find(
+      (c) => String(c.user?._id || c.user) === String(req.params.userId)
+    );
+
+    if (!collaborator) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy cộng tác viên này trong lịch trình' });
+    }
+
+    if (collaborator.permission === permission) {
+      return res.json({
+        success: true,
+        message: `Quyền của cộng tác viên đã là "${permission === 'edit' ? 'chỉnh sửa' : 'chỉ xem'}"`,
+        collaborator
+      });
+    }
+
+    collaborator.permission = permission;
+    await itinerary.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã đổi quyền cộng tác viên thành ${permission === 'edit' ? 'chỉnh sửa' : 'chỉ xem'}`,
+      collaborator
+    });
+  } catch (error) {
+    console.error('Change collaborator role error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể đổi quyền cộng tác viên' });
+  }
+};

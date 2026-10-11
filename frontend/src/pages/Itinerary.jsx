@@ -58,6 +58,7 @@ function Itinerary() {
     error: ''
   });
   const [removingCollaboratorId, setRemovingCollaboratorId] = useState(null);
+  const [changingRoleId, setChangingRoleId] = useState(null);
   const [inviteForm, setInviteForm] = useState({
     email: '',
     permission: 'view',
@@ -439,6 +440,23 @@ function Itinerary() {
       toast.error(err.message || 'Không thể hủy quyền cộng tác viên.');
     } finally {
       setRemovingCollaboratorId(null);
+    }
+  };
+
+  const handleChangeRole = async (userId, permission) => {
+    if (!selected) return;
+
+    setChangingRoleId(userId);
+    try {
+      const response = await itineraryApi.changeCollaboratorRole(selected._id, userId, permission);
+      toast.success(response.message || 'Đã đổi quyền cộng tác viên.');
+    } catch (err) {
+      toast.error(err.message || 'Không thể đổi quyền cộng tác viên.');
+    } finally {
+      if (membersModal.open) {
+        await reloadMembers();
+      }
+      setChangingRoleId(null);
     }
   };
 
@@ -1634,7 +1652,7 @@ function Itinerary() {
         <>
           <div className="modal-backdrop fade show"></div>
           <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-dialog modal-dialog-centered modal-lg">
               <div className="modal-content border-0 shadow">
                 <div className="modal-header">
                   <h5 className="modal-title fw-bold">
@@ -1774,15 +1792,38 @@ function Itinerary() {
                                   </div>
                                 </div>
                                 <div className="d-flex align-items-center gap-2 ms-2 flex-shrink-0">
-                                  <span className={`tm-collaborator-badge ${c.permission === 'edit' ? 'badge-edit' : 'badge-view'}`}>
-                                    {c.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
-                                  </span>
+                                  {isOwner ? (
+                                    <div className="btn-group btn-group-sm" role="group" aria-label="Quyền cộng tác viên">
+                                      <button
+                                        type="button"
+                                        className={`btn ${c.permission === 'view' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        title="Chỉ xem"
+                                        disabled={changingRoleId === collabUserId || removingCollaboratorId === collabUserId}
+                                        onClick={() => handleChangeRole(collabUserId, 'view')}
+                                      >
+                                        Chỉ xem
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={`btn ${c.permission === 'edit' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                        title="Chỉnh sửa"
+                                        disabled={changingRoleId === collabUserId || removingCollaboratorId === collabUserId}
+                                        onClick={() => handleChangeRole(collabUserId, 'edit')}
+                                      >
+                                        Chỉnh sửa
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className={`tm-collaborator-badge ${c.permission === 'edit' ? 'badge-edit' : 'badge-view'}`}>
+                                      {c.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
+                                    </span>
+                                  )}
                                   {isOwner && (
                                     <button
                                       type="button"
                                       className="btn btn-outline-danger btn-sm py-1 px-2 border-0"
                                       title="Hủy quyền cộng tác viên"
-                                      disabled={removingCollaboratorId === collabUserId || inviteForm.submitting}
+                                      disabled={removingCollaboratorId === collabUserId || inviteForm.submitting || changingRoleId === collabUserId}
                                       onClick={() => handleRemoveCollaborator(collabUserId)}
                                     >
                                       {removingCollaboratorId === collabUserId ? (

@@ -200,6 +200,10 @@ export const itineraryApi = {
   removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'DELETE'
   }),
+  changeCollaboratorRole: (id, userId, permission) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ permission })
+  }),
   invite: (id, payload) => apiRequest(`/itineraries/${id}/invitations`, {
     method: 'POST',
     body: JSON.stringify(payload)

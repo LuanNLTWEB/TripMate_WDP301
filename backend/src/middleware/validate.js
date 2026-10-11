@@ -238,6 +238,12 @@ export const inviteCollaboratorValidation = [
   body('permission').isIn(['view', 'edit']).withMessage('Quyền hạn phải là "view" hoặc "edit"')
 ];
 
+export const changeCollaboratorRoleValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('userId').isMongoId().withMessage('Mã người dùng không hợp lệ'),
+  body('permission').isIn(['view', 'edit']).withMessage('Quyền hạn phải là "view" hoặc "edit"')
+];
+
 export const respondInvitationValidation = [
   param('notificationId').isMongoId().withMessage('Mã lời mời không hợp lệ'),
   body('action').isIn(['accept', 'decline']).withMessage('Hành động phải là "accept" hoặc "decline"')
