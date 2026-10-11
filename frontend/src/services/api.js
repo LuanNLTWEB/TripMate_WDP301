@@ -204,7 +204,7 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
-  listInvitations: (id) => apiRequest(`/itineraries/${id}/invitations`, { method: 'GET' }),
+  listCollaborators: (id) => apiRequest(`/itineraries/${id}/collaborators`, { method: 'GET' }),
   listReceivedInvitations: (status) => apiRequest(
     `/itineraries/invitations${status ? `?status=${encodeURIComponent(status)}` : ''}`,
     { method: 'GET' }

@@ -21,7 +21,7 @@ import {
 } from '../controllers/itineraryController.js';
 import {
   inviteCollaborator,
-  listItineraryInvitations,
+  listCollaborators,
   listReceivedInvitations,
   respondToInvitation
 } from '../controllers/invitationController.js';
@@ -56,7 +56,7 @@ router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicat
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
-router.get('/:id/invitations', ...customerAccess, itineraryIdValidation, listItineraryInvitations);
+router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);

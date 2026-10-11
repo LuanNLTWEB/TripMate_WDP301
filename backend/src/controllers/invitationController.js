@@ -93,38 +93,6 @@ export const inviteCollaborator = async (req, res) => {
 };
 
 /**
- * List invitations sent for a specific itinerary (owner only).
- * @route GET /api/itineraries/:id/invitations
- * @access Customer (owner only)
- */
-export const listItineraryInvitations = async (req, res) => {
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-
-    if (!itinerary) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
-    }
-
-    if (String(itinerary.owner) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem lời mời của lịch trình này' });
-    }
-
-    const invitations = await Notification.find({
-      itinerary: itinerary._id,
-      notificationType: INVITE_TYPE
-    })
-      .populate('recipient', 'username email')
-      .populate('invitedBy', 'username email')
-      .sort({ createdAt: -1 });
-
-    return res.json({ success: true, invitations });
-  } catch (error) {
-    console.error('List itinerary invitations error:', error);
-    return res.status(500).json({ success: false, message: 'Không thể tải danh sách lời mời' });
-  }
-};
-
-/**
  * List invitations received by the authenticated customer.
  * @route GET /api/itineraries/invitations
  * @access Customer
@@ -233,5 +201,53 @@ export const respondToInvitation = async (req, res) => {
   } catch (error) {
     console.error('Respond invitation error:', error);
     return res.status(500).json({ success: false, message: 'Không thể xử lý lời mời' });
+  }
+};
+
+/**
+ * List collaborators of an itinerary (owner + any collaborator may view).
+ * All sent invitations are returned to the owner only.
+ * @route GET /api/itineraries/:id/collaborators
+ * @access Customer (owner or collaborator)
+ */
+export const listCollaborators = async (req, res) => {
+  try {
+    const itinerary = await Itinerary.findById(req.params.id)
+      .populate('owner', 'username email')
+      .populate('collaborators.user', 'username email');
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    const userId = String(req.user._id);
+    const isOwner = String(itinerary.owner?._id || itinerary.owner) === userId;
+    const isMember = isOwner || (itinerary.collaborators || []).some(
+      (c) => String(c.user?._id || c.user) === userId
+    );
+
+    if (!isMember) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem danh sách cộng tác viên của lịch trình này' });
+    }
+
+    let invitations = [];
+    if (isOwner) {
+      invitations = await Notification.find({
+        itinerary: itinerary._id,
+        notificationType: INVITE_TYPE
+      })
+        .populate('recipient', 'username email')
+        .sort({ createdAt: -1 });
+    }
+
+    return res.json({
+      success: true,
+      owner: itinerary.owner,
+      collaborators: itinerary.collaborators || [],
+      invitations
+    });
+  } catch (error) {
+    console.error('List collaborators error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể tải danh sách cộng tác viên' });
   }
 };

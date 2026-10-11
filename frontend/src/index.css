@@ -1657,6 +1657,12 @@ main {
   border: 1px solid #fde68a;
 }
 
+.tm-collaborator-badge.badge-owner {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 /* Empty List State */
 .tm-list-empty {
   padding: 24px 16px;
