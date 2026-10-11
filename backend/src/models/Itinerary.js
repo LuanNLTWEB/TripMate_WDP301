@@ -48,6 +48,10 @@ const collaboratorSchema = new mongoose.Schema({
     type: String,
     enum: ['view', 'edit'],
     required: true
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 

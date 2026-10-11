@@ -58,6 +58,15 @@ function Itinerary() {
     error: ''
   });
   const [removingCollaboratorId, setRemovingCollaboratorId] = useState(null);
+  const [inviteModal, setInviteModal] = useState({
+    open: false,
+    email: '',
+    permission: 'view',
+    submitting: false,
+    error: ''
+  });
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -422,6 +431,64 @@ function Itinerary() {
     }
   };
 
+  const loadPendingInvitations = async (itineraryId) => {
+    if (!itineraryId) return;
+    setLoadingInvites(true);
+    try {
+      const response = await itineraryApi.listInvitations(itineraryId);
+      setPendingInvites(response.invitations || []);
+    } catch {
+      setPendingInvites([]);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  const openInviteModal = () => {
+    setInviteModal({
+      open: true,
+      email: '',
+      permission: 'view',
+      submitting: false,
+      error: ''
+    });
+    loadPendingInvitations(selected?._id);
+  };
+
+  const closeInviteModal = () => {
+    if (inviteModal.submitting) return;
+    setInviteModal({
+      open: false,
+      email: '',
+      permission: 'view',
+      submitting: false,
+      error: ''
+    });
+    setPendingInvites([]);
+  };
+
+  const handleInviteCollaborator = async (e) => {
+    e.preventDefault();
+    if (!selected || !inviteModal.email.trim()) return;
+
+    setInviteModal((prev) => ({ ...prev, submitting: true, error: '' }));
+    try {
+      const response = await itineraryApi.invite(selected._id, {
+        email: inviteModal.email.trim().toLowerCase(),
+        permission: inviteModal.permission
+      });
+      toast.success(response.message || 'Đã gửi lời mời cộng tác.');
+      setInviteModal((prev) => ({ ...prev, email: '', submitting: false }));
+      await loadPendingInvitations(selected._id);
+    } catch (err) {
+      setInviteModal((prev) => ({
+        ...prev,
+        submitting: false,
+        error: err.message || 'Không thể gửi lời mời cộng tác.'
+      }));
+    }
+  };
+
   const currentUserId = String(user?._id || user?.id || '');
   const isOwner = selected && String(selected.owner?._id || selected.owner) === currentUserId;
   const myPermission = selected?.collaborators?.find(
@@ -476,6 +543,7 @@ function Itinerary() {
           ) : (
             <>
               {error && <div className="alert alert-danger">{error}</div>}
+
               <ul className="nav nav-tabs mb-4">
                 <li className="nav-item">
                   <button type="button" className={`nav-link ${activeTab === 'mine' ? 'active' : ''}`} onClick={() => switchTab('mine')}>
@@ -591,6 +659,17 @@ function Itinerary() {
                                 >
                                   <i className="bi bi-share me-1"></i>
                                   <span>Chia sẻ</span>
+                                </button>
+                              )}
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-info btn-sm text-nowrap d-inline-flex align-items-center"
+                                  onClick={openInviteModal}
+                                  title="Mời cộng tác viên vào lịch trình"
+                                >
+                                  <i className="bi bi-person-plus me-1"></i>
+                                  <span>Mời cộng tác</span>
                                 </button>
                               )}
                               <button
@@ -1424,6 +1503,206 @@ function Itinerary() {
                         <>
                           <i className="bi bi-share me-1"></i>
                           Chia sẻ ngay
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      {inviteModal.open && (
+        <>
+          <div className="modal-backdrop fade show"></div>
+          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bold">
+                    <i className="bi bi-person-plus me-2 text-primary"></i>
+                    Mời cộng tác viên
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={closeInviteModal}
+                    disabled={inviteModal.submitting}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <form onSubmit={handleInviteCollaborator}>
+                  <div className="modal-body">
+                    <p className="text-muted small mb-3">
+                      Gửi lời mời cộng tác lịch trình nhóm <strong>{selected?.title}</strong> tới người dùng đã đăng ký qua email.
+                      Người được mời sẽ phản hồi lời mời ở lần truy cập tiếp theo.
+                    </p>
+
+                    {inviteModal.error && (
+                      <div className="alert alert-danger py-2 small mb-3">
+                        <i className="bi bi-exclamation-circle me-1"></i>
+                        {inviteModal.error}
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold" htmlFor="invite-email">
+                        Email người được mời <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text"><i className="bi bi-envelope"></i></span>
+                        <input
+                          id="invite-email"
+                          type="email"
+                          className="form-control"
+                          placeholder="nguoidung@example.com"
+                          value={inviteModal.email}
+                          onChange={(e) => setInviteModal((prev) => ({ ...prev, email: e.target.value, error: '' }))}
+                          required
+                          disabled={inviteModal.submitting}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold" htmlFor="invite-permission">
+                        Vai trò cộng tác
+                      </label>
+                      <CustomSelect
+                        id="invite-permission"
+                        value={inviteModal.permission}
+                        onChange={(e, val) => setInviteModal((prev) => ({ ...prev, permission: val || e.target.value }))}
+                        disabled={inviteModal.submitting}
+                        options={[
+                          { value: 'view', label: 'Thành viên chỉ xem (View)', icon: 'bi bi-eye' },
+                          { value: 'edit', label: 'Thành viên chỉnh sửa (Edit)', icon: 'bi bi-pencil-square' }
+                        ]}
+                      />
+                    </div>
+
+                    <div className="border-top pt-3">
+                      <h6 className="fw-semibold small text-uppercase text-muted mb-2">
+                        Lời mời đã gửi ({pendingInvites.length})
+                      </h6>
+                      {loadingInvites ? (
+                        <div className="text-center py-3">
+                          <span className="spinner-border spinner-border-sm text-muted" aria-hidden="true"></span>
+                        </div>
+                      ) : pendingInvites.length === 0 ? (
+                        <div className="tm-list-empty py-3">
+                          <i className="bi bi-envelope-paper tm-list-empty-icon" style={{ fontSize: '1.4rem' }}></i>
+                          Chưa có lời mời nào được gửi cho lịch trình này.
+                        </div>
+                      ) : (
+                        <div className="tm-collaborator-list">
+                          {pendingInvites.map((invitation) => {
+                            const invitee = invitation.recipient || {};
+                            const displayName = invitee.username || invitee.email || 'Người dùng';
+                            const initial = displayName.charAt(0).toUpperCase();
+                            const statusLabel = {
+                              pending: 'Chờ xác nhận',
+                              accepted: 'Đã chấp nhận',
+                              declined: 'Đã từ chối'
+                            }[invitation.status] || invitation.status;
+                            const statusClass = {
+                              pending: 'text-bg-warning',
+                              accepted: 'text-bg-success',
+                              declined: 'text-bg-secondary'
+                            }[invitation.status] || 'text-bg-secondary';
+                            return (
+                              <div key={invitation._id} className="tm-collaborator-item">
+                                <div className="d-flex align-items-center min-w-0 flex-grow-1">
+                                  <div className="tm-collaborator-avatar">{initial}</div>
+                                  <div className="tm-collaborator-meta">
+                                    <div className="tm-collaborator-name">{displayName}</div>
+                                    {invitee.email && <div className="tm-collaborator-email">{invitee.email}</div>}
+                                  </div>
+                                </div>
+                                <div className="d-flex align-items-center gap-2 ms-2 flex-shrink-0">
+                                  <span className={`tm-collaborator-badge ${invitation.permission === 'edit' ? 'badge-edit' : 'badge-view'}`}>
+                                    {invitation.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
+                                  </span>
+                                  <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem' }}>
+                                    {statusLabel}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-top pt-3 mt-3">
+                      <h6 className="fw-semibold small text-uppercase text-muted mb-2">
+                        Người tham gia hiện tại ({(selected?.collaborators || []).length})
+                      </h6>
+                      {(!selected?.collaborators || selected.collaborators.length === 0) ? (
+                        <div className="tm-list-empty py-3">
+                          <i className="bi bi-people tm-list-empty-icon" style={{ fontSize: '1.4rem' }}></i>
+                          Chưa có người nào tham gia lịch trình này.
+                        </div>
+                      ) : (
+                        <div className="tm-collaborator-list">
+                          {selected.collaborators.map((c) => {
+                            const collabUserId = c.user?._id || c.user;
+                            const isRemoving = removingCollaboratorId === collabUserId;
+                            const displayName = c.user?.username || 'Người dùng';
+                            const initial = displayName.charAt(0).toUpperCase();
+                            return (
+                              <div key={collabUserId} className="tm-collaborator-item">
+                                <div className="d-flex align-items-center min-w-0 flex-grow-1">
+                                  <div className="tm-collaborator-avatar">{initial}</div>
+                                  <div className="tm-collaborator-meta">
+                                    <div className="tm-collaborator-name">{displayName}</div>
+                                    {c.user?.email && <div className="tm-collaborator-email">{c.user.email}</div>}
+                                  </div>
+                                </div>
+                                <div className="d-flex align-items-center gap-2 ms-2">
+                                  <span className={`tm-collaborator-badge ${c.permission === 'edit' ? 'badge-edit' : 'badge-view'}`}>
+                                    {c.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-danger btn-sm py-1 px-2 border-0"
+                                    title="Hủy quyền cộng tác viên"
+                                    disabled={isRemoving || inviteModal.submitting}
+                                    onClick={() => handleRemoveCollaborator(collabUserId)}
+                                  >
+                                    {isRemoving ? (
+                                      <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                    ) : (
+                                      <i className="bi bi-trash3 text-danger"></i>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={closeInviteModal}
+                      disabled={inviteModal.submitting}
+                    >
+                      Đóng
+                    </button>
+                    <button type="submit" className="btn btn-primary" disabled={inviteModal.submitting}>
+                      {inviteModal.submitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                          Đang gửi...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-send me-1"></i>
+                          Gửi lời mời
                         </>
                       )}
                     </button>

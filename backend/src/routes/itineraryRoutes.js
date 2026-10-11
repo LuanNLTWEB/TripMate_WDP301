@@ -20,6 +20,11 @@ import {
   removeCollaborator
 } from '../controllers/itineraryController.js';
 import {
+  inviteCollaborator,
+  listItineraryInvitations,
+  listReceivedInvitations
+} from '../controllers/invitationController.js';
+import {
   activityValidation,
   itineraryDestinationValidation,
   itineraryIdValidation,
@@ -31,7 +36,8 @@ import {
   removeActivityFromItineraryValidation,
   updateActivityValidation,
   shareItineraryValidation,
-  removeCollaboratorValidation
+  removeCollaboratorValidation,
+  inviteCollaboratorValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -40,11 +46,14 @@ const customerAccess = [protect, authorize('customer')];
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
 router.get('/', ...customerAccess, listItineraries);
 router.get('/shared', ...customerAccess, listSharedItineraries);
+router.get('/invitations', ...customerAccess, listReceivedInvitations);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
+router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
+router.get('/:id/invitations', ...customerAccess, itineraryIdValidation, listItineraryInvitations);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);

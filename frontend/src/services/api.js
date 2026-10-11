@@ -200,6 +200,11 @@ export const itineraryApi = {
   removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'DELETE'
   }),
+  invite: (id, payload) => apiRequest(`/itineraries/${id}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  listInvitations: (id) => apiRequest(`/itineraries/${id}/invitations`, { method: 'GET' }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
