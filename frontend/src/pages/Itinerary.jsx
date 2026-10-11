@@ -67,6 +67,8 @@ function Itinerary() {
   });
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const [receivedInvites, setReceivedInvites] = useState([]);
+  const [respondingId, setRespondingId] = useState(null);
 
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
@@ -75,14 +77,16 @@ function Itinerary() {
     }
 
     try {
-      const [itineraryResponse, sharedResponse, destinationResponse, tourResponse] = await Promise.all([
+      const [itineraryResponse, sharedResponse, destinationResponse, tourResponse, inviteResponse] = await Promise.all([
         itineraryApi.list(),
         itineraryApi.listShared(),
         destinationApi.getAll({ limit: 100 }),
-        tourApi.getAll({ limit: 100, status: 'active' })
+        tourApi.getAll({ limit: 100, status: 'active' }),
+        itineraryApi.listReceivedInvitations('pending')
       ]);
       setItineraries(itineraryResponse.itineraries || []);
       setSharedItineraries(sharedResponse.itineraries || []);
+      setReceivedInvites(inviteResponse.invitations || []);
       setSelected(itineraryResponse.itineraries?.[0] || null);
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
       setTours((tourResponse.data || []).filter((tour) => tour.status !== 'suspended'));
@@ -431,6 +435,38 @@ function Itinerary() {
     }
   };
 
+  const handleRespondInvitation = async (notificationId, action) => {
+    const received = receivedInvites.find((invite) => invite._id === notificationId);
+    const acceptedItineraryId = received?.itinerary?._id;
+
+    setRespondingId(notificationId);
+    try {
+      const response = await itineraryApi.respondInvitation(notificationId, action);
+      toast.success(response.message || (action === 'accept' ? 'Đã chấp nhận lời mời.' : 'Đã từ chối lời mời.'));
+
+      const [inviteResponse, sharedResponse] = await Promise.all([
+        itineraryApi.listReceivedInvitations('pending'),
+        itineraryApi.listShared()
+      ]);
+      setReceivedInvites(inviteResponse.invitations || []);
+      setSharedItineraries(sharedResponse.itineraries || []);
+
+      if (action === 'accept' && acceptedItineraryId) {
+        const accepted = (sharedResponse.itineraries || []).find(
+          (itinerary) => itinerary._id === acceptedItineraryId
+        );
+        if (accepted) {
+          setSelected(accepted);
+          setActiveTab('shared');
+        }
+      }
+    } catch (err) {
+      toast.error(err.message || 'Không thể xử lý lời mời.');
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
   const loadPendingInvitations = async (itineraryId) => {
     if (!itineraryId) return;
     setLoadingInvites(true);
@@ -543,6 +579,74 @@ function Itinerary() {
           ) : (
             <>
               {error && <div className="alert alert-danger">{error}</div>}
+
+              {receivedInvites.length > 0 && (
+                <div className="card border-0 shadow-sm mb-4 border-start border-primary border-3">
+                  <div className="card-body p-4">
+                    <h2 className="h5 fw-bold mb-1">
+                      <i className="bi bi-envelope-paper me-2 text-primary"></i>
+                      Lời mời cộng tác ({receivedInvites.length})
+                    </h2>
+                    <p className="text-muted small mb-3">
+                      Bạn được mời tham gia lịch trình nhóm. Chấp nhận để bắt đầu cộng tác cùng mọi người.
+                    </p>
+                    <div className="vstack gap-2">
+                      {receivedInvites.map((invitation) => {
+                        const inviterName = invitation.invitedBy?.username
+                          || invitation.invitedBy?.email
+                          || 'Người dùng';
+                        const isResponding = respondingId === invitation._id;
+                        return (
+                          <div
+                            key={invitation._id}
+                            className="border rounded p-3 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light"
+                          >
+                            <div className="min-w-0">
+                              <div className="fw-semibold text-dark text-truncate">
+                                {invitation.itinerary?.title || 'Lịch trình đã bị xóa'}
+                                <span className={`badge ms-2 ${invitation.permission === 'edit' ? 'text-bg-warning' : 'text-bg-secondary'}`}>
+                                  {invitation.permission === 'edit' ? 'Chỉnh sửa' : 'Chỉ xem'}
+                                </span>
+                              </div>
+                              <small className="text-muted">
+                                <i className="bi bi-person me-1"></i>
+                                {inviterName}
+                                {invitation.createdAt && (
+                                  <span> · {new Date(invitation.createdAt).toLocaleString('vi-VN')}</span>
+                                )}
+                              </small>
+                            </div>
+                            <div className="d-flex gap-2 flex-shrink-0">
+                              <button
+                                type="button"
+                                className="btn btn-success btn-sm"
+                                disabled={isResponding}
+                                onClick={() => handleRespondInvitation(invitation._id, 'accept')}
+                              >
+                                {isResponding ? (
+                                  <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                ) : (
+                                  <i className="bi bi-check2 me-1"></i>
+                                )}
+                                Chấp nhận
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                disabled={isResponding}
+                                onClick={() => handleRespondInvitation(invitation._id, 'decline')}
+                              >
+                                <i className="bi bi-x-lg me-1"></i>
+                                Từ chối
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <ul className="nav nav-tabs mb-4">
                 <li className="nav-item">

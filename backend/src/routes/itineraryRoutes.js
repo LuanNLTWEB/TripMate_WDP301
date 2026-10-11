@@ -22,7 +22,8 @@ import {
 import {
   inviteCollaborator,
   listItineraryInvitations,
-  listReceivedInvitations
+  listReceivedInvitations,
+  respondToInvitation
 } from '../controllers/invitationController.js';
 import {
   activityValidation,
@@ -37,7 +38,8 @@ import {
   updateActivityValidation,
   shareItineraryValidation,
   removeCollaboratorValidation,
-  inviteCollaboratorValidation
+  inviteCollaboratorValidation,
+  respondInvitationValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -47,6 +49,7 @@ router.post('/', ...customerAccess, itineraryValidation, createItinerary);
 router.get('/', ...customerAccess, listItineraries);
 router.get('/shared', ...customerAccess, listSharedItineraries);
 router.get('/invitations', ...customerAccess, listReceivedInvitations);
+router.post('/invitations/:notificationId/respond', ...customerAccess, respondInvitationValidation, respondToInvitation);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);

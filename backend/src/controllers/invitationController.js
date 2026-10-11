@@ -152,3 +152,86 @@ export const listReceivedInvitations = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải lời mời nhận được' });
   }
 };
+
+/**
+ * Accept or decline a received itinerary invitation (recipient only).
+ * Accepting adds the recipient into the itinerary collaborators with joinedAt.
+ * @route POST /api/itineraries/invitations/:notificationId/respond
+ * @access Customer (recipient only)
+ */
+export const respondToInvitation = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const { action } = req.body;
+
+    const invitation = await Notification.findOne({
+      _id: req.params.notificationId,
+      recipient: req.user._id,
+      notificationType: INVITE_TYPE
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lời mời' });
+    }
+
+    if (invitation.status !== 'pending') {
+      return res.status(409).json({ success: false, message: 'Lời mời này đã được xử lý trước đó' });
+    }
+
+    if (action === 'decline') {
+      invitation.status = 'declined';
+      invitation.isRead = true;
+      await invitation.save();
+
+      return res.json({
+        success: true,
+        message: 'Đã từ chối lời mời cộng tác',
+        invitation
+      });
+    }
+
+    const itinerary = await Itinerary.findById(invitation.itinerary);
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Lịch trình trong lời mời không còn tồn tại' });
+    }
+
+    if (String(itinerary.owner) === String(req.user._id)) {
+      return res.status(409).json({ success: false, message: 'Bạn là chủ sở hữu lịch trình này' });
+    }
+
+    if (!itinerary.collaborators) {
+      itinerary.collaborators = [];
+    }
+
+    const alreadyCollaborator = itinerary.collaborators.some(
+      (c) => String(c.user?._id || c.user) === String(req.user._id)
+    );
+
+    if (!alreadyCollaborator) {
+      itinerary.collaborators.push({
+        user: req.user._id,
+        permission: invitation.permission || 'view',
+        joinedAt: new Date()
+      });
+      await itinerary.save();
+    }
+
+    invitation.status = 'accepted';
+    invitation.isRead = true;
+    await invitation.save();
+
+    return res.json({
+      success: true,
+      message: `Đã chấp nhận lời mời cộng tác lịch trình "${itinerary.title}"`,
+      invitation
+    });
+  } catch (error) {
+    console.error('Respond invitation error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xử lý lời mời' });
+  }
+};
