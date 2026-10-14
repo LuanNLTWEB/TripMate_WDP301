@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import { validationResult } from 'express-validator';
+import { logActivity } from '../utils/activityLogger.js';
 
 const toAccountResponse = (user) => ({
   id: user._id,
@@ -58,6 +59,16 @@ export const createAccount = async (req, res) => {
     if (duplicate) return res.status(400).json({ success: false, message: duplicate.email === email ? 'Email đã được đăng ký' : 'Tên người dùng đã được sử dụng' });
 
     const account = await User.create({ username, email, password, phone: phone || undefined, dateOfBirth: dateOfBirth || undefined, gender, role });
+
+    await logActivity({
+      admin: req.user,
+      action: 'CREATE_ACCOUNT',
+      targetType: 'Account',
+      targetId: account._id,
+      details: `Tạo tài khoản "${account.username}" (${account.email}) với vai trò "${account.role}"`,
+      req
+    });
+
     res.status(201).json({ success: true, message: 'Tạo tài khoản thành công', account: toAccountResponse(account) });
   } catch (error) {
     console.error('Create account error:', error);
@@ -94,6 +105,16 @@ export const updateAccount = async (req, res) => {
       { $set: { role } },
       { new: true }
     );
+
+    await logActivity({
+      admin: req.user,
+      action: 'UPDATE_ACCOUNT_ROLE',
+      targetType: 'Account',
+      targetId: account._id,
+      details: `Đổi vai trò tài khoản "${account.username}" từ "${account.role}" sang "${role}"`,
+      req
+    });
+
     res.json({ success: true, message: 'Cập nhật tài khoản thành công', account: toAccountResponse(updatedAccount) });
   } catch (error) {
     console.error('Update account error:', error);
@@ -114,6 +135,16 @@ export const setAccountStatus = async (req, res) => {
       { $set: { isActive } },
       { new: true }
     );
+
+    await logActivity({
+      admin: req.user,
+      action: isActive ? 'ACTIVATE_ACCOUNT' : 'DEACTIVATE_ACCOUNT',
+      targetType: 'Account',
+      targetId: account._id,
+      details: `${isActive ? 'Kích hoạt' : 'Vô hiệu hóa'} tài khoản "${account.username}"`,
+      req
+    });
+
     res.json({ success: true, message: isActive ? 'Đã kích hoạt tài khoản' : 'Đã vô hiệu hóa tài khoản', account: toAccountResponse(updatedAccount) });
   } catch (error) {
     console.error('Set account status error:', error);
@@ -133,6 +164,15 @@ export const deleteAccount = async (req, res) => {
         deletedAt: new Date(),
         isActive: false
       }
+    });
+
+    await logActivity({
+      admin: req.user,
+      action: 'DELETE_ACCOUNT',
+      targetType: 'Account',
+      targetId: account._id,
+      details: `Xóa tài khoản "${account.username}" (${account.email})`,
+      req
     });
 
     res.json({ success: true, message: 'Đã xóa tài khoản' });

@@ -12,6 +12,8 @@ import tourCategoryRoutes from './routes/tourCategoryRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
+import activityLogRoutes from './routes/activityLogRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 import { seedDefaultRoles } from './models/Role.js';
 
 dotenv.config();
@@ -32,6 +34,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/accounts', accountRoutes);
+app.use('/api/admin/roles', roleRoutes);
+app.use('/api/admin/activity-logs', activityLogRoutes);
 app.use('/api/destinations', destinationRoutes);
 app.use('/api/tours', tourRoutes);
 app.use('/api/itineraries', itineraryRoutes);
@@ -39,11 +43,9 @@ app.use('/api/destination-categories', destinationCategoryRoutes);
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin/roles', roleRoutes);
-import uploadRoutes from './routes/uploadRoutes.js';
+app.use('/api/upload', uploadRoutes);
 
 // Health check
-app.use('/api/upload', uploadRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'TripMate API is running' });

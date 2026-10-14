@@ -26,6 +26,14 @@ const managementNavigation = [
     roles: ['admin']
   },
   {
+    key: 'activity-logs',
+    label: 'Nhật ký hoạt động',
+    description: 'Xem lịch sử thao tác của quản trị viên',
+    icon: 'bi-clock-history',
+    path: '/management/activity-logs',
+    roles: ['admin']
+  },
+  {
     key: 'destinations',
     label: 'Quản lý điểm đến',
     description: 'Tạo và cập nhật thông tin điểm đến',

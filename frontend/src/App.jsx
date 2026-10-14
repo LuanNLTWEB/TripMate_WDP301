@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import AdminAccounts from './pages/AdminAccounts';
 import AdminRoles from './pages/AdminRoles';
+import AdminActivityLogs from './pages/AdminActivityLogs';
 import Destinations from './pages/Destinations';
 import DestinationDetails from './pages/DestinationDetails';
 import StaffDestinations from './pages/StaffDestinations';
@@ -74,6 +75,14 @@ function App() {
                   )}
                 />
                 <Route
+                  path="activity-logs"
+                  element={(
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminActivityLogs />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
                   path="reviews"
                   element={(
                     <ProtectedRoute allowedRoles={['admin', 'staff']}>
@@ -95,6 +104,7 @@ function App() {
 
             <Route path="/admin/accounts" element={<Navigate to="/management/accounts" replace />} />
             <Route path="/admin/roles" element={<Navigate to="/management/roles" replace />} />
+            <Route path="/admin/activity-logs" element={<Navigate to="/management/activity-logs" replace />} />
             <Route path="/staff/destinations" element={<Navigate to="/management/destinations" replace />} />
             <Route path="/staff/destination-categories" element={<Navigate to="/management/destination-categories" replace />} />
             <Route path="/staff/tour-categories" element={<Navigate to="/management/tour-categories" replace />} />

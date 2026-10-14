@@ -96,6 +96,19 @@ export const roleApi = {
   remove: (id) => apiRequest(`/admin/roles/${id}`, { method: 'DELETE' })
 };
 
+export const activityLogApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.action && params.action !== 'all') query.append('action', params.action);
+    if (params.targetType && params.targetType !== 'all') query.append('targetType', params.targetType);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/admin/activity-logs${queryString}`, { method: 'GET' });
+  }
+};
+
 export const destinationApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();

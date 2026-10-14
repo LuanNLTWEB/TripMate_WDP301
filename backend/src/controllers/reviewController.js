@@ -1,5 +1,6 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
+import { logActivity } from '../utils/activityLogger.js';
 
 export const getReviewsByTour = async (req, res) => {
   try {
@@ -120,6 +121,17 @@ export const moderateReview = async (req, res) => {
       .populate('tourId', 'title location departureLocation')
       .populate('moderatedBy', 'username email');
 
+    if (req.user?.role === 'admin') {
+      await logActivity({
+        admin: req.user,
+        action: 'MODERATE_REVIEW',
+        targetType: 'Review',
+        targetId: review._id,
+        details: `Kiểm duyệt đánh giá thành trạng thái "${status}"${moderationReason ? ` (Lý do: ${moderationReason})` : ''}`,
+        req
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: 'Kiểm duyệt đánh giá thành công',
@@ -166,6 +178,17 @@ export const deleteReview = async (req, res) => {
       : 0;
 
     await Tour.findByIdAndUpdate(tourId, { averageRating });
+
+    if (req.user?.role === 'admin') {
+      await logActivity({
+        admin: req.user,
+        action: 'DELETE_REVIEW',
+        targetType: 'Review',
+        targetId: id,
+        details: `Xóa vĩnh viễn đánh giá ID "${id}"`,
+        req
+      });
+    }
 
     res.status(200).json({
       success: true,
