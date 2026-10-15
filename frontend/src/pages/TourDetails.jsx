@@ -120,7 +120,7 @@ const TourDetails = () => {
           setIsFavorite((response.favoriteTourIds || []).map(String).includes(String(id)));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isMounted = false;
@@ -398,7 +398,36 @@ const TourDetails = () => {
                 <div className="card-body p-4">
                   <p className="text-muted mb-1">Giá tour trọn gói</p>
                   <p className="fs-3 fw-bold text-primary mb-3">{formatPrice(tour.price)}</p>
-                  
+
+                  {isAuthenticated && user?.role === 'customer' && tour.availableSeats > 0 && (
+                    <div className="mb-3">
+                      <Link
+                        to={`/tours/${tour._id}/booking`}
+                        className="btn btn-primary w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                      >
+                        <i className="bi bi-calendar-check"></i>
+                        <span>Đặt tour ngay</span>
+                      </Link>
+                    </div>
+                  )}
+
+                  {isAuthenticated && user?.role === 'customer' && tour.availableSeats === 0 && (
+                    <div className="alert alert-warning py-2 text-center small mb-3">
+                      <i className="bi bi-exclamation-triangle me-1"></i>Tour hiện đã hết chỗ
+                    </div>
+                  )}
+
+                  {!isAuthenticated && (
+                    <div className="mb-3">
+                      <Link
+                        to="/login"
+                        className="btn btn-outline-primary w-100 rounded-pill py-2 fw-semibold"
+                      >
+                        <i className="bi bi-box-arrow-in-right me-2"></i>Đăng nhập để đặt tour
+                      </Link>
+                    </div>
+                  )}
+
                   {isTourOwner && (
                     <div className="mb-3">
                       <Link

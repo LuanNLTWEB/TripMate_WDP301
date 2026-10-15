@@ -14,6 +14,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import bookingRoutes from './routes/bookingRoutes.js';
 import { seedDefaultRoles } from './models/Role.js';
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Health check
 
