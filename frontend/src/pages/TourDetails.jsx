@@ -27,6 +27,14 @@ const TourDetails = () => {
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
 
+  const isTourOwner = Boolean(user && tour && (
+    user.role === 'admin' ||
+    (user.role === 'tourProvider' && (
+      (typeof tour.providerId === 'string' && tour.providerId === user._id) ||
+      (tour.providerId?._id && tour.providerId._id === user._id)
+    ))
+  ));
+
   const handleDeleteReview = async () => {
     if (!reviewToDelete || isDeletingReview) return;
 
@@ -201,21 +209,32 @@ const TourDetails = () => {
                           : (tour.destinationLocation || tour.location)}
                       </p>
                     </div>
-                    {isAuthenticated && user?.role === 'customer' && (
-                      <button
-                        type="button"
-                        className={`btn rounded-pill px-3 ${isFavorite ? 'btn-danger' : 'btn-outline-danger'}`}
-                        onClick={handleFavorite}
-                        disabled={updatingFavorite}
-                      >
-                        {updatingFavorite ? (
-                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                        ) : (
-                          <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} me-2`}></i>
-                        )}
-                        {isFavorite ? 'Đã lưu' : 'Lưu tour'}
-                      </button>
-                    )}
+                    <div className="d-flex align-items-center gap-2">
+                      {isTourOwner && (
+                        <Link
+                          to={`/provider/tours/${tour._id}/details`}
+                          className="btn btn-warning text-dark rounded-pill px-3 shadow-sm d-flex align-items-center gap-1.5 fw-medium"
+                        >
+                          <i className="bi bi-gear-fill"></i>
+                          <span>Thiết lập chi tiết</span>
+                        </Link>
+                      )}
+                      {isAuthenticated && user?.role === 'customer' && (
+                        <button
+                          type="button"
+                          className={`btn rounded-pill px-3 ${isFavorite ? 'btn-danger' : 'btn-outline-danger'}`}
+                          onClick={handleFavorite}
+                          disabled={updatingFavorite}
+                        >
+                          {updatingFavorite ? (
+                            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                          ) : (
+                            <i className={`bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'} me-2`}></i>
+                          )}
+                          {isFavorite ? 'Đã lưu' : 'Lưu tour'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="d-flex flex-wrap gap-3 mb-4">
@@ -223,15 +242,153 @@ const TourDetails = () => {
                       <i className="bi bi-clock me-2"></i>{tour.duration}
                     </span>
                     <span className="badge text-bg-light border px-3 py-2 text-warning">
-                      <i className="bi bi-star-fill me-2"></i>{tour.averageRating}
+                      <i className="bi bi-star-fill me-2"></i>{tour.averageRating || '5.0'}
                     </span>
                     <span className="badge text-bg-light border px-3 py-2">
                       <i className="bi bi-person-check me-2"></i>Còn {tour.availableSeats} chỗ
                     </span>
+                    {tour.categoryId?.name && (
+                      <span className="badge text-bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                        <i className="bi bi-tag-fill me-1.5"></i>{tour.categoryId.name}
+                      </span>
+                    )}
                   </div>
 
-                  <h2 className="h4 fw-bold mb-3">Giới thiệu tour</h2>
-                  <p className="text-secondary lh-lg mb-0" style={{ whiteSpace: 'pre-line' }}>{tour.description}</p>
+                  {/* Giới thiệu tour */}
+                  <div className="mb-4">
+                    <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
+                      <i className="bi bi-card-text text-primary"></i>
+                      <span>Giới thiệu tour</span>
+                    </h2>
+                    <p className="text-secondary lh-lg mb-0" style={{ whiteSpace: 'pre-line' }}>{tour.description}</p>
+                  </div>
+
+                  {/* Lịch trình chi tiết từng ngày */}
+                  {tour.itinerary && tour.itinerary.length > 0 ? (
+                    <div className="mb-4 pt-3 border-top">
+                      <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-calendar-range text-primary"></i>
+                        <span>Lịch trình chi tiết ({tour.itinerary.length} ngày)</span>
+                      </h2>
+                      <div className="d-flex flex-column gap-3">
+                        {tour.itinerary.map((dayItem, idx) => (
+                          <div key={idx} className="card border rounded-4 p-3.5 bg-light-subtle shadow-none">
+                            <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                              <span className="badge bg-primary text-white rounded-pill px-3 py-1.5 fs-6">
+                                Ngày {dayItem.day}
+                              </span>
+                              {dayItem.meals && dayItem.meals.length > 0 && (
+                                <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                  <span className="small text-muted me-1">
+                                    <i className="bi bi-cup-hot me-1"></i>Bữa ăn:
+                                  </span>
+                                  {dayItem.meals.map((meal, mIdx) => (
+                                    <span key={mIdx} className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">
+                                      {meal}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <h5 className="fw-bold text-dark mb-2">{dayItem.title}</h5>
+                            <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                              {dayItem.description}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : isTourOwner && (
+                    <div className="alert alert-info border-0 rounded-4 p-3 d-flex align-items-center justify-content-between mb-4">
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="bi bi-info-circle-fill fs-5 text-primary"></i>
+                        <span className="small">Tour này chưa được thiết lập lịch trình chi tiết từng ngày.</span>
+                      </div>
+                      <Link to={`/provider/tours/${tour._id}/details`} className="btn btn-sm btn-primary rounded-pill px-3">
+                        Thiết lập ngay
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Dịch vụ bao gồm & không bao gồm */}
+                  {((tour.includedServices && tour.includedServices.length > 0) || (tour.excludedServices && tour.excludedServices.length > 0)) && (
+                    <div className="mb-4 pt-3 border-top">
+                      <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-check-circle text-primary"></i>
+                        <span>Dịch vụ & Tiện ích tour</span>
+                      </h2>
+                      <div className="row g-3">
+                        {tour.includedServices && tour.includedServices.length > 0 && (
+                          <div className="col-md-6">
+                            <div className="card border-0 bg-success-subtle h-100 rounded-4 p-3.5">
+                              <h6 className="fw-bold text-success mb-2.5 d-flex align-items-center gap-2">
+                                <i className="bi bi-check-circle-fill"></i>
+                                <span>Dịch vụ bao gồm</span>
+                              </h6>
+                              <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
+                                {tour.includedServices.map((inc, i) => (
+                                  <li key={i} className="d-flex align-items-start gap-2 text-dark">
+                                    <i className="bi bi-check-lg text-success flex-shrink-0 mt-0.5"></i>
+                                    <span>{inc}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                        {tour.excludedServices && tour.excludedServices.length > 0 && (
+                          <div className="col-md-6">
+                            <div className="card border-0 bg-danger-subtle h-100 rounded-4 p-3.5">
+                              <h6 className="fw-bold text-danger mb-2.5 d-flex align-items-center gap-2">
+                                <i className="bi bi-x-circle-fill"></i>
+                                <span>Dịch vụ không bao gồm</span>
+                              </h6>
+                              <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
+                                {tour.excludedServices.map((exc, i) => (
+                                  <li key={i} className="d-flex align-items-start gap-2 text-dark">
+                                    <i className="bi bi-x-lg text-danger flex-shrink-0 mt-0.5"></i>
+                                    <span>{exc}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chính sách hoàn hủy & Lưu ý */}
+                  {(tour.cancellationPolicy || tour.notes) && (
+                    <div className="mb-4 pt-3 border-top">
+                      <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i className="bi bi-shield-check text-primary"></i>
+                        <span>Chính sách & Quy định</span>
+                      </h2>
+                      {tour.cancellationPolicy && (
+                        <div className="card border rounded-4 p-3.5 mb-3 bg-white">
+                          <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                            <i className="bi bi-arrow-repeat"></i>
+                            <span>Chính sách hoàn hủy</span>
+                          </h6>
+                          <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                            {tour.cancellationPolicy}
+                          </p>
+                        </div>
+                      )}
+                      {tour.notes && (
+                        <div className="card border rounded-4 p-3.5 bg-white">
+                          <h6 className="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-2">
+                            <i className="bi bi-exclamation-triangle-fill text-warning"></i>
+                            <span>Lưu ý quan trọng</span>
+                          </h6>
+                          <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                            {tour.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -239,8 +396,36 @@ const TourDetails = () => {
             <div className="col-lg-4">
               <div className="card border-0 shadow-sm rounded-4 sticky-sidebar">
                 <div className="card-body p-4">
-                  <p className="text-muted mb-1">Giá tour</p>
+                  <p className="text-muted mb-1">Giá tour trọn gói</p>
                   <p className="fs-3 fw-bold text-primary mb-3">{formatPrice(tour.price)}</p>
+                  
+                  {isTourOwner && (
+                    <div className="mb-3">
+                      <Link
+                        to={`/provider/tours/${tour._id}/details`}
+                        className="btn btn-warning w-100 rounded-pill py-2.5 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm text-dark"
+                      >
+                        <i className="bi bi-sliders"></i>
+                        <span>Cài đặt chi tiết tour</span>
+                      </Link>
+                    </div>
+                  )}
+
+                  {tour.providerId && (
+                    <div className="p-3 rounded-3 bg-light border mb-3">
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <i className="bi bi-building text-primary fs-5"></i>
+                        <span className="fw-semibold small text-dark">Nhà cung cấp tour</span>
+                      </div>
+                      <div className="fw-bold text-dark">{tour.providerId.username || 'Đối tác TripMate'}</div>
+                      {tour.providerId.phone && (
+                        <div className="small text-muted mt-1">
+                          <i className="bi bi-telephone me-1"></i>{tour.providerId.phone}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <hr />
                   <p className="small text-muted mb-0">
                     <i className="bi bi-info-circle me-2"></i>

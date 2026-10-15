@@ -9,10 +9,19 @@ import {
   removeFavoriteTour,
   saveFavoriteTour,
   updateTourStatus,
-  requestTourRevision
+  requestTourRevision,
+  getProviderTours,
+  getProviderTourById,
+  setTourDetails
 } from '../controllers/tourController.js';
-import { protect, authorize } from '../middleware/auth.js';
-import { tourIdValidation, updateTourStatusValidation, requestRevisionValidation, createTourValidation } from '../middleware/validate.js';
+import { protect, authorize, optionalAuth } from '../middleware/auth.js';
+import {
+  tourIdValidation,
+  updateTourStatusValidation,
+  requestRevisionValidation,
+  createTourValidation,
+  setTourDetailsValidation
+} from '../middleware/validate.js';
 
 const router = express.Router();
 
@@ -20,11 +29,14 @@ router.get('/', getAllTours);
 router.post('/', protect, authorize('tourProvider'), createTourValidation, createTour);
 router.get('/management', protect, authorize('staff', 'admin'), getManagedTours);
 router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
+router.get('/provider', protect, authorize('tourProvider', 'admin'), getProviderTours);
+router.get('/provider/:id', protect, authorize('tourProvider', 'admin'), tourIdValidation, getProviderTourById);
+router.put('/:id/details', protect, authorize('tourProvider', 'admin'), setTourDetailsValidation, setTourDetails);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize('customer'), tourIdValidation, saveFavoriteTour);
 router.delete('/:id/favorite', protect, authorize('customer'), tourIdValidation, removeFavoriteTour);
 router.patch('/:id/status', protect, authorize('staff', 'admin'), updateTourStatusValidation, updateTourStatus);
 router.patch('/:id/revision', protect, authorize('staff', 'admin'), requestRevisionValidation, requestTourRevision);
-router.get('/:id', tourIdValidation, getTourById);
+router.get('/:id', optionalAuth, tourIdValidation, getTourById);
 
 export default router;

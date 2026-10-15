@@ -28,6 +28,8 @@ import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
 import ProviderCreateTour from './pages/ProviderCreateTour';
+import ProviderTourDetails from './pages/ProviderTourDetails';
+import ProviderTours from './pages/ProviderTours';
 
 function App() {
   return (
@@ -46,11 +48,12 @@ function App() {
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/about" element={<AboutVietnam />} />
+            <Route path="/provider/create-tour" element={<Navigate to="/management/my-tours?action=create" replace />} />
             <Route
-              path="/provider/create-tour"
+              path="/provider/tours/:id/details"
               element={(
-                <ProtectedRoute allowedRoles={['tourProvider']}>
-                  <ProviderCreateTour />
+                <ProtectedRoute allowedRoles={['tourProvider', 'admin']}>
+                  <ProviderTourDetails />
                 </ProtectedRoute>
               )}
             />
@@ -99,6 +102,14 @@ function App() {
                   <Route path="pending-tours" element={<StaffPendingTours />} />
                   <Route path="statistics" element={<Stats />} />
                 </Route>
+                <Route
+                  path="my-tours"
+                  element={(
+                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                      <ProviderTours />
+                    </ProtectedRoute>
+                  )}
+                />
               </Route>
             </Route>
 

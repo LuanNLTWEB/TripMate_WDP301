@@ -273,6 +273,123 @@ function ReviewTourSubmission() {
             </p>
           </div>
 
+          {/* 1. Lịch trình chi tiết từng ngày */}
+          {tour.itinerary && tour.itinerary.length > 0 && (
+            <div className="mt-4 pt-3 border-top">
+              <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-calendar-range text-primary"></i>
+                <span>1. Lịch trình chi tiết ({tour.itinerary.length} ngày)</span>
+              </h3>
+              <div className="d-flex flex-column gap-3">
+                {tour.itinerary.map((dayItem, idx) => (
+                  <div key={idx} className="card border rounded-3 p-3 bg-light-subtle shadow-none">
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                      <span className="badge bg-primary text-white rounded-pill px-3 py-1.5">
+                        Ngày {dayItem.day}
+                      </span>
+                      {dayItem.meals && dayItem.meals.length > 0 && (
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                          <span className="small text-muted me-1">
+                            <i className="bi bi-cup-hot me-1"></i>Bữa ăn:
+                          </span>
+                          {dayItem.meals.map((meal, mIdx) => (
+                            <span key={mIdx} className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">
+                              {meal}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <h5 className="fw-bold text-dark mb-2">{dayItem.title}</h5>
+                    <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                      {dayItem.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Dịch vụ bao gồm & không bao gồm */}
+          {((tour.includedServices && tour.includedServices.length > 0) || (tour.excludedServices && tour.excludedServices.length > 0)) && (
+            <div className="mt-4 pt-3 border-top">
+              <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-check-circle text-primary"></i>
+                <span>2. Dịch vụ bao gồm & Không bao gồm</span>
+              </h3>
+              <div className="row g-3">
+                {tour.includedServices && tour.includedServices.length > 0 && (
+                  <div className="col-md-6">
+                    <div className="card border-0 bg-success-subtle h-100 rounded-3 p-3">
+                      <h6 className="fw-bold text-success mb-2.5 d-flex align-items-center gap-2">
+                        <i className="bi bi-check-circle-fill"></i>
+                        <span>Dịch vụ bao gồm</span>
+                      </h6>
+                      <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
+                        {tour.includedServices.map((inc, i) => (
+                          <li key={i} className="d-flex align-items-start gap-2 text-dark">
+                            <i className="bi bi-check-lg text-success flex-shrink-0 mt-0.5"></i>
+                            <span>{inc}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                {tour.excludedServices && tour.excludedServices.length > 0 && (
+                  <div className="col-md-6">
+                    <div className="card border-0 bg-danger-subtle h-100 rounded-3 p-3">
+                      <h6 className="fw-bold text-danger mb-2.5 d-flex align-items-center gap-2">
+                        <i className="bi bi-x-circle-fill"></i>
+                        <span>Dịch vụ không bao gồm</span>
+                      </h6>
+                      <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
+                        {tour.excludedServices.map((exc, i) => (
+                          <li key={i} className="d-flex align-items-start gap-2 text-dark">
+                            <i className="bi bi-x-lg text-danger flex-shrink-0 mt-0.5"></i>
+                            <span>{exc}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Chính sách & Lưu ý */}
+          {(tour.cancellationPolicy || tour.notes) && (
+            <div className="mt-4 pt-3 border-top">
+              <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+                <i className="bi bi-shield-check text-primary"></i>
+                <span>3. Chính sách & Lưu ý</span>
+              </h3>
+              {tour.cancellationPolicy && (
+                <div className="card border rounded-3 p-3 mb-3 bg-white">
+                  <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                    <i className="bi bi-arrow-repeat"></i>
+                    <span>Chính sách hoàn hủy</span>
+                  </h6>
+                  <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                    {tour.cancellationPolicy}
+                  </p>
+                </div>
+              )}
+              {tour.notes && (
+                <div className="card border rounded-3 p-3 bg-white">
+                  <h6 className="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-2">
+                    <i className="bi bi-exclamation-triangle-fill text-warning"></i>
+                    <span>Lưu ý quan trọng</span>
+                  </h6>
+                  <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
+                    {tour.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Action Panel — chỉ hiện khi tour đang pending */}
           {isPending && (
             <div className="mt-4 pt-4 border-top d-flex gap-2 flex-wrap">

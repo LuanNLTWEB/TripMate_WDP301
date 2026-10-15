@@ -304,6 +304,20 @@ export const tourApi = {
   requestRevision: (id, note) => apiRequest(`/tours/${id}/revision`, {
     method: 'PATCH',
     body: JSON.stringify({ note })
+  }),
+  getProviderTours: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/tours/provider${queryString}`, { method: 'GET' });
+  },
+  getProviderById: (id) => apiRequest(`/tours/provider/${id}`, { method: 'GET' }),
+  setDetails: (id, details) => apiRequest(`/tours/${id}/details`, {
+    method: 'PUT',
+    body: JSON.stringify(details)
   })
 };
 export const uploadApi = {

@@ -8,7 +8,7 @@ function ManagementLayout() {
   const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigation = getManagementNavigation(user?.role);
-  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên';
+  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
 
   return (
     <div className="management-root">

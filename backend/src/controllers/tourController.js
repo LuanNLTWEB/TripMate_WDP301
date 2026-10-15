@@ -208,16 +208,34 @@ export const getTourById = async (req, res) => {
   }
 
   try {
-    const tour = await Tour.findOne({
-      _id: req.params.id,
-      status: 'active'
-    });
+    const tour = await Tour.findById(req.params.id)
+      .populate('categoryId', 'name')
+      .populate('providerId', 'username email phone');
 
     if (!tour) {
       return res.status(404).json({
         success: false,
         message: 'Tour not found'
       });
+    }
+
+    // Nếu tour chưa active, chỉ cho phép chủ sở hữu (providerId) hoặc staff, admin xem
+    if (tour.status !== 'active') {
+      const isPrivileged = req.user && (
+        req.user.role === 'admin' ||
+        req.user.role === 'staff' ||
+        (req.user.role === 'tourProvider' && tour.providerId && (
+          (tour.providerId._id && tour.providerId._id.equals(req.user._id)) ||
+          tour.providerId.equals?.(req.user._id)
+        ))
+      );
+
+      if (!isPrivileged) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tour not found'
+        });
+      }
     }
 
     res.status(200).json({
@@ -535,3 +553,180 @@ export const createTour = async (req, res) => {
     });
   }
 };
+
+export const getProviderTours = async (req, res) => {
+  try {
+    const {
+      search,
+      status = 'all',
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    const filters = req.user.role === 'admin' ? [] : [{ providerId: req.user._id }];
+
+    if (search) {
+      const safeSearch = escapeRegex(search);
+      filters.push({
+        $or: [
+          { title: { $regex: safeSearch, $options: 'i' } },
+          { location: { $regex: safeSearch, $options: 'i' } },
+          { departureLocation: { $regex: safeSearch, $options: 'i' } },
+          { destinationLocation: { $regex: safeSearch, $options: 'i' } }
+        ]
+      });
+    }
+
+    if (status && status !== 'all') {
+      filters.push({ status });
+    }
+
+    const query = filters.length > 0 ? { $and: filters } : {};
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+    const startIndex = (pageNum - 1) * limitNum;
+
+    const [total, tours] = await Promise.all([
+      Tour.countDocuments(query),
+      Tour.find(query)
+        .populate('categoryId', 'name')
+        .populate('rejectedBy', 'username email')
+        .populate('revisionRequestedBy', 'username email')
+        .sort({ createdAt: -1 })
+        .skip(startIndex)
+        .limit(limitNum)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      count: tours.length,
+      total,
+      totalPages: Math.ceil(total / limitNum) || 1,
+      currentPage: pageNum,
+      data: tours
+    });
+  } catch (error) {
+    console.error('Error fetching provider tours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách tour của nhà cung cấp'
+    });
+  }
+};
+
+export const getProviderTourById = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id)
+      .populate('categoryId', 'name')
+      .populate('providerId', 'username email phone');
+
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    if (req.user.role !== 'admin' && (!tour.providerId || !tour.providerId._id.equals(req.user._id))) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền truy cập tour này'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error fetching provider tour by ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải thông tin tour'
+    });
+  }
+};
+
+export const setTourDetails = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu chi tiết tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    if (req.user.role !== 'admin' && (!tour.providerId || !tour.providerId.equals(req.user._id))) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền thiết lập chi tiết cho tour này'
+      });
+    }
+
+    const {
+      itinerary,
+      includedServices,
+      excludedServices,
+      cancellationPolicy,
+      notes
+    } = req.body;
+
+    if (itinerary !== undefined) {
+      tour.itinerary = Array.isArray(itinerary) ? itinerary : [];
+    }
+    if (includedServices !== undefined) {
+      tour.includedServices = Array.isArray(includedServices)
+        ? includedServices.map((s) => String(s).trim()).filter(Boolean)
+        : [];
+    }
+    if (excludedServices !== undefined) {
+      tour.excludedServices = Array.isArray(excludedServices)
+        ? excludedServices.map((s) => String(s).trim()).filter(Boolean)
+        : [];
+    }
+    if (cancellationPolicy !== undefined) {
+      tour.cancellationPolicy = String(cancellationPolicy || '').trim();
+    }
+    if (notes !== undefined) {
+      tour.notes = String(notes || '').trim();
+    }
+
+    await tour.save();
+    await tour.populate([
+      { path: 'categoryId', select: 'name' },
+      { path: 'providerId', select: 'username email phone' }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Thiết lập chi tiết tour thành công',
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error setting tour details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể thiết lập chi tiết tour'
+    });
+  }
+};
+

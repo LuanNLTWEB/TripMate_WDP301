@@ -412,3 +412,37 @@ export const createTourValidation = [
     .optional()
     .isArray().withMessage('Hình ảnh phải là một mảng URL')
 ];
+
+export const setTourDetailsValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('itinerary')
+    .optional()
+    .isArray().withMessage('Lịch trình chi tiết phải là một danh sách các ngày'),
+  body('itinerary.*.day')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số thứ tự ngày phải là số nguyên dương'),
+  body('itinerary.*.title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Tiêu đề ngày không được để trống'),
+  body('itinerary.*.description')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Mô tả hoạt động ngày không được để trống'),
+  body('itinerary.*.meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng'),
+  body('includedServices')
+    .optional()
+    .isArray().withMessage('Dịch vụ bao gồm phải là một mảng'),
+  body('excludedServices')
+    .optional()
+    .isArray().withMessage('Dịch vụ không bao gồm phải là một mảng'),
+  body('cancellationPolicy')
+    .optional()
+    .isString().withMessage('Chính sách hoàn hủy phải là chuỗi ký tự'),
+  body('notes')
+    .optional()
+    .isString().withMessage('Lưu ý tour phải là chuỗi ký tự')
+];
+

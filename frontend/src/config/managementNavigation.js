@@ -1,4 +1,4 @@
-export const MANAGEMENT_ROLES = ['admin', 'staff'];
+export const MANAGEMENT_ROLES = ['admin', 'staff', 'tourProvider'];
 
 const managementNavigation = [
   {
@@ -89,6 +89,14 @@ const managementNavigation = [
     icon: 'bi-bar-chart',
     path: '/management/statistics',
     roles: ['staff']
+  },
+  {
+    key: 'my-tours',
+    label: 'Quản lý tour của tôi',
+    description: 'Tạo mới, theo dõi và quản lý các tour do bạn cung cấp',
+    icon: 'bi-map',
+    path: '/management/my-tours',
+    roles: ['tourProvider']
   }
 ];
 
