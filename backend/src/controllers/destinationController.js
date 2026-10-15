@@ -2,8 +2,11 @@ import Destination from '../models/Destination.js';
 import User from '../models/User.js';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
+import { logActivity } from '../utils/activityLogger.js';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const DESTINATION_STATUS_VALUES = ['active', 'inactive'];
 
 /**
  * Create a destination in the Staff catalogue.
@@ -29,6 +32,15 @@ export const createDestination = async (req, res) => {
       categoryId: req.body.categoryId || null,
       isPopular: req.body.isPopular === true || req.body.isPopular === 'true',
       createdBy: req.user._id
+    });
+
+    await logActivity({
+      admin: req.user,
+      action: 'CREATE_DESTINATION',
+      targetType: 'Destination',
+      targetId: destination._id,
+      details: `Tạo điểm đến "${destination.name}" với trạng thái "${destination.status}"`,
+      req
     });
 
     return res.status(201).json({
@@ -66,7 +78,7 @@ export const updateDestination = async (req, res) => {
       isDeleted: { $ne: true }
     });
     if (!destination) {
-      return res.status(404).json({ success: false, message: 'Destination not found' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến' });
     }
 
     destination.name = req.body.name ?? destination.name;
@@ -79,6 +91,15 @@ export const updateDestination = async (req, res) => {
       : destination.isPopular;
 
     await destination.save();
+
+    await logActivity({
+      admin: req.user,
+      action: 'UPDATE_DESTINATION',
+      targetType: 'Destination',
+      targetId: destination._id,
+      details: `Cập nhật thông tin điểm đến "${destination.name}"`,
+      req
+    });
 
     return res.status(200).json({
       success: true,
@@ -110,6 +131,24 @@ export const updateDestinationStatus = async (req, res) => {
   }
 
   try {
+    if (!DESTINATION_STATUS_VALUES.includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trạng thái phải là active hoặc inactive'
+      });
+    }
+
+    const existingDestination = await Destination.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true }
+    });
+
+    if (!existingDestination) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến' });
+    }
+
+    const previousStatus = existingDestination.status;
+
     const destination = await Destination.findOneAndUpdate(
       { _id: req.params.id, isDeleted: { $ne: true } },
       { status: req.body.status },
@@ -117,8 +156,17 @@ export const updateDestinationStatus = async (req, res) => {
     );
 
     if (!destination) {
-      return res.status(404).json({ success: false, message: 'Destination not found' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến' });
     }
+
+    await logActivity({
+      admin: req.user,
+      action: 'UPDATE_DESTINATION_STATUS',
+      targetType: 'Destination',
+      targetId: destination._id,
+      details: `Cập nhật trạng thái điểm đến "${destination.name}" từ "${previousStatus}" sang "${destination.status}"`,
+      req
+    });
 
     return res.json({
       success: true,
@@ -127,6 +175,21 @@ export const updateDestinationStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating destination status:', error);
+
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã điểm đến không hợp lệ'
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Trạng thái phải là active hoặc inactive'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Không thể cập nhật trạng thái điểm đến'
@@ -148,7 +211,7 @@ export const getAllDestinations = async (req, res) => {
       page = 1,
       limit = 10
     } = req.query;
-    const query = { isDeleted: { $ne: true } };
+    const query = { isDeleted: { $ne: true }, status: 'active' };
     
     if (isPopular === 'true') {
       query.isPopular = true;
@@ -202,7 +265,83 @@ export const getAllDestinations = async (req, res) => {
     console.error('Error fetching destinations:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching destinations'
+      message: 'Không thể tải danh sách điểm đến'
+    });
+  }
+};
+
+/**
+ * List every non-deleted destination for Staff moderation, including inactive ones.
+ * Mirrors BR-25: staff and admin can see all destinations regardless of status.
+ * @route GET /api/destinations/management
+ * @access Staff, Admin
+ */
+export const getManagedDestinations = async (req, res) => {
+  try {
+    const {
+      search,
+      categoryId,
+      status,
+      sort = 'newest',
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    const query = { isDeleted: { $ne: true } };
+
+    if (status) {
+      if (!DESTINATION_STATUS_VALUES.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Trạng thái phải là active hoặc inactive'
+        });
+      }
+      query.status = status;
+    }
+
+    if (search) {
+      const safeSearch = escapeRegex(search);
+      query.$or = [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { location: { $regex: safeSearch, $options: 'i' } }
+      ];
+    }
+
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return res.status(400).json({ success: false, message: 'Danh mục điểm đến không hợp lệ' });
+      }
+      query.categoryId = categoryId;
+    }
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+    const startIndex = (pageNum - 1) * limitNum;
+    const sortOptions = {
+      newest: { createdAt: -1 },
+      nameAsc: { name: 1 }
+    };
+
+    const total = await Destination.countDocuments(query);
+    const destinations = await Destination.find(query)
+      .sort(sortOptions[sort] || sortOptions.newest)
+      .skip(startIndex)
+      .limit(limitNum)
+      .populate('categoryId', 'name');
+
+    res.status(200).json({
+      success: true,
+      count: destinations.length,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      data: destinations
+    });
+  } catch (error) {
+    console.error('Error fetching managed destinations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách điểm đến'
     });
   }
 };
@@ -214,13 +353,14 @@ export const getDestinationById = async (req, res) => {
   try {
     const destination = await Destination.findOne({
       _id: req.params.id,
-      isDeleted: { $ne: true }
+      isDeleted: { $ne: true },
+      status: 'active'
     }).populate('categoryId');
 
     if (!destination) {
       return res.status(404).json({
         success: false,
-        message: 'Destination not found'
+        message: 'Không tìm thấy điểm đến'
       });
     }
 
@@ -235,13 +375,13 @@ export const getDestinationById = async (req, res) => {
     if (error.name === 'CastError') {
        return res.status(404).json({
         success: false,
-        message: 'Destination not found'
+        message: 'Không tìm thấy điểm đến'
       });
     }
 
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching destination'
+      message: 'Không thể tải thông tin điểm đến'
     });
   }
 };
@@ -255,7 +395,7 @@ export const toggleFavorite = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
     const destinationId = req.params.id;
@@ -305,13 +445,13 @@ export const getFavoriteDestinations = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'favoriteDestinations',
-      match: { isDeleted: { $ne: true } }
+      match: { isDeleted: { $ne: true }, status: 'active' }
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'Không tìm thấy người dùng'
       });
     }
 
@@ -326,7 +466,7 @@ export const getFavoriteDestinations = async (req, res) => {
     console.error('Error fetching favorite destinations:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching favorite destinations'
+      message: 'Không thể tải danh sách yêu thích'
     });
   }
 };
@@ -364,6 +504,15 @@ export const deleteDestination = async (req, res) => {
       { favoriteDestinations: destination._id },
       { $pull: { favoriteDestinations: destination._id } }
     );
+
+    await logActivity({
+      admin: req.user,
+      action: 'DELETE_DESTINATION',
+      targetType: 'Destination',
+      targetId: destination._id,
+      details: `Xóa điểm đến "${destination.name}" và thu hồi trạng thái khỏi danh mục`,
+      req
+    });
 
     return res.json({
       success: true,

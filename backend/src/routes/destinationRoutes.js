@@ -3,10 +3,11 @@ import { protect, authorize } from '../middleware/auth.js';
 import {
 	createDestination,
 	deleteDestination,
-	getAllDestinations,
-	getDestinationById,
-	updateDestination,
-	updateDestinationStatus,
+  getAllDestinations,
+  getDestinationById,
+  getManagedDestinations,
+  updateDestination,
+  updateDestinationStatus,
 	getFavoriteDestinations,
 	toggleFavorite
 } from '../controllers/destinationController.js';
@@ -35,8 +36,13 @@ router.post(
 	toggleFavorite
 );
 
+// @route   GET /api/destinations/management
+// @desc    List all destinations for staff moderation, including inactive ones
+// @access  Private (Staff, Admin)
+router.get('/management', protect, authorize('staff', 'admin'), getManagedDestinations);
+
 // @route   GET /api/destinations
-// @desc    Get all destinations
+// @desc    Get all active destinations
 // @access  Public
 router.get('/', getAllDestinations);
 

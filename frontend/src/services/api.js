@@ -123,6 +123,16 @@ export const destinationApi = {
     return apiRequest(`/destinations${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/destinations/${id}`, { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status) query.append('status', params.status);
+    if (params.categoryId) query.append('categoryId', params.categoryId);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/destinations/management${queryString}`, { method: 'GET' });
+  },
   create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)

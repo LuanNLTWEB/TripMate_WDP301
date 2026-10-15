@@ -34,7 +34,7 @@ function StaffDestinations() {
   const loadDestinations = async (searchTerm = search, page = currentPage) => {
     setIsLoading(true);
     try {
-      const response = await destinationApi.getAll({ search: searchTerm, page, limit: 10 });
+      const response = await destinationApi.getManaged({ search: searchTerm, page, limit: 10 });
       setDestinations(response.data || []);
       setTotalPages(response.totalPages || 1);
       setCurrentPage(response.currentPage || 1);
