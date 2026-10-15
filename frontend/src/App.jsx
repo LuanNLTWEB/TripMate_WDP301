@@ -30,6 +30,7 @@ import ManagementReviews from './pages/ManagementReviews';
 import ProviderCreateTour from './pages/ProviderCreateTour';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
+import BookingPage from './pages/BookingPage';
 
 function App() {
   return (
@@ -42,6 +43,14 @@ function App() {
             <Route path="/destinations/:id" element={<DestinationDetails />} />
             <Route path="/tours" element={<Tours />} />
             <Route path="/tours/:id" element={<TourDetails />} />
+            <Route
+              path="/tours/:tourId/booking"
+              element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <BookingPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />

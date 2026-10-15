@@ -27,7 +27,7 @@ export const clearAuthData = () => {
 
 export const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
-  
+
   const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers
@@ -325,6 +325,14 @@ export const uploadApi = {
     method: 'POST',
     body: formData
   })
+};
+
+export const bookingApi = {
+  create: (tourId, bookingData) => apiRequest(`/bookings/${tourId}`, {
+    method: 'POST',
+    body: JSON.stringify(bookingData)
+  }),
+  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' })
 };
 
 export default authApi;

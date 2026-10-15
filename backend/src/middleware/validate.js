@@ -446,3 +446,48 @@ export const setTourDetailsValidation = [
     .isString().withMessage('Lưu ý tour phải là chuỗi ký tự')
 ];
 
+// Validation khi customer đặt tour
+export const createBookingValidation = [
+  body('fullName')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập họ và tên')
+    .isLength({ min: 2, max: 100 }).withMessage('Họ và tên phải từ 2 đến 100 ký tự'),
+  body('phone')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập số điện thoại')
+    .matches(/^0[35789][0-9]{8}$/).withMessage('Số điện thoại không hợp lệ (ví dụ: 0901234567)'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i)
+    .withMessage('Email không hợp lệ (chỉ chấp nhận đuôi .com, .vn, .edu, .edu.vn)'),
+  body('address')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 5, max: 200 }).withMessage('Địa chỉ phải từ 5 đến 200 ký tự')
+    .custom((val) => {
+      if (!/[a-zA-ZÀ-ỹ]{2,}/.test(val)) {
+        throw new Error('Địa chỉ không hợp lệ (không được chỉ chứa số hoặc ký tự đặc biệt)');
+      }
+      return true;
+    }),
+  body('numberOfPeople')
+    .notEmpty().withMessage('Vui lòng nhập số lượng người')
+    .isInt({ min: 1, max: 100 }).withMessage('Số lượng người phải từ 1 đến 100'),
+  body('departureDate')
+    .notEmpty().withMessage('Vui lòng chọn ngày khởi hành')
+    .isISO8601().withMessage('Ngày khởi hành không đúng định dạng')
+    .custom((value) => {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        throw new Error('Ngày khởi hành phải là ngày trong tương lai');
+      }
+      return true;
+    }),
+  body('note')
+    .optional()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+
