@@ -183,6 +183,10 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(itinerary)
   }),
+  update: (id, itinerary) => apiRequest(`/itineraries/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(itinerary)
+  }),
   addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
     method: 'POST',
     body: JSON.stringify(activity)
@@ -318,7 +322,12 @@ export const tourApi = {
   setDetails: (id, details) => apiRequest(`/tours/${id}/details`, {
     method: 'PUT',
     body: JSON.stringify(details)
-  })
+  }),
+  createSchedule: (id, scheduleData) => apiRequest(`/tours/${id}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify(scheduleData)
+  }),
+  getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' })
 };
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {

@@ -7,6 +7,7 @@ import CustomTimePicker from '../components/CustomTimePicker';
 import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
+import EditItineraryModal from './EditItineraryModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -33,6 +34,7 @@ function Itinerary() {
   const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [editingActivityId, setEditingActivityId] = useState(null);
   const activityFormRef = useRef(null);
@@ -526,6 +528,20 @@ function Itinerary() {
                             )}
                           </div>
                           <div className="d-flex align-items-center">
+                            {(activeTab === 'mine' || (itinerary.collaborators || []).some((c) => String(c.user?._id || c.user) === String(user?._id || user?.id) && c.permission === 'edit')) && (
+                              <button
+                                type="button"
+                                className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
+                                title="Chỉnh sửa thông tin lịch trình"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelected(itinerary);
+                                  setEditModalOpen(true);
+                                }}
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
@@ -582,6 +598,17 @@ function Itinerary() {
                               </span>
                             </div>
                             <div className="d-flex align-items-center flex-wrap gap-2">
+                              {canEditSelected && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
+                                  onClick={() => setEditModalOpen(true)}
+                                  title="Chỉnh sửa thông tin lịch trình"
+                                >
+                                  <i className="bi bi-pencil-square me-1"></i>
+                                  <span>Chỉnh sửa</span>
+                                </button>
+                              )}
                               {isOwner && (
                                 <button
                                   type="button"
@@ -1155,6 +1182,13 @@ function Itinerary() {
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreated={handleCreated}
+      />
+
+      <EditItineraryModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        itinerary={selected}
+        onUpdated={applyItinerary}
       />
 
       <ConfirmDeleteModal

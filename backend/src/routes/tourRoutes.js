@@ -12,7 +12,9 @@ import {
   requestTourRevision,
   getProviderTours,
   getProviderTourById,
-  setTourDetails
+  setTourDetails,
+  createTourSchedule,
+  getTourSchedule
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import {
@@ -20,7 +22,8 @@ import {
   updateTourStatusValidation,
   requestRevisionValidation,
   createTourValidation,
-  setTourDetailsValidation
+  setTourDetailsValidation,
+  createTourScheduleValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -29,9 +32,11 @@ router.get('/', getAllTours);
 router.post('/', protect, authorize('tourProvider'), createTourValidation, createTour);
 router.get('/management', protect, authorize('staff', 'admin'), getManagedTours);
 router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
-router.get('/provider', protect, authorize('tourProvider', 'admin'), getProviderTours);
-router.get('/provider/:id', protect, authorize('tourProvider', 'admin'), tourIdValidation, getProviderTourById);
-router.put('/:id/details', protect, authorize('tourProvider', 'admin'), setTourDetailsValidation, setTourDetails);
+router.get('/provider', protect, authorize('tourProvider'), getProviderTours);
+router.get('/provider/:id', protect, authorize('tourProvider'), tourIdValidation, getProviderTourById);
+router.put('/:id/details', protect, authorize('tourProvider'), setTourDetailsValidation, setTourDetails);
+router.post('/:id/schedule', protect, authorize('tourProvider'), createTourScheduleValidation, createTourSchedule);
+router.get('/:id/schedule', tourIdValidation, getTourSchedule);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize('customer'), tourIdValidation, saveFavoriteTour);
 router.delete('/:id/favorite', protect, authorize('customer'), tourIdValidation, removeFavoriteTour);

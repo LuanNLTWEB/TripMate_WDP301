@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { tourApi, tourCategoryApi, uploadApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import TourScheduleModal from './TourScheduleModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -62,6 +63,7 @@ export default function ProviderTours() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
+  const [selectedTourForSchedule, setSelectedTourForSchedule] = useState(null);
 
   // --- Create Form State ---
   const [categories, setCategories] = useState([]);
@@ -424,6 +426,15 @@ export default function ProviderTours() {
 
                       <td className="text-end">
                         <div className="management-actions justify-content-end">
+                          <button
+                            type="button"
+                            className="management-action-btn text-primary border-0 bg-transparent px-2"
+                            title="Quản lý & Tạo lịch trình tour (Tour Schedule)"
+                            aria-label={`Lịch trình ${tour.title}`}
+                            onClick={() => setSelectedTourForSchedule(tour)}
+                          >
+                            <i className="bi bi-calendar-week fs-5"></i>
+                          </button>
                           <Link
                             className="management-action-btn btn-view"
                             to={`/tours/${tour._id}`}
@@ -434,8 +445,8 @@ export default function ProviderTours() {
                           </Link>
                           <Link
                             className="management-action-btn btn-edit"
-                            to={`/provider/tours/${tour._id}/details`}
-                            title="Thiết lập chi tiết tour (Lịch trình, dịch vụ, chính sách)"
+                            to={`/management/my-tours/${tour._id}/details`}
+                            title="Thiết lập chi tiết tour (Dịch vụ, chính sách)"
                             aria-label={`Thiết lập chi tiết ${tour.title}`}
                           >
                             <i className="bi bi-sliders"></i>
@@ -789,6 +800,13 @@ export default function ProviderTours() {
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
         </>
       )}
+
+      <TourScheduleModal
+        open={Boolean(selectedTourForSchedule)}
+        onClose={() => setSelectedTourForSchedule(null)}
+        tour={selectedTourForSchedule}
+        onUpdated={loadTours}
+      />
     </section>
   );
 }

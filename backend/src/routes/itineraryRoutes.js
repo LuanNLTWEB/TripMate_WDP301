@@ -16,6 +16,7 @@ import {
   removeTour,
   removeActivity,
   updateActivity,
+  updateItinerary,
   shareItinerary,
   removeCollaborator
 } from '../controllers/itineraryController.js';
@@ -32,6 +33,7 @@ import {
   itineraryIdValidation,
   itineraryTourValidation,
   itineraryValidation,
+  updateItineraryValidation,
   removeDestinationValidation,
   removeTourFromItineraryValidation,
   reorderActivitiesValidation,
@@ -54,6 +56,7 @@ router.get('/invitations', ...customerAccess, listReceivedInvitations);
 router.post('/invitations/:notificationId/respond', ...customerAccess, respondInvitationValidation, respondToInvitation);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
+router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);

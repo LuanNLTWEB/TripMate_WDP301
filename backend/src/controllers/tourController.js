@@ -405,6 +405,7 @@ export const updateTourStatus = async (req, res) => {
       });
     }
 
+    const previousStatus = tour.status;
     tour.status = status;
     if (status === 'suspended') {
       tour.suspensionReason = reason.trim();
@@ -421,6 +422,9 @@ export const updateTourStatus = async (req, res) => {
       tour.rejectionReason = '';
       tour.rejectedAt = null;
       tour.rejectedBy = null;
+      tour.revisionNote = '';
+      tour.revisionRequestedAt = null;
+      tour.revisionRequestedBy = null;
     }
 
     await tour.save();
@@ -435,7 +439,9 @@ export const updateTourStatus = async (req, res) => {
     } else if (status === 'rejected') {
       message = 'Đã từ chối duyệt tour';
     } else if (status === 'active') {
-      message = 'Đã kích hoạt lại tour';
+      message = (previousStatus === 'pending' || previousStatus === 'needs_revision')
+        ? 'Đã phê duyệt tour thành công'
+        : 'Đã kích hoạt lại tour';
     }
 
     res.status(200).json({
@@ -675,7 +681,7 @@ export const setTourDetails = async (req, res) => {
       });
     }
 
-    if (req.user.role !== 'admin' && (!tour.providerId || !tour.providerId.equals(req.user._id))) {
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền thiết lập chi tiết cho tour này'
@@ -726,6 +732,116 @@ export const setTourDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể thiết lập chi tiết tour'
+    });
+  }
+};
+
+/**
+ * Create a new schedule day item for a tour (Provider or Admin)
+ * @route POST /api/tours/:id/schedule
+ * @access Provider, Admin
+ */
+export const createTourSchedule = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu lịch trình tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền quản lý lịch trình của tour này'
+      });
+    }
+
+    const { title, description, day, meals } = req.body;
+
+    const currentItinerary = Array.isArray(tour.itinerary) ? tour.itinerary : [];
+    const targetDay = (day !== undefined && day !== null && day !== '')
+      ? Number(day)
+      : (currentItinerary.length > 0 ? Math.max(...currentItinerary.map((i) => i.day || 0)) + 1 : 1);
+
+    const cleanMeals = Array.isArray(meals)
+      ? meals.map((m) => String(m).trim()).filter(Boolean)
+      : [];
+
+    const newSchedule = {
+      day: targetDay,
+      title: String(title).trim(),
+      description: String(description).trim(),
+      meals: cleanMeals
+    };
+
+    tour.itinerary.push(newSchedule);
+    tour.itinerary.sort((a, b) => a.day - b.day);
+
+    await tour.save();
+
+    const createdItem = tour.itinerary.find(
+      (item) => item.day === targetDay && item.title === newSchedule.title
+    ) || tour.itinerary[tour.itinerary.length - 1];
+
+    res.status(201).json({
+      success: true,
+      message: `Đã thêm lịch trình Ngày ${targetDay} thành công`,
+      data: createdItem,
+      itinerary: tour.itinerary
+    });
+  } catch (error) {
+    console.error('Error creating tour schedule:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tạo lịch trình tour'
+    });
+  }
+};
+
+/**
+ * Get tour schedule (itinerary)
+ * @route GET /api/tours/:id/schedule
+ * @access Public
+ */
+export const getTourSchedule = async (req, res) => {
+  try {
+    const tour = await Tour.findById(req.params.id).select('title duration itinerary location departureLocation destinationLocation');
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    const sortedItinerary = (tour.itinerary || []).sort((a, b) => a.day - b.day);
+
+    res.status(200).json({
+      success: true,
+      data: sortedItinerary,
+      tour: {
+        _id: tour._id,
+        title: tour.title,
+        duration: tour.duration,
+        departureLocation: tour.departureLocation,
+        destinationLocation: tour.destinationLocation || tour.location
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tour schedule:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải lịch trình tour'
     });
   }
 };
