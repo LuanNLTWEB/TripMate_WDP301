@@ -212,7 +212,7 @@ const TourDetails = () => {
                     <div className="d-flex align-items-center gap-2">
                       {isTourOwner && (
                         <Link
-                          to={`/provider/tours/${tour._id}/details`}
+                          to={`/management/my-tours/${tour._id}/details`}
                           className="btn btn-warning text-dark rounded-pill px-3 shadow-sm d-flex align-items-center gap-1.5 fw-medium"
                         >
                           <i className="bi bi-gear-fill"></i>
