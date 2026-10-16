@@ -3,7 +3,8 @@ import {
   getReviewsByTour,
   deleteReview,
   getAllReviewsForModeration,
-  moderateReview
+  moderateReview,
+  reportReview
 } from '../controllers/reviewController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -11,6 +12,7 @@ const router = Router();
 
 router.get('/tours/:tourId', getReviewsByTour);
 router.get('/moderation', protect, authorize('admin', 'staff'), getAllReviewsForModeration);
+router.post('/:id/report', protect, authorize('customer'), reportReview);
 router.patch('/:id/moderate', protect, authorize('admin', 'staff'), moderateReview);
 router.delete('/:id', protect, authorize('customer', 'admin', 'staff'), deleteReview);
 

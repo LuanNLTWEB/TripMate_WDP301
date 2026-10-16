@@ -2,6 +2,47 @@ import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import { logActivity } from '../utils/activityLogger.js';
 
+const VALID_REPORT_REASONS = [
+  'Nội dung không phù hợp',
+  'Thông tin sai lệch',
+  'Spam hoặc quảng cáo',
+  'Ngôn ngữ thô tục',
+  'Khác'
+];
+
+export const reportReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, details } = req.body;
+
+    if (!reason || !VALID_REPORT_REASONS.includes(reason)) {
+      return res.status(400).json({ success: false, message: 'Lý do báo cáo không hợp lệ' });
+    }
+
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
+    }
+
+    if (review.isReported) {
+      return res.status(400).json({ success: false, message: 'Đánh giá này đã được báo cáo trước đó' });
+    }
+
+    review.isReported = true;
+    review.reportReason = reason;
+    review.reportDetails = details ? details.trim() : '';
+    review.reportedBy = req.user._id;
+    review.reportedAt = new Date();
+    review.status = 'flagged';
+    await review.save();
+
+    res.status(200).json({ success: true, message: 'Báo cáo vi phạm đã ghi nhận' });
+  } catch (error) {
+    console.error('Error reporting review:', error);
+    res.status(500).json({ success: false, message: 'Không thể gửi báo cáo vi phạm' });
+  }
+};
+
 export const getReviewsByTour = async (req, res) => {
   try {
     const { tourId } = req.params;
