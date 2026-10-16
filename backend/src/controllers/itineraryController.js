@@ -95,6 +95,63 @@ export const createItinerary = async (req, res) => {
   }
 };
 
+/**
+ * Update an itinerary (owner or collaborator with edit permission).
+ * @route PUT /api/itineraries/:id
+ * @access Customer
+ */
+export const updateItinerary = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (!canEdit(itinerary, req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền chỉnh sửa lịch trình này' });
+    }
+
+    const { title, budget, startDate, endDate } = req.body;
+
+    if (title !== undefined) {
+      itinerary.title = String(title).trim();
+    }
+    if (budget !== undefined) {
+      itinerary.budget = budget === '' || budget === null ? 0 : Number(budget);
+    }
+    if (startDate !== undefined) {
+      itinerary.startDate = startDate ? new Date(startDate) : null;
+    }
+    if (endDate !== undefined) {
+      itinerary.endDate = endDate ? new Date(endDate) : null;
+    }
+
+    if (itinerary.startDate && itinerary.endDate && itinerary.endDate < itinerary.startDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu'
+      });
+    }
+
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật lịch trình thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Update itinerary error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật lịch trình' });
+  }
+};
+
 const findAllPopulated = (filter) => Itinerary.find(filter)
   .populate('destinations', destinationFields)
   .populate('tours', tourFields)

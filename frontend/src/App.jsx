@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import AuthProvider from './context/AuthProvider';
 import ToastProvider from './context/ToastProvider';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -32,6 +32,11 @@ import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
 
+function ProviderTourDetailsRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/management/my-tours/${id}/details`} replace />;
+}
+
 function App() {
   return (
     <ToastProvider>
@@ -58,14 +63,7 @@ function App() {
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/about" element={<AboutVietnam />} />
             <Route path="/provider/create-tour" element={<Navigate to="/management/my-tours?action=create" replace />} />
-            <Route
-              path="/provider/tours/:id/details"
-              element={(
-                <ProtectedRoute allowedRoles={['tourProvider', 'admin']}>
-                  <ProviderTourDetails />
-                </ProtectedRoute>
-              )}
-            />
+            <Route path="/provider/tours/:id/details" element={<ProviderTourDetailsRedirect />} />
 
             <Route element={<ProtectedRoute allowedRoles={MANAGEMENT_ROLES} />}>
               <Route path="/management" element={<ManagementLayout />}>
@@ -116,6 +114,14 @@ function App() {
                   element={(
                     <ProtectedRoute allowedRoles={['tourProvider']}>
                       <ProviderTours />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="my-tours/:id/details"
+                  element={(
+                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                      <ProviderTourDetails />
                     </ProtectedRoute>
                   )}
                 />

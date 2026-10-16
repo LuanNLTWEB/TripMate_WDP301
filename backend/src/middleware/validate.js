@@ -208,6 +208,30 @@ export const itineraryValidation = [
     })
 ];
 
+export const updateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Tên lịch trình không được để trống')
+    .isLength({ min: 3, max: 120 }).withMessage('Tên lịch trình phải từ 3 đến 120 ký tự'),
+  body('budget')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0, max: 500000000 }).withMessage('Ngân sách không hợp lệ'),
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
+    .custom((endDate, { req }) => {
+      if (req.body.startDate && new Date(endDate) < new Date(req.body.startDate)) {
+        throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
+      }
+      return true;
+    })
+];
+
 export const activityValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
@@ -490,4 +514,23 @@ export const createBookingValidation = [
     .optional()
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
 ];
+
+export const createTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề ngày lịch trình')
+    .isLength({ min: 3, max: 150 }).withMessage('Tiêu đề phải từ 3 đến 150 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả hoạt động cho ngày')
+    .isLength({ min: 5, max: 2000 }).withMessage('Mô tả hoạt động phải từ 5 đến 2000 ký tự'),
+  body('day')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số ngày phải là số nguyên từ 1 đến 50'),
+  body('meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+];
+
 

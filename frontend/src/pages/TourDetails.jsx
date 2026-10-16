@@ -304,7 +304,7 @@ const TourDetails = () => {
                         <i className="bi bi-info-circle-fill fs-5 text-primary"></i>
                         <span className="small">Tour này chưa được thiết lập lịch trình chi tiết từng ngày.</span>
                       </div>
-                      <Link to={`/provider/tours/${tour._id}/details`} className="btn btn-sm btn-primary rounded-pill px-3">
+                      <Link to={`/management/my-tours/${tour._id}/details`} className="btn btn-sm btn-primary rounded-pill px-3">
                         Thiết lập ngay
                       </Link>
                     </div>
