@@ -263,18 +263,18 @@ const TourDetails = () => {
                     <p className="text-secondary lh-lg mb-0" style={{ whiteSpace: 'pre-line' }}>{tour.description}</p>
                   </div>
 
-                  {/* Lịch trình chi tiết từng ngày */}
+                  {/* 1. Lịch trình chi tiết từng ngày */}
                   {tour.itinerary && tour.itinerary.length > 0 ? (
-                    <div className="mb-4 pt-3 border-top">
+                    <div className="mb-4 pt-4 border-top">
                       <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
                         <i className="bi bi-calendar-range text-primary"></i>
-                        <span>Lịch trình chi tiết ({tour.itinerary.length} ngày)</span>
+                        <span>1. Lịch trình chi tiết ({tour.itinerary.length} ngày)</span>
                       </h2>
                       <div className="d-flex flex-column gap-3">
                         {tour.itinerary.map((dayItem, idx) => (
-                          <div key={idx} className="card border rounded-4 p-3.5 bg-light-subtle shadow-none">
+                          <div key={idx} className="card border rounded-3 p-3 bg-light-subtle shadow-none">
                             <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                              <span className="badge bg-primary text-white rounded-pill px-3 py-1.5 fs-6">
+                              <span className="badge bg-primary text-white rounded-pill px-3 py-1.5">
                                 Ngày {dayItem.day}
                               </span>
                               {dayItem.meals && dayItem.meals.length > 0 && (
@@ -299,7 +299,7 @@ const TourDetails = () => {
                       </div>
                     </div>
                   ) : isTourOwner && (
-                    <div className="alert alert-info border-0 rounded-4 p-3 d-flex align-items-center justify-content-between mb-4">
+                    <div className="alert alert-info border-0 rounded-3 p-3 d-flex align-items-center justify-content-between mb-4">
                       <div className="d-flex align-items-center gap-2">
                         <i className="bi bi-info-circle-fill fs-5 text-primary"></i>
                         <span className="small">Tour này chưa được thiết lập lịch trình chi tiết từng ngày.</span>
@@ -310,20 +310,20 @@ const TourDetails = () => {
                     </div>
                   )}
 
-                  {/* Dịch vụ bao gồm & không bao gồm */}
+                  {/* 2. Dịch vụ bao gồm & không bao gồm */}
                   {((tour.includedServices && tour.includedServices.length > 0) || (tour.excludedServices && tour.excludedServices.length > 0)) && (
-                    <div className="mb-4 pt-3 border-top">
+                    <div className="mb-4 pt-4 border-top">
                       <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
                         <i className="bi bi-check-circle text-primary"></i>
-                        <span>Dịch vụ & Tiện ích tour</span>
+                        <span>2. Dịch vụ bao gồm & Không bao gồm</span>
                       </h2>
                       <div className="row g-3">
                         {tour.includedServices && tour.includedServices.length > 0 && (
                           <div className="col-md-6">
-                            <div className="card border-0 bg-success-subtle h-100 rounded-4 p-3.5">
+                            <div className="card border-0 bg-success-subtle h-100 rounded-3 p-3">
                               <h6 className="fw-bold text-success mb-2.5 d-flex align-items-center gap-2">
                                 <i className="bi bi-check-circle-fill"></i>
-                                <span>Dịch vụ bao gồm</span>
+                                <span>Dịch vụ bao gồm ({tour.includedServices.length})</span>
                               </h6>
                               <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
                                 {tour.includedServices.map((inc, i) => (
@@ -338,10 +338,10 @@ const TourDetails = () => {
                         )}
                         {tour.excludedServices && tour.excludedServices.length > 0 && (
                           <div className="col-md-6">
-                            <div className="card border-0 bg-danger-subtle h-100 rounded-4 p-3.5">
+                            <div className="card border-0 bg-danger-subtle h-100 rounded-3 p-3">
                               <h6 className="fw-bold text-danger mb-2.5 d-flex align-items-center gap-2">
                                 <i className="bi bi-x-circle-fill"></i>
-                                <span>Dịch vụ không bao gồm</span>
+                                <span>Dịch vụ không bao gồm ({tour.excludedServices.length})</span>
                               </h6>
                               <ul className="list-unstyled mb-0 d-flex flex-column gap-2 small">
                                 {tour.excludedServices.map((exc, i) => (
@@ -358,18 +358,18 @@ const TourDetails = () => {
                     </div>
                   )}
 
-                  {/* Chính sách hoàn hủy & Lưu ý */}
+                  {/* 3. Chính sách & Lưu ý */}
                   {(tour.cancellationPolicy || tour.notes) && (
-                    <div className="mb-4 pt-3 border-top">
+                    <div className="mb-4 pt-4 border-top">
                       <h2 className="h4 fw-bold mb-3 d-flex align-items-center gap-2">
                         <i className="bi bi-shield-check text-primary"></i>
-                        <span>Chính sách & Quy định</span>
+                        <span>3. Chính sách & Lưu ý</span>
                       </h2>
                       {tour.cancellationPolicy && (
-                        <div className="card border rounded-4 p-3.5 mb-3 bg-white">
+                        <div className="card border rounded-3 p-3 mb-3 bg-white">
                           <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
                             <i className="bi bi-arrow-repeat"></i>
-                            <span>Chính sách hoàn hủy</span>
+                            <span>Chính sách hoàn hủy tour</span>
                           </h6>
                           <p className="text-secondary small mb-0 lh-lg" style={{ whiteSpace: 'pre-line' }}>
                             {tour.cancellationPolicy}
@@ -377,7 +377,7 @@ const TourDetails = () => {
                         </div>
                       )}
                       {tour.notes && (
-                        <div className="card border rounded-4 p-3.5 bg-white">
+                        <div className="card border rounded-3 p-3 bg-white">
                           <h6 className="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-2">
                             <i className="bi bi-exclamation-triangle-fill text-warning"></i>
                             <span>Lưu ý quan trọng</span>
