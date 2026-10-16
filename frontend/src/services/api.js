@@ -254,6 +254,10 @@ export const statsApi = {
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
   getForModeration: (params = {}) => {
     const query = new URLSearchParams();
     if (params.status && params.status !== 'all') query.append('status', params.status);

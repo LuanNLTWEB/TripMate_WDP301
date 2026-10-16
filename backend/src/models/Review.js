@@ -37,6 +37,30 @@ const reviewSchema = new mongoose.Schema({
     trim: true,
     maxlength: [500, 'Moderation reason cannot exceed 500 characters'],
     default: ''
+  },
+  isReported: {
+    type: Boolean,
+    default: false
+  },
+  reportReason: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  reportDetails: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Report details cannot exceed 500 characters'],
+    default: ''
+  },
+  reportedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  reportedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

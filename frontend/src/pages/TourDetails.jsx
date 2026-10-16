@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import ReportReviewModal from '../components/ReportReviewModal';
 import { tourApi, reviewApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -26,6 +27,8 @@ const TourDetails = () => {
   const [reviewsError, setReviewsError] = useState('');
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
+  const [reviewToReport, setReviewToReport] = useState(null);
+  const [reportedReviewIds, setReportedReviewIds] = useState([]);
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'admin' ||
@@ -531,6 +534,21 @@ const TourDetails = () => {
                                   <i className="bi bi-trash"></i>
                                 </button>
                               )}
+                              {isAuthenticated && user?.role === 'customer' && !isMyReview && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-warning border-0 p-1 px-2 rounded-2"
+                                  title="Báo cáo vi phạm"
+                                  aria-label="Báo cáo vi phạm"
+                                  disabled={reportedReviewIds.includes(review._id)}
+                                  onClick={() => setReviewToReport(review)}
+                                >
+                                  {reportedReviewIds.includes(review._id)
+                                    ? <i className="bi bi-flag-fill text-warning"></i>
+                                    : <i className="bi bi-flag"></i>
+                                  }
+                                </button>
+                              )}
                             </div>
                           </div>
                           {review.comment && (
@@ -597,6 +615,14 @@ const TourDetails = () => {
             </div>
             <div className="modal-backdrop fade show"></div>
           </>
+        )}
+
+        {reviewToReport && (
+          <ReportReviewModal
+            review={reviewToReport}
+            onClose={() => setReviewToReport(null)}
+            onReported={(id) => setReportedReviewIds((prev) => [...prev, id])}
+          />
         )}
       </main>
       <Footer />
