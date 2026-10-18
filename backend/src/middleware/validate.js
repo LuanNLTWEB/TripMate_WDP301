@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import Role from '../models/Role.js';
 
 export const createDestinationValidation = [
@@ -546,6 +546,25 @@ export const updateTourPriceValidation = [
   body('price')
     .notEmpty().withMessage('Vui lòng nhập giá tour mới')
     .isFloat({ gt: 0 }).withMessage('Giá tour mới phải là số hợp lệ lớn hơn 0')
+];
+
+export const providerBookingListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('status')
+    .optional()
+    .isIn(['all', 'pending', 'confirmed', 'cancelled'])
+    .withMessage('Trạng thái booking không hợp lệ'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số booking mỗi trang phải từ 1 đến 50')
+    .toInt()
 ];
 
 export const moderateReviewValidation = [

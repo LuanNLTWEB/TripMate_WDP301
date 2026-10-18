@@ -355,7 +355,16 @@ export const bookingApi = {
     method: 'POST',
     body: JSON.stringify(bookingData)
   }),
-  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' })
+  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' }),
+  getProviderRequests: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
+  }
 };
 
 export default authApi;

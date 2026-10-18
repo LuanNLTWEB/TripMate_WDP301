@@ -97,6 +97,14 @@ const managementNavigation = [
     icon: 'bi-map',
     path: '/management/my-tours',
     roles: ['tourProvider']
+  },
+  {
+    key: 'booking-requests',
+    label: 'Yêu cầu đặt tour',
+    description: 'Theo dõi yêu cầu đặt tour từ khách hàng',
+    icon: 'bi-journal-check',
+    path: '/management/booking-requests',
+    roles: ['tourProvider']
   }
 ];
 
