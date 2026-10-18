@@ -324,6 +324,10 @@ export const tourApi = {
     return apiRequest(`/tours/provider${queryString}`, { method: 'GET' });
   },
   getProviderById: (id) => apiRequest(`/tours/provider/${id}`, { method: 'GET' }),
+  update: (id, tour) => apiRequest(`/tours/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(tour)
+  }),
   setDetails: (id, details) => apiRequest(`/tours/${id}/details`, {
     method: 'PUT',
     body: JSON.stringify(details)
@@ -332,7 +336,23 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(scheduleData)
   }),
+  updateSchedule: (id, scheduleId, scheduleData) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(scheduleData)
+  }),
+  deleteSchedule: (id, scheduleId) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'DELETE'
+  }),
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
+  getDepartures: (id) => apiRequest(`/tours/${id}/departures`, { method: 'GET' }),
+  createDeparture: (id, departureData) => apiRequest(`/tours/${id}/departures`, {
+    method: 'POST',
+    body: JSON.stringify(departureData)
+  }),
+  cancelDeparture: (id, departureId, reason) => apiRequest(`/tours/${id}/departures/${departureId}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason })
+  }),
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',
     body: JSON.stringify({ availableSeats })

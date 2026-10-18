@@ -10,11 +10,17 @@ import {
   saveFavoriteTour,
   updateTourStatus,
   requestTourRevision,
+  updateTour,
   getProviderTours,
   getProviderTourById,
   setTourDetails,
   createTourSchedule,
+  updateTourSchedule,
+  deleteTourSchedule,
   getTourSchedule,
+  getTourDepartures,
+  createTourDeparture,
+  cancelTourDeparture,
   updateTourCapacity,
   updateTourPrice
 } from '../controllers/tourController.js';
@@ -24,8 +30,13 @@ import {
   updateTourStatusValidation,
   requestRevisionValidation,
   createTourValidation,
+  updateTourValidation,
   setTourDetailsValidation,
   createTourScheduleValidation,
+  updateTourScheduleValidation,
+  deleteTourScheduleValidation,
+  createTourDepartureValidation,
+  cancelTourDepartureValidation,
   updateTourCapacityValidation,
   updateTourPriceValidation
 } from '../middleware/validate.js';
@@ -38,12 +49,18 @@ router.get('/management', protect, authorize('staff', 'admin'), getManagedTours)
 router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
 router.get('/provider', protect, authorize('tourProvider'), getProviderTours);
 router.get('/provider/:id', protect, authorize('tourProvider'), tourIdValidation, getProviderTourById);
+router.put('/:id', protect, authorize('tourProvider'), updateTourValidation, updateTour);
 router.put('/:id/details', protect, authorize('tourProvider'), setTourDetailsValidation, setTourDetails);
 router.put('/:id/capacity', protect, authorize('tourProvider', 'admin'), updateTourCapacityValidation, updateTourCapacity);
 router.patch('/:id/price', protect, authorize('tourProvider', 'admin'), updateTourPriceValidation, updateTourPrice);
 router.put('/:id/price', protect, authorize('tourProvider', 'admin'), updateTourPriceValidation, updateTourPrice);
 router.post('/:id/schedule', protect, authorize('tourProvider'), createTourScheduleValidation, createTourSchedule);
+router.put('/:id/schedule/:scheduleId', protect, authorize('tourProvider'), updateTourScheduleValidation, updateTourSchedule);
+router.delete('/:id/schedule/:scheduleId', protect, authorize('tourProvider'), deleteTourScheduleValidation, deleteTourSchedule);
 router.get('/:id/schedule', tourIdValidation, getTourSchedule);
+router.get('/:id/departures', protect, authorize('tourProvider'), tourIdValidation, getTourDepartures);
+router.post('/:id/departures', protect, authorize('tourProvider'), createTourDepartureValidation, createTourDeparture);
+router.patch('/:id/departures/:departureId/cancel', protect, authorize('tourProvider'), cancelTourDepartureValidation, cancelTourDeparture);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize('customer'), tourIdValidation, saveFavoriteTour);
 router.delete('/:id/favorite', protect, authorize('customer'), tourIdValidation, removeFavoriteTour);

@@ -437,6 +437,18 @@ export const createTourValidation = [
     .isArray().withMessage('Hình ảnh phải là một mảng URL')
 ];
 
+export const updateTourValidation = [
+  param('id').isMongoId().withMessage('Tour ID is invalid'),
+  body('title').optional().trim().notEmpty().withMessage('Tour title is required').isLength({ max: 100 }).withMessage('Tour title cannot exceed 100 characters'),
+  body('description').optional().trim().notEmpty().withMessage('Tour description is required'),
+  body('location').optional().trim().notEmpty().withMessage('Tour location is required'),
+  body('departureLocation').optional().trim().notEmpty().withMessage('Departure location is required'),
+  body('destinationLocation').optional().trim().notEmpty().withMessage('Destination location is required'),
+  body('duration').optional().trim().notEmpty().withMessage('Tour duration is required'),
+  body('categoryId').optional({ values: 'falsy' }).isMongoId().withMessage('Tour category ID is invalid'),
+  body('images').optional().isArray().withMessage('Images must be an array')
+];
+
 export const setTourDetailsValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('itinerary')
@@ -531,6 +543,38 @@ export const createTourScheduleValidation = [
   body('meals')
     .optional()
     .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+];
+
+export const updateTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Tour ID is invalid'),
+  param('scheduleId').isMongoId().withMessage('Schedule ID is invalid'),
+  body('title').trim().notEmpty().withMessage('Schedule title is required').isLength({ min: 3, max: 150 }).withMessage('Schedule title must be 3 to 150 characters'),
+  body('description').trim().notEmpty().withMessage('Schedule description is required').isLength({ min: 5, max: 2000 }).withMessage('Schedule description must be 5 to 2000 characters'),
+  body('day').isInt({ min: 1, max: 50 }).withMessage('Schedule day must be between 1 and 50'),
+  body('meals').optional().isArray().withMessage('Meals must be an array')
+];
+
+export const deleteTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Tour ID is invalid'),
+  param('scheduleId').isMongoId().withMessage('Schedule ID is invalid')
+];
+
+export const createTourDepartureValidation = [
+  param('id').isMongoId().withMessage('Tour ID is invalid'),
+  body('departureDate').isISO8601().withMessage('Departure date is invalid').custom((value) => {
+    const departureDate = new Date(value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (departureDate < today) throw new Error('Departure date must be in the future');
+    return true;
+  }),
+  body('capacity').isInt({ min: 1 }).withMessage('Departure capacity must be at least 1')
+];
+
+export const cancelTourDepartureValidation = [
+  param('id').isMongoId().withMessage('Tour ID is invalid'),
+  param('departureId').isMongoId().withMessage('Departure ID is invalid'),
+  body('reason').trim().notEmpty().withMessage('Cancellation reason is required').isLength({ min: 5, max: 500 }).withMessage('Cancellation reason must be 5 to 500 characters')
 ];
 
 export const updateTourCapacityValidation = [
