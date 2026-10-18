@@ -51,11 +51,11 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
             <div className="modal-header bg-light">
               <div>
                 <span className="badge text-bg-primary rounded-pill small mb-1">
-                  Tour Schedule Management
+                  Tour Schedule
                 </span>
                 <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                   <i className="bi bi-calendar-week text-primary"></i>
-                  <span>Lịch Trình Tour: {tour.title}</span>
+                  <span>Lịch trình chi tiết tour: {tour.title}</span>
                 </h5>
                 <small className="text-muted">
                   Thời lượng: <strong>{tour.duration}</strong> · Hiện có <strong>{schedules.length}</strong> ngày lịch trình
@@ -94,7 +94,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                   <i className="bi bi-calendar2-x text-muted fs-1 d-block mb-2"></i>
                   <h6 className="fw-bold text-dark mb-1">Chưa có lịch trình chi tiết</h6>
                   <p className="small text-muted mb-3">
-                    Tour này chưa được thiết lập lịch trình từng ngày. Hãy tạo lịch trình Ngày 1 để bắt đầu!
+                    Lịch trình chi tiết đang được cập nhật bởi nhà cung cấp.
                   </p>
                   <button
                     type="button"

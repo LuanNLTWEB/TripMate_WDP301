@@ -88,7 +88,7 @@ export default function ProviderTours() {
   useEffect(() => {
     tourCategoryApi.getAll()
       .then((res) => setCategories(res.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Load tours list
@@ -429,8 +429,8 @@ export default function ProviderTours() {
                           <button
                             type="button"
                             className="management-action-btn text-primary border-0 bg-transparent px-2"
-                            title="Quản lý & Tạo lịch trình tour (Tour Schedule)"
-                            aria-label={`Lịch trình ${tour.title}`}
+                            title="Xem lịch trình"
+                            aria-label={`Xem lịch trình ${tour.title}`}
                             onClick={() => setSelectedTourForSchedule(tour)}
                           >
                             <i className="bi bi-calendar-week fs-5"></i>

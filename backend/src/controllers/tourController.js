@@ -128,12 +128,14 @@ export const getAllTours = async (req, res) => {
 
     if (search) {
       const safeSearch = escapeRegex(search);
-      filters.push({ $or: [
-        { title: { $regex: safeSearch, $options: 'i' } },
-        { location: { $regex: safeSearch, $options: 'i' } },
-        { departureLocation: { $regex: safeSearch, $options: 'i' } },
-        { destinationLocation: { $regex: safeSearch, $options: 'i' } }
-      ] });
+      filters.push({
+        $or: [
+          { title: { $regex: safeSearch, $options: 'i' } },
+          { location: { $regex: safeSearch, $options: 'i' } },
+          { departureLocation: { $regex: safeSearch, $options: 'i' } },
+          { destinationLocation: { $regex: safeSearch, $options: 'i' } }
+        ]
+      });
     }
 
     if (departure) {
@@ -148,10 +150,12 @@ export const getAllTours = async (req, res) => {
 
     if (destination) {
       const safeDestination = escapeRegex(destination);
-      filters.push({ $or: [
-        { destinationLocation: { $regex: safeDestination, $options: 'i' } },
-        { location: { $regex: safeDestination, $options: 'i' } }
-      ] });
+      filters.push({
+        $or: [
+          { destinationLocation: { $regex: safeDestination, $options: 'i' } },
+          { location: { $regex: safeDestination, $options: 'i' } }
+        ]
+      });
     }
 
     const parsedMaxPrice = Number(maxPrice);
@@ -180,7 +184,7 @@ export const getAllTours = async (req, res) => {
       .sort(sortOptions[sort] || sortOptions.newest)
       .skip(startIndex)
       .limit(limitNum);
-    
+
     res.status(200).json({
       success: true,
       count: tours.length,
@@ -245,9 +249,9 @@ export const getTourById = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching tour by ID:', error);
-    
+
     if (error.name === 'CastError') {
-       return res.status(404).json({
+      return res.status(404).json({
         success: false,
         message: 'Tour not found'
       });
@@ -903,7 +907,7 @@ export const getTourSchedule = async (req, res) => {
     if (!tour) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy tour'
+        message: 'Không tìm thấy lịch trình tour'
       });
     }
 
@@ -924,7 +928,7 @@ export const getTourSchedule = async (req, res) => {
     console.error('Error fetching tour schedule:', error);
     res.status(500).json({
       success: false,
-      message: 'Không thể tải lịch trình tour'
+      message: 'Không tìm thấy lịch trình tour'
     });
   }
 };
