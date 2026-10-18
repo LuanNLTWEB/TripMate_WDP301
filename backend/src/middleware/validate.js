@@ -555,6 +555,25 @@ export const paymentFailureValidation = [
   body('reason').trim().notEmpty().withMessage('Payment failure reason is required').isLength({ max: 500 }).withMessage('Payment failure reason cannot exceed 500 characters')
 ];
 
+export const announcementIdValidation = [
+  param('id').isMongoId().withMessage('Announcement ID is invalid')
+];
+
+export const createAnnouncementValidation = [
+  body('title').trim().notEmpty().withMessage('Announcement title is required').isLength({ max: 150 }).withMessage('Announcement title cannot exceed 150 characters'),
+  body('content').trim().notEmpty().withMessage('Announcement content is required').isLength({ max: 5000 }).withMessage('Announcement content cannot exceed 5000 characters'),
+  body('audience').optional().isIn(['all', 'customer', 'tourProvider']).withMessage('Announcement audience is invalid'),
+  body('isActive').optional().isBoolean().withMessage('Announcement active status must be boolean')
+];
+
+export const updateAnnouncementValidation = [
+  param('id').isMongoId().withMessage('Announcement ID is invalid'),
+  body('title').optional().trim().notEmpty().withMessage('Announcement title cannot be empty').isLength({ max: 150 }).withMessage('Announcement title cannot exceed 150 characters'),
+  body('content').optional().trim().notEmpty().withMessage('Announcement content cannot be empty').isLength({ max: 5000 }).withMessage('Announcement content cannot exceed 5000 characters'),
+  body('audience').optional().isIn(['all', 'customer', 'tourProvider']).withMessage('Announcement audience is invalid'),
+  body('isActive').optional().isBoolean().withMessage('Announcement active status must be boolean')
+];
+
 export const createTourScheduleValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('title')

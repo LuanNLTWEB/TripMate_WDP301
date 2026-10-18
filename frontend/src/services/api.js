@@ -260,6 +260,20 @@ export const statsApi = {
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
+export const announcementApi = {
+  getAll: () => apiRequest('/announcements', { method: 'GET' }),
+  getManaged: () => apiRequest('/announcements/management', { method: 'GET' }),
+  create: (announcement) => apiRequest('/announcements', {
+    method: 'POST',
+    body: JSON.stringify(announcement)
+  }),
+  update: (id, announcement) => apiRequest(`/announcements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(announcement)
+  }),
+  remove: (id) => apiRequest(`/announcements/${id}`, { method: 'DELETE' })
+};
+
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
   create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
