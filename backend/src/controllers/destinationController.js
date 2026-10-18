@@ -1,5 +1,6 @@
 import Destination from '../models/Destination.js';
 import User from '../models/User.js';
+import Itinerary from '../models/Itinerary.js';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 import { logActivity } from '../utils/activityLogger.js';
@@ -438,6 +439,45 @@ export const toggleFavorite = async (req, res) => {
   }
 };
 
+/**
+ * Remove a destination from the current customer's favorites.
+ * This endpoint is idempotent so repeated requests never add the item back.
+ * @route DELETE /api/destinations/:id/favorite
+ * @access Private (Customer)
+ */
+export const removeFavoriteDestination = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { favoriteDestinations: req.params.id } },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã bỏ lưu điểm đến yêu thích',
+      destinationId: req.params.id,
+      isFavorite: false
+    });
+  } catch (error) {
+    console.error('Error removing favorite destination:', error);
+    return res.status(500).json({ success: false, message: 'Không thể bỏ lưu điểm đến yêu thích' });
+  }
+};
+
 // @desc    Get favorite destinations of current user
 // @route   GET /api/destinations/favorites
 // @access  Private (Customer)
@@ -500,10 +540,16 @@ export const deleteDestination = async (req, res) => {
       });
     }
 
-    await User.updateMany(
-      { favoriteDestinations: destination._id },
-      { $pull: { favoriteDestinations: destination._id } }
-    );
+    await Promise.all([
+      User.updateMany(
+        { favoriteDestinations: destination._id },
+        { $pull: { favoriteDestinations: destination._id } }
+      ),
+      Itinerary.updateMany(
+        { destinations: destination._id },
+        { $pull: { destinations: destination._id } }
+      )
+    ]);
 
     await logActivity({
       admin: req.user,

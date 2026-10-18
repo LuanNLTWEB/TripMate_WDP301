@@ -147,7 +147,8 @@ export const destinationApi = {
   }),
   remove: (id) => apiRequest(`/destinations/${id}`, { method: 'DELETE' }),
   getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' }),
-  toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' })
+  toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' }),
+  removeFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'DELETE' })
 };
 
 export const destinationCategoryApi = {

@@ -446,7 +446,7 @@ export const addDestination = async (req, res) => {
 
     const destination = await Destination.findOne({
       _id: req.body.destinationId,
-      status: { $ne: 'inactive' },
+      status: 'active',
       isDeleted: { $ne: true }
     });
     if (!destination) {
