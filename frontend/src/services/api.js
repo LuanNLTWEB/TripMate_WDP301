@@ -269,6 +269,15 @@ export const reviewApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/reviews/moderation${queryString}`, { method: 'GET' });
   },
+  getReported: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/reviews/reported${queryString}`, { method: 'GET' });
+  },
   moderate: (id, payload) => apiRequest(`/reviews/${id}/moderate`, {
     method: 'PATCH',
     body: JSON.stringify(payload)

@@ -11,6 +11,8 @@ const VALID_REPORT_REASONS = [
   'Khác'
 ];
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const recalculateTourRating = async (tourId) => {
   const approvedReviews = await Review.find({ tourId, status: 'approved' }).select('rating');
   const totalReviews = approvedReviews.length;
@@ -135,6 +137,89 @@ export const getAllReviewsForModeration = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể tải danh sách đánh giá kiểm duyệt'
+    });
+  }
+};
+
+export const getReportedReviews = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Bộ lọc báo cáo không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const {
+      status = 'all',
+      search = '',
+      page = 1,
+      limit = 10
+    } = req.query;
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const pageSize = Math.min(Math.max(Number(limit) || 10, 1), 50);
+    const query = { isReported: true };
+
+    if (status !== 'all') {
+      query.status = status;
+    }
+
+    const normalizedSearch = String(search).trim();
+    if (normalizedSearch) {
+      const regex = new RegExp(escapeRegex(normalizedSearch), 'i');
+      query.$or = [
+        { comment: regex },
+        { reportReason: regex },
+        { reportDetails: regex }
+      ];
+    }
+
+    const [total, statusSummary] = await Promise.all([
+      Review.countDocuments(query),
+      Review.aggregate([
+        { $match: { isReported: true } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ])
+    ]);
+    const totalPages = Math.ceil(total / pageSize);
+    const currentPage = totalPages > 0 ? Math.min(pageNumber, totalPages) : 1;
+    const reviews = await Review.find(query)
+      .populate('userId', 'username email')
+      .populate('tourId', 'title location departureLocation destinationLocation')
+      .populate('reportedBy', 'username email')
+      .populate('moderatedBy', 'username email')
+      .sort({ reportedAt: -1, createdAt: -1 })
+      .skip((currentPage - 1) * pageSize)
+      .limit(pageSize);
+
+    const summary = statusSummary.reduce((result, item) => {
+      result[item._id] = item.count;
+      result.total += item.count;
+      return result;
+    }, {
+      total: 0,
+      pending: 0,
+      flagged: 0,
+      approved: 0,
+      rejected: 0
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: reviews.length,
+      total,
+      totalPages,
+      currentPage,
+      data: reviews,
+      summary
+    });
+  } catch (error) {
+    console.error('Error fetching reported reviews:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách đánh giá bị báo cáo'
     });
   }
 };

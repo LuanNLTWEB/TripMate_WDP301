@@ -83,6 +83,14 @@ const managementNavigation = [
     roles: ['admin', 'staff']
   },
   {
+    key: 'reported-reviews',
+    label: 'Đánh giá bị báo cáo',
+    description: 'Xem thông tin các báo cáo vi phạm đánh giá',
+    icon: 'bi-flag',
+    path: '/management/reported-reviews',
+    roles: ['admin', 'staff']
+  },
+  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',
