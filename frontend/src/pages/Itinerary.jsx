@@ -48,6 +48,8 @@ function Itinerary() {
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteActivity, setPendingDeleteActivity] = useState(null);
   const [pendingRemoveCollaborator, setPendingRemoveCollaborator] = useState(null);
+  const [pendingLeaveItinerary, setPendingLeaveItinerary] = useState(false);
+  const [leavingItinerary, setLeavingItinerary] = useState(false);
   const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
@@ -427,6 +429,27 @@ function Itinerary() {
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
+  const isCollaborator = Boolean(!isOwner && myPermission);
+
+  const handleLeaveItinerary = async () => {
+    if (!selected) return;
+
+    setLeavingItinerary(true);
+    try {
+      const response = await itineraryApi.leave(selected._id);
+      toast.success(response.message || 'Bạn đã rời khỏi lịch trình.');
+
+      const itineraryId = selected._id;
+      setSharedItineraries((current) => current.filter((item) => item._id !== itineraryId));
+      setItineraries((current) => current.filter((item) => item._id !== itineraryId));
+      setSelected(null);
+    } catch (err) {
+      toast.error(err.message || 'Không thể rời khỏi lịch trình.');
+    } finally {
+      setLeavingItinerary(false);
+      setPendingLeaveItinerary(false);
+    }
+  };
 
   const conflictedActivityIds = new Set();
   (selected?.conflicts || []).forEach((conflict) => {
@@ -717,6 +740,17 @@ function Itinerary() {
                                   </span>
                                 );
                               })}
+                              {isCollaborator && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger ms-auto d-inline-flex align-items-center gap-1"
+                                  onClick={() => setPendingLeaveItinerary(true)}
+                                  disabled={leavingItinerary}
+                                >
+                                  <i className="bi bi-box-arrow-right"></i>
+                                  <span>Rời khỏi lịch trình</span>
+                                </button>
+                              )}
                             </div>
                           )}
 
@@ -1221,6 +1255,21 @@ function Itinerary() {
           }
         }}
         onClose={() => setPendingDeleteActivity(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={pendingLeaveItinerary}
+        title="Xác nhận rời khỏi lịch trình"
+        confirmText="Rời khỏi"
+        message={
+          <>
+            Bạn có chắc muốn rời khỏi lịch trình{' '}
+            <strong>{selected?.title || 'này'}</strong> không? Bạn sẽ mất quyền xem và chỉnh sửa lịch trình này.
+          </>
+        }
+        loading={leavingItinerary}
+        onConfirm={handleLeaveItinerary}
+        onClose={() => setPendingLeaveItinerary(false)}
       />
 
       <ConfirmDeleteModal

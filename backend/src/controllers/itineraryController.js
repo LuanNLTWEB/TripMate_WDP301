@@ -3,6 +3,7 @@ import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 
 const destinationFields = 'name location images status';
 const tourFields = 'title price images departureLocation destinationLocation location duration status';
@@ -715,6 +716,99 @@ export const shareItinerary = async (req, res) => {
   } catch (error) {
     console.error('Share itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Không thể chia sẻ lịch trình' });
+  }
+};
+
+/**
+ * Leave a shared itinerary that the authenticated customer collaborates on.
+ * The owner keeps ownership and uses removeCollaborator instead.
+ * @route DELETE /api/itineraries/:id/leave
+ * @access Customer (collaborator only)
+ */
+export const leaveItinerary = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+
+    if (!itinerary) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch trình'
+      });
+    }
+
+    const currentUserId = String(req.user._id);
+
+    if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Chủ sở hữu không thể rời khỏi lịch trình của chính mình'
+      });
+    }
+
+    const collaborators = Array.isArray(itinerary.collaborators) ? itinerary.collaborators : [];
+    const index = collaborators.findIndex(
+      (c) => String(c.user?._id || c.user) === currentUserId
+    );
+
+    if (index === -1) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không phải là thành viên của lịch trình này'
+      });
+    }
+
+    if (collaborators.length <= 1) {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể rời khỏi lịch trình khi bạn là thành viên cuối cùng'
+      });
+    }
+
+    collaborators.splice(index, 1);
+    itinerary.collaborators = collaborators;
+    itinerary.markModified('collaborators');
+    await itinerary.save();
+
+    // the leaver is the authenticated user; collaborators are raw ObjectIds here
+    // because the itinerary was not populated
+    const leaverName = req.user.username || req.user.email || 'Một thành viên';
+    const remainingRecipients = collaborators
+      .map((c) => c.user?._id || c.user)
+      .filter(Boolean);
+
+    if (remainingRecipients.length > 0) {
+      await Notification.insertMany(remainingRecipients.map((recipient) => ({
+        recipient,
+        title: 'Có thành viên rời khỏi lịch trình',
+        message: `${leaverName} đã rời khỏi lịch trình "${itinerary.title}".`,
+        notificationType: 'itinerary_leave',
+        itinerary: itinerary._id
+      })));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bạn đã rời khỏi lịch trình',
+      data: {
+        _id: itinerary._id,
+        collaboratorCount: collaborators.length
+      }
+    });
+  } catch (error) {
+    console.error('Leave itinerary error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể rời khỏi lịch trình'
+    });
   }
 };
 

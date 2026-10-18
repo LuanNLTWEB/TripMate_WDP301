@@ -46,6 +46,11 @@ export default function ProviderTourDetails() {
   const [newIncluded, setNewIncluded] = useState('');
   const [newExcluded, setNewExcluded] = useState('');
 
+  // Capacity editor (UC-44 - Update Tour Capacity)
+  const [capacityInput, setCapacityInput] = useState('');
+  const [confirmedSeats, setConfirmedSeats] = useState(0);
+  const [savingCapacity, setSavingCapacity] = useState(false);
+
   const loadTourDetails = () => {
     setLoading(true);
     tourApi.getProviderById(id)
@@ -56,6 +61,7 @@ export default function ProviderTourDetails() {
         setExcludedServices(data.excludedServices || []);
         setCancellationPolicy(data.cancellationPolicy || '');
         setNotes(data.notes || '');
+        setCapacityInput(String(data.availableSeats ?? 0));
       })
       .catch((err) => {
         setError(err.message || 'Không thể tải thông tin tour.');
@@ -63,6 +69,29 @@ export default function ProviderTourDetails() {
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  const handleSaveCapacity = async () => {
+    const parsed = Number(capacityInput);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      toast.error('Số chỗ phải là số nguyên không âm.');
+      return;
+    }
+
+    setSavingCapacity(true);
+    try {
+      const res = await tourApi.updateCapacity(id, parsed);
+      toast.success(res.message || 'Cập nhật số chỗ thành công!');
+      setConfirmedSeats(res.data?.confirmedSeats ?? 0);
+      setTour((current) => (current
+        ? { ...current, availableSeats: res.data?.availableSeats ?? parsed }
+        : current));
+      setCapacityInput(String(res.data?.availableSeats ?? parsed));
+    } catch (err) {
+      toast.error(err.message || 'Không thể cập nhật số chỗ tour.');
+    } finally {
+      setSavingCapacity(false);
+    }
   };
 
   useEffect(() => {
@@ -493,6 +522,57 @@ export default function ProviderTourDetails() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               ></textarea>
+            </div>
+          </div>
+
+          {/* 4. Số chỗ (UC-44 - Update Tour Capacity) */}
+          <div className="mt-4 pt-4 border-top">
+            <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+              <i className="bi bi-people text-primary"></i>
+              <span>4. Số chỗ có thể đặt</span>
+            </h3>
+
+            <div className="card border rounded-3 p-3 bg-white">
+              <div className="row g-3 align-items-end">
+                <div className="col-md-4">
+                  <label htmlFor="tour-capacity" className="form-label fw-semibold small text-muted mb-1">
+                    Số chỗ đang bán
+                  </label>
+                  <input
+                    id="tour-capacity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="form-control"
+                    value={capacityInput}
+                    onChange={(e) => setCapacityInput(e.target.value)}
+                    disabled={savingCapacity}
+                  />
+                  <div className="form-text">
+                    Số chỗ đã được xác nhận đặt tour: <strong>{confirmedSeats}</strong>. Số chỗ mới không được thấp hơn giá trị này.
+                  </div>
+                </div>
+                <div className="col-md-auto">
+                  <button
+                    type="button"
+                    className="btn btn-primary px-4 d-inline-flex align-items-center gap-2 fw-semibold"
+                    onClick={handleSaveCapacity}
+                    disabled={savingCapacity}
+                  >
+                    {savingCapacity ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-check2-circle"></i>
+                        <span>Lưu số chỗ</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -14,7 +14,8 @@ import {
   getProviderTourById,
   setTourDetails,
   createTourSchedule,
-  getTourSchedule
+  getTourSchedule,
+  updateTourCapacity
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import {
@@ -23,7 +24,8 @@ import {
   requestRevisionValidation,
   createTourValidation,
   setTourDetailsValidation,
-  createTourScheduleValidation
+  createTourScheduleValidation,
+  updateTourCapacityValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -35,6 +37,7 @@ router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValida
 router.get('/provider', protect, authorize('tourProvider'), getProviderTours);
 router.get('/provider/:id', protect, authorize('tourProvider'), tourIdValidation, getProviderTourById);
 router.put('/:id/details', protect, authorize('tourProvider'), setTourDetailsValidation, setTourDetails);
+router.put('/:id/capacity', protect, authorize('tourProvider', 'admin'), updateTourCapacityValidation, updateTourCapacity);
 router.post('/:id/schedule', protect, authorize('tourProvider'), createTourScheduleValidation, createTourSchedule);
 router.get('/:id/schedule', tourIdValidation, getTourSchedule);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);

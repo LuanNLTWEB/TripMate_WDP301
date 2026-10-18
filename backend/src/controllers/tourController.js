@@ -1,5 +1,6 @@
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
+import Booking from '../models/Booking.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -805,6 +806,88 @@ export const createTourSchedule = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể tạo lịch trình tour'
+    });
+  }
+};
+
+/**
+ * Cập nhật số chỗ của tour (Provider hoặc Admin)
+ * @route PUT /api/tours/:id/capacity
+ * @access Provider, Admin
+ */
+export const updateTourCapacity = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu số chỗ không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
+    if (!isOwner && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật số chỗ của tour này'
+      });
+    }
+
+    const requestedSeats = Number(req.body.availableSeats);
+
+    // Số chỗ đã bị cam kết trong các booking đã xác nhận
+    const [confirmedAgg] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: 'confirmed' } },
+      { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
+    ]);
+    const confirmedSeats = confirmedAgg?.seats || 0;
+
+    if (requestedSeats < confirmedSeats) {
+      return res.status(409).json({
+        success: false,
+        message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
+        confirmedSeats
+      });
+    }
+
+    if (requestedSeats === tour.availableSeats) {
+      return res.status(200).json({
+        success: true,
+        message: 'Số chỗ không thay đổi',
+        data: {
+          _id: tour._id,
+          availableSeats: tour.availableSeats,
+          confirmedSeats
+        }
+      });
+    }
+
+    tour.availableSeats = requestedSeats;
+    await tour.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật số chỗ thành công',
+      data: {
+        _id: tour._id,
+        availableSeats: tour.availableSeats,
+        confirmedSeats
+      }
+    });
+  } catch (error) {
+    console.error('Error updating tour capacity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật số chỗ tour'
     });
   }
 };

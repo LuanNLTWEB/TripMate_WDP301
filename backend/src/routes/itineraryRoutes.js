@@ -18,7 +18,8 @@ import {
   updateActivity,
   updateItinerary,
   shareItinerary,
-  removeCollaborator
+  removeCollaborator,
+  leaveItinerary
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -63,6 +64,7 @@ router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItin
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
 router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
+router.delete('/:id/leave', ...customerAccess, itineraryIdValidation, leaveItinerary);
 router.put('/:id/collaborators/:userId', ...customerAccess, changeCollaboratorRoleValidation, changeCollaboratorRole);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);

@@ -533,4 +533,12 @@ export const createTourScheduleValidation = [
     .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
 ];
 
+export const updateTourCapacityValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('availableSeats')
+    .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt()
+];
+
 

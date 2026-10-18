@@ -227,6 +227,7 @@ export const itineraryApi = {
   removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'DELETE'
   }),
+  leave: (id) => apiRequest(`/itineraries/${id}/leave`, { method: 'DELETE' }),
   changeCollaboratorRole: (id, userId, permission) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'PUT',
     body: JSON.stringify({ permission })
@@ -331,7 +332,11 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(scheduleData)
   }),
-  getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' })
+  getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
+  updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
+    method: 'PUT',
+    body: JSON.stringify({ availableSeats })
+  })
 };
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {
