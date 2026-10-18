@@ -1,6 +1,7 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { validationResult } from 'express-validator';
 
 const VALID_REPORT_REASONS = [
   'Nội dung không phù hợp',
@@ -9,6 +10,17 @@ const VALID_REPORT_REASONS = [
   'Ngôn ngữ thô tục',
   'Khác'
 ];
+
+const recalculateTourRating = async (tourId) => {
+  const approvedReviews = await Review.find({ tourId, status: 'approved' }).select('rating');
+  const totalReviews = approvedReviews.length;
+  const averageRating = totalReviews > 0
+    ? Math.round((approvedReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews) * 10) / 10
+    : 0;
+
+  await Tour.findByIdAndUpdate(tourId, { averageRating });
+  return { averageRating, totalReviews };
+};
 
 export const reportReview = async (req, res) => {
   try {
@@ -35,8 +47,13 @@ export const reportReview = async (req, res) => {
     review.reportedAt = new Date();
     review.status = 'flagged';
     await review.save();
+    const ratingSummary = await recalculateTourRating(review.tourId);
 
-    res.status(200).json({ success: true, message: 'Báo cáo vi phạm đã ghi nhận' });
+    res.status(200).json({
+      success: true,
+      message: 'Báo cáo vi phạm đã ghi nhận',
+      ...ratingSummary
+    });
   } catch (error) {
     console.error('Error reporting review:', error);
     res.status(500).json({ success: false, message: 'Không thể gửi báo cáo vi phạm' });
@@ -52,7 +69,7 @@ export const getReviewsByTour = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
-    const reviews = await Review.find({ tourId, status: { $ne: 'rejected' } })
+    const reviews = await Review.find({ tourId, status: 'approved' })
       .populate('userId', 'username')
       .sort({ createdAt: -1 });
 
@@ -123,16 +140,18 @@ export const getAllReviewsForModeration = async (req, res) => {
 };
 
 export const moderateReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0].msg,
+      errors: errors.array()
+    });
+  }
+
   try {
     const { id } = req.params;
     const { status, moderationReason } = req.body;
-
-    if (!['approved', 'rejected', 'flagged', 'pending'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Trạng thái kiểm duyệt không hợp lệ'
-      });
-    }
 
     const review = await Review.findById(id);
     if (!review) {
@@ -144,18 +163,12 @@ export const moderateReview = async (req, res) => {
 
     review.status = status;
     review.moderatedBy = req.user._id;
-    review.moderationReason = typeof moderationReason === 'string' ? moderationReason.trim() : review.moderationReason;
+    review.moderationReason = ['rejected', 'flagged'].includes(status)
+      ? moderationReason.trim()
+      : '';
     await review.save();
 
-    // Recalculate average rating for approved/non-rejected reviews
-    const tourId = review.tourId;
-    const activeReviews = await Review.find({ tourId, status: { $ne: 'rejected' } });
-    const totalReviews = activeReviews.length;
-    const averageRating = totalReviews > 0
-      ? Math.round((activeReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
-      : 0;
-
-    await Tour.findByIdAndUpdate(tourId, { averageRating });
+    const { averageRating, totalReviews } = await recalculateTourRating(review.tourId);
 
     const populated = await Review.findById(id)
       .populate('userId', 'username email')
@@ -177,7 +190,8 @@ export const moderateReview = async (req, res) => {
       success: true,
       message: 'Kiểm duyệt đánh giá thành công',
       data: populated,
-      averageRating
+      averageRating,
+      totalReviews
     });
   } catch (error) {
     console.error('Error moderating review:', error);
@@ -212,13 +226,7 @@ export const deleteReview = async (req, res) => {
     const tourId = review.tourId;
     await review.deleteOne();
 
-    const remainingReviews = await Review.find({ tourId, status: { $ne: 'rejected' } });
-    const totalReviews = remainingReviews.length;
-    const averageRating = totalReviews > 0
-      ? Math.round((remainingReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
-      : 0;
-
-    await Tour.findByIdAndUpdate(tourId, { averageRating });
+    const { averageRating, totalReviews } = await recalculateTourRating(tourId);
 
     if (req.user?.role === 'admin') {
       await logActivity({

@@ -548,5 +548,22 @@ export const updateTourPriceValidation = [
     .isFloat({ gt: 0 }).withMessage('Giá tour mới phải là số hợp lệ lớn hơn 0')
 ];
 
+export const moderateReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('status')
+    .isIn(['approved', 'rejected', 'flagged', 'pending'])
+    .withMessage('Trạng thái kiểm duyệt không hợp lệ'),
+  body('moderationReason').custom((value, { req }) => {
+    const reason = typeof value === 'string' ? value.trim() : '';
+    if (['rejected', 'flagged'].includes(req.body.status) && reason.length < 5) {
+      throw new Error('Lý do kiểm duyệt phải có ít nhất 5 ký tự');
+    }
+    if (reason.length > 500) {
+      throw new Error('Lý do kiểm duyệt không được vượt quá 500 ký tự');
+    }
+    return true;
+  })
+];
+
 
 
