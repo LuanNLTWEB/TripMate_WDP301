@@ -4,6 +4,7 @@ import { useToast } from '../hooks/useToast';
 import { tourApi, tourCategoryApi, uploadApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import TourScheduleModal from './TourScheduleModal';
+import EditTourPriceModal from './EditTourPriceModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -64,6 +65,7 @@ export default function ProviderTours() {
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
   const [selectedTourForSchedule, setSelectedTourForSchedule] = useState(null);
+  const [selectedTourForPrice, setSelectedTourForPrice] = useState(null);
 
   // --- Create Form State ---
   const [categories, setCategories] = useState([]);
@@ -434,6 +436,15 @@ export default function ProviderTours() {
                             onClick={() => setSelectedTourForSchedule(tour)}
                           >
                             <i className="bi bi-calendar-week fs-5"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="management-action-btn text-success border-0 bg-transparent px-2"
+                            title="Cập nhật giá"
+                            aria-label={`Cập nhật giá ${tour.title}`}
+                            onClick={() => setSelectedTourForPrice(tour)}
+                          >
+                            <i className="bi bi-tag fs-5"></i>
                           </button>
                           <Link
                             className="management-action-btn btn-view"
@@ -806,6 +817,21 @@ export default function ProviderTours() {
         onClose={() => setSelectedTourForSchedule(null)}
         tour={selectedTourForSchedule}
         onUpdated={loadTours}
+      />
+
+      <EditTourPriceModal
+        open={Boolean(selectedTourForPrice)}
+        onClose={() => setSelectedTourForPrice(null)}
+        tour={selectedTourForPrice}
+        onUpdated={(newPrice) => {
+          setTours((prev) =>
+            prev.map((t) =>
+              t._id === selectedTourForPrice?._id
+                ? { ...t, price: newPrice }
+                : t
+            )
+          );
+        }}
       />
     </section>
   );
