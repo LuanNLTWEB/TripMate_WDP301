@@ -97,6 +97,14 @@ const managementNavigation = [
     icon: 'bi-map',
     path: '/management/my-tours',
     roles: ['tourProvider']
+  },
+  {
+    key: 'booking-requests',
+    label: 'Booking requests',
+    description: 'View booking requests for provider tours',
+    icon: 'bi-inbox',
+    path: '/management/booking-requests',
+    roles: ['tourProvider']
   }
 ];
 

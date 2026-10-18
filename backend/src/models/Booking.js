@@ -61,6 +61,27 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'confirmed', 'cancelled'],
     default: 'pending'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'processing', 'paid', 'failed', 'refunded'],
+    default: 'unpaid',
+    index: true
+  },
+  paymentFailureReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Payment failure reason cannot exceed 500 characters'],
+    default: ''
+  },
+  paymentAttempts: {
+    type: Number,
+    min: 0,
+    default: 0
+  },
+  lastPaymentAttemptAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

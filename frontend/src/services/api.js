@@ -254,6 +254,10 @@ export const statsApi = {
 
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',
@@ -374,7 +378,20 @@ export const bookingApi = {
     method: 'POST',
     body: JSON.stringify(bookingData)
   }),
-  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' })
+  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' }),
+  getProviderRequests: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
+  },
+  handlePaymentFailure: (id, reason) => apiRequest(`/bookings/${id}/payment-failure`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  }),
+  retryPayment: (id) => apiRequest(`/bookings/${id}/payment-retry`, { method: 'POST' })
 };
 
 export default authApi;

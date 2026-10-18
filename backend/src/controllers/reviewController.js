@@ -1,6 +1,7 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import { logActivity } from '../utils/activityLogger.js';
+import { validationResult } from 'express-validator';
 
 const VALID_REPORT_REASONS = [
   'Nội dung không phù hợp',
@@ -9,6 +10,43 @@ const VALID_REPORT_REASONS = [
   'Ngôn ngữ thô tục',
   'Khác'
 ];
+
+export const createReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0]?.msg || 'Invalid review data', errors: errors.array() });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.tourId);
+    if (!tour) return res.status(404).json({ success: false, message: 'Tour not found' });
+
+    const existingReview = await Review.findOne({ tourId: tour._id, userId: req.user._id });
+    if (existingReview) return res.status(409).json({ success: false, message: 'You have already reviewed this tour' });
+
+    const review = await Review.create({
+      userId: req.user._id,
+      tourId: tour._id,
+      rating: Number(req.body.rating),
+      comment: String(req.body.comment || '').trim(),
+      status: 'approved'
+    });
+
+    const activeReviews = await Review.find({ tourId: tour._id, status: { $ne: 'rejected' } });
+    const totalReviews = activeReviews.length;
+    const averageRating = totalReviews > 0
+      ? Math.round((activeReviews.reduce((sum, item) => sum + item.rating, 0) / totalReviews) * 10) / 10
+      : 0;
+    await Tour.findByIdAndUpdate(tour._id, { averageRating });
+
+    const populated = await Review.findById(review._id).populate('userId', 'username email');
+    return res.status(201).json({ success: true, message: 'Review created successfully', data: populated, averageRating, totalReviews });
+  } catch (error) {
+    console.error('Error creating review:', error);
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'You have already reviewed this tour' });
+    return res.status(500).json({ success: false, message: 'Unable to create review' });
+  }
+};
 
 export const reportReview = async (req, res) => {
   try {

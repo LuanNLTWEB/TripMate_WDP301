@@ -527,6 +527,21 @@ export const createBookingValidation = [
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
 ];
 
+export const createReviewValidation = [
+  param('tourId').isMongoId().withMessage('Tour ID is invalid'),
+  body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5').toInt(),
+  body('comment').optional({ values: 'falsy' }).trim().isLength({ max: 1000 }).withMessage('Comment cannot exceed 1000 characters')
+];
+
+export const bookingIdValidation = [
+  param('id').isMongoId().withMessage('Booking ID is invalid')
+];
+
+export const paymentFailureValidation = [
+  param('id').isMongoId().withMessage('Booking ID is invalid'),
+  body('reason').trim().notEmpty().withMessage('Payment failure reason is required').isLength({ max: 500 }).withMessage('Payment failure reason cannot exceed 500 characters')
+];
+
 export const createTourScheduleValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('title')

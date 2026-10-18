@@ -108,6 +108,17 @@ function Navbar() {
 
           {user?.role === 'customer' && (
             <Link
+              to="/bookings"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <i className="bi bi-receipt fs-6"></i>
+              <span>My bookings</span>
+            </Link>
+          )}
+
+          {user?.role === 'customer' && (
+            <Link
               to="/favorites"
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
               onClick={() => setIsDropdownOpen(false)}
