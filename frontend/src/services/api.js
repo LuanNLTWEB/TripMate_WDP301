@@ -303,6 +303,10 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(tour)
   }),
+  update: (id, tour) => apiRequest(`/tours/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(tour)
+  }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);

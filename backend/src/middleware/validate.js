@@ -535,6 +535,47 @@ export const createTourScheduleValidation = [
     .withMessage('Bữa ăn chỉ được gồm Sáng, Trưa hoặc Tối')
 ];
 
+export const updateProviderTourValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên tour')
+    .isLength({ max: 100 }).withMessage('Tên tour không được vượt quá 100 ký tự'),
+  body('description')
+    .trim()
+    .isLength({ min: 10, max: 5000 }).withMessage('Giới thiệu tour phải từ 10 đến 5000 ký tự'),
+  body('location')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập địa điểm')
+    .isLength({ max: 150 }).withMessage('Địa điểm không được vượt quá 150 ký tự'),
+  body('departureLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm khởi hành')
+    .isLength({ max: 150 }).withMessage('Điểm khởi hành không được vượt quá 150 ký tự'),
+  body('destinationLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm đến')
+    .isLength({ max: 150 }).withMessage('Điểm đến không được vượt quá 150 ký tự'),
+  body('duration')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập thời lượng tour')
+    .isLength({ max: 100 }).withMessage('Thời lượng không được vượt quá 100 ký tự'),
+  body('price')
+    .isFloat({ min: 0 }).withMessage('Giá tour phải là số không âm')
+    .toFloat(),
+  body('availableSeats')
+    .isInt({ min: 0, max: 10000 }).withMessage('Số chỗ phải là số nguyên từ 0 đến 10000')
+    .toInt(),
+  body('categoryId')
+    .optional({ values: 'falsy' })
+    .isMongoId().withMessage('Mã danh mục không hợp lệ'),
+  body('images')
+    .isArray({ min: 1, max: 10 }).withMessage('Tour phải có từ 1 đến 10 hình ảnh'),
+  body('images.*')
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('URL hình ảnh không hợp lệ')
+];
+
 export const updateTourScheduleValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ'),

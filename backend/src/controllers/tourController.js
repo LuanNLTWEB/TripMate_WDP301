@@ -1,4 +1,5 @@
 import Tour from '../models/Tour.js';
+import TourCategory from '../models/TourCategory.js';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import { validationResult } from 'express-validator';
@@ -663,6 +664,127 @@ export const getProviderTourById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể tải thông tin tour'
+    });
+  }
+};
+
+export const updateProviderTour = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu cập nhật tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật tour này'
+      });
+    }
+
+    const categoryId = req.body.categoryId || null;
+    if (categoryId) {
+      const categoryExists = await TourCategory.findById(categoryId).select('_id').lean();
+      if (!categoryExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Danh mục tour không tồn tại'
+        });
+      }
+    }
+
+    const normalized = {
+      title: req.body.title.trim(),
+      description: req.body.description.trim(),
+      location: req.body.location.trim(),
+      departureLocation: req.body.departureLocation.trim(),
+      destinationLocation: req.body.destinationLocation.trim(),
+      duration: req.body.duration.trim(),
+      price: Number(req.body.price),
+      availableSeats: Number(req.body.availableSeats),
+      categoryId,
+      images: [...new Set(req.body.images.map((image) => image.trim()))]
+    };
+    const currentCategoryId = String(tour.categoryId?._id || tour.categoryId || '');
+    const nextCategoryId = String(categoryId || '');
+    const hasChanges = [
+      'title',
+      'description',
+      'location',
+      'departureLocation',
+      'destinationLocation',
+      'duration'
+    ].some((field) => String(tour[field] || '') !== normalized[field])
+      || Number(tour.price) !== normalized.price
+      || Number(tour.availableSeats) !== normalized.availableSeats
+      || currentCategoryId !== nextCategoryId
+      || JSON.stringify(tour.images || []) !== JSON.stringify(normalized.images);
+
+    if (!hasChanges) {
+      await tour.populate('categoryId', 'name');
+      return res.status(200).json({
+        success: true,
+        message: 'Thông tin tour không có thay đổi.',
+        requiresReview: false,
+        data: tour
+      });
+    }
+
+    const requestedSeats = normalized.availableSeats;
+    const [confirmedSeatsResult] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: 'confirmed' } },
+      { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
+    ]);
+    const confirmedSeats = confirmedSeatsResult?.seats || 0;
+    if (requestedSeats < confirmedSeats) {
+      return res.status(409).json({
+        success: false,
+        message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
+        confirmedSeats
+      });
+    }
+
+    const previousStatus = tour.status;
+
+    Object.assign(tour, normalized);
+
+    const shouldResubmit = ['active', 'needs_revision', 'rejected'].includes(previousStatus);
+    if (shouldResubmit) {
+      tour.status = 'pending';
+      tour.revisionNote = '';
+      tour.revisionRequestedAt = null;
+      tour.revisionRequestedBy = null;
+      tour.rejectionReason = '';
+      tour.rejectedAt = null;
+      tour.rejectedBy = null;
+    }
+
+    await tour.save();
+    await tour.populate('categoryId', 'name');
+
+    return res.status(200).json({
+      success: true,
+      message: shouldResubmit
+        ? 'Cập nhật tour thành công. Tour đã được gửi lại để kiểm duyệt.'
+        : 'Cập nhật thông tin tour thành công.',
+      requiresReview: shouldResubmit,
+      confirmedSeats,
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error updating provider tour:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật thông tin tour'
     });
   }
 };

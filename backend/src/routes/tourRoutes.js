@@ -12,6 +12,7 @@ import {
   requestTourRevision,
   getProviderTours,
   getProviderTourById,
+  updateProviderTour,
   setTourDetails,
   createTourSchedule,
   updateTourSchedule,
@@ -26,6 +27,7 @@ import {
   updateTourStatusValidation,
   requestRevisionValidation,
   createTourValidation,
+  updateProviderTourValidation,
   setTourDetailsValidation,
   createTourScheduleValidation,
   updateTourScheduleValidation,
@@ -42,6 +44,7 @@ router.get('/management', protect, authorize('staff', 'admin'), getManagedTours)
 router.get('/management/:id', protect, authorize('staff', 'admin'), tourIdValidation, getManagedTourById);
 router.get('/provider', protect, authorize('tourProvider'), getProviderTours);
 router.get('/provider/:id', protect, authorize('tourProvider'), tourIdValidation, getProviderTourById);
+router.put('/:id', protect, authorize('tourProvider'), updateProviderTourValidation, updateProviderTour);
 router.put('/:id/details', protect, authorize('tourProvider'), setTourDetailsValidation, setTourDetails);
 router.put('/:id/capacity', protect, authorize('tourProvider', 'admin'), updateTourCapacityValidation, updateTourCapacity);
 router.patch('/:id/price', protect, authorize('tourProvider', 'admin'), updateTourPriceValidation, updateTourPrice);

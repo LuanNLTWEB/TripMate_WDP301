@@ -5,6 +5,7 @@ import { tourApi, tourCategoryApi, uploadApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
+import EditTourModal from './EditTourModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -66,6 +67,7 @@ export default function ProviderTours() {
   const [listError, setListError] = useState('');
   const [selectedTourForSchedule, setSelectedTourForSchedule] = useState(null);
   const [selectedTourForPrice, setSelectedTourForPrice] = useState(null);
+  const [selectedTourForEdit, setSelectedTourForEdit] = useState(null);
 
   // --- Create Form State ---
   const [categories, setCategories] = useState([]);
@@ -428,6 +430,15 @@ export default function ProviderTours() {
 
                       <td className="text-end">
                         <div className="management-actions justify-content-end">
+                          <button
+                            type="button"
+                            className="management-action-btn btn-edit"
+                            title="Cập nhật thông tin tour"
+                            aria-label={`Cập nhật ${tour.title}`}
+                            onClick={() => setSelectedTourForEdit(tour)}
+                          >
+                            <i className="bi bi-pencil-square"></i>
+                          </button>
                           <button
                             type="button"
                             className="management-action-btn text-primary border-0 bg-transparent px-2"
@@ -833,6 +844,14 @@ export default function ProviderTours() {
           );
         }}
       />
+
+      {selectedTourForEdit && (
+        <EditTourModal
+          tour={selectedTourForEdit}
+          onClose={() => setSelectedTourForEdit(null)}
+          onUpdated={() => loadTours(search, status, currentPage)}
+        />
+      )}
     </section>
   );
 }
