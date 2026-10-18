@@ -959,11 +959,21 @@ export const updateTourPrice = async (req, res) => {
 /**
  * Get tour schedule (itinerary)
  * @route GET /api/tours/:id/schedule
- * @access Public
+ * @access Public for active tours; owner/provider, staff and admin for other statuses
  */
 export const getTourSchedule = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
   try {
-    const tour = await Tour.findById(req.params.id).select('title duration itinerary location departureLocation destinationLocation');
+    const tour = await Tour.findById(req.params.id)
+      .select('title duration itinerary location departureLocation destinationLocation status providerId');
     if (!tour) {
       return res.status(404).json({
         success: false,
@@ -971,7 +981,22 @@ export const getTourSchedule = async (req, res) => {
       });
     }
 
-    const sortedItinerary = (tour.itinerary || []).sort((a, b) => a.day - b.day);
+    if (tour.status !== 'active') {
+      const isOwner = req.user?.role === 'tourProvider'
+        && tour.providerId
+        && tour.providerId.equals(req.user._id);
+      const canManageTour = req.user
+        && (req.user.role === 'admin' || req.user.role === 'staff' || isOwner);
+
+      if (!canManageTour) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy lịch trình tour'
+        });
+      }
+    }
+
+    const sortedItinerary = [...(tour.itinerary || [])].sort((a, b) => a.day - b.day);
 
     res.status(200).json({
       success: true,
