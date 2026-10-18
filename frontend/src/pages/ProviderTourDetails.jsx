@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
+import EditTourPriceModal from './EditTourPriceModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -35,6 +36,7 @@ export default function ProviderTourDetails() {
   const [error, setError] = useState('');
   const [tour, setTour] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showPriceModal, setShowPriceModal] = useState(false);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -251,7 +253,23 @@ export default function ProviderTourDetails() {
               <DetailItem label="Thời lượng" value={tour.duration} />
             </div>
             <div className="col-md-6 col-xl-4">
-              <DetailItem label="Giá" value={formatCurrency(tour.price)} />
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <div className="small text-muted text-uppercase fw-semibold" style={{ fontSize: '0.75rem', letterSpacing: '0.04em' }}>
+                  Giá tour
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-link btn-sm p-0 text-decoration-none fw-semibold text-primary"
+                  style={{ fontSize: '0.78rem' }}
+                  onClick={() => setShowPriceModal(true)}
+                  title="Cập nhật giá"
+                >
+                  <i className="bi bi-pencil-square me-1"></i>Sửa
+                </button>
+              </div>
+              <div className="fw-medium text-dark">
+                {formatCurrency(tour.price)}
+              </div>
             </div>
             <div className="col-md-6 col-xl-4">
               <DetailItem label="Số chỗ còn lại" value={tour.availableSeats} />
@@ -610,6 +628,16 @@ export default function ProviderTourDetails() {
         onClose={() => setShowScheduleModal(false)}
         tour={tour}
         onUpdated={loadTourDetails}
+      />
+
+      {/* Edit Tour Price Modal (UC-46) */}
+      <EditTourPriceModal
+        open={showPriceModal}
+        onClose={() => setShowPriceModal(false)}
+        tour={tour}
+        onUpdated={(newPrice) => {
+          setTour((prev) => ({ ...prev, price: newPrice }));
+        }}
       />
     </section>
   );

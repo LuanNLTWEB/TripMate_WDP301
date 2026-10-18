@@ -33,23 +33,23 @@ export const registerValidation = [
     .notEmpty().withMessage('Vui lòng nhập tên người dùng')
     .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
-  
+
   body('email')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập email')
     .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
     .normalizeEmail(),
-  
+
   body('password')
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
     .isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số'),
-  
+
   body('phone')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập số điện thoại')
     .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại phải gồm 10-11 chữ số'),
-  
+
   body('dateOfBirth')
     .optional()
     .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
@@ -69,7 +69,7 @@ export const registerValidation = [
       }
       return true;
     }),
-  
+
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
@@ -81,7 +81,7 @@ export const loginValidation = [
     .notEmpty().withMessage('Vui lòng nhập email')
     .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
     .normalizeEmail(),
-  
+
   body('password')
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
 ];
@@ -103,12 +103,12 @@ export const updateProfileValidation = [
     .notEmpty().withMessage('Tên người dùng không được để trống')
     .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
-  
+
   body('phone')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập số điện thoại')
     .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại phải gồm 10-11 chữ số'),
-  
+
   body('dateOfBirth')
     .optional({ values: 'falsy' })
     .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
@@ -128,7 +128,7 @@ export const updateProfileValidation = [
       }
       return true;
     }),
-  
+
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
@@ -540,5 +540,13 @@ export const updateTourCapacityValidation = [
     .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
     .toInt()
 ];
+
+export const updateTourPriceValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('price')
+    .notEmpty().withMessage('Vui lòng nhập giá tour mới')
+    .isFloat({ gt: 0 }).withMessage('Giá tour mới phải là số hợp lệ lớn hơn 0')
+];
+
 
 

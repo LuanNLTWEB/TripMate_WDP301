@@ -336,6 +336,10 @@ export const tourApi = {
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',
     body: JSON.stringify({ availableSeats })
+  }),
+  updatePrice: (id, price) => apiRequest(`/tours/${id}/price`, {
+    method: 'PATCH',
+    body: JSON.stringify({ price })
   })
 };
 export const uploadApi = {
