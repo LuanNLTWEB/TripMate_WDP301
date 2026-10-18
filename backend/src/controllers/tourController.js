@@ -779,6 +779,13 @@ export const createTourSchedule = async (req, res) => {
       ? Number(day)
       : (currentItinerary.length > 0 ? Math.max(...currentItinerary.map((i) => i.day || 0)) + 1 : 1);
 
+    if (currentItinerary.some((item) => item.day === targetDay)) {
+      return res.status(409).json({
+        success: false,
+        message: `Lịch trình Ngày ${targetDay} đã tồn tại`
+      });
+    }
+
     const cleanMeals = Array.isArray(meals)
       ? meals.map((m) => String(m).trim()).filter(Boolean)
       : [];
@@ -810,6 +817,135 @@ export const createTourSchedule = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể tạo lịch trình tour'
+    });
+  }
+};
+
+/**
+ * Update one schedule day of a provider-owned tour.
+ * @route PUT /api/tours/:id/schedule/:scheduleId
+ * @access Provider owner
+ */
+export const updateTourSchedule = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu lịch trình tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật lịch trình của tour này'
+      });
+    }
+
+    const schedule = tour.itinerary.find(
+      (item) => String(item._id) === String(req.params.scheduleId)
+    );
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy ngày lịch trình'
+      });
+    }
+
+    const targetDay = Number(req.body.day);
+    const duplicateDay = tour.itinerary.some(
+      (item) => String(item._id) !== String(schedule._id) && item.day === targetDay
+    );
+    if (duplicateDay) {
+      return res.status(409).json({
+        success: false,
+        message: `Lịch trình Ngày ${targetDay} đã tồn tại`
+      });
+    }
+
+    schedule.day = targetDay;
+    schedule.title = req.body.title.trim();
+    schedule.description = req.body.description.trim();
+    schedule.meals = Array.isArray(req.body.meals)
+      ? [...new Set(req.body.meals.map((meal) => String(meal).trim()).filter(Boolean))]
+      : [];
+    tour.itinerary.sort((first, second) => first.day - second.day);
+    await tour.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã cập nhật lịch trình Ngày ${targetDay}`,
+      data: schedule,
+      itinerary: tour.itinerary
+    });
+  } catch (error) {
+    console.error('Error updating tour schedule:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật lịch trình tour'
+    });
+  }
+};
+
+/**
+ * Delete one schedule day of a provider-owned tour.
+ * @route DELETE /api/tours/:id/schedule/:scheduleId
+ * @access Provider owner
+ */
+export const deleteTourSchedule = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã lịch trình không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xóa lịch trình của tour này'
+      });
+    }
+
+    const scheduleIndex = tour.itinerary.findIndex(
+      (item) => String(item._id) === String(req.params.scheduleId)
+    );
+    if (scheduleIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy ngày lịch trình'
+      });
+    }
+
+    const [removedSchedule] = tour.itinerary.splice(scheduleIndex, 1);
+    await tour.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã xóa lịch trình Ngày ${removedSchedule.day}`,
+      scheduleId: req.params.scheduleId,
+      itinerary: tour.itinerary
+    });
+  } catch (error) {
+    console.error('Error deleting tour schedule:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xóa lịch trình tour'
     });
   }
 };

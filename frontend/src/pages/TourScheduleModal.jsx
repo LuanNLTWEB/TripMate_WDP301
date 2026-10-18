@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import CreateTourScheduleModal from './CreateTourScheduleModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
   const toast = useToast();
   const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loadedTourId, setLoadedTourId] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({ open: false, schedule: null });
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open && tour?._id) {
-      setLoading(true);
       tourApi.getSchedule(tour._id)
         .then((res) => {
           setSchedules(res.data || []);
@@ -20,27 +22,54 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
           toast.error(err.message || 'Không thể tải lịch trình tour.');
         })
         .finally(() => {
-          setLoading(false);
+          setLoadedTourId(tour._id);
         });
     }
-  }, [open, tour?._id]);
+  }, [open, tour?._id, toast]);
 
   if (!open || !tour) return null;
 
-  const handleCreated = (newItem, updatedItinerary) => {
+  const handleSaved = (savedItem, updatedItinerary) => {
     if (Array.isArray(updatedItinerary)) {
       setSchedules(updatedItinerary);
-    } else if (newItem) {
-      setSchedules((prev) => [...prev, newItem].sort((a, b) => a.day - b.day));
+    } else if (savedItem) {
+      setSchedules((current) => {
+        const exists = current.some((item) => item._id === savedItem._id);
+        const next = exists
+          ? current.map((item) => (item._id === savedItem._id ? savedItem : item))
+          : [...current, savedItem];
+        return next.sort((first, second) => first.day - second.day);
+      });
     }
+    setScheduleForm({ open: false, schedule: null });
     if (onUpdated) {
       onUpdated();
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+
+    setDeleting(true);
+    try {
+      const response = await tourApi.deleteSchedule(tour._id, pendingDelete._id);
+      setSchedules(Array.isArray(response.itinerary)
+        ? response.itinerary
+        : (current) => current.filter((item) => item._id !== pendingDelete._id));
+      toast.success(response.message || 'Đã xóa ngày lịch trình.');
+      setPendingDelete(null);
+      if (onUpdated) onUpdated();
+    } catch (error) {
+      toast.error(error.message || 'Không thể xóa ngày lịch trình.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   const nextSuggestedDay = schedules.length > 0
     ? Math.max(...schedules.map((s) => s.day || 0)) + 1
     : 1;
+  const loading = loadedTourId !== tour._id;
 
   return (
     <>
@@ -77,7 +106,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-1.5 shadow-sm"
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => setScheduleForm({ open: true, schedule: null })}
                 >
                   <i className="bi bi-calendar-plus"></i>
                   <span>Tạo lịch trình ngày mới</span>
@@ -99,7 +128,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                   <button
                     type="button"
                     className="btn btn-primary btn-sm rounded-pill px-3"
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => setScheduleForm({ open: true, schedule: null })}
                   >
                     <i className="bi bi-plus-lg me-1"></i>Tạo lịch trình Ngày 1
                   </button>
@@ -108,24 +137,44 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                 <div className="d-flex flex-column gap-3">
                   {schedules.map((item, idx) => (
                     <div key={item._id || idx} className="card border rounded-3 p-3 bg-white shadow-none">
-                      <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <div className="d-flex align-items-center gap-2">
+                      <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                           <span className="badge bg-primary text-white rounded-pill px-2.5 py-1">
                             Ngày {item.day}
                           </span>
                           <h6 className="fw-bold text-dark mb-0">{item.title}</h6>
                         </div>
-                        {item.meals && item.meals.length > 0 && (
-                          <div className="d-flex align-items-center gap-1 flex-wrap">
-                            <span className="small text-muted me-1">Bữa ăn:</span>
-                            {item.meals.map((m, mIdx) => (
-                              <span key={mIdx} className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">
-                                {m}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            className="management-action-btn btn-edit"
+                            title={`Sửa lịch trình Ngày ${item.day}`}
+                            aria-label={`Sửa lịch trình Ngày ${item.day}`}
+                            onClick={() => setScheduleForm({ open: true, schedule: item })}
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="management-action-btn btn-delete"
+                            title={`Xóa lịch trình Ngày ${item.day}`}
+                            aria-label={`Xóa lịch trình Ngày ${item.day}`}
+                            onClick={() => setPendingDelete(item)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
                       </div>
+                      {item.meals && item.meals.length > 0 && (
+                        <div className="d-flex align-items-center gap-1 flex-wrap mb-2">
+                          <span className="small text-muted me-1">Bữa ăn:</span>
+                          {item.meals.map((m, mIdx) => (
+                            <span key={mIdx} className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-secondary small mb-0 lh-base" style={{ whiteSpace: 'pre-line' }}>
                         {item.description}
                       </p>
@@ -148,12 +197,29 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
         </div>
       </div>
 
-      <CreateTourScheduleModal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        tourId={tour._id}
-        suggestedDay={nextSuggestedDay}
-        onCreated={handleCreated}
+      {scheduleForm.open && (
+        <CreateTourScheduleModal
+          open
+          onClose={() => setScheduleForm({ open: false, schedule: null })}
+          tourId={tour._id}
+          suggestedDay={nextSuggestedDay}
+          schedule={scheduleForm.schedule}
+          onSaved={handleSaved}
+        />
+      )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDelete)}
+        title="Xóa ngày lịch trình"
+        message={(
+          <p className="mb-0">
+            Bạn có chắc muốn xóa <strong>Ngày {pendingDelete?.day}: {pendingDelete?.title}</strong> khỏi lịch trình tour không?
+          </p>
+        )}
+        confirmText="Xóa ngày"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onClose={() => setPendingDelete(null)}
       />
     </>
   );

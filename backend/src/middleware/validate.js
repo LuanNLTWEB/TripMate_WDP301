@@ -531,6 +531,34 @@ export const createTourScheduleValidation = [
   body('meals')
     .optional()
     .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+    .custom((meals) => Array.isArray(meals) && meals.every((meal) => ['Sáng', 'Trưa', 'Tối'].includes(meal)))
+    .withMessage('Bữa ăn chỉ được gồm Sáng, Trưa hoặc Tối')
+];
+
+export const updateTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề ngày lịch trình')
+    .isLength({ min: 3, max: 150 }).withMessage('Tiêu đề phải từ 3 đến 150 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả hoạt động cho ngày')
+    .isLength({ min: 5, max: 2000 }).withMessage('Mô tả hoạt động phải từ 5 đến 2000 ký tự'),
+  body('day')
+    .isInt({ min: 1, max: 50 }).withMessage('Số ngày phải là số nguyên từ 1 đến 50')
+    .toInt(),
+  body('meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+    .custom((meals) => Array.isArray(meals) && meals.every((meal) => ['Sáng', 'Trưa', 'Tối'].includes(meal)))
+    .withMessage('Bữa ăn chỉ được gồm Sáng, Trưa hoặc Tối')
+];
+
+export const deleteTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ')
 ];
 
 export const updateTourCapacityValidation = [

@@ -342,6 +342,13 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(scheduleData)
   }),
+  updateSchedule: (id, scheduleId, scheduleData) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(scheduleData)
+  }),
+  deleteSchedule: (id, scheduleId) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'DELETE'
+  }),
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',

@@ -14,6 +14,8 @@ import {
   getProviderTourById,
   setTourDetails,
   createTourSchedule,
+  updateTourSchedule,
+  deleteTourSchedule,
   getTourSchedule,
   updateTourCapacity,
   updateTourPrice
@@ -26,6 +28,8 @@ import {
   createTourValidation,
   setTourDetailsValidation,
   createTourScheduleValidation,
+  updateTourScheduleValidation,
+  deleteTourScheduleValidation,
   updateTourCapacityValidation,
   updateTourPriceValidation
 } from '../middleware/validate.js';
@@ -43,6 +47,8 @@ router.put('/:id/capacity', protect, authorize('tourProvider', 'admin'), updateT
 router.patch('/:id/price', protect, authorize('tourProvider', 'admin'), updateTourPriceValidation, updateTourPrice);
 router.put('/:id/price', protect, authorize('tourProvider', 'admin'), updateTourPriceValidation, updateTourPrice);
 router.post('/:id/schedule', protect, authorize('tourProvider'), createTourScheduleValidation, createTourSchedule);
+router.put('/:id/schedule/:scheduleId', protect, authorize('tourProvider'), updateTourScheduleValidation, updateTourSchedule);
+router.delete('/:id/schedule/:scheduleId', protect, authorize('tourProvider'), deleteTourScheduleValidation, deleteTourSchedule);
 router.get('/:id/schedule', optionalAuth, tourIdValidation, getTourSchedule);
 router.get('/favorites', protect, authorize('customer'), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize('customer'), tourIdValidation, saveFavoriteTour);
