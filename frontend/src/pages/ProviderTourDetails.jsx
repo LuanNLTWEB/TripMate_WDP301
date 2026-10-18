@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { tourApi } from '../services/api';
+import { tourApi, departureApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
+import CreateTourDepartureModal from './CreateTourDepartureModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -37,6 +38,7 @@ export default function ProviderTourDetails() {
   const [tour, setTour] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showDepartureModal, setShowDepartureModal] = useState(false);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -52,6 +54,10 @@ export default function ProviderTourDetails() {
   const [capacityInput, setCapacityInput] = useState('');
   const [confirmedSeats, setConfirmedSeats] = useState(0);
   const [savingCapacity, setSavingCapacity] = useState(false);
+
+  // Departures (UC-40 - Create Tour Departure)
+  const [departures, setDepartures] = useState([]);
+  const [loadingDepartures, setLoadingDepartures] = useState(false);
 
   const loadTourDetails = () => {
     setLoading(true);
@@ -96,8 +102,24 @@ export default function ProviderTourDetails() {
     }
   };
 
+  const loadDepartures = async () => {
+    setLoadingDepartures(true);
+    try {
+      const res = await departureApi.listByTour(id);
+      setDepartures(res.data || []);
+    } catch (err) {
+      setDepartures([]);
+    } finally {
+      setLoadingDepartures(false);
+    }
+  };
+
   useEffect(() => {
     loadTourDetails();
+  }, [id]);
+
+  useEffect(() => {
+    loadDepartures();
   }, [id]);
 
   // Included Services Handlers
@@ -594,6 +616,76 @@ export default function ProviderTourDetails() {
             </div>
           </div>
 
+          {/* 5. Lịch khởi hành (UC-40 - Create Tour Departure) */}
+          <div className="mt-4 pt-4 border-top">
+            <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
+              <i className="bi bi-calendar2-plus text-primary"></i>
+              <span>5. Lịch khởi hành</span>
+            </h3>
+
+            <div className="card border rounded-3 p-3 bg-white">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                  <div className="fw-semibold text-dark">Tạo ngày khởi hành mới</div>
+                  <small className="text-muted">
+                    Mỗi lịch khởi hành là một ngày khởi đi thực tế của tour, có số chỗ và giá riêng.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-outline-primary px-4 d-inline-flex align-items-center gap-2 fw-semibold"
+                  onClick={() => setShowDepartureModal(true)}
+                >
+                  <i className="bi bi-plus-circle"></i>
+                  <span>Tạo lịch khởi hành</span>
+                </button>
+              </div>
+
+              <hr className="my-3" />
+
+              {loadingDepartures ? (
+                <div className="text-center py-3">
+                  <span className="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
+                  <span className="ms-2 text-muted small">Đang tải lịch khởi hành...</span>
+                </div>
+              ) : departures.length === 0 ? (
+                <div className="text-center py-3 text-muted small">
+                  <i className="bi bi-calendar-x d-block mb-2 fs-4"></i>
+                  Tour này chưa có lịch khởi hành nào.
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr className="text-muted small">
+                        <th scope="col">Ngày khởi hành</th>
+                        <th scope="col">Số chỗ</th>
+                        <th scope="col">Giá</th>
+                        <th scope="col">Trạng thái</th>
+                        <th scope="col">Ghi chú</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departures.map((d) => (
+                        <tr key={d._id}>
+                          <td className="fw-medium">{formatDate(d.departureDate)}</td>
+                          <td>{d.availableSeats}</td>
+                          <td>{d.price != null ? formatCurrency(d.price) : <span className="text-muted">Theo giá tour</span>}</td>
+                          <td>
+                            <span className={`badge ${d.status === 'scheduled' ? 'badge-success' : 'badge-secondary'}`}>
+                              {d.status === 'scheduled' ? 'Đang lên lịch' : 'Đã hủy'}
+                            </span>
+                          </td>
+                          <td className="text-muted small">{d.note || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Action Bar ở cuối trang chuẩn Staff UI */}
           <div className="mt-4 pt-4 border-top d-flex justify-content-between align-items-center flex-wrap gap-3">
             <Link to="/management/my-tours" className="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
@@ -628,6 +720,14 @@ export default function ProviderTourDetails() {
         onClose={() => setShowScheduleModal(false)}
         tour={tour}
         onUpdated={loadTourDetails}
+      />
+
+      {/* Create Tour Departure Modal (UC-40) */}
+      <CreateTourDepartureModal
+        open={showDepartureModal}
+        onClose={() => setShowDepartureModal(false)}
+        tour={tour}
+        onCreated={() => loadDepartures()}
       />
 
       {/* Edit Tour Price Modal (UC-46) */}

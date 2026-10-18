@@ -342,6 +342,13 @@ export const tourApi = {
     body: JSON.stringify({ price })
   })
 };
+export const departureApi = {
+  create: (payload) => apiRequest('/departures', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' })
+};
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {
     method: 'POST',

@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import Role from '../models/Role.js';
 
 export const createDestinationValidation = [
@@ -546,6 +546,34 @@ export const updateTourPriceValidation = [
   body('price')
     .notEmpty().withMessage('Vui lòng nhập giá tour mới')
     .isFloat({ gt: 0 }).withMessage('Giá tour mới phải là số hợp lệ lớn hơn 0')
+];
+
+export const createDepartureValidation = [
+  body('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour')
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('departureDate')
+    .notEmpty().withMessage('Vui lòng chọn ngày khởi hành')
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate(),
+  body('availableSeats')
+    .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt(),
+  body('price')
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min: 0 }).withMessage('Giá khởi hành phải là số không âm')
+    .toFloat(),
+  body('note')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+
+export const listDeparturesValidation = [
+  query('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour')
+    .isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
 
