@@ -1,95 +1,207 @@
-const formatDate = (value) => {
-  if (!value) return '—';
+import { TRIPMATE_LOGO_URL } from '../constants/brand';
+
+const formatDate = (value, options = {}) => {
+  if (!value) return 'Chưa xác định';
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('vi-VN');
+  return Number.isNaN(date.getTime())
+    ? 'Chưa xác định'
+    : date.toLocaleDateString('vi-VN', options);
 };
 
-const formatAmount = (value) => Number(value || 0).toLocaleString('vi-VN');
+const formatAmount = (value) => new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+  maximumFractionDigits: 0
+}).format(Number(value || 0));
+
+const getActivityDateKey = (activity) => {
+  const date = new Date(activity.date);
+  return Number.isNaN(date.getTime()) ? 'undated' : date.toISOString().slice(0, 10);
+};
 
 function ItineraryPrintView({ itinerary }) {
   if (!itinerary) return null;
 
-  const activities = itinerary.activities || [];
-  const totalEstimatedCost = activities.reduce(
+  const activities = [...(itinerary.activities || [])].sort((first, second) => {
+    const firstDate = new Date(first.date).getTime() || Number.MAX_SAFE_INTEGER;
+    const secondDate = new Date(second.date).getTime() || Number.MAX_SAFE_INTEGER;
+    if (firstDate !== secondDate) return firstDate - secondDate;
+    return String(first.startTime || '').localeCompare(String(second.startTime || ''));
+  });
+  const destinations = itinerary.destinations || [];
+  const tours = itinerary.tours || [];
+  const activityCost = activities.reduce(
     (total, activity) => total + Number(activity.estimatedCost || 0),
     0
   );
+  const tourCost = tours.reduce((total, tour) => total + Number(tour.price || 0), 0);
+  const projectedCost = activityCost + tourCost;
+  const groupedActivities = activities.reduce((groups, activity) => {
+    const key = getActivityDateKey(activity);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(activity);
+    return groups;
+  }, {});
+  const exportedAt = new Date();
 
   return (
     <section className="itinerary-print-root" aria-hidden="true">
       <header className="itinerary-print-header">
-        <div>
-          <p className="itinerary-print-brand">TripMate</p>
-          <h1>{itinerary.title}</h1>
+        <div className="itinerary-print-brand-lockup">
+          <span className="itinerary-print-logo-frame">
+            <img className="itinerary-print-logo" src={TRIPMATE_LOGO_URL} alt="TripMate" />
+          </span>
+          <div>
+            <p className="itinerary-print-brand">TripMate</p>
+            <p className="itinerary-print-tagline">Khám phá Việt Nam theo cách của bạn</p>
+          </div>
         </div>
-        <p>Ngày xuất: {new Date().toLocaleDateString('vi-VN')}</p>
+        <div className="itinerary-print-document-meta">
+          <span>Kế hoạch hành trình</span>
+          <strong>{formatDate(exportedAt, { day: '2-digit', month: '2-digit', year: 'numeric' })}</strong>
+        </div>
       </header>
 
+      <section className="itinerary-print-hero">
+        <p>Hành trình cá nhân</p>
+        <h1>{itinerary.title}</h1>
+        <div className="itinerary-print-date-range">
+          <span>{formatDate(itinerary.startDate, { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+          <span className="itinerary-print-date-separator">-</span>
+          <span>{formatDate(itinerary.endDate, { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+        </div>
+      </section>
+
       <div className="itinerary-print-summary">
-        {(itinerary.startDate || itinerary.endDate) && (
-          <div>
-            <span>Thời gian</span>
-            <strong>{formatDate(itinerary.startDate)} – {formatDate(itinerary.endDate)}</strong>
-          </div>
-        )}
         <div>
-          <span>Ngân sách dự kiến</span>
-          <strong>{formatAmount(itinerary.budget)}</strong>
+          <span>Điểm đến</span>
+          <strong>{destinations.length}</strong>
+          <small>địa điểm</small>
         </div>
         <div>
-          <span>Tổng chi phí hoạt động</span>
-          <strong>{formatAmount(totalEstimatedCost)}</strong>
+          <span>Tour đã chọn</span>
+          <strong>{tours.length}</strong>
+          <small>hành trình</small>
+        </div>
+        <div>
+          <span>Ngân sách</span>
+          <strong>{formatAmount(itinerary.budget)}</strong>
+          <small>dự kiến</small>
+        </div>
+        <div>
+          <span>Chi phí kế hoạch</span>
+          <strong>{formatAmount(projectedCost)}</strong>
+          <small>tour và hoạt động</small>
         </div>
       </div>
 
-      <h2>Điểm đến</h2>
-      {(itinerary.destinations || []).length === 0 ? (
-        <p className="itinerary-print-empty">Lịch trình chưa có điểm đến.</p>
-      ) : (
-        <ul className="itinerary-print-destinations">
-          {itinerary.destinations.map((destination) => (
-            <li key={destination._id || destination}>
-              <strong>{destination.name}</strong>
-              {destination.location ? ` — ${destination.location}` : ''}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h2>Danh sách hoạt động</h2>
-      {activities.length === 0 ? (
-        <p className="itinerary-print-empty">Lịch trình chưa có hoạt động.</p>
-      ) : (
-        <table className="itinerary-print-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Hoạt động</th>
-              <th>Thời gian</th>
-              <th>Địa điểm</th>
-              <th>Chi phí dự kiến</th>
-              <th>Ghi chú</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activities.map((activity, index) => (
-              <tr key={activity._id || `${activity.title}-${index}`}>
-                <td>{index + 1}</td>
-                <td>{activity.title}</td>
-                <td>
-                  {formatDate(activity.date)}
-                  <br />
-                  {activity.startTime} – {activity.endTime}
-                </td>
-                <td>{activity.location || '—'}</td>
-                <td>{formatAmount(activity.estimatedCost)}</td>
-                <td>{activity.notes || '—'}</td>
-              </tr>
+      <section className="itinerary-print-section">
+        <div className="itinerary-print-section-heading">
+          <span>01</span>
+          <div><h2>Điểm đến</h2><p>Những điểm dừng chân trong chuyến đi</p></div>
+        </div>
+        {destinations.length === 0 ? (
+          <p className="itinerary-print-empty">Lịch trình chưa có điểm đến.</p>
+        ) : (
+          <div className="itinerary-print-destinations">
+            {destinations.map((destination, index) => (
+              <div key={destination._id || destination}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>{destination.name || 'Điểm đến'}</strong>
+                  <small>{destination.location || 'Chưa cập nhật địa chỉ'}</small>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
+      </section>
+
+      <section className="itinerary-print-section">
+        <div className="itinerary-print-section-heading">
+          <span>02</span>
+          <div><h2>Tour trong kế hoạch</h2><p>Các trải nghiệm đã được thêm vào hành trình</p></div>
+        </div>
+        {tours.length === 0 ? (
+          <p className="itinerary-print-empty">Lịch trình chưa có tour.</p>
+        ) : (
+          <div className="itinerary-print-tours">
+            {tours.map((tour) => (
+              <article key={tour._id || tour.title}>
+                <div>
+                  <strong>{tour.title || 'Tour du lịch'}</strong>
+                  <span>{tour.departureLocation || 'Điểm khởi hành'} - {tour.destinationLocation || tour.location || 'Điểm đến'}</span>
+                </div>
+                <div>
+                  <small>{tour.duration || 'Chưa cập nhật thời lượng'}</small>
+                  <strong>{formatAmount(tour.price)}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="itinerary-print-section itinerary-print-activity-section">
+        <div className="itinerary-print-section-heading">
+          <span>03</span>
+          <div><h2>Lịch hoạt động</h2><p>Chi tiết hoạt động được sắp xếp theo ngày và thời gian</p></div>
+        </div>
+        {activities.length === 0 ? (
+          <p className="itinerary-print-empty">Lịch trình chưa có hoạt động.</p>
+        ) : (
+          <div className="itinerary-print-days">
+            {Object.entries(groupedActivities).map(([dateKey, dateActivities], groupIndex) => (
+              <article className="itinerary-print-day" key={dateKey}>
+                <div className="itinerary-print-day-heading">
+                  <span>Ngày {groupIndex + 1}</span>
+                  <strong>{dateKey === 'undated' ? 'Chưa xác định ngày' : formatDate(`${dateKey}T00:00:00`, { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</strong>
+                </div>
+                <div className="itinerary-print-activities">
+                  {dateActivities.map((activity, index) => (
+                    <div className="itinerary-print-activity" key={activity._id || `${activity.title}-${index}`}>
+                      <div className="itinerary-print-activity-time">
+                        <strong>{activity.startTime || '--:--'}</strong>
+                        <span>{activity.endTime ? `đến ${activity.endTime}` : ''}</span>
+                      </div>
+                      <div className="itinerary-print-activity-content">
+                        <strong>{activity.title}</strong>
+                        <span>{activity.location || 'Chưa cập nhật địa điểm'}</span>
+                        {activity.notes && <p>{activity.notes}</p>}
+                      </div>
+                      <strong className="itinerary-print-activity-cost">{formatAmount(activity.estimatedCost)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="itinerary-print-cost-note">
+        <div>
+          <span>Tổng chi phí tour</span>
+          <strong>{formatAmount(tourCost)}</strong>
+        </div>
+        <div>
+          <span>Tổng chi phí hoạt động</span>
+          <strong>{formatAmount(activityCost)}</strong>
+        </div>
+        <div className="itinerary-print-cost-total">
+          <span>Tổng dự kiến</span>
+          <strong>{formatAmount(projectedCost)}</strong>
+        </div>
+      </section>
+
+      <footer className="itinerary-print-footer">
+        <div>
+          <img src={TRIPMATE_LOGO_URL} alt="" />
+          <span>TripMate</span>
+        </div>
+        <p>Chi phí trong kế hoạch chỉ mang tính tham khảo và có thể thay đổi tại thời điểm sử dụng dịch vụ.</p>
+      </footer>
     </section>
   );
 }

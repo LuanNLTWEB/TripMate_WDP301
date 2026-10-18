@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { canAccessManagement } from '../config/managementNavigation';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-const logo = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823913/tripmate_assets/d4gczttux14p0fwdvxst.png';
+import { TRIPMATE_LOGO_URL } from '../constants/brand';
 
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -159,7 +159,7 @@ function Navbar() {
     <nav className="navbar navbar-expand-lg navbar-dark shadow-sm sticky-top navbar-glass tripmate-navbar py-2">
       <div className="container">
         <Link className="navbar-brand d-flex align-items-center gap-2 text-decoration-none" to="/">
-          <img src={logo} alt="TripMate" className="tripmate-navbar-logo" />
+          <img src={TRIPMATE_LOGO_URL} alt="TripMate" className="tripmate-navbar-logo" />
           <span className="font-display fw-bold fs-3 text-white tracking-tight">TripMate</span>
         </Link>
 

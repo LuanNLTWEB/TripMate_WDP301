@@ -44,6 +44,7 @@ function Itinerary() {
   const [tourId, setTourId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteActivity, setPendingDeleteActivity] = useState(null);
@@ -302,18 +303,36 @@ function Itinerary() {
     }
   };
 
-  const exportItinerary = () => {
-    if (!selected) return;
+  const exportItinerary = async () => {
+    if (!selected || isExporting) return;
 
     const previousTitle = document.title;
     const safeTitle = selected.title?.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'itinerary';
     document.title = `${safeTitle} - TripMate`;
+    setIsExporting(true);
 
     try {
+      const logoImages = Array.from(document.querySelectorAll('.itinerary-print-root img'));
+      const imageTasks = logoImages.map((image) => {
+        if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+        if (typeof image.decode === 'function') return image.decode().catch(() => undefined);
+        return new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+      });
+      const assetTasks = [...imageTasks];
+      if (document.fonts?.ready) assetTasks.push(document.fonts.ready);
+      await Promise.race([
+        Promise.all(assetTasks),
+        new Promise((resolve) => setTimeout(resolve, 2500))
+      ]);
+
       window.print();
-      toast.info('Đã mở bản xem trước để bạn in hoặc lưu thành PDF.');
+      toast.info('Đã mở bản xem trước PDF với bố cục tối ưu cho khổ A4.');
     } finally {
       document.title = previousTitle;
+      setIsExporting(false);
     }
   };
 
@@ -658,10 +677,20 @@ function Itinerary() {
                                 type="button"
                                 className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={exportItinerary}
+                                disabled={isExporting}
                                 title="Xuất lịch trình ra bản in hoặc PDF"
                               >
-                                <i className="bi bi-printer me-1"></i>
-                                <span>Xuất lịch trình</span>
+                                {isExporting ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                    <span>Đang chuẩn bị PDF...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-file-earmark-pdf me-1"></i>
+                                    <span>Xuất PDF</span>
+                                  </>
+                                )}
                               </button>
                               <button
                                 type="button"

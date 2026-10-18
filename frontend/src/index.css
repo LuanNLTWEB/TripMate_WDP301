@@ -1270,7 +1270,19 @@ main {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 14mm;
+    margin: 11mm 11mm 17mm;
+
+    @bottom-left {
+      content: "TripMate - Hành trình của bạn";
+      color: #64748b;
+      font-size: 8pt;
+    }
+
+    @bottom-right {
+      content: "Trang " counter(page) " / " counter(pages);
+      color: #64748b;
+      font-size: 8pt;
+    }
   }
 
   body {
@@ -1288,105 +1300,495 @@ main {
 
   .itinerary-print-root {
     display: block !important;
-    position: absolute;
-    inset: 0 auto auto 0;
+    position: static;
     width: 100%;
-    color: #000000;
+    color: #0f172a;
     background: #ffffff;
-    font-size: 12px;
+    font-family: var(--tm-font-sans);
+    font-size: 9pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .itinerary-print-root,
+  .itinerary-print-root * {
+    box-sizing: border-box;
   }
 
   .itinerary-print-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 24px;
-    padding-bottom: 12px;
-    margin-bottom: 18px;
-    border-bottom: 2px solid #0d6efd;
+    gap: 18px;
+    padding-bottom: 9px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #cbd5e1;
+    break-inside: avoid;
   }
 
-  .itinerary-print-header h1 {
-    margin: 0;
-    font-size: 24px;
+  .itinerary-print-brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 9px;
   }
 
-  .itinerary-print-header p {
-    margin: 0;
+  .itinerary-print-logo-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 6px;
+    overflow: hidden;
+    border-radius: 9px;
+    background: #0f172a !important;
+  }
+
+  .itinerary-print-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform: scale(1.65);
   }
 
   .itinerary-print-brand {
-    color: #0d6efd;
+    margin: 0;
+    color: #0284c7;
+    font-size: 14pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .itinerary-print-tagline {
+    margin-top: 3px !important;
+    color: #64748b;
+    font-size: 7pt;
+  }
+
+  .itinerary-print-document-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+  }
+
+  .itinerary-print-document-meta span {
+    color: #64748b;
+    font-size: 7pt;
     font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+  }
+
+  .itinerary-print-document-meta strong {
+    color: #334155;
+    font-size: 8pt;
+  }
+
+  .itinerary-print-hero {
+    padding: 15px 17px;
+    margin-bottom: 9px;
+    overflow: hidden;
+    border-radius: 12px;
+    color: #ffffff;
+    background: linear-gradient(120deg, #0f172a 0%, #075985 65%, #0284c7 100%) !important;
+    break-inside: avoid;
+  }
+
+  .itinerary-print-hero p {
+    margin: 0;
+    color: #bae6fd;
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .itinerary-print-hero h1 {
+    margin: 5px 0 7px;
+    color: #ffffff;
+    font-family: var(--tm-font-display);
+    font-size: 22pt;
+    line-height: 1.15;
+  }
+
+  .itinerary-print-date-range {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #e0f2fe;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+
+  .itinerary-print-date-separator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: #0f172a;
+    background: #fbbf24 !important;
   }
 
   .itinerary-print-summary {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+    margin-bottom: 14px;
+    break-inside: avoid;
   }
 
   .itinerary-print-summary > div {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc !important;
   }
 
   .itinerary-print-summary span,
-  .itinerary-print-summary strong {
+  .itinerary-print-summary strong,
+  .itinerary-print-summary small {
     display: block;
   }
 
   .itinerary-print-summary span {
-    margin-bottom: 4px;
-    color: #495057;
-    font-size: 10px;
+    margin-bottom: 3px;
+    color: #64748b;
+    font-size: 6.5pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 
-  .itinerary-print-root h2 {
-    margin-bottom: 10px;
-    font-size: 17px;
+  .itinerary-print-summary strong {
+    overflow-wrap: anywhere;
+    color: #0f172a;
+    font-size: 10pt;
+    line-height: 1.2;
+  }
+
+  .itinerary-print-summary small {
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-section {
+    margin-top: 14px;
+  }
+
+  .itinerary-print-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 6px;
+    margin-bottom: 7px;
+    border-bottom: 1px solid #e2e8f0;
+    break-after: avoid;
+  }
+
+  .itinerary-print-section-heading > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    flex: 0 0 25px;
+    border-radius: 7px;
+    color: #ffffff;
+    background: #0284c7 !important;
+    font-size: 8pt;
+    font-weight: 800;
+  }
+
+  .itinerary-print-section-heading h2,
+  .itinerary-print-section-heading p {
+    margin: 0;
+  }
+
+  .itinerary-print-section-heading h2 {
+    color: #0f172a;
+    font-family: var(--tm-font-display);
+    font-size: 13pt;
+    line-height: 1.15;
+  }
+
+  .itinerary-print-section-heading p {
+    margin-top: 1px;
+    color: #64748b;
+    font-size: 6.5pt;
   }
 
   .itinerary-print-destinations {
-    margin: 0 0 20px;
-    padding-left: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
   }
 
-  .itinerary-print-destinations li {
-    margin-bottom: 5px;
-  }
-
-  .itinerary-print-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .itinerary-print-table th,
-  .itinerary-print-table td {
-    padding: 7px;
-    border: 1px solid #adb5bd;
-    text-align: left;
-    vertical-align: top;
-  }
-
-  .itinerary-print-table th {
-    background: #e9ecef !important;
-    print-color-adjust: exact;
-  }
-
-  .itinerary-print-table tr {
+  .itinerary-print-destinations > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #f0f9ff !important;
     break-inside: avoid;
   }
 
+  .itinerary-print-destinations > div > span {
+    color: #0284c7;
+    font-size: 8pt;
+    font-weight: 800;
+  }
+
+  .itinerary-print-destinations strong,
+  .itinerary-print-destinations small {
+    display: block;
+  }
+
+  .itinerary-print-destinations strong {
+    font-size: 8.5pt;
+  }
+
+  .itinerary-print-destinations small {
+    margin-top: 1px;
+    color: #64748b;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-tours {
+    display: grid;
+    gap: 6px;
+  }
+
+  .itinerary-print-tours article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-left: 3px solid #f59e0b;
+    border-radius: 4px 8px 8px 4px;
+    background: #fffbeb !important;
+    break-inside: avoid;
+  }
+
+  .itinerary-print-tours article > div {
+    min-width: 0;
+  }
+
+  .itinerary-print-tours article > div:last-child {
+    flex: 0 0 auto;
+    text-align: right;
+  }
+
+  .itinerary-print-tours strong,
+  .itinerary-print-tours span,
+  .itinerary-print-tours small {
+    display: block;
+  }
+
+  .itinerary-print-tours strong {
+    font-size: 8.5pt;
+  }
+
+  .itinerary-print-tours span,
+  .itinerary-print-tours small {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-tours article > div:last-child strong {
+    margin-top: 2px;
+    color: #0369a1;
+  }
+
+  .itinerary-print-days {
+    display: grid;
+    gap: 9px;
+  }
+
+  .itinerary-print-day-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: #ffffff;
+    background: #334155 !important;
+    break-after: avoid;
+  }
+
+  .itinerary-print-day-heading span {
+    color: #7dd3fc;
+    font-size: 7pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .itinerary-print-day-heading strong {
+    font-size: 7.5pt;
+    text-transform: capitalize;
+  }
+
+  .itinerary-print-activities {
+    padding-left: 8px;
+    border-left: 1px solid #cbd5e1;
+  }
+
+  .itinerary-print-activity {
+    display: grid;
+    grid-template-columns: 55px minmax(0, 1fr) 82px;
+    gap: 9px;
+    align-items: start;
+    padding: 7px 3px 7px 7px;
+    border-bottom: 1px solid #e2e8f0;
+    break-inside: avoid;
+  }
+
+  .itinerary-print-activity:last-child {
+    border-bottom: 0;
+  }
+
+  .itinerary-print-activity-time strong,
+  .itinerary-print-activity-time span,
+  .itinerary-print-activity-content > strong,
+  .itinerary-print-activity-content > span {
+    display: block;
+  }
+
+  .itinerary-print-activity-time strong {
+    color: #0369a1;
+    font-size: 8.5pt;
+  }
+
+  .itinerary-print-activity-time span,
+  .itinerary-print-activity-content > span {
+    margin-top: 1px;
+    color: #64748b;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-activity-content > strong {
+    font-size: 8.5pt;
+  }
+
+  .itinerary-print-activity-content p {
+    margin: 4px 0 0;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: #475569;
+    background: #f8fafc !important;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-activity-cost {
+    color: #0f172a;
+    font-size: 7.5pt;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .itinerary-print-cost-note {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    break-inside: avoid;
+  }
+
+  .itinerary-print-cost-note > div {
+    padding: 8px 10px;
+    border-right: 1px solid #cbd5e1;
+  }
+
+  .itinerary-print-cost-note > div:last-child {
+    border-right: 0;
+  }
+
+  .itinerary-print-cost-note span,
+  .itinerary-print-cost-note strong {
+    display: block;
+  }
+
+  .itinerary-print-cost-note span {
+    color: #64748b;
+    font-size: 6.5pt;
+  }
+
+  .itinerary-print-cost-note strong {
+    margin-top: 2px;
+    font-size: 9pt;
+  }
+
+  .itinerary-print-cost-total {
+    color: #ffffff;
+    background: #0369a1 !important;
+  }
+
+  .itinerary-print-cost-total span {
+    color: #bae6fd;
+  }
+
+  .itinerary-print-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 8px;
+    margin-top: 13px;
+    border-top: 1px solid #cbd5e1;
+    color: #64748b;
+    break-inside: avoid;
+  }
+
+  .itinerary-print-footer > div {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #0284c7;
+    font-weight: 800;
+  }
+
+  .itinerary-print-footer img {
+    width: 19px;
+    height: 19px;
+    object-fit: contain;
+    padding: 1px;
+    border-radius: 4px;
+    background: #0f172a !important;
+  }
+
+  .itinerary-print-footer p {
+    max-width: 72%;
+    margin: 0;
+    font-size: 6.3pt;
+    text-align: right;
+  }
+
   .itinerary-print-empty {
-    padding: 16px;
-    border: 1px dashed #adb5bd;
+    padding: 9px;
+    margin: 0;
+    border: 1px dashed #94a3b8;
+    border-radius: 7px;
+    color: #64748b;
+    background: #f8fafc !important;
+    font-size: 7.5pt;
     text-align: center;
+    break-inside: avoid;
   }
 }
 
