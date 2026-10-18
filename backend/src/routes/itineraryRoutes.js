@@ -5,6 +5,8 @@ import {
   addDestination,
   addTour,
   createItinerary,
+  generateSmartItinerary,
+  optimizeBudget,
   deleteItinerary,
   duplicateItinerary,
   getActivityConflicts,
@@ -34,6 +36,8 @@ import {
   itineraryIdValidation,
   itineraryTourValidation,
   itineraryValidation,
+  smartItineraryValidation,
+  optimizeBudgetValidation,
   updateItineraryValidation,
   removeDestinationValidation,
   removeTourFromItineraryValidation,
@@ -51,6 +55,7 @@ const router = Router();
 const customerAccess = [protect, authorize('customer')];
 
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
+router.post('/smart', ...customerAccess, smartItineraryValidation, generateSmartItinerary);
 router.get('/', ...customerAccess, listItineraries);
 router.get('/shared', ...customerAccess, listSharedItineraries);
 router.get('/invitations', ...customerAccess, listReceivedInvitations);
@@ -58,6 +63,7 @@ router.post('/invitations/:notificationId/respond', ...customerAccess, respondIn
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);
+router.post('/:id/budget-optimize', ...customerAccess, optimizeBudgetValidation, optimizeBudget);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);

@@ -527,6 +527,19 @@ export const createBookingValidation = [
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
 ];
 
+export const smartItineraryValidation = [
+  body('title').trim().notEmpty().withMessage('Itinerary title is required').isLength({ max: 120 }).withMessage('Itinerary title cannot exceed 120 characters'),
+  body('budget').optional({ values: 'falsy' }).isFloat({ min: 0 }).withMessage('Budget must be a non-negative number'),
+  body('destination').optional({ values: 'falsy' }).isString().isLength({ max: 120 }).withMessage('Destination preference cannot exceed 120 characters'),
+  body('startDate').optional({ values: 'falsy' }).isISO8601().withMessage('Start date is invalid'),
+  body('endDate').optional({ values: 'falsy' }).isISO8601().withMessage('End date is invalid')
+];
+
+export const optimizeBudgetValidation = [
+  param('id').isMongoId().withMessage('Itinerary ID is invalid'),
+  body('apply').optional().isBoolean().withMessage('Apply must be a boolean')
+];
+
 export const createReviewValidation = [
   param('tourId').isMongoId().withMessage('Tour ID is invalid'),
   body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5').toInt(),

@@ -183,6 +183,14 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(itinerary)
   }),
+  generateSmart: (preferences) => apiRequest('/itineraries/smart', {
+    method: 'POST',
+    body: JSON.stringify(preferences)
+  }),
+  optimizeBudget: (id, apply = false) => apiRequest(`/itineraries/${id}/budget-optimize`, {
+    method: 'POST',
+    body: JSON.stringify({ apply })
+  }),
   update: (id, itinerary) => apiRequest(`/itineraries/${id}`, {
     method: 'PUT',
     body: JSON.stringify(itinerary)
