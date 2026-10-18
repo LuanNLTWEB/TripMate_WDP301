@@ -672,5 +672,21 @@ export const reportedReviewListValidation = [
     .toInt()
 ];
 
+export const reviewEligibilityValidation = [
+  param('tourId').isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
+export const createReviewValidation = [
+  param('tourId').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('rating')
+    .notEmpty().withMessage('Vui lòng chọn số sao đánh giá')
+    .isInt({ min: 1, max: 5 }).withMessage('Số sao phải là số nguyên từ 1 đến 5')
+    .toInt(),
+  body('comment')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung đánh giá')
+    .isLength({ min: 10, max: 1000 }).withMessage('Nội dung đánh giá phải từ 10 đến 1000 ký tự')
+];
+
 
 

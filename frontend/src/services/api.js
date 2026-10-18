@@ -255,6 +255,11 @@ export const statsApi = {
 
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  getEligibility: (tourId) => apiRequest(`/reviews/tours/${tourId}/eligibility`, { method: 'GET' }),
+  create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',

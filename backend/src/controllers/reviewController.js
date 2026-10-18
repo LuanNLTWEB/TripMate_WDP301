@@ -1,5 +1,6 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
+import Booking from '../models/Booking.js';
 import { logActivity } from '../utils/activityLogger.js';
 import { validationResult } from 'express-validator';
 
@@ -13,6 +14,86 @@ const VALID_REPORT_REASONS = [
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const REVIEW_ELIGIBILITY_MESSAGES = {
+  eligible: 'Bạn có thể đánh giá tour đã hoàn thành.',
+  already_reviewed: 'Bạn đã đánh giá tour này.',
+  booking_not_confirmed: 'Bạn cần có booking đã được xác nhận để đánh giá tour.',
+  trip_not_completed: 'Bạn có thể đánh giá sau khi chuyến đi kết thúc.'
+};
+
+export const parseTourDurationDays = (duration) => {
+  const match = String(duration || '').match(/(\d+)\s*(?:ngày|day|days)/i);
+  const parsedDays = match ? Number.parseInt(match[1], 10) : 1;
+  return Number.isFinite(parsedDays) && parsedDays > 0 ? Math.min(parsedDays, 365) : 1;
+};
+
+export const calculateTripEndDate = (departureDate, duration) => {
+  const tripEndDate = new Date(departureDate);
+  if (Number.isNaN(tripEndDate.getTime())) return null;
+
+  tripEndDate.setUTCDate(tripEndDate.getUTCDate() + parseTourDurationDays(duration));
+  return tripEndDate;
+};
+
+const buildEligibility = (eligible, reason, extra = {}) => ({
+  eligible,
+  reason,
+  message: REVIEW_ELIGIBILITY_MESSAGES[reason],
+  ...extra
+});
+
+const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
+  const tour = await Tour.findById(tourId);
+  if (!tour) return { tour: null };
+
+  const existingReview = await Review.findOne({ tourId, userId });
+  if (existingReview) {
+    return {
+      tour,
+      ...buildEligibility(false, 'already_reviewed', { reviewId: existingReview._id })
+    };
+  }
+
+  const confirmedBookings = await Booking.find({
+    tourId,
+    customerId: userId,
+    status: 'confirmed'
+  }).sort({ departureDate: -1 });
+
+  if (confirmedBookings.length === 0) {
+    return { tour, ...buildEligibility(false, 'booking_not_confirmed') };
+  }
+
+  const bookingsWithEndDate = confirmedBookings
+    .map((booking) => ({
+      booking,
+      tripEndDate: calculateTripEndDate(booking.departureDate, tour.duration)
+    }))
+    .filter((item) => item.tripEndDate);
+  const completedBooking = bookingsWithEndDate.find((item) => item.tripEndDate <= now);
+
+  if (completedBooking) {
+    return {
+      tour,
+      ...buildEligibility(true, 'eligible', {
+        bookingId: completedBooking.booking._id,
+        completedAt: completedBooking.tripEndDate
+      })
+    };
+  }
+
+  const nextEligibleDate = bookingsWithEndDate
+    .map((item) => item.tripEndDate)
+    .sort((first, second) => first - second)[0];
+
+  return {
+    tour,
+    ...buildEligibility(false, 'trip_not_completed', {
+      eligibleAt: nextEligibleDate || null
+    })
+  };
+};
+
 const recalculateTourRating = async (tourId) => {
   const approvedReviews = await Review.find({ tourId, status: 'approved' }).select('rating');
   const totalReviews = approvedReviews.length;
@@ -22,6 +103,95 @@ const recalculateTourRating = async (tourId) => {
 
   await Tour.findByIdAndUpdate(tourId, { averageRating });
   return { averageRating, totalReviews };
+};
+
+export const getReviewEligibility = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const eligibility = await evaluateReviewEligibility(req.params.tourId, req.user._id);
+    if (!eligibility.tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    const { tour, ...data } = eligibility;
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('Error checking review eligibility:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể kiểm tra điều kiện đánh giá tour'
+    });
+  }
+};
+
+export const createReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { tourId } = req.params;
+    const eligibility = await evaluateReviewEligibility(tourId, req.user._id);
+
+    if (!eligibility.tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    if (!eligibility.eligible) {
+      const statusCode = eligibility.reason === 'already_reviewed' ? 409 : 403;
+      return res.status(statusCode).json({
+        success: false,
+        message: eligibility.message,
+        reason: eligibility.reason,
+        eligibleAt: eligibility.eligibleAt || null
+      });
+    }
+
+    const review = await Review.create({
+      userId: req.user._id,
+      tourId,
+      rating: req.body.rating,
+      comment: req.body.comment.trim(),
+      status: 'approved'
+    });
+    await review.populate('userId', 'username');
+
+    const { averageRating, totalReviews } = await recalculateTourRating(tourId);
+    return res.status(201).json({
+      success: true,
+      message: 'Đánh giá tour thành công.',
+      data: review,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: REVIEW_ELIGIBILITY_MESSAGES.already_reviewed,
+        reason: 'already_reviewed'
+      });
+    }
+
+    console.error('Error creating review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tạo đánh giá tour'
+    });
+  }
 };
 
 export const reportReview = async (req, res) => {
