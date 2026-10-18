@@ -29,8 +29,6 @@ const TourDetails = () => {
   const [isDeletingReview, setIsDeletingReview] = useState(false);
   const [reviewToReport, setReviewToReport] = useState(null);
   const [reportedReviewIds, setReportedReviewIds] = useState([]);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'admin' ||
@@ -64,29 +62,6 @@ const TourDetails = () => {
       toast.error(err.message || 'Không thể xóa đánh giá.');
     } finally {
       setIsDeletingReview(false);
-    }
-  };
-
-  const handleCreateReview = async (event) => {
-    event.preventDefault();
-    if (reviewSubmitting) return;
-    setReviewSubmitting(true);
-    try {
-      const response = await reviewApi.create(id, {
-        rating: Number(reviewForm.rating),
-        comment: reviewForm.comment.trim()
-      });
-      setReviews((current) => [response.data, ...current]);
-      setReviewStats({
-        averageRating: response.averageRating || 0,
-        totalReviews: response.totalReviews || 0
-      });
-      setReviewForm({ rating: 5, comment: '' });
-      toast.success(response.message || 'Review created successfully.');
-    } catch (err) {
-      toast.error(err.message || 'Unable to create review.');
-    } finally {
-      setReviewSubmitting(false);
     }
   };
 
@@ -176,9 +151,6 @@ const TourDetails = () => {
       setUpdatingFavorite(false);
     }
   };
-
-  const currentUserId = String(user?.id || user?._id || '');
-  const hasMyReview = reviews.some((review) => String(review.userId?._id || review.userId) === currentUserId);
 
   if (loading) {
     return (
@@ -509,27 +481,6 @@ const TourDetails = () => {
                   </div>
                 )}
               </div>
-
-              {isAuthenticated && user?.role === 'customer' && !reviewsLoading && !hasMyReview && (
-                <form className="border rounded-3 p-3 mb-4 bg-light" onSubmit={handleCreateReview}>
-                  <h3 className="h6 fw-bold mb-3">Write a review</h3>
-                  <div className="row g-3 align-items-end">
-                    <div className="col-md-3">
-                      <label className="form-label small fw-semibold" htmlFor="review-rating">Rating</label>
-                      <select id="review-rating" className="form-select" value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: event.target.value }))} disabled={reviewSubmitting}>
-                        {[5, 4, 3, 2, 1].map((rating) => <option value={rating} key={rating}>{rating} / 5</option>)}
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label small fw-semibold" htmlFor="review-comment">Comment</label>
-                      <textarea id="review-comment" rows="2" maxLength="1000" className="form-control" value={reviewForm.comment} onChange={(event) => setReviewForm((current) => ({ ...current, comment: event.target.value }))} disabled={reviewSubmitting} placeholder="Share your experience"></textarea>
-                    </div>
-                    <div className="col-md-3">
-                      <button type="submit" className="btn btn-primary w-100" disabled={reviewSubmitting}>{reviewSubmitting ? 'Submitting...' : 'Submit review'}</button>
-                    </div>
-                  </div>
-                </form>
-              )}
 
               {reviewsLoading ? (
                 <div className="text-center py-4">

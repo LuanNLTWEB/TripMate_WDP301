@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import CreateTourScheduleModal from './CreateTourScheduleModal';
-import EditTourScheduleModal from './EditTourScheduleModal';
 
 export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
   const toast = useToast();
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState(null);
 
   useEffect(() => {
     if (open && tour?._id) {
@@ -43,23 +41,6 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
   const nextSuggestedDay = schedules.length > 0
     ? Math.max(...schedules.map((s) => s.day || 0)) + 1
     : 1;
-
-  const handleUpdated = (updatedItinerary) => {
-    setSchedules(Array.isArray(updatedItinerary) ? updatedItinerary : schedules);
-    onUpdated?.();
-  };
-
-  const handleDelete = async (schedule) => {
-    if (!window.confirm(`Delete schedule day ${schedule.day}?`)) return;
-    try {
-      const response = await tourApi.deleteSchedule(tour._id, schedule._id);
-      setSchedules(response.itinerary || []);
-      onUpdated?.();
-      toast.success(response.message || 'Tour schedule deleted successfully.');
-    } catch (error) {
-      toast.error(error.message || 'Unable to delete tour schedule.');
-    }
-  };
 
   return (
     <>
@@ -145,14 +126,6 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                           </div>
                         )}
                       </div>
-                      <div className="d-flex justify-content-end gap-2 mb-2">
-                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => setEditingSchedule(item)} title="Edit schedule">
-                          <i className="bi bi-pencil-square"></i>
-                        </button>
-                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(item)} title="Delete schedule">
-                          <i className="bi bi-trash"></i>
-                        </button>
-                      </div>
                       <p className="text-secondary small mb-0 lh-base" style={{ whiteSpace: 'pre-line' }}>
                         {item.description}
                       </p>
@@ -181,14 +154,6 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
         tourId={tour._id}
         suggestedDay={nextSuggestedDay}
         onCreated={handleCreated}
-      />
-
-      <EditTourScheduleModal
-        open={Boolean(editingSchedule)}
-        onClose={() => setEditingSchedule(null)}
-        tourId={tour._id}
-        schedule={editingSchedule}
-        onUpdated={handleUpdated}
       />
     </>
   );

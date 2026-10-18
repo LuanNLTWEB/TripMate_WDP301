@@ -4,8 +4,6 @@ import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
-import EditTourModal from './EditTourModal';
-import TourDeparturesModal from './TourDeparturesModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -39,8 +37,6 @@ export default function ProviderTourDetails() {
   const [tour, setTour] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeparturesModal, setShowDeparturesModal] = useState(false);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -222,17 +218,7 @@ export default function ProviderTourDetails() {
           {/* Tour Title & Status */}
           <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
             <div>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h2 className="h3 fw-bold mb-1">{tour.title}</h2>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary rounded-pill"
-                  onClick={() => setShowEditModal(true)}
-                  title="Update tour"
-                >
-                  <i className="bi bi-pencil-square me-1"></i>Update
-                </button>
-              </div>
+              <h2 className="h3 fw-bold mb-1">{tour.title}</h2>
               <div className="text-muted">
                 <i className="bi bi-geo-alt-fill text-danger me-1"></i>
                 {tour.departureLocation
@@ -335,14 +321,6 @@ export default function ProviderTourDetails() {
                 <i className="bi bi-calendar-range text-primary"></i>
                 <span>1. Lịch trình chi tiết ({tour.itinerary?.length || 0} ngày)</span>
               </h3>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5"
-                onClick={() => setShowDeparturesModal(true)}
-              >
-                <i className="bi bi-calendar-check"></i>
-                <span>Manage departures</span>
-              </button>
               <button
                 type="button"
                 className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5"
@@ -660,19 +638,6 @@ export default function ProviderTourDetails() {
         onUpdated={(newPrice) => {
           setTour((prev) => ({ ...prev, price: newPrice }));
         }}
-      />
-
-      <EditTourModal
-        open={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        tour={tour}
-        onUpdated={(updatedTour) => setTour(updatedTour)}
-      />
-
-      <TourDeparturesModal
-        open={showDeparturesModal}
-        onClose={() => setShowDeparturesModal(false)}
-        tour={tour}
       />
     </section>
   );

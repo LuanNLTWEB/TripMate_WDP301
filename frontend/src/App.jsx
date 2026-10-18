@@ -28,13 +28,9 @@ import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
 import ProviderCreateTour from './pages/ProviderCreateTour';
-import ProviderBookingRequests from './pages/ProviderBookingRequests';
-import MyBookings from './pages/MyBookings';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
-import Announcements from './pages/Announcements';
-import StaffAnnouncements from './pages/StaffAnnouncements';
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -65,16 +61,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/favorites" element={<FavoriteDestinations />} />
-            <Route
-              path="/bookings"
-              element={(
-                <ProtectedRoute allowedRoles={['customer']}>
-                  <MyBookings />
-                </ProtectedRoute>
-              )}
-            />
             <Route path="/about" element={<AboutVietnam />} />
-            <Route path="/announcements" element={<Announcements />} />
             <Route path="/provider/create-tour" element={<Navigate to="/management/my-tours?action=create" replace />} />
             <Route path="/provider/tours/:id/details" element={<ProviderTourDetailsRedirect />} />
 
@@ -135,22 +122,6 @@ function App() {
                   element={(
                     <ProtectedRoute allowedRoles={['tourProvider']}>
                       <ProviderTourDetails />
-                    </ProtectedRoute>
-                  )}
-                />
-                <Route
-                  path="announcements"
-                  element={(
-                    <ProtectedRoute allowedRoles={['admin', 'staff']}>
-                      <StaffAnnouncements />
-                    </ProtectedRoute>
-                  )}
-                />
-                <Route
-                  path="booking-requests"
-                  element={(
-                    <ProtectedRoute allowedRoles={['tourProvider']}>
-                      <ProviderBookingRequests />
                     </ProtectedRoute>
                   )}
                 />

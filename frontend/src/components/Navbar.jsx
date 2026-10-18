@@ -108,28 +108,6 @@ function Navbar() {
 
           {user?.role === 'customer' && (
             <Link
-              to="/bookings"
-              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
-              onClick={() => setIsDropdownOpen(false)}
-            >
-              <i className="bi bi-receipt fs-6"></i>
-              <span>My bookings</span>
-            </Link>
-          )}
-
-          {isManagementUser && (
-            <Link
-              to="/announcements"
-              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
-              onClick={() => setIsDropdownOpen(false)}
-            >
-              <i className="bi bi-megaphone fs-6"></i>
-              <span>Announcements</span>
-            </Link>
-          )}
-
-          {user?.role === 'customer' && (
-            <Link
               to="/favorites"
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
               onClick={() => setIsDropdownOpen(false)}
@@ -214,9 +192,6 @@ function Navbar() {
                 </li>
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/about') ? 'active' : ''}`} to="/about">Giới thiệu</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className={`nav-pill-link ${isActiveRoute('/announcements') ? 'active' : ''}`} to="/announcements">Announcements</Link>
                 </li>
               </ul>
               <div className="d-flex align-items-center gap-2">{accountActions}</div>

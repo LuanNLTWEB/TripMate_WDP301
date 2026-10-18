@@ -8,8 +8,6 @@ import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
 import EditItineraryModal from './EditItineraryModal';
-import SmartItineraryModal from './SmartItineraryModal';
-import BudgetOptimizationModal from './BudgetOptimizationModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -36,8 +34,6 @@ function Itinerary() {
   const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [smartModalOpen, setSmartModalOpen] = useState(false);
-  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [editingActivityId, setEditingActivityId] = useState(null);
@@ -531,18 +527,6 @@ function Itinerary() {
                     </div>
                   )}
 
-                  {activeTab === 'mine' && (
-                    <div className="card border-0 shadow-sm mb-4">
-                      <div className="card-body p-4">
-                        <h2 className="h6 fw-bold mb-2">Smart planning</h2>
-                        <p className="text-muted small mb-3">Generate a starting itinerary from active destinations and tours.</p>
-                        <button type="button" className="btn btn-outline-primary w-100" onClick={() => setSmartModalOpen(true)}>
-                          <i className="bi bi-stars me-1"></i>Generate smart itinerary
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="list-group shadow-sm">
                     {visibleItineraries.map((itinerary) => {
                       const isItemActive = selected?._id === itinerary._id;
@@ -668,17 +652,6 @@ function Itinerary() {
                                 >
                                   <i className="bi bi-people me-1"></i>
                                   <span>Cộng tác viên</span>
-                                </button>
-                              )}
-                              {canEditSelected && (
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-warning btn-sm text-nowrap d-inline-flex align-items-center"
-                                  onClick={() => setBudgetModalOpen(true)}
-                                  title="Optimize trip budget"
-                                >
-                                  <i className="bi bi-wallet2 me-1"></i>
-                                  <span>Optimize budget</span>
                                 </button>
                               )}
                               <button
@@ -1249,19 +1222,6 @@ function Itinerary() {
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         itinerary={selected}
-        onUpdated={applyItinerary}
-      />
-
-      <SmartItineraryModal
-        open={smartModalOpen}
-        onClose={() => setSmartModalOpen(false)}
-        onCreated={handleCreated}
-      />
-
-      <BudgetOptimizationModal
-        open={budgetModalOpen}
-        itinerary={selected}
-        onClose={() => setBudgetModalOpen(false)}
         onUpdated={applyItinerary}
       />
 

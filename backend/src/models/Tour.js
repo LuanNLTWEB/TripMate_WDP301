@@ -1,32 +1,5 @@
 import mongoose from 'mongoose';
 
-const departureSchema = new mongoose.Schema({
-  departureDate: {
-    type: Date,
-    required: [true, 'Departure date is required']
-  },
-  capacity: {
-    type: Number,
-    required: true,
-    min: [1, 'Departure capacity must be at least 1']
-  },
-  status: {
-    type: String,
-    enum: ['scheduled', 'cancelled'],
-    default: 'scheduled'
-  },
-  cancellationReason: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
-    default: ''
-  },
-  cancelledAt: {
-    type: Date,
-    default: null
-  }
-}, { timestamps: true });
-
 const tourSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -71,10 +44,6 @@ const tourSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: [0, 'Available seats cannot be negative']
-  },
-  departures: {
-    type: [departureSchema],
-    default: []
   },
   itinerary: [
     {

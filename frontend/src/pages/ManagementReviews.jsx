@@ -252,13 +252,6 @@ export default function ManagementReviews() {
                       <div className="text-dark small" style={{ maxHeight: '60px', overflowY: 'auto' }}>
                         {review.comment || <span className="text-muted fst-italic">Không có lời bình luận</span>}
                       </div>
-                      {review.status === 'flagged' && (
-                        <div className="alert alert-warning py-2 px-2 mt-2 mb-0 small">
-                          <div className="fw-semibold">Reported: {review.reportReason || 'No reason provided'}</div>
-                          {review.reportDetails && <div>{review.reportDetails}</div>}
-                          {review.reportedAt && <div className="text-muted">Reported at: {new Date(review.reportedAt).toLocaleString('vi-VN')}</div>}
-                        </div>
-                      )}
                       <div className="text-muted small" style={{ fontSize: '0.75rem' }}>
                         {new Date(review.createdAt).toLocaleString('vi-VN')}
                         {review.moderationReason && (

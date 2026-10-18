@@ -83,14 +83,6 @@ const managementNavigation = [
     roles: ['admin', 'staff']
   },
   {
-    key: 'announcements',
-    label: 'Platform announcements',
-    description: 'Create and manage announcements for TripMate users',
-    icon: 'bi-megaphone',
-    path: '/management/announcements',
-    roles: ['admin', 'staff']
-  },
-  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',
@@ -104,14 +96,6 @@ const managementNavigation = [
     description: 'Tạo mới, theo dõi và quản lý các tour do bạn cung cấp',
     icon: 'bi-map',
     path: '/management/my-tours',
-    roles: ['tourProvider']
-  },
-  {
-    key: 'booking-requests',
-    label: 'Booking requests',
-    description: 'View booking requests for provider tours',
-    icon: 'bi-inbox',
-    path: '/management/booking-requests',
     roles: ['tourProvider']
   }
 ];

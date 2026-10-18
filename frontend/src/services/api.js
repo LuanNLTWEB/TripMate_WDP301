@@ -183,14 +183,6 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(itinerary)
   }),
-  generateSmart: (preferences) => apiRequest('/itineraries/smart', {
-    method: 'POST',
-    body: JSON.stringify(preferences)
-  }),
-  optimizeBudget: (id, apply = false) => apiRequest(`/itineraries/${id}/budget-optimize`, {
-    method: 'POST',
-    body: JSON.stringify({ apply })
-  }),
   update: (id, itinerary) => apiRequest(`/itineraries/${id}`, {
     method: 'PUT',
     body: JSON.stringify(itinerary)
@@ -260,26 +252,8 @@ export const statsApi = {
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
-export const announcementApi = {
-  getAll: () => apiRequest('/announcements', { method: 'GET' }),
-  getManaged: () => apiRequest('/announcements/management', { method: 'GET' }),
-  create: (announcement) => apiRequest('/announcements', {
-    method: 'POST',
-    body: JSON.stringify(announcement)
-  }),
-  update: (id, announcement) => apiRequest(`/announcements/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(announcement)
-  }),
-  remove: (id) => apiRequest(`/announcements/${id}`, { method: 'DELETE' })
-};
-
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
-  create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',
@@ -350,10 +324,6 @@ export const tourApi = {
     return apiRequest(`/tours/provider${queryString}`, { method: 'GET' });
   },
   getProviderById: (id) => apiRequest(`/tours/provider/${id}`, { method: 'GET' }),
-  update: (id, tour) => apiRequest(`/tours/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(tour)
-  }),
   setDetails: (id, details) => apiRequest(`/tours/${id}/details`, {
     method: 'PUT',
     body: JSON.stringify(details)
@@ -362,23 +332,7 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(scheduleData)
   }),
-  updateSchedule: (id, scheduleId, scheduleData) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
-    method: 'PUT',
-    body: JSON.stringify(scheduleData)
-  }),
-  deleteSchedule: (id, scheduleId) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
-    method: 'DELETE'
-  }),
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
-  getDepartures: (id) => apiRequest(`/tours/${id}/departures`, { method: 'GET' }),
-  createDeparture: (id, departureData) => apiRequest(`/tours/${id}/departures`, {
-    method: 'POST',
-    body: JSON.stringify(departureData)
-  }),
-  cancelDeparture: (id, departureId, reason) => apiRequest(`/tours/${id}/departures/${departureId}/cancel`, {
-    method: 'PATCH',
-    body: JSON.stringify({ reason })
-  }),
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',
     body: JSON.stringify({ availableSeats })
@@ -400,20 +354,7 @@ export const bookingApi = {
     method: 'POST',
     body: JSON.stringify(bookingData)
   }),
-  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' }),
-  getProviderRequests: (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.status && params.status !== 'all') query.append('status', params.status);
-    if (params.page) query.append('page', params.page);
-    if (params.limit) query.append('limit', params.limit);
-    const queryString = query.toString() ? `?${query.toString()}` : '';
-    return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
-  },
-  handlePaymentFailure: (id, reason) => apiRequest(`/bookings/${id}/payment-failure`, {
-    method: 'POST',
-    body: JSON.stringify({ reason })
-  }),
-  retryPayment: (id) => apiRequest(`/bookings/${id}/payment-retry`, { method: 'POST' })
+  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' })
 };
 
 export default authApi;
