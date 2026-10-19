@@ -220,7 +220,9 @@ const Tours = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%), url(${toursBanner})`,
+            backgroundImage: `url(${toursBanner})`,
+            backgroundColor: 'rgba(0, 0, 0, 0.42)',
+            backgroundBlendMode: 'multiply',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',

@@ -4,6 +4,7 @@ import { tourApi, departureApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
+import TourFormModal from './TourFormModal';
 import CreateTourDepartureModal from './CreateTourDepartureModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
@@ -38,6 +39,7 @@ export default function ProviderTourDetails() {
   const [tour, setTour] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDepartureModal, setShowDepartureModal] = useState(false);
 
   // Form states (STT 45 - Set Tour Details)
@@ -212,10 +214,15 @@ export default function ProviderTourDetails() {
   return (
     <section className="management-page-section">
       {/* Management Heading matching Staff UI */}
-      <div className="management-page-heading">
-        <span className="management-page-kicker">Tour Operations</span>
-        <h1>Thiết lập chi tiết Tour</h1>
-        <p>Cấu hình các dịch vụ bao gồm, không bao gồm, chính sách hoàn hủy và lưu ý quan trọng cho tour.</p>
+      <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3">
+        <div>
+          <span className="management-page-kicker">Tour Operations</span>
+          <h1>Thiết lập chi tiết Tour</h1>
+          <p>Cấu hình thông tin, lịch trình, dịch vụ, chính sách hoàn hủy và lưu ý quan trọng cho tour.</p>
+        </div>
+        <button type="button" className="btn btn-primary flex-shrink-0" onClick={() => setShowEditModal(true)}>
+          <i className="bi bi-pencil-square me-2"></i>Cập nhật thông tin tour
+        </button>
       </div>
 
       {/* Cover Image Banner (280px standard) */}
@@ -739,6 +746,15 @@ export default function ProviderTourDetails() {
           setTour((prev) => ({ ...prev, price: newPrice }));
         }}
       />
+
+      {showEditModal && (
+        <TourFormModal
+          mode="update"
+          tour={tour}
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updatedTour) => setTour(updatedTour)}
+        />
+      )}
     </section>
   );
 }

@@ -147,7 +147,8 @@ export const destinationApi = {
   }),
   remove: (id) => apiRequest(`/destinations/${id}`, { method: 'DELETE' }),
   getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' }),
-  toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' })
+  toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' }),
+  removeFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'DELETE' })
 };
 
 export const destinationCategoryApi = {
@@ -254,6 +255,11 @@ export const statsApi = {
 
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  getEligibility: (tourId) => apiRequest(`/reviews/tours/${tourId}/eligibility`, { method: 'GET' }),
+  create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',
@@ -267,6 +273,15 @@ export const reviewApi = {
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/reviews/moderation${queryString}`, { method: 'GET' });
+  },
+  getReported: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/reviews/reported${queryString}`, { method: 'GET' });
   },
   moderate: (id, payload) => apiRequest(`/reviews/${id}/moderate`, {
     method: 'PATCH',
@@ -291,6 +306,10 @@ export const tourApi = {
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   create: (tour) => apiRequest('/tours', {
     method: 'POST',
+    body: JSON.stringify(tour)
+  }),
+  update: (id, tour) => apiRequest(`/tours/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(tour)
   }),
   getManaged: (params = {}) => {
@@ -332,6 +351,13 @@ export const tourApi = {
     method: 'POST',
     body: JSON.stringify(scheduleData)
   }),
+  updateSchedule: (id, scheduleId, scheduleData) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(scheduleData)
+  }),
+  deleteSchedule: (id, scheduleId) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
+    method: 'DELETE'
+  }),
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',
@@ -366,6 +392,15 @@ export const bookingApi = {
     if (params.status) searchParams.append('status', params.status);
     const qs = searchParams.toString();
     return apiRequest(`/bookings/my${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
+  getProviderRequests: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
   getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' })
 };

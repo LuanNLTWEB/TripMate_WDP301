@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react';
-import { reviewApi } from '../services/api';
+import { useSearchParams } from 'react-router-dom';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import ReviewDetailModal from '../components/ReviewDetailModal';
+import ReviewManagementTable from '../components/ReviewManagementTable';
 import { useToast } from '../hooks/useToast';
+import { reviewApi } from '../services/api';
 
-const STATUS_OPTIONS = [
+const EMPTY_SUMMARY = {
+  total: 0,
+  pending: 0,
+  flagged: 0,
+  approved: 0,
+  rejected: 0
+};
+
+const ALL_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả' },
   { value: 'pending', label: 'Chờ duyệt' },
   { value: 'approved', label: 'Đã duyệt' },
@@ -10,140 +22,251 @@ const STATUS_OPTIONS = [
   { value: 'flagged', label: 'Bị gắn cờ' }
 ];
 
-const renderStars = (rating) => {
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    stars.push(
-      <i
-        key={i}
-        className={`bi ${i <= rating ? 'bi-star-fill text-warning' : 'bi-star text-muted'} me-1`}
-      />
-    );
-  }
-  return <span className="d-inline-flex align-items-center">{stars}</span>;
-};
+const REPORTED_STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả báo cáo' },
+  { value: 'flagged', label: 'Chờ xử lý' },
+  { value: 'pending', label: 'Chờ duyệt' },
+  { value: 'approved', label: 'Đã cho hiển thị' },
+  { value: 'rejected', label: 'Đã từ chối' }
+];
 
-const getStatusBadge = (status) => {
-  switch (status) {
-    case 'approved':
-      return <span className="management-badge badge-success"><span className="management-badge-dot"></span>Đã duyệt</span>;
-    case 'rejected':
-      return <span className="management-badge badge-danger"><span className="management-badge-dot"></span>Đã từ chối</span>;
-    case 'flagged':
-      return <span className="management-badge badge-warning"><span className="management-badge-dot"></span>Gắn cờ</span>;
-    case 'pending':
-    default:
-      return <span className="management-badge badge-secondary"><span className="management-badge-dot"></span>Chờ duyệt</span>;
-  }
-};
+function ReportSummary({ summary }) {
+  const cards = [
+    { label: 'Tổng báo cáo', value: summary.total, color: 'text-dark' },
+    { label: 'Chờ xử lý', value: summary.flagged + summary.pending, color: 'text-warning' },
+    { label: 'Cho hiển thị', value: summary.approved, color: 'text-success' },
+    { label: 'Đã từ chối', value: summary.rejected, color: 'text-danger' }
+  ];
+
+  return (
+    <div className="row g-3 mb-4">
+      {cards.map((card) => (
+        <div className="col-6 col-lg-3" key={card.label}>
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-body">
+              <div className="small text-muted">{card.label}</div>
+              <div className={`h4 fw-bold mb-0 ${card.color}`}>{card.value}</div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RejectReviewModal({ state, loading, onReasonChange, onClose, onConfirm }) {
+  if (!state.open) return null;
+
+  return (
+    <>
+      <div className="modal-backdrop fade show"></div>
+      <div
+        className="modal fade show d-block"
+        tabIndex="-1"
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => {
+          if (event.target === event.currentTarget && !loading) onClose();
+        }}
+      >
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow">
+            <div className="modal-header">
+              <h5 className="modal-title text-danger">
+                <i className="bi bi-exclamation-triangle me-2"></i>Từ chối hiển thị đánh giá
+              </h5>
+              <button type="button" className="btn-close" disabled={loading} onClick={onClose} aria-label="Đóng"></button>
+            </div>
+            <div className="modal-body">
+              <p className="mb-2">
+                Bạn có chắc chắn muốn từ chối đánh giá của{' '}
+                <strong>{state.review?.userId?.username || 'khách hàng này'}</strong>?
+              </p>
+              <div className="p-2 bg-light rounded small mb-3 text-muted">
+                “{state.review?.comment || 'Không có lời bình luận'}”
+              </div>
+              <label className="form-label small fw-semibold" htmlFor="review-rejection-reason">
+                Lý do từ chối
+              </label>
+              <textarea
+                id="review-rejection-reason"
+                className="form-control form-control-sm"
+                rows="3"
+                maxLength={500}
+                placeholder="Ví dụ: Chứa ngôn từ không phù hợp hoặc nội dung quảng cáo..."
+                value={state.reason}
+                disabled={loading}
+                onChange={(event) => onReasonChange(event.target.value)}
+              ></textarea>
+              <div className="form-text">Nếu để trống, hệ thống sẽ dùng lý do mặc định.</div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-sm btn-secondary" disabled={loading} onClick={onClose}>
+                Hủy
+              </button>
+              <button type="button" className="btn btn-sm btn-danger" disabled={loading} onClick={onConfirm}>
+                {loading ? (
+                  <><span className="spinner-border spinner-border-sm me-2"></span>Đang xử lý...</>
+                ) : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function ManagementReviews() {
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get('view') === 'reported' ? 'reported' : 'all';
+  const isReportedView = activeView === 'reported';
+  const statusOptions = isReportedView ? REPORTED_STATUS_OPTIONS : ALL_STATUS_OPTIONS;
+
   const [reviews, setReviews] = useState([]);
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Reject modal state
-  const [rejectModal, setRejectModal] = useState({
-    open: false,
-    review: null,
-    reason: ''
-  });
-
-  // Delete modal state
-  const [deleteModal, setDeleteModal] = useState({
-    open: false,
-    review: null
-  });
-
-  const loadReviews = async (page = 1, status = statusFilter, searchKeyword = search) => {
-    setIsLoading(true);
-    try {
-      const response = await reviewApi.getForModeration({
-        page,
-        limit: 10,
-        status,
-        search: searchKeyword.trim()
-      });
-      setReviews(response.data || []);
-      setTotal(response.total || 0);
-      setTotalPages(response.totalPages || 1);
-      setCurrentPage(response.currentPage || 1);
-      setError('');
-    } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách đánh giá kiểm duyệt.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [reloadKey, setReloadKey] = useState(0);
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [rejectModal, setRejectModal] = useState({ open: false, review: null, reason: '' });
+  const [deleteReview, setDeleteReview] = useState(null);
 
   useEffect(() => {
-    loadReviews(1, statusFilter, search);
-  }, [statusFilter]);
+    let active = true;
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    loadReviews(1, statusFilter, search);
+    const loadReviews = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page: currentPage,
+          limit: 10,
+          status: statusFilter,
+          search: appliedSearch
+        };
+        const response = isReportedView
+          ? await reviewApi.getReported(params)
+          : await reviewApi.getForModeration(params);
+
+        if (!active) return;
+        setReviews(response.data || []);
+        setSummary(isReportedView ? (response.summary || EMPTY_SUMMARY) : EMPTY_SUMMARY);
+        setTotal(response.total || 0);
+        setTotalPages(Math.max(response.totalPages || 1, 1));
+        setCurrentPage(response.currentPage || currentPage);
+        setError('');
+      } catch (requestError) {
+        if (!active) return;
+        setReviews([]);
+        setSummary(EMPTY_SUMMARY);
+        setTotal(0);
+        setTotalPages(1);
+        setError(requestError.message || (
+          isReportedView
+            ? 'Không thể tải danh sách đánh giá bị báo cáo.'
+            : 'Không thể tải danh sách đánh giá kiểm duyệt.'
+        ));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadReviews();
+    return () => {
+      active = false;
+    };
+  }, [appliedSearch, currentPage, isReportedView, reloadKey, statusFilter]);
+
+  const changeView = (view) => {
+    setSearchParams(view === 'reported' ? { view: 'reported' } : {});
+    setStatusFilter('all');
+    setSearchInput('');
+    setAppliedSearch('');
+    setCurrentPage(1);
+    setSelectedReview(null);
+    setError('');
   };
 
-  const handleApprove = async (review) => {
+  const changeStatus = (status) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    setCurrentPage(1);
+    setAppliedSearch(searchInput.trim());
+  };
+
+  const refreshReviews = () => setReloadKey((value) => value + 1);
+
+  const moderateReview = async (review, status, moderationReason = '') => {
     setActionLoading(true);
     try {
-      await reviewApi.moderate(review._id, { status: 'approved', moderationReason: '' });
-      toast.success('Đã phê duyệt đánh giá thành công.');
-      loadReviews(currentPage, statusFilter, search);
+      await reviewApi.moderate(review._id, { status, moderationReason });
+      const messages = {
+        approved: 'Đã phê duyệt đánh giá thành công.',
+        rejected: 'Đã từ chối hiển thị đánh giá.',
+        flagged: 'Đã gắn cờ đánh giá để xem xét.'
+      };
+      if (status === 'flagged') toast.info(messages[status]);
+      else toast.success(messages[status]);
+      setSelectedReview(null);
+      refreshReviews();
+      return true;
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể phê duyệt đánh giá.');
+      toast.error(requestError.message || 'Không thể cập nhật trạng thái đánh giá.');
+      return false;
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleFlag = async (review) => {
-    setActionLoading(true);
-    try {
-      await reviewApi.moderate(review._id, { status: 'flagged', moderationReason: 'Cần xem xét lại nội dung' });
-      toast.info('Đã gắn cờ đánh giá.');
-      loadReviews(currentPage, statusFilter, search);
-    } catch (requestError) {
-      toast.error(requestError.message || 'Không thể gắn cờ đánh giá.');
-    } finally {
-      setActionLoading(false);
-    }
+  const handleApprove = (review) => moderateReview(review, 'approved');
+  const handleFlag = (review) => moderateReview(review, 'flagged', 'Cần xem xét lại nội dung');
+
+  const openRejectModal = (review) => {
+    setSelectedReview(null);
+    setRejectModal({ open: true, review, reason: '' });
   };
+
+  const closeRejectModal = () => setRejectModal({ open: false, review: null, reason: '' });
 
   const confirmReject = async () => {
     if (!rejectModal.review) return;
-    setActionLoading(true);
-    try {
-      await reviewApi.moderate(rejectModal.review._id, {
-        status: 'rejected',
-        moderationReason: rejectModal.reason.trim() || 'Nội dung vi phạm quy chuẩn cộng đồng'
-      });
-      toast.success('Đã từ chối hiển thị đánh giá.');
-      setRejectModal({ open: false, review: null, reason: '' });
-      loadReviews(currentPage, statusFilter, search);
-    } catch (requestError) {
-      toast.error(requestError.message || 'Không thể từ chối đánh giá.');
-    } finally {
-      setActionLoading(false);
-    }
+    const success = await moderateReview(
+      rejectModal.review,
+      'rejected',
+      rejectModal.reason.trim() || 'Nội dung vi phạm quy chuẩn cộng đồng'
+    );
+    if (success) closeRejectModal();
+  };
+
+  const openDeleteModal = (review) => {
+    setSelectedReview(null);
+    setDeleteReview(review);
   };
 
   const confirmDelete = async () => {
-    if (!deleteModal.review) return;
+    if (!deleteReview) return;
     setActionLoading(true);
     try {
-      await reviewApi.delete(deleteModal.review._id);
+      await reviewApi.delete(deleteReview._id);
       toast.success('Đã xóa đánh giá vĩnh viễn khỏi hệ thống.');
-      setDeleteModal({ open: false, review: null });
-      loadReviews(currentPage, statusFilter, search);
+      setDeleteReview(null);
+      if (reviews.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        refreshReviews();
+      }
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa đánh giá.');
     } finally {
@@ -155,292 +278,140 @@ export default function ManagementReviews() {
     <section className="management-page-section">
       <div className="management-page-heading">
         <span className="management-page-kicker">Review Moderation</span>
-        <h1>Kiểm Duyệt Đánh Giá</h1>
-        <p>Quản lý, kiểm tra và phê duyệt các đánh giá của khách hàng về các tour du lịch.</p>
+        <h1>Quản Lý Đánh Giá</h1>
+        <p>Xem báo cáo vi phạm và kiểm duyệt đánh giá tour trong cùng một quy trình.</p>
       </div>
+
+      <ul className="nav nav-pills gap-2 mb-4" aria-label="Chế độ quản lý đánh giá">
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${!isReportedView ? 'active' : ''}`}
+            aria-current={!isReportedView ? 'page' : undefined}
+            onClick={() => changeView('all')}
+          >
+            <i className="bi bi-chat-square-quote me-2"></i>Tất cả đánh giá
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${isReportedView ? 'active' : ''}`}
+            aria-current={isReportedView ? 'page' : undefined}
+            onClick={() => changeView('reported')}
+          >
+            <i className="bi bi-flag me-2"></i>Đánh giá bị báo cáo
+          </button>
+        </li>
+      </ul>
+
+      {isReportedView && <ReportSummary summary={summary} />}
 
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error}
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>{error}
           <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
         </div>
       )}
 
-      {/* Reviews Table Card */}
       <div className="management-table-card">
-        {/* Unified Toolbar */}
-        <div className="management-table-toolbar">
-          <div className="btn-group flex-wrap" role="group" aria-label="Lọc trạng thái">
-            {STATUS_OPTIONS.map((opt) => (
+        <div className="management-table-toolbar flex-wrap gap-3">
+          <div className="btn-group flex-wrap" role="group" aria-label="Lọc trạng thái đánh giá">
+            {statusOptions.map((option) => (
               <button
-                key={opt.value}
+                key={option.value}
                 type="button"
-                className={`btn btn-sm ${statusFilter === opt.value ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setStatusFilter(opt.value)}
+                className={`btn btn-sm ${statusFilter === option.value ? 'btn-primary' : 'btn-outline-secondary'}`}
+                disabled={loading}
+                onClick={() => changeStatus(option.value)}
               >
-                {opt.label}
+                {option.label}
               </button>
             ))}
           </div>
-
-          <form onSubmit={handleSearchSubmit} className="management-search-box" style={{ maxWidth: '360px' }}>
+          <form className="management-search-box" onSubmit={submitSearch} style={{ maxWidth: 420 }}>
             <i className="bi bi-search"></i>
             <input
-              type="text"
-              placeholder="Tìm nội dung đánh giá..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              type="search"
+              value={searchInput}
+              maxLength={100}
+              placeholder={isReportedView ? 'Tìm nội dung hoặc lý do báo cáo...' : 'Tìm nội dung đánh giá...'}
+              onChange={(event) => setSearchInput(event.target.value)}
             />
           </form>
         </div>
 
-        <div className="table-responsive">
-          <table className="management-table">
-            <thead>
-              <tr>
-                <th style={{ width: '22%' }}>Khách hàng</th>
-                <th style={{ width: '22%' }}>Tour du lịch</th>
-                <th style={{ width: '28%' }}>Nội dung đánh giá</th>
-                <th style={{ width: '13%' }}>Trạng thái</th>
-                <th className="text-center" style={{ width: '15%' }}>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-5 text-muted">
-                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    Đang tải danh sách đánh giá...
-                  </td>
-                </tr>
-              ) : reviews.length === 0 ? (
-                <tr>
-                  <td colSpan="5">
-                    <div className="management-empty-state">
-                      <div className="management-empty-icon">
-                        <i className="bi bi-chat-square-dots fs-2"></i>
-                      </div>
-                      <h6 className="fw-bold text-dark mb-1">Không có đánh giá nào phù hợp</h6>
-                      <p className="small text-muted mb-0">Thử thay đổi bộ lọc trạng thái hoặc từ khóa tìm kiếm.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                reviews.map((review) => (
-                  <tr key={review._id}>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-2 fw-bold" style={{ width: '36px', height: '36px' }}>
-                          {(review.userId?.username || 'U')[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="fw-semibold text-dark">{review.userId?.username || 'Khách hàng'}</div>
-                          <small className="text-muted">{review.userId?.email || '—'}</small>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="fw-medium text-dark line-clamp-1">{review.tourId?.title || 'Tour không khả dụng'}</div>
-                      <small className="text-muted">
-                        <i className="bi bi-geo-alt me-1 text-danger"></i>
-                        {review.tourId?.departureLocation ? `${review.tourId.departureLocation} → ` : ''}
-                        {review.tourId?.location || ''}
-                      </small>
-                    </td>
-                    <td>
-                      <div className="mb-1">{renderStars(review.rating)}</div>
-                      <div className="text-dark small" style={{ maxHeight: '60px', overflowY: 'auto' }}>
-                        {review.comment || <span className="text-muted fst-italic">Không có lời bình luận</span>}
-                      </div>
-                      <div className="text-muted small" style={{ fontSize: '0.75rem' }}>
-                        {new Date(review.createdAt).toLocaleString('vi-VN')}
-                        {review.moderationReason && (
-                          <span className="ms-2 text-danger">
-                            (Lý do: {review.moderationReason})
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      {getStatusBadge(review.status)}
-                    </td>
-                    <td className="text-center">
-                      <div className="management-actions justify-content-center">
-                        {review.status !== 'approved' && (
-                          <button
-                            type="button"
-                            className="management-action-btn btn-approve"
-                            title="Phê duyệt đánh giá"
-                            disabled={actionLoading}
-                            onClick={() => handleApprove(review)}
-                          >
-                            <i className="bi bi-check-lg"></i>
-                          </button>
-                        )}
-                        {review.status !== 'rejected' && (
-                          <button
-                            type="button"
-                            className="management-action-btn btn-delete"
-                            title="Từ chối đánh giá"
-                            disabled={actionLoading}
-                            onClick={() => setRejectModal({ open: true, review, reason: '' })}
-                          >
-                            <i className="bi bi-x-circle"></i>
-                          </button>
-                        )}
-                        {review.status !== 'flagged' && (
-                          <button
-                            type="button"
-                            className="management-action-btn btn-flag"
-                            title="Gắn cờ xem xét"
-                            disabled={actionLoading}
-                            onClick={() => handleFlag(review)}
-                          >
-                            <i className="bi bi-flag"></i>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="management-action-btn btn-delete"
-                          title="Xóa vĩnh viễn"
-                          disabled={actionLoading}
-                          onClick={() => setDeleteModal({ open: true, review })}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ReviewManagementTable
+          reviews={reviews}
+          reported={isReportedView}
+          loading={loading}
+          actionLoading={actionLoading}
+          onView={setSelectedReview}
+          onApprove={handleApprove}
+          onReject={openRejectModal}
+          onFlag={handleFlag}
+          onDelete={openDeleteModal}
+        />
 
-        {/* Unified Pagination */}
-        {totalPages > 1 && (
+        {!loading && totalPages > 1 && (
           <div className="management-pagination-bar">
             <div>
-              Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong> (Tổng {total} đánh giá)
+              Trang <strong>{currentPage}</strong>/{totalPages} · Tổng <strong>{total}</strong>{' '}
+              {isReportedView ? 'báo cáo' : 'đánh giá'}
             </div>
-            <nav aria-label="Phân trang">
-              <ul className="pagination pagination-sm mb-0">
-                <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    disabled={currentPage <= 1 || isLoading}
-                    onClick={() => loadReviews(currentPage - 1, statusFilter, search)}
-                  >
-                    <i className="bi bi-chevron-left me-1"></i>Trước
-                  </button>
-                </li>
-                <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    disabled={currentPage >= totalPages || isLoading}
-                    onClick={() => loadReviews(currentPage + 1, statusFilter, search)}
-                  >
-                    Sau<i className="bi bi-chevron-right ms-1"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
+            <div className="btn-group btn-group-sm">
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                disabled={currentPage <= 1 || loading}
+                onClick={() => setCurrentPage((page) => page - 1)}
+              >
+                <i className="bi bi-chevron-left me-1"></i>Trước
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                disabled={currentPage >= totalPages || loading}
+                onClick={() => setCurrentPage((page) => page + 1)}
+              >
+                Sau<i className="bi bi-chevron-right ms-1"></i>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Reject Modal */}
-      {rejectModal.open && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title text-danger">
-                  <i className="bi bi-exclamation-triangle me-2"></i>Từ chối hiển thị đánh giá
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setRejectModal({ open: false, review: null, reason: '' })}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p className="mb-2">Bạn có chắc chắn muốn từ chối đánh giá của <strong>{rejectModal.review?.userId?.username}</strong>?</p>
-                <div className="p-2 bg-light rounded small mb-3 text-muted">
-                  "{rejectModal.review?.comment || 'Không có lời bình luận'}"
-                </div>
-                <label className="form-label small fw-semibold">Lý do từ chối:</label>
-                <textarea
-                  className="form-control form-control-sm"
-                  rows="3"
-                  placeholder="Nhập lý do từ chối (ví dụ: Chứa ngôn từ không phù hợp, spam quảng cáo...)"
-                  value={rejectModal.reason}
-                  onChange={(e) => setRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
-                ></textarea>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => setRejectModal({ open: false, review: null, reason: '' })}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger"
-                  disabled={actionLoading}
-                  onClick={confirmReject}
-                >
-                  {actionLoading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReviewDetailModal
+        review={selectedReview}
+        actionLoading={actionLoading}
+        onClose={() => setSelectedReview(null)}
+        onApprove={handleApprove}
+        onReject={openRejectModal}
+        onFlag={handleFlag}
+        onDelete={openDeleteModal}
+      />
 
-      {/* Delete Modal */}
-      {deleteModal.open && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title text-danger">
-                  <i className="bi bi-trash me-2"></i>Xóa đánh giá vĩnh viễn
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setDeleteModal({ open: false, review: null })}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p className="mb-0">
-                  Hành động này sẽ <strong>xóa hoàn toàn</strong> đánh giá khỏi cơ sở dữ liệu và tự động tính toán lại điểm trung bình cho tour. Bạn có chắc chắn muốn xóa?
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => setDeleteModal({ open: false, review: null })}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-danger"
-                  disabled={actionLoading}
-                  onClick={confirmDelete}
-                >
-                  {actionLoading ? 'Đang xóa...' : 'Xác nhận xóa'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RejectReviewModal
+        state={rejectModal}
+        loading={actionLoading}
+        onReasonChange={(reason) => setRejectModal((current) => ({ ...current, reason }))}
+        onClose={closeRejectModal}
+        onConfirm={confirmReject}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteReview)}
+        title="Xóa đánh giá vĩnh viễn"
+        message={(
+          <p className="mb-0">
+            Hành động này sẽ <strong>xóa hoàn toàn</strong> đánh giá khỏi cơ sở dữ liệu và tính lại điểm trung bình của tour. Bạn có chắc chắn muốn tiếp tục?
+          </p>
+        )}
+        confirmText="Xác nhận xóa"
+        loading={actionLoading}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteReview(null)}
+      />
     </section>
   );
 }

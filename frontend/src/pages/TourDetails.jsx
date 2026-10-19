@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ReportReviewModal from '../components/ReportReviewModal';
+import CreateReviewModal from '../components/CreateReviewModal';
 import { tourApi, reviewApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -29,6 +30,9 @@ const TourDetails = () => {
   const [isDeletingReview, setIsDeletingReview] = useState(false);
   const [reviewToReport, setReviewToReport] = useState(null);
   const [reportedReviewIds, setReportedReviewIds] = useState([]);
+  const [reviewEligibility, setReviewEligibility] = useState(null);
+  const [eligibilityRefreshKey, setEligibilityRefreshKey] = useState(0);
+  const [showCreateReview, setShowCreateReview] = useState(false);
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'admin' ||
@@ -37,6 +41,9 @@ const TourDetails = () => {
       (tour.providerId?._id && tour.providerId._id === user._id)
     ))
   ));
+  const currentReviewEligibility = reviewEligibility?.tourId === id
+    ? reviewEligibility
+    : null;
 
   const handleDeleteReview = async () => {
     if (!reviewToDelete || isDeletingReview) return;
@@ -58,6 +65,8 @@ const TourDetails = () => {
         setReviewStats({ averageRating: avg, totalReviews: total });
       }
       setReviewToDelete(null);
+      setReviewEligibility(null);
+      setEligibilityRefreshKey((current) => current + 1);
     } catch (err) {
       toast.error(err.message || 'Không thể xóa đánh giá.');
     } finally {
@@ -84,6 +93,31 @@ const TourDetails = () => {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !isAuthenticated || user?.role !== 'customer') return;
+
+    let isMounted = true;
+
+    reviewApi.getEligibility(id)
+      .then((response) => {
+        if (isMounted) setReviewEligibility({ ...response.data, tourId: id });
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setReviewEligibility({
+            eligible: false,
+            reason: 'unavailable',
+            message: err.message || 'Không thể kiểm tra điều kiện đánh giá.',
+            tourId: id
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, isAuthenticated, user?.role, user?.id, user?._id, eligibilityRefreshKey]);
 
   useEffect(() => {
     if (!id) return;
@@ -150,6 +184,26 @@ const TourDetails = () => {
     } finally {
       setUpdatingFavorite(false);
     }
+  };
+
+  const handleReviewCreated = (response) => {
+    if (response.data) {
+      setReviews((current) => [
+        response.data,
+        ...current.filter((review) => review._id !== response.data._id)
+      ]);
+    }
+    setReviewStats((current) => ({
+      averageRating: response.averageRating ?? current.averageRating,
+      totalReviews: response.totalReviews ?? current.totalReviews + 1
+    }));
+    setReviewEligibility({
+      eligible: false,
+      reason: 'already_reviewed',
+      message: 'Bạn đã đánh giá tour này.',
+      reviewId: response.data?._id,
+      tourId: id
+    });
   };
 
   if (loading) {
@@ -482,6 +536,53 @@ const TourDetails = () => {
                 )}
               </div>
 
+              {isAuthenticated && user?.role === 'customer' && (
+                !currentReviewEligibility ? (
+                  <div className="border rounded-3 p-3 mb-4 d-flex align-items-center gap-2 text-muted small">
+                    <span className="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
+                    Đang kiểm tra điều kiện đánh giá...
+                  </div>
+                ) : (
+                  <div
+                    className={`alert d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 ${
+                      currentReviewEligibility.eligible
+                        ? 'alert-success'
+                        : currentReviewEligibility.reason === 'unavailable'
+                          ? 'alert-warning'
+                          : 'alert-light border'
+                    }`}
+                    role="status"
+                  >
+                    <div className="d-flex align-items-start gap-3">
+                      <i className={`bi fs-4 ${
+                        currentReviewEligibility.eligible ? 'bi-patch-check-fill text-success' : 'bi-info-circle text-primary'
+                      }`}></i>
+                      <div>
+                        <div className="fw-semibold">
+                          {currentReviewEligibility.eligible ? 'Bạn đã hoàn thành chuyến đi' : 'Điều kiện đánh giá'}
+                        </div>
+                        <div className="small">{currentReviewEligibility.message}</div>
+                        {currentReviewEligibility.reason === 'trip_not_completed' && currentReviewEligibility.eligibleAt && (
+                          <div className="small mt-1">
+                            Thời gian dự kiến có thể đánh giá: {' '}
+                            <strong>{new Date(currentReviewEligibility.eligibleAt).toLocaleDateString('vi-VN')}</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {currentReviewEligibility.eligible && (
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={() => setShowCreateReview(true)}
+                      >
+                        <i className="bi bi-star-fill me-2"></i>Viết đánh giá
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
+
               {reviewsLoading ? (
                 <div className="text-center py-4">
                   <div className="spinner-border spinner-border-sm text-primary" role="status">
@@ -622,6 +723,15 @@ const TourDetails = () => {
             review={reviewToReport}
             onClose={() => setReviewToReport(null)}
             onReported={(id) => setReportedReviewIds((prev) => [...prev, id])}
+          />
+        )}
+
+        {showCreateReview && currentReviewEligibility?.eligible && (
+          <CreateReviewModal
+            tourId={id}
+            tourTitle={tour.title}
+            onClose={() => setShowCreateReview(false)}
+            onCreated={handleReviewCreated}
           />
         )}
       </main>

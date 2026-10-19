@@ -9,7 +9,8 @@ import {
   updateDestination,
   updateDestinationStatus,
 	getFavoriteDestinations,
-	toggleFavorite
+	toggleFavorite,
+	removeFavoriteDestination
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
@@ -34,6 +35,14 @@ router.post(
 	authorize('customer'),
 	destinationIdValidation,
 	toggleFavorite
+);
+
+router.delete(
+	'/:id/favorite',
+	protect,
+	authorize('customer'),
+	destinationIdValidation,
+	removeFavoriteDestination
 );
 
 // @route   GET /api/destinations/management
