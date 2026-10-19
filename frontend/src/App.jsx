@@ -32,6 +32,8 @@ import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
+import Announcements from './pages/Announcements';
+import StaffAnnouncements from './pages/StaffAnnouncements';
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -72,6 +74,14 @@ function App() {
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/favorites" element={<FavoriteDestinations />} />
             <Route path="/about" element={<AboutVietnam />} />
+            <Route
+              path="/announcements"
+              element={(
+                <ProtectedRoute allowedRoles={['staff', 'customer', 'tourProvider']}>
+                  <Announcements />
+                </ProtectedRoute>
+              )}
+            />
             <Route path="/provider/create-tour" element={<Navigate to="/management/my-tours?action=create" replace />} />
             <Route path="/provider/tours/:id/details" element={<ProviderTourDetailsRedirect />} />
 
@@ -118,6 +128,7 @@ function App() {
                   <Route path="tours/:id" element={<ReviewTourSubmission />} />
                   <Route path="pending-tours" element={<StaffPendingTours />} />
                   <Route path="statistics" element={<Stats />} />
+                  <Route path="announcements" element={<StaffAnnouncements />} />
                 </Route>
                 <Route
                   path="my-tours"

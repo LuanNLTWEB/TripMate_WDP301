@@ -253,6 +253,28 @@ export const statsApi = {
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
 };
 
+export const announcementApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/announcements${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/announcements/${id}`, { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.audience && params.audience !== 'all') query.append('audience', params.audience);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/announcements/management${queryString}`, { method: 'GET' });
+  }
+};
+
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
   getEligibility: (tourId) => apiRequest(`/reviews/tours/${tourId}/eligibility`, { method: 'GET' }),

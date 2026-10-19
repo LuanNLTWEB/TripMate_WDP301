@@ -83,6 +83,14 @@ const managementNavigation = [
     roles: ['admin', 'staff']
   },
   {
+    key: 'announcements',
+    label: 'Thông báo hệ thống',
+    description: 'Quản lý thông báo dành cho người dùng TripMate',
+    icon: 'bi-megaphone',
+    path: '/management/announcements',
+    roles: ['staff']
+  },
+  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',

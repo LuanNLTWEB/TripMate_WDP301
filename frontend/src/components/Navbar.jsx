@@ -104,6 +104,17 @@ function Navbar() {
             </Link>
           )}
 
+          {['staff', 'tourProvider'].includes(user?.role) && (
+            <Link
+              to="/announcements"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <i className="bi bi-megaphone fs-6"></i>
+              <span>Thông báo hệ thống</span>
+            </Link>
+          )}
+
 
 
           {user?.role === 'customer' && (
@@ -205,6 +216,11 @@ function Navbar() {
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/about') ? 'active' : ''}`} to="/about">Giới thiệu</Link>
                 </li>
+                {user?.role === 'customer' && (
+                  <li className="nav-item">
+                    <Link className={`nav-pill-link ${isActiveRoute('/announcements') ? 'active' : ''}`} to="/announcements">Thông báo</Link>
+                  </li>
+                )}
               </ul>
               <div className="d-flex align-items-center gap-2">{accountActions}</div>
             </div>
