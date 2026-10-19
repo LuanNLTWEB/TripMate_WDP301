@@ -4,7 +4,7 @@ import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
-import EditTourModal from './EditTourModal';
+import TourFormModal from './TourFormModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -648,10 +648,11 @@ export default function ProviderTourDetails() {
       />
 
       {showEditModal && (
-        <EditTourModal
+        <TourFormModal
+          mode="update"
           tour={tour}
           onClose={() => setShowEditModal(false)}
-          onUpdated={(updatedTour) => setTour(updatedTour)}
+          onSaved={(updatedTour) => setTour(updatedTour)}
         />
       )}
     </section>
