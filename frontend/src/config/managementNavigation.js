@@ -76,8 +76,8 @@ const managementNavigation = [
   },
   {
     key: 'reviews',
-    label: 'Kiểm duyệt đánh giá',
-    description: 'Kiểm tra và phê duyệt phản hồi tour của khách',
+    label: 'Quản lý đánh giá',
+    description: 'Kiểm duyệt đánh giá và xử lý báo cáo vi phạm',
     icon: 'bi-chat-square-quote',
     path: '/management/reviews',
     roles: ['admin', 'staff']
@@ -96,6 +96,14 @@ const managementNavigation = [
     description: 'Tạo mới, theo dõi và quản lý các tour do bạn cung cấp',
     icon: 'bi-map',
     path: '/management/my-tours',
+    roles: ['tourProvider']
+  },
+  {
+    key: 'booking-requests',
+    label: 'Yêu cầu đặt tour',
+    description: 'Theo dõi yêu cầu đặt tour từ khách hàng',
+    icon: 'bi-journal-check',
+    path: '/management/booking-requests',
     roles: ['tourProvider']
   }
 ];

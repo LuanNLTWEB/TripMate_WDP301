@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-const logo = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823913/tripmate_assets/d4gczttux14p0fwdvxst.png';
+import { TRIPMATE_LOGO_URL } from '../constants/brand';
 
 function Footer() {
   return (
@@ -8,7 +8,7 @@ function Footer() {
         <div className="row g-4 mb-5">
           <div className="col-lg-4 col-md-6">
             <div className="d-flex align-items-center gap-2 mb-3">
-              <img src={logo} alt="TripMate Logo" style={{ height: '36px', width: 'auto' }} />
+              <img src={TRIPMATE_LOGO_URL} alt="TripMate Logo" style={{ height: '36px', width: 'auto' }} />
               <span className="footer-brand-title">TripMate</span>
             </div>
             <p className="text-secondary small mb-4" style={{ lineHeight: '1.7', maxWidth: '340px' }}>

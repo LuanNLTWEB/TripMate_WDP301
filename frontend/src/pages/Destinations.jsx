@@ -164,7 +164,9 @@ const Destinations = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0.05) 100%), url(${destinationsBanner})`,
+            backgroundImage: `url(${destinationsBanner})`,
+            backgroundColor: 'rgba(0, 0, 0, 0.42)',
+            backgroundBlendMode: 'multiply',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',

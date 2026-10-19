@@ -1,28 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
 const MEAL_OPTIONS = ['Sáng', 'Trưa', 'Tối'];
 
-export default function CreateTourScheduleModal({ open, onClose, tourId, suggestedDay, onCreated }) {
+export default function CreateTourScheduleModal({
+  open,
+  onClose,
+  tourId,
+  suggestedDay,
+  schedule = null,
+  onSaved
+}) {
   const toast = useToast();
-  const [day, setDay] = useState(suggestedDay || 1);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [meals, setMeals] = useState(['Sáng', 'Trưa']);
+  const initialDay = schedule?.day || suggestedDay || 1;
+  const [day, setDay] = useState(initialDay);
+  const [title, setTitle] = useState(schedule?.title || `Ngày ${initialDay}: `);
+  const [description, setDescription] = useState(schedule?.description || '');
+  const [meals, setMeals] = useState(schedule?.meals || ['Sáng', 'Trưa']);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      const nextDay = suggestedDay || 1;
-      setDay(nextDay);
-      setTitle(`Ngày ${nextDay}: `);
-      setDescription('');
-      setMeals(['Sáng', 'Trưa']);
-      setErrors({});
-    }
-  }, [open, suggestedDay]);
 
   if (!open) return null;
 
@@ -70,14 +67,18 @@ export default function CreateTourScheduleModal({ open, onClose, tourId, suggest
         meals
       };
 
-      const res = await tourApi.createSchedule(tourId, payload);
-      toast.success(res.message || `Đã thêm lịch trình Ngày ${day} thành công!`);
-      if (onCreated) {
-        onCreated(res.data, res.itinerary);
+      const res = schedule?._id
+        ? await tourApi.updateSchedule(tourId, schedule._id, payload)
+        : await tourApi.createSchedule(tourId, payload);
+      toast.success(res.message || (schedule
+        ? `Đã cập nhật lịch trình Ngày ${day}!`
+        : `Đã thêm lịch trình Ngày ${day} thành công!`));
+      if (onSaved) {
+        onSaved(res.data, res.itinerary);
       }
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Không thể tạo lịch trình tour.');
+      toast.error(err.message || `Không thể ${schedule ? 'cập nhật' : 'tạo'} lịch trình tour.`);
     } finally {
       setSubmitting(false);
     }
@@ -85,14 +86,14 @@ export default function CreateTourScheduleModal({ open, onClose, tourId, suggest
 
   return (
     <>
-      <div className="modal-backdrop fade show"></div>
-      <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+      <div className="modal-backdrop fade show" style={{ zIndex: 1060 }}></div>
+      <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1065 }}>
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content border-0 shadow">
             <div className="modal-header">
               <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
-                <i className="bi bi-calendar-plus text-primary"></i>
-                <span>Tạo Lịch Trình Tour (Tour Schedule)</span>
+                <i className={`bi ${schedule ? 'bi-pencil-square' : 'bi-calendar-plus'} text-primary`}></i>
+                <span>{schedule ? 'Cập Nhật Ngày Lịch Trình' : 'Tạo Lịch Trình Tour'}</span>
               </h5>
               <button
                 type="button"
@@ -219,8 +220,8 @@ export default function CreateTourScheduleModal({ open, onClose, tourId, suggest
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-calendar-plus"></i>
-                      <span>Lưu ngày lịch trình</span>
+                      <i className={`bi ${schedule ? 'bi-check2-circle' : 'bi-calendar-plus'}`}></i>
+                      <span>{schedule ? 'Lưu thay đổi' : 'Lưu ngày lịch trình'}</span>
                     </>
                   )}
                 </button>

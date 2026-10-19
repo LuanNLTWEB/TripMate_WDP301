@@ -27,10 +27,10 @@ import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
-import ProviderCreateTour from './pages/ProviderCreateTour';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
+import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
 
 function ProviderTourDetailsRedirect() {
@@ -132,6 +132,18 @@ function App() {
                   element={(
                     <ProtectedRoute allowedRoles={['tourProvider']}>
                       <ProviderTourDetails />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="reported-reviews"
+                  element={<Navigate to="/management/reviews?view=reported" replace />}
+                />
+                <Route
+                  path="booking-requests"
+                  element={(
+                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                      <ProviderBookingRequests />
                     </ProtectedRoute>
                   )}
                 />
