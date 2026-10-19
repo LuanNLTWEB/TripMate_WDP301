@@ -70,8 +70,22 @@ export const createBooking = async (req, res) => {
 // Lấy toàn bộ danh sách booking của customer đang đăng nhập, sắp xếp mới nhất trước
 export const getMyBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ customerId: req.user._id })
-      .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+    const { status } = req.query;
+    const filter = { customerId: req.user._id };
+
+    if (status && ['pending', 'confirmed', 'cancelled'].includes(status)) {
+      filter.status = status;
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate({
+        path: 'tourId',
+        select: 'title location duration price images departureLocation destinationLocation providerId',
+        populate: {
+          path: 'providerId',
+          select: 'username email phone'
+        }
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -87,3 +101,39 @@ export const getMyBookings = async (req, res) => {
     });
   }
 };
+
+// Lấy thông tin chi tiết một đơn đặt tour cụ thể của customer (chỉ view của chính mình)
+export const getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({
+      _id: req.params.id,
+      customerId: req.user._id
+    }).populate({
+      path: 'tourId',
+      select: 'title location duration price images departureLocation destinationLocation providerId description includedServices excludedServices',
+      populate: {
+        path: 'providerId',
+        select: 'username email phone'
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn đặt tour'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: booking
+    });
+  } catch (error) {
+    console.error('Error fetching booking detail:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải thông tin chi tiết đơn đặt tour'
+    });
+  }
+};
+
