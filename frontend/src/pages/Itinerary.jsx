@@ -56,6 +56,8 @@ function Itinerary() {
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderList, setReorderList] = useState([]);
+  const [draggedActivityId, setDraggedActivityId] = useState(null);
+  const [dropTarget, setDropTarget] = useState({ activityId: null, position: null });
   const [shareModal, setShareModal] = useState({
     open: false,
     email: '',
@@ -338,12 +340,16 @@ function Itinerary() {
 
   const startReorder = () => {
     setReorderList(selected.activities.map((a) => a._id));
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
     setReorderMode(true);
   };
 
   const cancelReorder = () => {
     setReorderMode(false);
     setReorderList([]);
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
   };
 
   const moveActivity = (index, direction) => {
@@ -354,6 +360,80 @@ function Itinerary() {
     setReorderList(updated);
   };
 
+  const resetDragState = () => {
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
+  };
+
+  const handleActivityDragStart = (event, activityId) => {
+    if (!reorderMode || saving) {
+      event.preventDefault();
+      return;
+    }
+
+    const normalizedId = String(activityId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', normalizedId);
+    setDraggedActivityId(normalizedId);
+    setDropTarget({ activityId: null, position: null });
+  };
+
+  const handleActivityDragOver = (event, activityId) => {
+    const normalizedId = String(activityId);
+    if (!draggedActivityId) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+
+    if (draggedActivityId === normalizedId) {
+      setDropTarget({ activityId: null, position: null });
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+
+    setDropTarget((current) => (
+      current.activityId === normalizedId && current.position === position
+        ? current
+        : { activityId: normalizedId, position }
+    ));
+  };
+
+  const handleActivityDrop = (event, targetActivityId) => {
+    event.preventDefault();
+    const sourceId = draggedActivityId || event.dataTransfer.getData('text/plain');
+    const targetId = String(targetActivityId);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const dropPosition = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+
+    if (!sourceId || sourceId === targetId) {
+      resetDragState();
+      return;
+    }
+
+    setReorderList((current) => {
+      if (!current.some((id) => String(id) === sourceId)) return current;
+
+      const withoutSource = current.filter((id) => String(id) !== sourceId);
+      const targetIndex = withoutSource.findIndex((id) => String(id) === targetId);
+      if (targetIndex < 0) return current;
+
+      const next = [...withoutSource];
+      const insertAt = targetIndex + (dropPosition === 'after' ? 1 : 0);
+      const originalId = current.find((id) => String(id) === sourceId);
+      next.splice(insertAt, 0, originalId);
+      return next;
+    });
+    resetDragState();
+  };
+
+  const handleDragHandleKeyDown = (event, index) => {
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    moveActivity(index, event.key === 'ArrowUp' ? -1 : 1);
+  };
+
   const saveReorder = async () => {
     if (!selected) return;
     setSaving(true);
@@ -362,6 +442,7 @@ function Itinerary() {
       applyItinerary(response.itinerary);
       setReorderMode(false);
       setReorderList([]);
+      resetDragState();
       toast.success(response.message || 'Đã sắp xếp lại hoạt động.');
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể sắp xếp lại hoạt động.');
@@ -828,38 +909,56 @@ function Itinerary() {
                                 </div>
                               )}
                               {reorderMode && (
-                                <div className="d-flex justify-content-end gap-2 mb-3">
-                                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={cancelReorder}>Hủy</button>
-                                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveReorder}>
-                                    {saving ? 'Đang lưu...' : 'Lưu thứ tự'}
-                                  </button>
+                                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 p-2 rounded bg-light border">
+                                  <span className="small text-muted">
+                                    <i className="bi bi-grip-vertical me-1"></i>
+                                    Giữ biểu tượng kéo rồi thả hoạt động vào vị trí mong muốn.
+                                  </span>
+                                  <div className="d-flex gap-2">
+                                    <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={cancelReorder}>Hủy</button>
+                                    <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveReorder}>
+                                      {saving ? 'Đang lưu...' : 'Lưu thứ tự'}
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                               <div className="vstack gap-2">
                                 {(reorderMode ? reorderList.map((id) => selected.activities.find((a) => a._id === id)).filter(Boolean) : selected.activities).map((activity, index) => {
                                   const conflicted = conflictedActivityIds.has(String(activity._id));
                                   const isEditingThis = editingActivityId === activity._id;
+                                  const normalizedActivityId = String(activity._id);
+                                  const isDragging = draggedActivityId === normalizedActivityId;
+                                  const isDropTarget = dropTarget.activityId === normalizedActivityId;
                                   return (
                                     <div
-                                      className={`border rounded p-3 transition-all ${
+                                      className={`border rounded p-3 transition-all ${reorderMode ? 'itinerary-reorder-card' : ''} ${
                                         isEditingThis
                                           ? 'border-primary border-2 shadow-sm bg-primary-subtle bg-opacity-10'
                                           : reorderMode
                                             ? 'bg-white'
                                             : 'border-start border-primary border-3'
+                                      } ${isDragging ? 'is-dragging' : ''} ${
+                                        isDropTarget ? `drop-${dropTarget.position}` : ''
                                       }`}
                                       key={activity._id}
+                                      onDragOver={(event) => handleActivityDragOver(event, activity._id)}
+                                      onDrop={(event) => handleActivityDrop(event, activity._id)}
                                     >
-                                      <div className="d-flex align-items-center gap-2">
+                                      <div className="d-flex align-items-start gap-2">
                                         {reorderMode && (
-                                          <div className="d-flex flex-column gap-1">
-                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === 0} onClick={() => moveActivity(index, -1)} title="Di chuyển lên">
-                                              <i className="bi bi-chevron-up"></i>
-                                            </button>
-                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === reorderList.length - 1} onClick={() => moveActivity(index, 1)} title="Di chuyển xuống">
-                                              <i className="bi bi-chevron-down"></i>
-                                            </button>
-                                          </div>
+                                          <span
+                                            className="itinerary-drag-handle"
+                                            role="button"
+                                            tabIndex={saving ? -1 : 0}
+                                            draggable={!saving}
+                                            aria-label={`Kéo để sắp xếp hoạt động ${activity.title}. Dùng phím mũi tên lên hoặc xuống nếu sử dụng bàn phím.`}
+                                            title="Giữ và kéo để thay đổi thứ tự"
+                                            onDragStart={(event) => handleActivityDragStart(event, activity._id)}
+                                            onDragEnd={resetDragState}
+                                            onKeyDown={(event) => handleDragHandleKeyDown(event, index)}
+                                          >
+                                            <i className="bi bi-grip-vertical" aria-hidden="true"></i>
+                                          </span>
                                         )}
                                         <div className="flex-grow-1">
                                           <div className="d-flex justify-content-between align-items-start">

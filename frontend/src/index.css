@@ -1994,6 +1994,68 @@ main {
   white-space: nowrap;
 }
 
+/* Itinerary activity drag-and-drop */
+.itinerary-reorder-card {
+  position: relative;
+  user-select: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+}
+
+.itinerary-reorder-card.is-dragging {
+  opacity: 0.5;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.itinerary-reorder-card.drop-before::before,
+.itinerary-reorder-card.drop-after::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  left: 10px;
+  z-index: 2;
+  height: 3px;
+  border-radius: 999px;
+  background: #0284c7;
+  pointer-events: none;
+}
+
+.itinerary-reorder-card.drop-before::before {
+  top: -6px;
+}
+
+.itinerary-reorder-card.drop-after::after {
+  bottom: -6px;
+}
+
+.itinerary-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 42px;
+  flex: 0 0 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: grab;
+  font-size: 1.15rem;
+}
+
+.itinerary-drag-handle:hover,
+.itinerary-drag-handle:focus-visible {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  color: #0284c7;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.itinerary-drag-handle:active {
+  cursor: grabbing;
+}
+
 .tm-collaborator-badge {
   display: inline-flex;
   align-items: center;
