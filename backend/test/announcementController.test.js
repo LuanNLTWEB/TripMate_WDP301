@@ -2,16 +2,19 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Announcement from '../src/models/Announcement.js';
 import {
+  createAnnouncement,
   getAnnouncementById,
   getAnnouncements,
   getManagedAnnouncements
 } from '../src/controllers/announcementController.js';
 
+const originalCreate = Announcement.create;
 const originalCountDocuments = Announcement.countDocuments;
 const originalFind = Announcement.find;
 const originalFindOne = Announcement.findOne;
 
 afterEach(() => {
+  Announcement.create = originalCreate;
   Announcement.countDocuments = originalCountDocuments;
   Announcement.find = originalFind;
   Announcement.findOne = originalFindOne;
@@ -59,6 +62,50 @@ const createFindOneChain = (record, capture) => ({
   then(resolve, reject) {
     return Promise.resolve(record).then(resolve, reject);
   }
+});
+
+test('staff creates an announcement with normalized content and audit fields', async () => {
+  let createdPayload;
+  let populatedPaths;
+  const createdAnnouncement = {
+    _id: 'announcement-created',
+    isActive: true,
+    async populate(paths) {
+      populatedPaths = paths;
+      return this;
+    }
+  };
+  Announcement.create = async (payload) => {
+    createdPayload = payload;
+    return createdAnnouncement;
+  };
+
+  const result = createResponse();
+  await createAnnouncement({
+    body: {
+      title: '  Thông báo bảo trì  ',
+      content: '  Hệ thống sẽ bảo trì lúc 23:00.  ',
+      audience: 'customer',
+      isActive: true
+    },
+    user: { _id: 'staff-1', role: 'staff' }
+  }, result.response);
+
+  assert.deepEqual(createdPayload, {
+    title: 'Thông báo bảo trì',
+    content: 'Hệ thống sẽ bảo trì lúc 23:00.',
+    audience: 'customer',
+    isActive: true,
+    createdBy: 'staff-1',
+    updatedBy: 'staff-1'
+  });
+  assert.deepEqual(populatedPaths, [
+    { path: 'createdBy', select: 'username' },
+    { path: 'updatedBy', select: 'username' }
+  ]);
+  assert.equal(result.statusCode, 201);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.data, createdAnnouncement);
 });
 
 test('customer only receives active announcements for all users or customers', async () => {

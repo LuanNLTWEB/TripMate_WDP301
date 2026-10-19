@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  createAnnouncement,
   getAnnouncementById,
   getAnnouncements,
   getManagedAnnouncements
@@ -8,6 +9,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import {
   announcementIdValidation,
   announcementListValidation,
+  createAnnouncementValidation,
   managedAnnouncementListValidation
 } from '../middleware/validate.js';
 
@@ -16,6 +18,7 @@ const announcementViewAccess = [protect, authorize('staff', 'customer', 'tourPro
 
 router.get('/', ...announcementViewAccess, announcementListValidation, getAnnouncements);
 router.get('/management', protect, authorize('staff'), managedAnnouncementListValidation, getManagedAnnouncements);
+router.post('/', protect, authorize('staff'), createAnnouncementValidation, createAnnouncement);
 router.get('/:id', ...announcementViewAccess, announcementIdValidation, getAnnouncementById);
 
 export default router;

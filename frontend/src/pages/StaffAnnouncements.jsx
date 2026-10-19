@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import AnnouncementDetailModal from '../components/AnnouncementDetailModal';
+import AnnouncementFormModal from '../components/AnnouncementFormModal';
 import CustomSelect from '../components/CustomSelect';
+import { useToast } from '../hooks/useToast';
 import { announcementApi } from '../services/api';
 import {
   ANNOUNCEMENT_AUDIENCE_OPTIONS,
@@ -21,6 +23,7 @@ const AUDIENCE_FILTER_OPTIONS = [
 ];
 
 export default function StaffAnnouncements() {
+  const toast = useToast();
   const [announcements, setAnnouncements] = useState([]);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
@@ -32,6 +35,10 @@ export default function StaffAnnouncements() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -66,7 +73,7 @@ export default function StaffAnnouncements() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, audienceFilter, currentPage, statusFilter]);
+  }, [appliedSearch, audienceFilter, currentPage, reloadKey, statusFilter]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -79,12 +86,36 @@ export default function StaffAnnouncements() {
     setCurrentPage(1);
   };
 
+  const handleCreate = async (payload) => {
+    setSaving(true);
+    setFormError('');
+    try {
+      const response = await announcementApi.create(payload);
+      toast.success(response.message || 'Đã tạo thông báo hệ thống.');
+      setShowCreateModal(false);
+      setCurrentPage(1);
+      setReloadKey((value) => value + 1);
+    } catch (requestError) {
+      setFormError(requestError.message || 'Không thể tạo thông báo hệ thống.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className="management-page-section">
-      <div className="management-page-heading">
-        <span className="management-page-kicker">System Announcements</span>
-        <h1>Quản lý thông báo hệ thống</h1>
-        <p>Theo dõi các thông báo được phát hành tới khách hàng và nhà cung cấp tour.</p>
+      <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+          <span className="management-page-kicker">System Announcements</span>
+          <h1>Quản lý thông báo hệ thống</h1>
+          <p>Theo dõi các thông báo được phát hành tới khách hàng và nhà cung cấp tour.</p>
+        </div>
+        <button type="button" className="btn btn-primary flex-shrink-0" onClick={() => {
+          setFormError('');
+          setShowCreateModal(true);
+        }}>
+          <i className="bi bi-plus-circle me-2"></i>Tạo thông báo
+        </button>
       </div>
 
       {error && <div className="alert alert-danger"><i className="bi bi-exclamation-triangle-fill me-2"></i>{error}</div>}
@@ -183,6 +214,15 @@ export default function StaffAnnouncements() {
       </div>
 
       <AnnouncementDetailModal announcement={selectedAnnouncement} onClose={() => setSelectedAnnouncement(null)} showStatus />
+      {showCreateModal && (
+        <AnnouncementFormModal
+          key="create-announcement"
+          saving={saving}
+          requestError={formError}
+          onClose={() => !saving && setShowCreateModal(false)}
+          onSubmit={handleCreate}
+        />
+      )}
     </section>
   );
 }

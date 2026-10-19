@@ -52,6 +52,36 @@ const findPaginated = async (filter, query) => {
   return { announcements, total, totalPages, currentPage, limit };
 };
 
+export const createAnnouncement = async (req, res) => {
+  if (sendValidationError(req, res)) return;
+
+  try {
+    const announcement = await Announcement.create({
+      title: req.body.title.trim(),
+      content: req.body.content.trim(),
+      audience: req.body.audience || 'all',
+      isActive: req.body.isActive === undefined ? true : req.body.isActive,
+      createdBy: req.user._id,
+      updatedBy: req.user._id
+    });
+    await announcement.populate([
+      { path: 'createdBy', select: 'username' },
+      { path: 'updatedBy', select: 'username' }
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      message: announcement.isActive
+        ? 'Đã tạo và phát hành thông báo'
+        : 'Đã lưu thông báo dưới dạng bản nháp',
+      data: announcement
+    });
+  } catch (error) {
+    console.error('Create announcement error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể tạo thông báo hệ thống' });
+  }
+};
+
 export const getAnnouncements = async (req, res) => {
   if (sendValidationError(req, res)) return;
 

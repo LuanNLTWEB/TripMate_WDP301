@@ -272,7 +272,11 @@ export const announcementApi = {
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/announcements/management${queryString}`, { method: 'GET' });
-  }
+  },
+  create: (announcement) => apiRequest('/announcements', {
+    method: 'POST',
+    body: JSON.stringify(announcement)
+  })
 };
 
 export const reviewApi = {
