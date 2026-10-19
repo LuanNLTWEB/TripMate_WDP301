@@ -1,6 +1,7 @@
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
+import Departure from '../models/Departure.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -993,3 +994,103 @@ export const getTourSchedule = async (req, res) => {
   }
 };
 
+/**
+ * Cập nhật điểm & thông tin khởi hành của tour (UC-42 - Update Tour Departure)
+ * @route PATCH /api/tours/:id/departure
+ * @access Private (tourProvider, admin)
+ */
+export const updateTourDeparture = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Thông tin khởi hành không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
+    if (!isOwner && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật thông tin khởi hành của tour này'
+      });
+    }
+
+    const { departureLocation, destinationLocation, departureDate, note } = req.body;
+
+    const dest = destinationLocation !== undefined ? destinationLocation.trim() : tour.destinationLocation;
+    if (departureLocation && dest && departureLocation.trim().toLowerCase() === dest.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Điểm khởi hành không được trùng với điểm đến'
+      });
+    }
+
+    if (departureLocation) {
+      tour.departureLocation = departureLocation.trim();
+    }
+    if (destinationLocation !== undefined) {
+      tour.destinationLocation = destinationLocation.trim();
+    }
+
+    let createdDeparture = null;
+    if (departureDate) {
+      const depDate = new Date(departureDate);
+      const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
+      if (depDate.getTime() - Date.now() < LEAD_TIME_MS) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ngày khởi hành phải cách thời điểm hiện tại ít nhất 24 giờ'
+        });
+      }
+
+
+      const startOfDay = new Date(depDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      const existing = await Departure.findOne({
+        tourId: tour._id,
+        status: 'scheduled',
+        departureDate: { $gte: startOfDay, $lt: endOfDay }
+      });
+
+      if (!existing) {
+        createdDeparture = await Departure.create({
+          tourId: tour._id,
+          providerId: tour.providerId,
+          departureDate: depDate,
+          availableSeats: tour.availableSeats || 0,
+          price: tour.price || null,
+          note: note ? note.trim() : ''
+        });
+      }
+    }
+
+    await tour.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật thông tin khởi hành thành công',
+      data: tour,
+      departure: createdDeparture
+    });
+  } catch (error) {
+    console.error('Error updating tour departure:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật thông tin khởi hành'
+    });
+  }
+};

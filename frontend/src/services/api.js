@@ -340,6 +340,10 @@ export const tourApi = {
   updatePrice: (id, price) => apiRequest(`/tours/${id}/price`, {
     method: 'PATCH',
     body: JSON.stringify({ price })
+  }),
+  updateDeparture: (id, payload) => apiRequest(`/tours/${id}/departure`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   })
 };
 export const departureApi = {
@@ -347,8 +351,13 @@ export const departureApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
-  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' })
+  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' }),
+  update: (id, payload) => apiRequest(`/departures/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
 };
+
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {
     method: 'POST',
