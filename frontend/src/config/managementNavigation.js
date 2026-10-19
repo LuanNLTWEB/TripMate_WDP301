@@ -76,18 +76,10 @@ const managementNavigation = [
   },
   {
     key: 'reviews',
-    label: 'Kiểm duyệt đánh giá',
-    description: 'Kiểm tra và phê duyệt phản hồi tour của khách',
+    label: 'Quản lý đánh giá',
+    description: 'Kiểm duyệt đánh giá và xử lý báo cáo vi phạm',
     icon: 'bi-chat-square-quote',
     path: '/management/reviews',
-    roles: ['admin', 'staff']
-  },
-  {
-    key: 'reported-reviews',
-    label: 'Đánh giá bị báo cáo',
-    description: 'Xem thông tin các báo cáo vi phạm đánh giá',
-    icon: 'bi-flag',
-    path: '/management/reported-reviews',
     roles: ['admin', 'staff']
   },
   {

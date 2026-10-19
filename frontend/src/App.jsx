@@ -27,7 +27,6 @@ import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
 import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
-import ReportedReviews from './pages/ReportedReviews';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
@@ -128,11 +127,7 @@ function App() {
                 />
                 <Route
                   path="reported-reviews"
-                  element={(
-                    <ProtectedRoute allowedRoles={['admin', 'staff']}>
-                      <ReportedReviews />
-                    </ProtectedRoute>
-                  )}
+                  element={<Navigate to="/management/reviews?view=reported" replace />}
                 />
                 <Route
                   path="booking-requests"
