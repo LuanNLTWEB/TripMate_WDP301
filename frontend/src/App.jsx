@@ -31,6 +31,7 @@ import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
+import BookingHistory from './pages/BookingHistory';
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -56,6 +57,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/my-bookings"
+              element={
+                <ProtectedRoute allowedRoles={['customer']}>
+                  <BookingHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/bookings" element={<Navigate to="/my-bookings" replace />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/profile" element={<Profile />} />

@@ -368,6 +368,13 @@ export const tourApi = {
     body: JSON.stringify({ price })
   })
 };
+export const departureApi = {
+  create: (payload) => apiRequest('/departures', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' })
+};
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {
     method: 'POST',
@@ -380,7 +387,12 @@ export const bookingApi = {
     method: 'POST',
     body: JSON.stringify(bookingData)
   }),
-  getMyBookings: () => apiRequest('/bookings/my', { method: 'GET' }),
+  getMyBookings: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.append('status', params.status);
+    const qs = searchParams.toString();
+    return apiRequest(`/bookings/my${qs ? `?${qs}` : ''}`, { method: 'GET' });
+  },
   getProviderRequests: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -389,7 +401,8 @@ export const bookingApi = {
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
-  }
+  },
+  getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' })
 };
 
 export default authApi;

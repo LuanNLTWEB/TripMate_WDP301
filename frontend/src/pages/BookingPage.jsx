@@ -173,7 +173,7 @@ const BookingPage = () => {
       });
 
       toast.success('Đặt tour thành công! Chúng tôi sẽ liên hệ xác nhận với bạn sớm nhất.');
-      navigate(`/tours/${tourId}`);
+      navigate('/my-bookings');
     } catch (err) {
       const errorMessage = err.message || 'Không thể đặt tour. Vui lòng thử lại.';
       setApiError(errorMessage);
