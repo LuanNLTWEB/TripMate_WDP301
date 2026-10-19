@@ -8,8 +8,8 @@
   --tm-primary-hover: #0369a1;
   --tm-accent-amber: #d97706;
   --tm-border-subtle: #e2e8f0;
-  --tm-font-sans: 'Plus Jakarta Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --tm-font-display: 'Playfair Display', Georgia, serif;
+  --tm-font-sans: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
+  --tm-font-display: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
 }
 
 html {
@@ -107,7 +107,7 @@ body {
 .hero-light-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.96) 100%);
+  background: rgba(248, 250, 252, 0.92);
   pointer-events: none;
 }
 
@@ -331,7 +331,7 @@ main {
   padding: 24px 18px;
   overflow-y: auto;
   color: #dce3f1;
-  background: linear-gradient(180deg, #18182c 0%, #22233e 100%);
+  background: #1d1e35;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -1275,30 +1275,35 @@ main {
     @bottom-left {
       content: "TripMate - Hành trình của bạn";
       color: #64748b;
+      font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
       font-size: 8pt;
     }
 
     @bottom-right {
       content: "Trang " counter(page) " / " counter(pages);
       color: #64748b;
+      font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
       font-size: 8pt;
     }
   }
 
+  html,
   body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body {
+    margin: 0 !important;
     background: #ffffff !important;
   }
 
-  body * {
-    visibility: hidden !important;
+  body > * {
+    display: none !important;
   }
 
-  .itinerary-print-root,
-  .itinerary-print-root * {
-    visibility: visible !important;
-  }
-
-  .itinerary-print-root {
+  body > .itinerary-print-root {
     display: block !important;
     position: static;
     width: 100%;
@@ -1395,7 +1400,7 @@ main {
     overflow: hidden;
     border-radius: 12px;
     color: #ffffff;
-    background: linear-gradient(120deg, #0f172a 0%, #075985 65%, #0284c7 100%) !important;
+    background: #075985 !important;
     break-inside: avoid;
   }
 
@@ -1419,21 +1424,9 @@ main {
   .itinerary-print-date-range {
     display: flex;
     align-items: center;
-    gap: 7px;
     color: #e0f2fe;
     font-size: 8.5pt;
     font-weight: 600;
-  }
-
-  .itinerary-print-date-separator {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    color: #0f172a;
-    background: #fbbf24 !important;
   }
 
   .itinerary-print-summary {
@@ -1743,42 +1736,6 @@ main {
     color: #bae6fd;
   }
 
-  .itinerary-print-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding-top: 8px;
-    margin-top: 13px;
-    border-top: 1px solid #cbd5e1;
-    color: #64748b;
-    break-inside: avoid;
-  }
-
-  .itinerary-print-footer > div {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: #0284c7;
-    font-weight: 800;
-  }
-
-  .itinerary-print-footer img {
-    width: 19px;
-    height: 19px;
-    object-fit: contain;
-    padding: 1px;
-    border-radius: 4px;
-    background: #0f172a !important;
-  }
-
-  .itinerary-print-footer p {
-    max-width: 72%;
-    margin: 0;
-    font-size: 6.3pt;
-    text-align: right;
-  }
-
   .itinerary-print-empty {
     padding: 9px;
     margin: 0;
@@ -1960,7 +1917,7 @@ main {
 }
 
 .tm-list-item.active {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  background: #0369a1;
   border-color: #0284c7;
   color: #ffffff;
   box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
@@ -2004,7 +1961,7 @@ main {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  background: #0284c7;
   color: #ffffff;
   font-weight: 700;
   font-size: 0.88rem;

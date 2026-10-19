@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { TRIPMATE_LOGO_URL } from '../constants/brand';
 
 const formatDate = (value, options = {}) => {
@@ -21,7 +22,7 @@ const getActivityDateKey = (activity) => {
 };
 
 function ItineraryPrintView({ itinerary }) {
-  if (!itinerary) return null;
+  if (!itinerary || typeof document === 'undefined') return null;
 
   const activities = [...(itinerary.activities || [])].sort((first, second) => {
     const firstDate = new Date(first.date).getTime() || Number.MAX_SAFE_INTEGER;
@@ -45,7 +46,7 @@ function ItineraryPrintView({ itinerary }) {
   }, {});
   const exportedAt = new Date();
 
-  return (
+  return createPortal(
     <section className="itinerary-print-root" aria-hidden="true">
       <header className="itinerary-print-header">
         <div className="itinerary-print-brand-lockup">
@@ -67,9 +68,11 @@ function ItineraryPrintView({ itinerary }) {
         <p>Hành trình cá nhân</p>
         <h1>{itinerary.title}</h1>
         <div className="itinerary-print-date-range">
-          <span>{formatDate(itinerary.startDate, { day: '2-digit', month: 'long', year: 'numeric' })}</span>
-          <span className="itinerary-print-date-separator">-</span>
-          <span>{formatDate(itinerary.endDate, { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+          <span>
+            {formatDate(itinerary.startDate, { day: '2-digit', month: 'long', year: 'numeric' })}
+            {' - '}
+            {formatDate(itinerary.endDate, { day: '2-digit', month: 'long', year: 'numeric' })}
+          </span>
         </div>
       </section>
 
@@ -195,14 +198,8 @@ function ItineraryPrintView({ itinerary }) {
         </div>
       </section>
 
-      <footer className="itinerary-print-footer">
-        <div>
-          <img src={TRIPMATE_LOGO_URL} alt="" />
-          <span>TripMate</span>
-        </div>
-        <p>Chi phí trong kế hoạch chỉ mang tính tham khảo và có thể thay đổi tại thời điểm sử dụng dịch vụ.</p>
-      </footer>
-    </section>
+    </section>,
+    document.body
   );
 }
 
