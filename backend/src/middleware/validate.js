@@ -716,5 +716,41 @@ export const listDeparturesValidation = [
     .isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
+export const updateTourDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('departureLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm khởi hành')
+    .isLength({ max: 100 }).withMessage('Điểm khởi hành không được vượt quá 100 ký tự'),
+  body('destinationLocation')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Điểm đến không được vượt quá 100 ký tự'),
+  body('departureDate')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate()
+];
 
-
+export const updateDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
+  body('departureDate')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate(),
+  body('availableSeats')
+    .optional()
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt(),
+  body('price')
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min: 0 }).withMessage('Giá khởi hành phải là số không âm')
+    .toFloat(),
+  body('note')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự'),
+  body('status')
+    .optional()
+    .isIn(['scheduled', 'cancelled']).withMessage('Trạng thái không hợp lệ')
+];
