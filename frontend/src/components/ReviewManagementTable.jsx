@@ -113,7 +113,8 @@ export default function ReviewManagementTable({
   onApprove,
   onReject,
   onFlag,
-  onDelete
+  onDelete,
+  onRestore
 }) {
   const columnCount = reported ? 6 : 5;
   const actionProps = {
@@ -122,7 +123,8 @@ export default function ReviewManagementTable({
     onApprove,
     onReject,
     onFlag,
-    onDelete
+    onDelete,
+    onRestore
   };
 
   return (

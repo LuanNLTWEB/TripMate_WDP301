@@ -261,6 +261,11 @@ export const reviewApi = {
     body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  update: (id, payload) => apiRequest(`/reviews/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  restore: (id) => apiRequest(`/reviews/${id}/restore`, { method: 'PATCH' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -271,6 +276,7 @@ export const reviewApi = {
     if (params.search) query.append('search', params.search);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
+    if (params.deleted) query.append('deleted', params.deleted);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/reviews/moderation${queryString}`, { method: 'GET' });
   },
@@ -411,7 +417,11 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
-  getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' })
+  getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' }),
+  cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason })
+  })
 };
 
 export default authApi;

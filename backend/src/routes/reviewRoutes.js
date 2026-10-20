@@ -7,14 +7,18 @@ import {
   getReviewEligibility,
   createReview,
   moderateReview,
-  reportReview
+  reportReview,
+  restoreReview,
+  updateReview
 } from '../controllers/reviewController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import {
   moderateReviewValidation,
   reportedReviewListValidation,
   reviewEligibilityValidation,
-  createReviewValidation
+  createReviewValidation,
+  updateReviewValidation,
+  restoreReviewValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -26,6 +30,8 @@ router.get('/moderation', protect, authorize('admin', 'staff'), getAllReviewsFor
 router.get('/reported', protect, authorize('admin', 'staff'), reportedReviewListValidation, getReportedReviews);
 router.post('/:id/report', protect, authorize('customer'), reportReview);
 router.patch('/:id/moderate', protect, authorize('admin', 'staff'), moderateReviewValidation, moderateReview);
+router.patch('/:id/restore', protect, authorize('admin', 'staff'), restoreReviewValidation, restoreReview);
+router.put('/:id', protect, authorize('customer'), updateReviewValidation, updateReview);
 router.delete('/:id', protect, authorize('customer', 'admin', 'staff'), deleteReview);
 
 export default router;

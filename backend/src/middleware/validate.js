@@ -653,6 +653,31 @@ export const moderateReviewValidation = [
   })
 ];
 
+export const updateReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('rating')
+    .notEmpty().withMessage('Vui lòng chọn số sao đánh giá')
+    .isInt({ min: 1, max: 5 }).withMessage('Điểm đánh giá phải là số nguyên từ 1 đến 5 sao')
+    .toInt(),
+  body('comment')
+    .trim()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage('Nội dung đánh giá phải có từ 10 đến 1000 ký tự')
+];
+
+export const restoreReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
+];
+
+export const cancelBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),
+  body('reason')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập lý do hủy đặt tour')
+    .isLength({ min: 10, max: 500 })
+    .withMessage('Lý do hủy phải có từ 10 đến 500 ký tự')
+];
+
 export const reportedReviewListValidation = [
   query('search')
     .optional()

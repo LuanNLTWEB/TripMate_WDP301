@@ -95,7 +95,7 @@ const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
 };
 
 const recalculateTourRating = async (tourId) => {
-  const approvedReviews = await Review.find({ tourId, status: 'approved' }).select('rating');
+  const approvedReviews = await Review.find({ tourId, status: 'approved', isDeleted: false }).select('rating');
   const totalReviews = approvedReviews.length;
   const averageRating = totalReviews > 0
     ? Math.round((approvedReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews) * 10) / 10
@@ -241,7 +241,7 @@ export const getReviewsByTour = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
-    const reviews = await Review.find({ tourId, status: 'approved' })
+    const reviews = await Review.find({ tourId, status: 'approved', isDeleted: false })
       .populate('userId', 'username')
       .sort({ createdAt: -1 });
 
@@ -268,13 +268,18 @@ export const getAllReviewsForModeration = async (req, res) => {
       status = 'all',
       search,
       page = 1,
-      limit = 10
+      limit = 10,
+      deleted = 'false'
     } = req.query;
 
-    const query = {};
-    if (status && status !== 'all') {
-      query.status = status;
-    }
+// deleted=true liệt kê các đánh giá đã xóa mềm để nhân viên khôi phục lại được
+// (UC-95). Mặc định vẫn là danh sách kiểm duyệt như cũ.
+const wantDeleted = deleted === 'true';
+
+const query = { isDeleted: wantDeleted };
+      if (!wantDeleted && status && status !== 'all') {
+        query.status = status;
+      }
 
     if (search) {
       const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -330,7 +335,7 @@ export const getReportedReviews = async (req, res) => {
     } = req.query;
     const pageNumber = Math.max(Number(page) || 1, 1);
     const pageSize = Math.min(Math.max(Number(limit) || 10, 1), 50);
-    const query = { isReported: true };
+    const query = { isReported: true, isDeleted: false };
 
     if (status !== 'all') {
       query.status = status;
@@ -349,7 +354,7 @@ export const getReportedReviews = async (req, res) => {
     const [total, statusSummary] = await Promise.all([
       Review.countDocuments(query),
       Review.aggregate([
-        { $match: { isReported: true } },
+        { $match: { isReported: true, isDeleted: false } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ])
     ]);
@@ -462,14 +467,21 @@ export const deleteReview = async (req, res) => {
     const { id } = req.params;
 
     const review = await Review.findById(id);
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy đánh giá'
-      });
-    }
+if (!review) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy đánh giá'
+        });
+      }
 
-    const isOwner = review.userId.toString() === req.user._id.toString();
+      if (review.isDeleted) {
+        return res.status(409).json({
+          success: false,
+          message: 'Đánh giá này đã bị xóa trước đó'
+        });
+      }
+
+      const isOwner = review.userId.toString() === req.user._id.toString();
     const isManager = req.user.role === 'admin' || req.user.role === 'staff';
     if (!isOwner && !isManager) {
       return res.status(403).json({
@@ -478,8 +490,14 @@ export const deleteReview = async (req, res) => {
       });
     }
 
-    const tourId = review.tourId;
-    await review.deleteOne();
+const tourId = review.tourId;
+
+      // Xóa mềm: giữ lại bản ghi để UC-95 Restore Review có thể khôi phục,
+      // đồng thời đánh giá biến mất khỏi mọi danh sách công khai.
+      review.isDeleted = true;
+      review.deletedAt = new Date();
+      review.deletedBy = req.user._id;
+      await review.save();
 
     const { averageRating, totalReviews } = await recalculateTourRating(tourId);
 
@@ -489,7 +507,7 @@ export const deleteReview = async (req, res) => {
         action: 'DELETE_REVIEW',
         targetType: 'Review',
         targetId: id,
-        details: `Xóa vĩnh viễn đánh giá ID "${id}"`,
+        details: `Xóa đánh giá ID "${id}" (giữ lại bản ghi để khôi phục được)`,
         req
       });
     }
@@ -506,6 +524,146 @@ export const deleteReview = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể xóa đánh giá'
+    });
+  }
+};
+
+/**
+ * Khôi phục một đánh giá đã bị xóa mềm (UC-95 - Restore Review)
+ * @route PATCH /api/reviews/:id/restore
+ * @access Private (staff, admin)
+ */
+export const restoreReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá'
+      });
+    }
+
+    if (!review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này chưa bị xóa'
+      });
+    }
+
+    review.isDeleted = false;
+    review.deletedAt = null;
+    review.deletedBy = null;
+    // Đánh giá được khôi phục quay lại trạng thái chờ duyệt để nhân viên xem lại,
+    // thay vì tự động xuất hiện lại trên trang công khai.
+    review.status = 'pending';
+    await review.save();
+
+    const { averageRating, totalReviews } = await recalculateTourRating(review.tourId);
+
+    if (req.user?.role === 'admin') {
+      await logActivity({
+        admin: req.user,
+        action: 'RESTORE_REVIEW',
+        targetType: 'Review',
+        targetId: id,
+        details: `Khôi phục đánh giá ID "${id}" về trạng thái chờ duyệt`,
+        req
+      });
+    }
+
+    const populated = await Review.findById(id)
+      .populate('userId', 'username email')
+      .populate('tourId', 'title location departureLocation');
+
+    res.status(200).json({
+      success: true,
+      message: 'Khôi phục đánh giá thành công',
+      data: populated,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    console.error('Error restoring review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể khôi phục đánh giá'
+    });
+  }
+};
+
+/**
+ * Sửa đánh giá của chính khách hàng (UC-89 - Update Tour Review)
+ * @route PUT /api/reviews/:id
+ * @access Private (customer)
+ */
+export const updateReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+
+    const review = await Review.findById(id);
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá'
+      });
+    }
+
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị xóa'
+      });
+    }
+
+    // BR-109 - chỉ tác giả được sửa, việc kiểm duyệt do nhân viên thực hiện riêng
+    if (review.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền sửa đánh giá này'
+      });
+    }
+
+    if (review.status === 'flagged') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá đang bị báo cáo, không thể sửa cho đến khi nhân viên kiểm duyệt xong'
+      });
+    }
+
+    review.rating = Number(rating);
+    review.comment = comment.trim();
+    await review.save();
+
+    const { averageRating, totalReviews } = await recalculateTourRating(review.tourId);
+
+    const populated = await Review.findById(id)
+      .populate('userId', 'username email')
+      .populate('tourId', 'title location departureLocation');
+
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật đánh giá thành công',
+      data: populated,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật đánh giá'
     });
   }
 };

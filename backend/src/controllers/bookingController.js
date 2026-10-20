@@ -259,11 +259,100 @@ export const getBookingById = async (req, res) => {
       success: true,
       data: booking
     });
+} catch (error) {
+      console.error('Error fetching booking detail:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Không thềEtải thông tin chi tiết đơn đặt tour'
+      });
+    }
+  };
+
+// BR-88 - khung thời gian miễn phí: chỉ được tự hủy khi còn tối thiểu 48 giờ
+// trước ngày khởi hành. Không tính hoàn tiền ở đây vì hệ thống chưa có module
+// thanh toán; thao tác này chỉ trả lại chỗ trống và ghi nhận lý do.
+const FREE_CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Hủy đặt tour của chính khách hàng (UC-74 - Cancel Booking)
+ * @route PATCH /api/bookings/:id/cancel
+ * @access Private (customer)
+ */
+export const cancelBooking = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu hủy đặt tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn đặt tour'
+      });
+    }
+
+    // BR-91 - khách chỉ được hủy đơn của chính mình
+    if (booking.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền hủy đơn đặt tour này'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được hủy trước đó'
+      });
+    }
+
+    const hoursToDeparture =
+      (new Date(booking.departureDate).getTime() - Date.now()) / (60 * 60 * 1000);
+
+    if (hoursToDeparture * 60 * 60 * 1000 < FREE_CANCEL_WINDOW_MS) {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ có thể tự hủy khi còn ít nhất 48 giờ trước ngày khởi hành. Vui lòng liên hệ nhà cung cấp để được hỗ trợ.',
+        hoursToDeparture: Math.max(0, Math.floor(hoursToDeparture))
+      });
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelReason = reason.trim();
+    booking.cancelledAt = new Date();
+    await booking.save();
+
+    // BR-57 - trả lại chỗ trống trong cùng thao tác đánh dấu hủy, để số chỗ
+    // của tour không bao giờ lệch với danh sách đơn đặt
+    const tour = await Tour.findById(booking.tourId);
+    if (tour) {
+      tour.availableSeats = tour.availableSeats + booking.numberOfPeople;
+      await tour.save();
+    }
+
+    const populated = await Booking.findById(id)
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation');
+
+    res.status(200).json({
+      success: true,
+      message: 'Hủy đặt tour thành công',
+      data: populated,
+      releasedSeats: booking.numberOfPeople
+    });
   } catch (error) {
-    console.error('Error fetching booking detail:', error);
+    console.error('Error cancelling booking:', error);
     res.status(500).json({
       success: false,
-      message: 'Không thể tải thông tin chi tiết đơn đặt tour'
+      message: 'Không thể hủy đặt tour'
     });
   }
 };

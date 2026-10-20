@@ -61,6 +61,17 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'confirmed', 'cancelled'],
     default: 'pending'
+  },
+  // UC-74 - lý do hủy và thời điểm hủy, giữ lại để tra cứu về sau
+  cancelReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Lý do hủy không được vượt quá 500 ký tự'],
+    default: ''
+  },
+  cancelledAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

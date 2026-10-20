@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { bookingApi } from '../services/api';
+import CancelBookingModal from '../components/CancelBookingModal';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -74,6 +75,7 @@ const BookingHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
   const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
@@ -665,6 +667,18 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết đơn</span>
                                   </button>
 
+                                  {booking.status !== 'cancelled' && (
+                                    <button
+                                      type="button"
+                                      id={`btn-cancel-booking-${booking._id}`}
+                                      className="btn btn-outline-danger btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                                      onClick={() => setBookingToCancel(booking)}
+                                    >
+                                      <i className="bi bi-x-circle"></i>
+                                      <span>Hủy đặt tour</span>
+                                    </button>
+                                  )}
+
                                   {tour._id && (
                                     <Link
                                       to={`/tours/${tour._id}`}
@@ -688,6 +702,19 @@ const BookingHistory = () => {
           )}
         </div>
       </main>
+
+      {/* UC-74 - hủy đặt tour */}
+      {bookingToCancel && (
+        <CancelBookingModal
+          booking={bookingToCancel}
+          tourTitle={bookingToCancel.tourId?.title || 'Tour'}
+          onClose={() => setBookingToCancel(null)}
+          onCancelled={() => {
+            setBookingToCancel(null);
+            fetchBookings();
+          }}
+        />
+      )}
 
       {/* ================= MODAL XEM CHI TIẾT ĐƠN ĐẶT TOUR (CHỈ VIEW) ================= */}
       {selectedBooking && (

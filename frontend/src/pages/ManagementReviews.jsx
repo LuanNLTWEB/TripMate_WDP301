@@ -30,6 +30,11 @@ const REPORTED_STATUS_OPTIONS = [
   { value: 'rejected', label: 'Đã từ chối' }
 ];
 
+// UC-95 - các đánh giá đã xóa mềm, danh sách không lọc theo trạng thái kiểm duyệt
+const DELETED_STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả đã xóa' }
+];
+
 function ReportSummary({ summary }) {
   const cards = [
     { label: 'Tổng báo cáo', value: summary.total, color: 'text-dark' },
@@ -120,9 +125,14 @@ function RejectReviewModal({ state, loading, onReasonChange, onClose, onConfirm 
 export default function ManagementReviews() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeView = searchParams.get('view') === 'reported' ? 'reported' : 'all';
+  const activeView = searchParams.get('view') === 'reported' ? 'reported' : searchParams.get('view') === 'deleted' ? 'deleted' : 'all';
   const isReportedView = activeView === 'reported';
-  const statusOptions = isReportedView ? REPORTED_STATUS_OPTIONS : ALL_STATUS_OPTIONS;
+  const isDeletedView = activeView === 'deleted';
+  const statusOptions = isReportedView
+    ? REPORTED_STATUS_OPTIONS
+    : isDeletedView
+      ? DELETED_STATUS_OPTIONS
+      : ALL_STATUS_OPTIONS;
 
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
@@ -152,6 +162,10 @@ export default function ManagementReviews() {
           status: statusFilter,
           search: appliedSearch
         };
+        if (isDeletedView) {
+          params.deleted = 'true';
+          params.status = 'all';
+        }
         const response = isReportedView
           ? await reviewApi.getReported(params)
           : await reviewApi.getForModeration(params);
@@ -183,10 +197,10 @@ export default function ManagementReviews() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, currentPage, isReportedView, reloadKey, statusFilter]);
+  }, [appliedSearch, currentPage, isDeletedView, isReportedView, reloadKey, statusFilter]);
 
   const changeView = (view) => {
-    setSearchParams(view === 'reported' ? { view: 'reported' } : {});
+    setSearchParams(view === 'all' ? {} : { view });
     setStatusFilter('all');
     setSearchInput('');
     setAppliedSearch('');
@@ -260,7 +274,7 @@ export default function ManagementReviews() {
     setActionLoading(true);
     try {
       await reviewApi.delete(deleteReview._id);
-      toast.success('Đã xóa đánh giá vĩnh viễn khỏi hệ thống.');
+      toast.success('Đã xóa đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
       setDeleteReview(null);
       if (reviews.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1);
@@ -269,6 +283,24 @@ export default function ManagementReviews() {
       }
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa đánh giá.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // UC-95 - khôi phục một đánh giá đã bị xóa
+  const handleRestore = async (review) => {
+    setActionLoading(true);
+    try {
+      const response = await reviewApi.restore(review._id);
+      toast.success(response.message || 'Khôi phục đánh giá thành công.');
+      if (reviews.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        refreshReviews();
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể khôi phục đánh giá.');
     } finally {
       setActionLoading(false);
     }
@@ -286,8 +318,8 @@ export default function ManagementReviews() {
         <li className="nav-item">
           <button
             type="button"
-            className={`nav-link ${!isReportedView ? 'active' : ''}`}
-            aria-current={!isReportedView ? 'page' : undefined}
+            className={`nav-link ${!isReportedView && !isDeletedView ? 'active' : ''}`}
+            aria-current={!isReportedView && !isDeletedView ? 'page' : undefined}
             onClick={() => changeView('all')}
           >
             <i className="bi bi-chat-square-quote me-2"></i>Tất cả đánh giá
@@ -301,6 +333,16 @@ export default function ManagementReviews() {
             onClick={() => changeView('reported')}
           >
             <i className="bi bi-flag me-2"></i>Đánh giá bị báo cáo
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${isDeletedView ? 'active' : ''}`}
+            aria-current={isDeletedView ? 'page' : undefined}
+            onClick={() => changeView('deleted')}
+          >
+            <i className="bi bi-trash me-2"></i>Đã xóa
           </button>
         </li>
       </ul>
@@ -351,6 +393,8 @@ export default function ManagementReviews() {
           onReject={openRejectModal}
           onFlag={handleFlag}
           onDelete={openDeleteModal}
+          onRestore={isDeletedView ? handleRestore : undefined}
+          deletedView={isDeletedView}
         />
 
         {!loading && totalPages > 1 && (
