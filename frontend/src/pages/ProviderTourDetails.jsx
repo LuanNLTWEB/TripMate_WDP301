@@ -41,6 +41,7 @@ export default function ProviderTourDetails() {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDepartureModal, setShowDepartureModal] = useState(false);
+  const [selectedImageIdx, setSelectedImageIdx] = useState(0);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -211,12 +212,26 @@ export default function ProviderTourDetails() {
     ? (tour.categoryId.name || '—')
     : (tour.categoryId || '—');
 
+  const images = Array.isArray(tour.images) ? tour.images.filter(Boolean) : [];
+  const currentImage = images[selectedImageIdx] || images[0] || '';
+
   return (
     <section className="management-page-section">
       {/* Management Heading matching Staff UI */}
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3">
         <div>
-          <span className="management-page-kicker">Tour Operations</span>
+          <nav aria-label="breadcrumb" className="mb-2">
+            <ol className="breadcrumb small mb-0">
+              <li className="breadcrumb-item">
+                <Link to="/management/my-tours" className="text-decoration-none text-muted">
+                  Quản lý tour của tôi
+                </Link>
+              </li>
+              <li className="breadcrumb-item active text-primary fw-semibold" aria-current="page">
+                Chi tiết tour
+              </li>
+            </ol>
+          </nav>
           <h1>Thiết lập chi tiết Tour</h1>
           <p>Cấu hình thông tin, lịch trình, dịch vụ, chính sách hoàn hủy và lưu ý quan trọng cho tour.</p>
         </div>
@@ -225,18 +240,136 @@ export default function ProviderTourDetails() {
         </button>
       </div>
 
-      {/* Cover Image Banner (280px standard) */}
-      <div className="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
-        {tour.images?.[0] ? (
-          <img
-            src={tour.images[0]}
-            alt={tour.title}
-            className="w-100"
-            style={{ height: '280px', objectFit: 'cover' }}
-          />
+      {/* Media Viewer Card */}
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
+        <div className="p-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i className="bi bi-images text-primary"></i>
+            <span>Hình ảnh tour</span>
+          </h6>
+          {currentImage && (
+            <a
+              href={currentImage}
+              target="_blank"
+              rel="noreferrer"
+              className="small text-decoration-none text-primary d-inline-flex align-items-center gap-1"
+              title="Mở ảnh gốc trong tab mới"
+            >
+              <i className="bi bi-box-arrow-up-right"></i>
+              <span>Xem ảnh gốc</span>
+            </a>
+          )}
+        </div>
+
+        {currentImage ? (
+          <div>
+            <div
+              className="position-relative d-flex align-items-center justify-content-center overflow-hidden"
+              style={{
+                backgroundColor: '#0f172a',
+                minHeight: '260px',
+                maxHeight: '400px',
+                height: '340px'
+              }}
+            >
+              {/* Ambient Blurred Backdrop */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundImage: `url(${currentImage})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'blur(20px)',
+                  opacity: 0.35,
+                  transform: 'scale(1.1)'
+                }}
+              />
+
+              {/* Foreground Uncropped Image */}
+              <img
+                src={currentImage}
+                alt={`${tour.title} - Ảnh ${selectedImageIdx + 1}`}
+                className="position-relative"
+                style={{
+                  maxHeight: '100%',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                  zIndex: 2,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                }}
+              />
+
+              {/* Navigation Arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-light btn-sm rounded-circle position-absolute top-50 start-0 translate-middle-y ms-3 shadow-sm"
+                    style={{ zIndex: 3, width: '36px', height: '36px', padding: 0 }}
+                    onClick={() => setSelectedImageIdx((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                    aria-label="Ảnh trước"
+                  >
+                    <i className="bi bi-chevron-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-light btn-sm rounded-circle position-absolute top-50 end-0 translate-middle-y me-3 shadow-sm"
+                    style={{ zIndex: 3, width: '36px', height: '36px', padding: 0 }}
+                    onClick={() => setSelectedImageIdx((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                    aria-label="Ảnh tiếp theo"
+                  >
+                    <i className="bi bi-chevron-right"></i>
+                  </button>
+                </>
+              )}
+
+              {/* Counter Badge */}
+              {images.length > 1 && (
+                <div className="position-absolute bottom-0 end-0 p-3" style={{ zIndex: 3 }}>
+                  <span className="badge bg-dark bg-opacity-75 text-white px-2.5 py-1.5 rounded-pill" style={{ fontSize: '0.8rem' }}>
+                    {selectedImageIdx + 1} / {images.length}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnail Gallery Bar */}
+            {images.length > 1 && (
+              <div className="p-3 bg-light border-top d-flex gap-2 overflow-auto align-items-center">
+                {images.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedImageIdx(idx)}
+                    className={`btn p-0 border rounded-2 overflow-hidden flex-shrink-0 transition-all ${
+                      idx === selectedImageIdx
+                        ? 'border-primary border-2 shadow-sm'
+                        : 'border-secondary-subtle opacity-75'
+                    }`}
+                    style={{
+                      width: '64px',
+                      height: '44px',
+                      transform: idx === selectedImageIdx ? 'scale(1.05)' : 'scale(1)'
+                    }}
+                    aria-label={`Chọn ảnh ${idx + 1}`}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="w-100 h-100"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="bg-secondary-subtle d-flex align-items-center justify-content-center text-muted" style={{ height: '280px' }}>
-            <i className="bi bi-image fs-1"></i>
+          <div className="bg-light-subtle d-flex flex-column align-items-center justify-content-center text-muted py-5" style={{ minHeight: '220px' }}>
+            <i className="bi bi-image fs-1 mb-2 opacity-50"></i>
+            <span className="small">Tour này chưa có hình ảnh.</span>
           </div>
         )}
       </div>

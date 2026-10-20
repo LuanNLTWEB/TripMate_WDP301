@@ -198,6 +198,14 @@ function App() {
                   )}
                 />
                 <Route
+                  path="my-tours/:id"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                      <TourDetails />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
                   path="my-tours/:id/details"
                   element={(
                     <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
