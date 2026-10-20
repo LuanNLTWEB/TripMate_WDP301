@@ -180,6 +180,7 @@ export const tourCategoryApi = {
 export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
+  getBudget: (id) => apiRequest(`/itineraries/${id}/budget`, { method: 'GET' }),
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
     body: JSON.stringify(itinerary)

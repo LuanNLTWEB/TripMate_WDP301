@@ -248,6 +248,50 @@ export const getItinerary = async (req, res) => {
 };
 
 /**
+ * Calculate the trip budget of an itinerary: total cost = activity costs + tour prices.
+ * @route GET /api/itineraries/:id/budget
+ * @access Customer
+ */
+export const calculateTripBudget = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await findByIdPopulated(req.params.id);
+    if (!itinerary || !canView(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    const activityExpenses = (itinerary.activities || [])
+      .reduce((sum, activity) => sum + (Number(activity.estimatedCost) || 0), 0);
+    const tourExpenses = (itinerary.tours || [])
+      .reduce((sum, tour) => sum + (Number(tour.price) || 0), 0);
+
+    const budget = Number(itinerary.budget) || 0;
+    const totalCost = activityExpenses + tourExpenses;
+    const remainingAmount = budget - totalCost;
+
+    return res.json({
+      success: true,
+      budget,
+      totalCost,
+      breakdown: {
+        totalBudget: budget,
+        tourExpenses,
+        activityExpenses,
+        remainingAmount,
+        isOverBudget: totalCost > budget
+      }
+    });
+  } catch (error) {
+    console.error('Calculate trip budget error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể tính toán ngân sách chuyến đi' });
+  }
+};
+
+/**
  * Return detected schedule conflicts for an itinerary.
  * @route GET /api/itineraries/:id/conflicts
  * @access Customer
