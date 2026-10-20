@@ -197,6 +197,15 @@ export const deleteItinerary = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền xóa' });
     }
 
+    // BR-72 - Sole Ownership Rule: owner cannot delete while collaborators remain.
+    // They must transfer ownership first, then the new owner can delete.
+    if (itinerary.collaborators && itinerary.collaborators.length > 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Lịch trình còn thành viên. Vui lòng chuyển quyền sở hữu trước khi xóa.'
+      });
+    }
+
     await Itinerary.findByIdAndDelete(req.params.id);
     return res.json({ success: true, message: 'Đã xóa lịch trình' });
   } catch (error) {
@@ -726,97 +735,89 @@ export const shareItinerary = async (req, res) => {
  * @access Customer (collaborator only)
  */
 export const leaveItinerary = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()[0].msg,
-      errors: errors.array()
-    });
-  }
-
-  try {
-    const itinerary = await Itinerary.findById(req.params.id);
-
-    if (!itinerary) {
-      return res.status(404).json({
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
         success: false,
-        message: 'Không tìm thấy lịch trình'
+        message: errors.array()[0].msg,
+        errors: errors.array()
       });
     }
 
-    const currentUserId = String(req.user._id);
+    try {
+      const itinerary = await Itinerary.findById(req.params.id);
 
-    if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chủ sở hữu không thể rời khỏi lịch trình của chính mình'
-      });
-    }
-
-    const collaborators = Array.isArray(itinerary.collaborators) ? itinerary.collaborators : [];
-    const index = collaborators.findIndex(
-      (c) => String(c.user?._id || c.user) === currentUserId
-    );
-
-    if (index === -1) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không phải là thành viên của lịch trình này'
-      });
-    }
-
-    if (collaborators.length <= 1) {
-      return res.status(409).json({
-        success: false,
-        message: 'Không thể rời khỏi lịch trình khi bạn là thành viên cuối cùng'
-      });
-    }
-
-    collaborators.splice(index, 1);
-    itinerary.collaborators = collaborators;
-    itinerary.markModified('collaborators');
-    await itinerary.save();
-
-    // the leaver is the authenticated user; collaborators are raw ObjectIds here
-    // because the itinerary was not populated
-    const leaverName = req.user.username || req.user.email || 'Một thành viên';
-    const remainingRecipients = collaborators
-      .map((c) => c.user?._id || c.user)
-      .filter(Boolean);
-
-    if (remainingRecipients.length > 0) {
-      await Notification.insertMany(remainingRecipients.map((recipient) => ({
-        recipient,
-        title: 'Có thành viên rời khỏi lịch trình',
-        message: `${leaverName} đã rời khỏi lịch trình "${itinerary.title}".`,
-        notificationType: 'itinerary_leave',
-        itinerary: itinerary._id
-      })));
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Bạn đã rời khỏi lịch trình',
-      data: {
-        _id: itinerary._id,
-        collaboratorCount: collaborators.length
+      if (!itinerary) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy lịch trình'
+        });
       }
-    });
-  } catch (error) {
-    console.error('Leave itinerary error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Không thể rời khỏi lịch trình'
-    });
-  }
-};
 
-/**
- * Remove a collaborator from an owned itinerary (owner only).
- * @route DELETE /api/itineraries/:id/collaborators/:userId
- * @access Customer (owner only)
- */
+      const currentUserId = String(req.user._id);
+
+      // BR-72 - Sole Ownership Rule: owner cannot leave without transferring
+      // ownership first. They must use the separate transfer ownership flow,
+      // or delete the entire itinerary.
+      if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Chủ sở hữu không thể tự rời khỏi lịch trình. Vui lòng chuyển quyền sở hữu cho một thành viên khác trước (sử dụng chức năng chuyển quyền sở hữu), hoặc xóa toàn bộ lịch trình.',
+          reason: 'owner_must_transfer_or_delete'
+        });
+      }
+
+      const collaborators = Array.isArray(itinerary.collaborators) ? itinerary.collaborators : [];
+      const index = collaborators.findIndex(
+        (c) => String(c.user?._id || c.user) === currentUserId
+      );
+
+      if (index === -1) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn không phải là thành viên của lịch trình này'
+        });
+      }
+
+      collaborators.splice(index, 1);
+      itinerary.collaborators = collaborators;
+      itinerary.markModified('collaborators');
+      await itinerary.save();
+
+      // the leaver is the authenticated user; collaborators are raw ObjectIds here
+      // because the itinerary was not populated
+      const leaverName = req.user.username || req.user.email || 'Một thành viên';
+      const remainingRecipients = collaborators
+        .map((c) => c.user?._id || c.user)
+        .filter(Boolean);
+
+      if (remainingRecipients.length > 0) {
+        await Notification.insertMany(remainingRecipients.map((recipient) => ({
+          recipient,
+          title: 'Có thành viên rời khỏi lịch trình',
+          message: leaverName + ' đã rời khỏi lịch trình "' + itinerary.title + '".',
+          notificationType: 'itinerary_leave',
+          itinerary: itinerary._id
+        })));
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Bạn đã rời khỏi lịch trình',
+        data: {
+          _id: itinerary._id,
+          collaboratorCount: collaborators.length
+        }
+      });
+    } catch (error) {
+      console.error('Leave itinerary error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Không thể rời khỏi lịch trình'
+      });
+    }
+  };
+
 export const removeCollaborator = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -856,3 +857,88 @@ export const removeCollaborator = async (req, res) => {
   }
 };
 
+
+/**
+ * Chuyển quyền sở hữu lịch trình cho một cộng tác viên (BR-72)
+ * @route PUT /api/itineraries/:id/owner
+ * @access Customer (owner only)
+ */
+export const transferOwnership = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (String(itinerary.owner?._id || itinerary.owner) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền chuyển quyền sở hữu lịch trình này' });
+    }
+
+    if (!itinerary.collaborators) {
+      itinerary.collaborators = [];
+    }
+
+    const newOwnerId = req.body.newOwnerId;
+    const newOwnerCollab = itinerary.collaborators.find(
+      (c) => String(c.user?._id || c.user) === String(newOwnerId)
+    );
+
+    if (!newOwnerCollab) {
+      return res.status(400).json({
+        success: false,
+        message: 'Người được chọn không phải là thành viên của lịch trình',
+        eligibleOwners: itinerary.collaborators.map((c) => ({
+          _id: String(c.user?._id || c.user),
+          username: c.user?.username || null,
+          email: c.user?.email || null,
+          permission: c.permission
+        }))
+      });
+    }
+
+    // Transfer: collaborator becomes owner, old owner becomes collaborator (edit)
+    const oldOwnerId = itinerary.owner;
+    itinerary.owner = newOwnerId;
+    itinerary.collaborators = itinerary.collaborators.filter(
+      (c) => String(c.user?._id || c.user) !== String(newOwnerId)
+    );
+    // Old owner becomes a collaborator with edit permission
+    itinerary.collaborators.push({
+      user: oldOwnerId,
+      permission: 'edit'
+    });
+    itinerary.markModified('collaborators');
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+
+    // Notify all collaborators about the ownership transfer
+    const recipients = itinerary.collaborators
+      .map((c) => c.user?._id || c.user)
+      .filter((id) => String(id) !== String(newOwnerId));
+    if (recipients.length > 0) {
+      await Notification.insertMany(recipients.map((recipient) => ({
+        recipient,
+        title: 'Quyền sở hữu lịch trình đã chuyển',
+        message: (req.user.username || req.user.email) + ' đã chuyển quyền sở hữu lịch trình "' + itinerary.title + '" cho ' + (newOwnerCollab.user?.username || newOwnerCollab.user?.email || 'thành viên khác') + '.',
+        notificationType: 'itinerary_transfer',
+        itinerary: itinerary._id
+      })));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Chuyển quyền sở hữu thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Transfer ownership error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể chuyển quyền sở hữu lịch trình' });
+  }
+};

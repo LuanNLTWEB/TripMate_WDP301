@@ -263,7 +263,7 @@ export const getBookingById = async (req, res) => {
       console.error('Error fetching booking detail:', error);
       res.status(500).json({
         success: false,
-        message: 'Không thềEtải thông tin chi tiết đơn đặt tour'
+        message: 'Không thể tải thông tin chi tiết đơn đặt tour'
       });
     }
   };

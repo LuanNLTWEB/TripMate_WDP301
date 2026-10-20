@@ -19,7 +19,9 @@ import {
   updateItinerary,
   shareItinerary,
   removeCollaborator,
-  leaveItinerary
+    leaveItinerary,
+    transferOwnership
+
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -44,7 +46,9 @@ import {
   removeCollaboratorValidation,
   inviteCollaboratorValidation,
   respondInvitationValidation,
-  changeCollaboratorRoleValidation
+    changeCollaboratorRoleValidation,
+    transferOwnershipValidation
+
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -61,6 +65,7 @@ router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
+router.put('/:id/owner', ...customerAccess, transferOwnershipValidation, transferOwnership);
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
 router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);

@@ -779,3 +779,10 @@ export const updateDepartureValidation = [
     .optional()
     .isIn(['scheduled', 'cancelled']).withMessage('Trạng thái không hợp lệ')
 ];
+
+export const transferOwnershipValidation = [
+    param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+    body('newOwnerId')
+      .notEmpty().withMessage('Vui lòng chọn người nhận quyền sở hữu')
+      .isMongoId().withMessage('Mã người dùng không hợp lệ')
+  ];

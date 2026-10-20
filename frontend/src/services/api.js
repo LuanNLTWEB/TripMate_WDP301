@@ -215,11 +215,10 @@ export const itineraryApi = {
     body: JSON.stringify({ tourId })
   }),
   removeTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours/${tourId}`, {
-    method: 'DELETE'
-  }),
-  duplicate: (id, payload = {}) => apiRequest(`/itineraries/${id}/duplicate`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
+  method: 'DELETE'
+}),
+  getById: (id) => apiRequest(`/itineraries/${id}`, {
+    method: 'GET'
   }),
   share: (id, payload) => apiRequest(`/itineraries/${id}/share`, {
     method: 'POST',
@@ -228,7 +227,14 @@ export const itineraryApi = {
   removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'DELETE'
   }),
-  leave: (id) => apiRequest(`/itineraries/${id}/leave`, { method: 'DELETE' }),
+  leave: (id, newOwnerId) => apiRequest(`/itineraries/${id}/leave`, {
+    method: 'DELETE',
+    ...(newOwnerId ? { body: JSON.stringify({ newOwnerId }) } : {})
+  }),
+  transferOwnership: (id, newOwnerId) => apiRequest(`/itineraries/${id}/owner`, {
+    method: 'PUT',
+    body: JSON.stringify({ newOwnerId })
+  }),
   changeCollaboratorRole: (id, userId, permission) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'PUT',
     body: JSON.stringify({ permission })
