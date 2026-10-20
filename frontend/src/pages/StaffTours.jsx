@@ -237,16 +237,14 @@ function StaffTours() {
                     </td>
                     <td className="text-end">
                       <div className="management-actions">
-                        {!isSuspended && (
-                          <Link
-                            className="management-action-btn btn-view"
-                            to={isNeedsRevision ? `/management/tours/${tour._id}` : `/tours/${tour._id}`}
-                            title="Xem chi tiết tour"
-                            aria-label={`Xem ${tour.title}`}
-                          >
-                            <i className="bi bi-eye"></i>
-                          </Link>
-                        )}
+                        <Link
+                          className="management-action-btn btn-view"
+                          to={`/management/tours/${tour._id}?from=tours`}
+                          title="Xem chi tiết tour"
+                          aria-label={`Xem ${tour.title}`}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </Link>
                         <button
                           type="button"
                           className={`btn btn-sm ${isSuspended ? 'btn-outline-success' : 'btn-outline-danger'} d-inline-flex align-items-center gap-1 rounded-3 py-1 px-2 fw-semibold`}
