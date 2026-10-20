@@ -67,8 +67,8 @@ test('lists only reported reviews and populates reporter information', async () 
   const result = createResponse();
   await getReportedReviews({ query: { status: 'flagged', page: 1, limit: 10 } }, result.response);
 
-  assert.deepEqual(countQuery, { isReported: true, status: 'flagged' });
-  assert.deepEqual(findQuery, { isReported: true, status: 'flagged' });
+  assert.deepEqual(countQuery, { isReported: true, isDeleted: false, status: 'flagged' });
+  assert.deepEqual(findQuery, { isReported: true, isDeleted: false, status: 'flagged' });
   assert.equal(capture.populate.some((item) => item.path === 'reportedBy'), true);
   assert.deepEqual(capture.sort, { reportedAt: -1, createdAt: -1 });
   assert.equal(result.statusCode, 200);

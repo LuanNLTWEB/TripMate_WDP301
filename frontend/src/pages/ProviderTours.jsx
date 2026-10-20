@@ -312,7 +312,7 @@ export default function ProviderTours() {
                           </button>
                           <Link
                             className="management-action-btn btn-view"
-                            to={`/tours/${tour._id}`}
+                            to={`/management/my-tours/${tour._id}`}
                             title="Xem chi tiết tour"
                             aria-label={`Xem ${tour.title}`}
                           >

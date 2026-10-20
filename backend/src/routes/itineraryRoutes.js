@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
 import {
   addActivity,
   calculateTripBudget,
@@ -53,7 +54,7 @@ import {
 } from '../middleware/validate.js';
 
 const router = Router();
-const customerAccess = [protect, authorize('customer')];
+const customerAccess = [protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY)];
 
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
 router.get('/', ...customerAccess, listItineraries);

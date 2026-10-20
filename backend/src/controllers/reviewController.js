@@ -1,7 +1,6 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
-import { logActivity } from '../utils/activityLogger.js';
 import { validationResult } from 'express-validator';
 
 const VALID_REPORT_REASONS = [
@@ -272,14 +271,13 @@ export const getAllReviewsForModeration = async (req, res) => {
       deleted = 'false'
     } = req.query;
 
-// deleted=true liệt kê các đánh giá đã xóa mềm để nhân viên khôi phục lại được
-// (UC-95). Mặc định vẫn là danh sách kiểm duyệt như cũ.
-const wantDeleted = deleted === 'true';
-
-const query = { isDeleted: wantDeleted };
-      if (!wantDeleted && status && status !== 'all') {
-        query.status = status;
-      }
+    // deleted=true liệt kê các đánh giá đã xóa mềm để nhân viên có thể khôi phục.
+    // Mặc định vẫn là danh sách kiểm duyệt đang hoạt động.
+    const wantDeleted = deleted === 'true';
+    const query = { isDeleted: wantDeleted };
+    if (!wantDeleted && status && status !== 'all') {
+      query.status = status;
+    }
 
     if (search) {
       const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -435,17 +433,6 @@ export const moderateReview = async (req, res) => {
       .populate('tourId', 'title location departureLocation')
       .populate('moderatedBy', 'username email');
 
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'MODERATE_REVIEW',
-        targetType: 'Review',
-        targetId: review._id,
-        details: `Kiểm duyệt đánh giá thành trạng thái "${status}"${moderationReason ? ` (Lý do: ${moderationReason})` : ''}`,
-        req
-      });
-    }
-
     res.status(200).json({
       success: true,
       message: 'Kiểm duyệt đánh giá thành công',
@@ -467,50 +454,38 @@ export const deleteReview = async (req, res) => {
     const { id } = req.params;
 
     const review = await Review.findById(id);
-if (!review) {
-        return res.status(404).json({
+    if (!review) {
+      return res.status(404).json({
           success: false,
           message: 'Không tìm thấy đánh giá'
-        });
-      }
+      });
+    }
 
-      if (review.isDeleted) {
-        return res.status(409).json({
-          success: false,
-          message: 'Đánh giá này đã bị xóa trước đó'
-        });
-      }
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị xóa trước đó'
+      });
+    }
 
-      const isOwner = review.userId.toString() === req.user._id.toString();
-    const isManager = req.user.role === 'admin' || req.user.role === 'staff';
-    if (!isOwner && !isManager) {
+    const isOwner = review.userId.toString() === req.user._id.toString();
+    const isStaff = req.user.role === 'staff';
+    if (!isOwner && !isStaff) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền xóa đánh giá này'
       });
     }
 
-const tourId = review.tourId;
+    const tourId = review.tourId;
 
-      // Xóa mềm: giữ lại bản ghi để UC-95 Restore Review có thể khôi phục,
-      // đồng thời đánh giá biến mất khỏi mọi danh sách công khai.
-      review.isDeleted = true;
-      review.deletedAt = new Date();
-      review.deletedBy = req.user._id;
-      await review.save();
+    // Xóa mềm để Staff có thể khôi phục, đồng thời ẩn khỏi danh sách công khai.
+    review.isDeleted = true;
+    review.deletedAt = new Date();
+    review.deletedBy = req.user._id;
+    await review.save();
 
     const { averageRating, totalReviews } = await recalculateTourRating(tourId);
-
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'DELETE_REVIEW',
-        targetType: 'Review',
-        targetId: id,
-        details: `Xóa đánh giá ID "${id}" (giữ lại bản ghi để khôi phục được)`,
-        req
-      });
-    }
 
     res.status(200).json({
       success: true,
@@ -531,7 +506,7 @@ const tourId = review.tourId;
 /**
  * Khôi phục một đánh giá đã bị xóa mềm (UC-95 - Restore Review)
  * @route PATCH /api/reviews/:id/restore
- * @access Private (staff, admin)
+ * @access Private (staff)
  */
 export const restoreReview = async (req, res) => {
   try {
@@ -561,17 +536,6 @@ export const restoreReview = async (req, res) => {
     await review.save();
 
     const { averageRating, totalReviews } = await recalculateTourRating(review.tourId);
-
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'RESTORE_REVIEW',
-        targetType: 'Review',
-        targetId: id,
-        details: `Khôi phục đánh giá ID "${id}" về trạng thái chờ duyệt`,
-        req
-      });
-    }
 
     const populated = await Review.findById(id)
       .populate('userId', 'username email')

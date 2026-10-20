@@ -124,8 +124,8 @@ export function ReviewActions({
         <button
           type="button"
           className="management-action-btn btn-delete"
-          title="Xóa vĩnh viễn"
-          aria-label="Xóa vĩnh viễn đánh giá"
+          title="Ẩn đánh giá"
+          aria-label="Ẩn đánh giá"
           disabled={disabled}
           onClick={() => onDelete(review)}
         >

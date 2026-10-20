@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { tourApi } from '../services/api';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
 
@@ -9,6 +10,9 @@ export default function StaffPendingTours() {
   const toast = useToast();
   const [tours, setTours] = useState([]);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [rejectingTour, setRejectingTour] = useState(null);
@@ -16,11 +20,19 @@ export default function StaffPendingTours() {
   const [approvingTour, setApprovingTour] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadPendingTours = async () => {
+  const loadPendingTours = async (searchTerm = search, page = currentPage) => {
     setIsLoading(true);
     try {
-      const response = await tourApi.getManaged({ status: 'pending', limit: 50 });
+      const response = await tourApi.getManaged({
+        status: 'pending',
+        search: searchTerm,
+        page,
+        limit: 10
+      });
       setTours(response.data || []);
+      setCurrentPage(response.currentPage || 1);
+      setTotalPages(response.totalPages || 1);
+      setTotal(typeof response.total === 'number' ? response.total : (response.data || []).length);
       setError('');
     } catch (requestError) {
       setError(requestError.message || 'Không thể tải danh sách tour chờ duyệt.');
@@ -30,19 +42,16 @@ export default function StaffPendingTours() {
   };
 
   useEffect(() => {
-    loadPendingTours();
-  }, []);
+    const timer = setTimeout(() => {
+      loadPendingTours(search, currentPage);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, currentPage]);
 
-  const filteredTours = tours.filter((tour) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      tour.title?.toLowerCase().includes(q) ||
-      tour.departureLocation?.toLowerCase().includes(q) ||
-      tour.destinationLocation?.toLowerCase().includes(q) ||
-      tour.location?.toLowerCase().includes(q)
-    );
-  });
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setCurrentPage(1);
+  };
 
   const handleOpenApprove = (tour) => {
     setApprovingTour(tour);
@@ -61,8 +70,8 @@ export default function StaffPendingTours() {
     try {
       const response = await tourApi.setStatus(approvingTour._id, 'active');
       toast.success(response.message || 'Đã phê duyệt tour thành công.');
-      setTours((prevTours) => prevTours.filter((t) => t._id !== approvingTour._id));
       setApprovingTour(null);
+      await loadPendingTours(search, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể phê duyệt tour.');
     } finally {
@@ -89,9 +98,9 @@ export default function StaffPendingTours() {
     try {
       const response = await tourApi.setStatus(rejectingTour._id, 'rejected', rejectReason);
       toast.success(response.message || 'Đã từ chối duyệt tour thành công.');
-      setTours((prevTours) => prevTours.filter((t) => t._id !== rejectingTour._id));
       setRejectingTour(null);
       setRejectReason('');
+      await loadPendingTours(search, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể từ chối tour.');
     } finally {
@@ -121,13 +130,13 @@ export default function StaffPendingTours() {
             <input
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Tìm theo tên tour, điểm đi hoặc điểm đến..."
               aria-label="Tìm kiếm tour chờ duyệt"
             />
           </div>
           <div className="text-muted small">
-            Hiển thị <strong>{filteredTours.length}</strong> / {tours.length} tour chờ duyệt
+            Hiển thị <strong>{tours.length}</strong> / {total} tour chờ duyệt
           </div>
         </div>
 
@@ -150,7 +159,7 @@ export default function StaffPendingTours() {
                     Đang tải danh sách tour chờ duyệt...
                   </td>
                 </tr>
-              ) : filteredTours.length === 0 ? (
+              ) : tours.length === 0 ? (
                 <tr>
                   <td colSpan="5">
                     <div className="management-empty-state">
@@ -163,7 +172,7 @@ export default function StaffPendingTours() {
                   </td>
                 </tr>
               ) : (
-                filteredTours.map((tour) => (
+                tours.map((tour) => (
                   <tr key={tour._id}>
                     <td>
                       <div className="d-flex align-items-center gap-3">
@@ -218,7 +227,7 @@ export default function StaffPendingTours() {
                           <i className="bi bi-check-lg fs-5"></i>
                         </button>
                         <Link
-                          to={`/management/tours/${tour._id}`}
+                          to={`/management/tours/${tour._id}?from=pending-tours`}
                           className="management-action-btn btn-view"
                           title="Rà soát chi tiết & phê duyệt"
                           aria-label={`Rà soát ${tour.title}`}
@@ -241,6 +250,15 @@ export default function StaffPendingTours() {
             </tbody>
           </table>
         </div>
+
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={total}
+          itemLabel="tour chờ duyệt"
+          isLoading={isLoading}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
 
       {approvingTour && (

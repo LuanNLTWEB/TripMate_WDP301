@@ -7,7 +7,7 @@ import Itinerary from '../models/Itinerary.js';
 /**
  * Build aggregate platform statistics for staff/admin.
  * @route GET /api/stats/platform
- * @access Staff, Admin
+ * @access Staff
  */
 const getPlatformStats = async (req, res) => {
   try {

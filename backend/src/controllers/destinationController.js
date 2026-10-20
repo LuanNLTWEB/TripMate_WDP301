@@ -12,7 +12,7 @@ const DESTINATION_STATUS_VALUES = ['active', 'inactive'];
 /**
  * Create a destination in the Staff catalogue.
  * @route POST /api/destinations
- * @access Staff, Admin
+ * @access Staff
  */
 export const createDestination = async (req, res) => {
   const errors = validationResult(req);
@@ -61,7 +61,7 @@ export const createDestination = async (req, res) => {
 /**
  * Update a destination.
  * @route PUT /api/destinations/:id
- * @access Staff, Admin
+ * @access Staff
  */
 export const updateDestination = async (req, res) => {
   const errors = validationResult(req);
@@ -119,7 +119,7 @@ export const updateDestination = async (req, res) => {
 /**
  * Activate or deactivate a destination in the catalogue.
  * @route PATCH /api/destinations/:id/status
- * @access Staff, Admin
+ * @access Staff
  */
 export const updateDestinationStatus = async (req, res) => {
   const errors = validationResult(req);
@@ -275,7 +275,7 @@ export const getAllDestinations = async (req, res) => {
  * List every non-deleted destination for Staff moderation, including inactive ones.
  * Mirrors BR-25: staff and admin can see all destinations regardless of status.
  * @route GET /api/destinations/management
- * @access Staff, Admin
+ * @access Staff
  */
 export const getManagedDestinations = async (req, res) => {
   try {
@@ -351,11 +351,19 @@ export const getManagedDestinations = async (req, res) => {
 // @route   GET /api/destinations/:id
 // @access  Public (Guest)
 export const getDestinationById = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã điểm đến không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
   try {
     const destination = await Destination.findOne({
       _id: req.params.id,
-      isDeleted: { $ne: true },
-      status: 'active'
+      isDeleted: { $ne: true }
     }).populate('categoryId');
 
     if (!destination) {
@@ -365,7 +373,18 @@ export const getDestinationById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    // Nếu điểm đến chưa active, chỉ cho phép staff xem qua luồng quản lý.
+    if (destination.status !== 'active') {
+      const isPrivileged = req.user?.role === 'staff';
+      if (!isPrivileged) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy điểm đến'
+        });
+      }
+    }
+
+    return res.status(200).json({
       success: true,
       data: destination
     });
@@ -374,13 +393,13 @@ export const getDestinationById = async (req, res) => {
     
     // Check if the error is a cast error (invalid ID format)
     if (error.name === 'CastError') {
-       return res.status(404).json({
+      return res.status(404).json({
         success: false,
         message: 'Không tìm thấy điểm đến'
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Không thể tải thông tin điểm đến'
     });

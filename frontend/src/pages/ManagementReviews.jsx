@@ -274,7 +274,7 @@ export default function ManagementReviews() {
     setActionLoading(true);
     try {
       await reviewApi.delete(deleteReview._id);
-      toast.success('Đã xóa đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
+      toast.success('Đã ẩn đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
       setDeleteReview(null);
       if (reviews.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1);
@@ -394,7 +394,6 @@ export default function ManagementReviews() {
           onFlag={handleFlag}
           onDelete={openDeleteModal}
           onRestore={isDeletedView ? handleRestore : undefined}
-          deletedView={isDeletedView}
         />
 
         {!loading && totalPages > 1 && (
@@ -445,17 +444,19 @@ export default function ManagementReviews() {
 
       <ConfirmDeleteModal
         isOpen={Boolean(deleteReview)}
-        title="Xóa đánh giá vĩnh viễn"
+        title="Ẩn đánh giá"
         message={(
           <p className="mb-0">
-            Hành động này sẽ <strong>xóa hoàn toàn</strong> đánh giá khỏi cơ sở dữ liệu và tính lại điểm trung bình của tour. Bạn có chắc chắn muốn tiếp tục?
+            Đánh giá sẽ bị ẩn khỏi hệ thống và có thể được khôi phục trong tab <strong>Đã xóa</strong>.
+            Bạn có chắc chắn muốn tiếp tục?
           </p>
         )}
-        confirmText="Xác nhận xóa"
+        confirmText="Xác nhận ẩn"
         loading={actionLoading}
         onConfirm={confirmDelete}
         onClose={() => setDeleteReview(null)}
       />
+
     </section>
   );
 }

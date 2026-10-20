@@ -41,8 +41,34 @@ export const getAccounts = async (req, res) => {
         { email: { $regex: search, $options: 'i' } }
       ];
     }
-    const accounts = await User.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, accounts: accounts.map(toAccountResponse) });
+    const total = await User.countDocuments(filter);
+    const page = parseInt(req.query.page, 10);
+    const limit = parseInt(req.query.limit, 10);
+
+    let query = User.find(filter).sort({ createdAt: -1 });
+    if (page && limit) {
+      const pageNum = Math.max(page, 1);
+      const limitNum = Math.min(Math.max(limit, 1), 100);
+      const startIndex = (pageNum - 1) * limitNum;
+      query = query.skip(startIndex).limit(limitNum);
+      const accounts = await query;
+      return res.json({
+        success: true,
+        accounts: accounts.map(toAccountResponse),
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+        currentPage: pageNum
+      });
+    }
+
+    const accounts = await query;
+    res.json({
+      success: true,
+      accounts: accounts.map(toAccountResponse),
+      total,
+      totalPages: 1,
+      currentPage: 1
+    });
   } catch (error) {
     console.error('Get accounts error:', error);
     res.status(500).json({ success: false, message: 'Không thể tải danh sách tài khoản' });

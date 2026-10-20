@@ -28,7 +28,7 @@ export const getAllCategories = async (req, res) => {
 /**
  * Create a new destination category.
  * @route POST /api/destination-categories
- * @access Staff, Admin
+ * @access Staff
  */
 export const createCategory = async (req, res) => {
   const errors = validationResult(req);
@@ -71,7 +71,7 @@ export const createCategory = async (req, res) => {
 /**
  * Update a destination category.
  * @route PUT /api/destination-categories/:id
- * @access Staff, Admin
+ * @access Staff
  */
 export const updateCategory = async (req, res) => {
   const errors = validationResult(req);
@@ -124,7 +124,7 @@ export const updateCategory = async (req, res) => {
 /**
  * Delete a destination category.
  * @route DELETE /api/destination-categories/:id
- * @access Staff, Admin
+ * @access Staff
  */
 export const deleteCategory = async (req, res) => {
   try {

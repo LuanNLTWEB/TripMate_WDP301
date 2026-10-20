@@ -53,7 +53,7 @@ export const protect = async (req, res, next) => {
 
 // Authorize roles
 export const authorize = (...roles) => {
-  return (req, res, next) => {
+  const authorizationMiddleware = (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -70,6 +70,9 @@ export const authorize = (...roles) => {
     
     next();
   };
+
+  authorizationMiddleware.allowedRoles = Object.freeze([...roles]);
+  return authorizationMiddleware;
 };
 
 // Optional authentication - attach user if valid token exists, but don't reject if not

@@ -741,6 +741,70 @@ export const listDeparturesValidation = [
     .isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
+export const announcementIdValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
+
+export const createAnnouncementValidation = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 5000 }).withMessage('Nội dung thông báo không được vượt quá 5000 ký tự'),
+  body('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('isActive')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
+];
+
+export const announcementListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số thông báo mỗi trang phải từ 1 đến 50')
+    .toInt()
+];
+
+export const managedAnnouncementListValidation = [
+  ...announcementListValidation,
+  query('status')
+    .optional()
+    .isIn(['all', 'active', 'draft']).withMessage('Trạng thái thông báo không hợp lệ'),
+  query('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ')
+];
+
+export const updateAnnouncementValidation = [
+  ...announcementIdValidation,
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 5000 }).withMessage('Nội dung thông báo không được vượt quá 5000 ký tự'),
+  body('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('isActive')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
+];
+
 export const updateTourDepartureValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('departureLocation')

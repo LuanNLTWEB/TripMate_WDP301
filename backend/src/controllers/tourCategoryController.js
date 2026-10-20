@@ -28,7 +28,7 @@ export const getAllCategories = async (req, res) => {
 /**
  * Create a new tour category.
  * @route POST /api/tour-categories
- * @access Staff, Admin
+ * @access Staff
  */
 export const createCategory = async (req, res) => {
   const errors = validationResult(req);
@@ -71,7 +71,7 @@ export const createCategory = async (req, res) => {
 /**
  * Update a tour category.
  * @route PUT /api/tour-categories/:id
- * @access Staff, Admin
+ * @access Staff
  */
 export const updateCategory = async (req, res) => {
   const errors = validationResult(req);
@@ -124,7 +124,7 @@ export const updateCategory = async (req, res) => {
 /**
  * Delete a tour category.
  * @route DELETE /api/tour-categories/:id
- * @access Staff, Admin
+ * @access Staff
  */
 export const deleteCategory = async (req, res) => {
   try {

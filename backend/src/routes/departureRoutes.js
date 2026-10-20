@@ -1,6 +1,7 @@
 import express from 'express';
 import { createDeparture, getDeparturesByTour, updateDeparture } from '../controllers/departureController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
 import {
   createDepartureValidation,
   listDeparturesValidation,
@@ -9,9 +10,9 @@ import {
 
 const router = express.Router();
 
-router.get('/', protect, authorize('tourProvider', 'admin'), listDeparturesValidation, getDeparturesByTour);
-router.post('/', protect, authorize('tourProvider', 'admin'), createDepartureValidation, createDeparture);
-router.put('/:id', protect, authorize('tourProvider', 'admin'), updateDepartureValidation, updateDeparture);
-router.patch('/:id', protect, authorize('tourProvider', 'admin'), updateDepartureValidation, updateDeparture);
+router.get('/', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), listDeparturesValidation, getDeparturesByTour);
+router.post('/', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), createDepartureValidation, createDeparture);
+router.put('/:id', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateDepartureValidation, updateDeparture);
+router.patch('/:id', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateDepartureValidation, updateDeparture);
 
-export default router;
+export default router;
