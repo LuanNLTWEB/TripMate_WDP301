@@ -144,6 +144,7 @@ export const destinationApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/destinations/management${queryString}`, { method: 'GET' });
   },
+  getManagedById: (id) => apiRequest(`/destinations/management/${id}`, { method: 'GET' }),
   create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)

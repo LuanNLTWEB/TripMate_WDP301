@@ -36,6 +36,7 @@ import BookingHistory from './pages/BookingHistory';
 import Announcements from './pages/Announcements';
 import AnnouncementDetails from './pages/AnnouncementDetails';
 import StaffAnnouncements from './pages/StaffAnnouncements';
+import StaffDestinationDetails from './pages/StaffDestinationDetails';
 import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
 
 function ProviderTourDetailsRedirect() {
@@ -176,6 +177,7 @@ function App() {
                 />
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="destinations" element={<StaffDestinations />} />
+                  <Route path="destinations/:id" element={<StaffDestinationDetails />} />
                   <Route path="destination-categories" element={<StaffDestinationCategories />} />
                   <Route path="tour-categories" element={<StaffTourCategories />} />
                   <Route path="tours" element={<StaffTours />} />

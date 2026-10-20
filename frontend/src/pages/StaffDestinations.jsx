@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationApi, destinationCategoryApi } from '../services/api';
-import CustomSelect from '../components/CustomSelect';
+import DestinationFormModal from '../components/DestinationFormModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 function StaffDestinations() {
   const { user } = useAuth();
@@ -14,21 +15,10 @@ function StaffDestinations() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [modalState, setModalState] = useState({ open: false, destination: null });
   const [isSaving, setIsSaving] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [destinationToDelete, setDestinationToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    location: '',
-    imageUrl: '',
-    categoryId: '',
-    isPopular: false
-  });
-
   const [categories, setCategories] = useState([]);
 
   const loadDestinations = async (searchTerm = search, page = currentPage) => {
@@ -47,7 +37,7 @@ function StaffDestinations() {
   };
 
   useEffect(() => {
-    if (user?.role !== 'staff' && user?.role !== 'admin') return;
+    if (user?.role !== 'staff') return;
     const timer = setTimeout(() => {
       loadDestinations(search, currentPage);
     }, 300);
@@ -55,7 +45,7 @@ function StaffDestinations() {
   }, [search, currentPage, user?.role]);
 
   useEffect(() => {
-    if (user?.role !== 'staff' && user?.role !== 'admin') return;
+    if (user?.role !== 'staff') return;
     destinationCategoryApi.getAll()
       .then((res) => setCategories(res.data || []))
       .catch(() => {});
@@ -67,34 +57,37 @@ function StaffDestinations() {
     }
   };
 
-  const handleCreateChange = (event) => {
-    const { name, value, type, checked } = event.target;
-    setFormData((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const openCreateModal = () => {
+    setModalState({ open: true, destination: null });
   };
 
-  const handleCreate = async (event) => {
-    event.preventDefault();
+  const openEditModal = (dest) => {
+    setModalState({ open: true, destination: dest });
+  };
+
+  const closeModal = () => {
+    if (!isSaving) {
+      setModalState({ open: false, destination: null });
+    }
+  };
+
+  const handleFormSubmit = async (payload) => {
     setIsSaving(true);
-    setError('');
+    const isEditing = Boolean(modalState.destination?._id);
 
     try {
-      const response = await destinationApi.create({
-        name: formData.name,
-        description: formData.description,
-        location: formData.location,
-        images: [formData.imageUrl],
-        categoryId: formData.categoryId || undefined,
-        isPopular: formData.isPopular
-      });
-      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
-      setShowCreateForm(false);
-      toast.success(response.message || 'Đã tạo điểm đến thành công.');
-      await loadDestinations('', 1);
+      if (isEditing) {
+        const response = await destinationApi.update(modalState.destination._id, payload);
+        toast.success(response.message || 'Đã cập nhật điểm đến thành công.');
+      } else {
+        const response = await destinationApi.create(payload);
+        toast.success(response.message || 'Đã tạo điểm đến thành công.');
+        setCurrentPage(1);
+      }
+      setModalState({ open: false, destination: null });
+      await loadDestinations(isEditing ? search : '', isEditing ? currentPage : 1);
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể tạo điểm đến.');
+      toast.error(requestError.message || 'Không thể lưu điểm đến.');
     } finally {
       setIsSaving(false);
     }
@@ -135,55 +128,6 @@ function StaffDestinations() {
     }
   };
 
-  const openEditForm = (dest) => {
-    setEditingId(dest._id);
-    setShowUpdateConfirm(false);
-    setFormData({
-      name: dest.name,
-      description: dest.description,
-      location: dest.location,
-      imageUrl: dest.images?.[0] || '',
-      categoryId: dest.categoryId?._id || dest.categoryId || '',
-      isPopular: dest.isPopular
-    });
-    setShowCreateForm(true);
-    setError('');
-  };
-
-  const handleEditSubmit = (event) => {
-    event.preventDefault();
-    setShowUpdateConfirm(true);
-  };
-
-  const handleConfirmUpdate = async () => {
-    if (!editingId || isSaving) return;
-
-    setIsSaving(true);
-    setError('');
-
-    try {
-      const response = await destinationApi.update(editingId, {
-        name: formData.name,
-        description: formData.description,
-        location: formData.location,
-        images: [formData.imageUrl],
-        categoryId: formData.categoryId || null,
-        isPopular: formData.isPopular
-      });
-      setShowUpdateConfirm(false);
-      setEditingId(null);
-      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
-      setShowCreateForm(false);
-      toast.success(response.message || 'Đã cập nhật điểm đến thành công.');
-      await loadDestinations(search, currentPage);
-    } catch (requestError) {
-      toast.error(requestError.message || 'Không thể cập nhật điểm đến.');
-      setShowUpdateConfirm(false);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <>
       <section className="management-page-section">
@@ -196,103 +140,33 @@ function StaffDestinations() {
           <button
             type="button"
             className="btn btn-primary d-inline-flex align-items-center gap-2"
-            onClick={() => {
-              setShowCreateForm((current) => !current);
-              setEditingId(null);
-              setShowUpdateConfirm(false);
-              setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
-              setError('');
-            }}
+            onClick={openCreateModal}
           >
-            <i className={`bi ${showCreateForm ? 'bi-x-lg' : 'bi-plus-circle'}`}></i>
-            <span>{showCreateForm ? 'Đóng biểu mẫu' : 'Thêm điểm đến'}</span>
+            <i className="bi bi-plus-lg"></i>
+            <span>Thêm điểm đến</span>
           </button>
         </div>
 
-        {showCreateForm && (
-          <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={editingId ? handleEditSubmit : handleCreate}>
-            <div className="card-body p-4">
-              <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa điểm đến' : 'Tạo điểm đến'}</h2>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold" htmlFor="destination-name">Tên điểm đến</label>
-                  <input id="destination-name" name="name" className="form-control" value={formData.name} onChange={handleCreateChange} required />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold" htmlFor="destination-location">Vị trí</label>
-                  <input id="destination-location" name="location" className="form-control" value={formData.location} onChange={handleCreateChange} required />
-                </div>
-                <div className="col-12">
-                  <label className="form-label fw-semibold" htmlFor="destination-description">Mô tả</label>
-                  <textarea id="destination-description" name="description" className="form-control" rows="3" value={formData.description} onChange={handleCreateChange} required />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold" htmlFor="destination-category">Danh mục</label>
-                  <CustomSelect
-                    id="destination-category"
-                    name="categoryId"
-                    value={formData.categoryId}
-                    onChange={handleCreateChange}
-                    options={[
-                      { value: '', label: '— Không chọn —' },
-                      ...categories.map((cat) => ({ value: cat._id, label: cat.name }))
-                    ]}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-semibold" htmlFor="destination-image">URL hình ảnh</label>
-                  <input id="destination-image" name="imageUrl" type="url" className="form-control" value={formData.imageUrl} onChange={handleCreateChange} required />
-                </div>
-                <div className="col-md-4 d-flex align-items-end">
-                  <div className="form-check mb-2">
-                    <input id="destination-popular" name="isPopular" type="checkbox" className="form-check-input" checked={formData.isPopular} onChange={handleCreateChange} />
-                    <label className="form-check-label fw-semibold" htmlFor="destination-popular">Đánh dấu phổ biến</label>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 d-flex gap-2">
-                <button className="btn btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật điểm đến' : 'Lưu điểm đến')}
-                </button>
-                {editingId && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => {
-                      setEditingId(null);
-                      setShowUpdateConfirm(false);
-                      setShowCreateForm(false);
-                      setFormData({ name: '', description: '', location: '', imageUrl: '', categoryId: '', isPopular: false });
-                    }}
-                  >
-                    Hủy
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
-        )}
-        
         {error && (
           <div className="alert alert-danger alert-dismissible fade show" role="alert">
             {error}
             <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
           </div>
         )}
-        
+
         <div className="management-table-card">
           <div className="management-table-toolbar">
             <div className="management-search-box">
               <i className="bi bi-search"></i>
-              <input 
-                type="search" 
-                value={search} 
+              <input
+                type="search"
+                value={search}
                 onChange={(event) => {
                   setSearch(event.target.value);
                   setCurrentPage(1);
                 }}
-                placeholder="Tìm kiếm theo tên hoặc vị trí..." 
-                aria-label="Tìm kiếm điểm đến" 
+                placeholder="Tìm kiếm theo tên hoặc vị trí..."
+                aria-label="Tìm kiếm điểm đến"
               />
             </div>
             <div className="text-muted small">
@@ -337,10 +211,10 @@ function StaffDestinations() {
                     <tr key={dest._id}>
                       <td>
                         {dest.images?.[0] ? (
-                          <img 
-                            src={dest.images[0]} 
-                            alt={dest.name} 
-                            className="management-table-thumb" 
+                          <img
+                            src={dest.images[0]}
+                            alt={dest.name}
+                            className="management-table-thumb"
                           />
                         ) : (
                           <div className="management-table-thumb-empty">
@@ -372,16 +246,16 @@ function StaffDestinations() {
                       <td className="text-end">
                         <div className="management-actions">
                           <Link
-                            to={`/destinations/${dest._id}`}
+                            to={`/management/destinations/${dest._id}`}
                             className="management-action-btn btn-view"
-                            title="Xem trước trang khách"
+                            title="Xem chi tiết điểm đến"
                           >
                             <i className="bi bi-eye"></i>
                           </Link>
                           <button
                             type="button"
                             className="management-action-btn btn-edit"
-                            onClick={() => openEditForm(dest)}
+                            onClick={() => openEditModal(dest)}
                             title="Chỉnh sửa điểm đến"
                           >
                             <i className="bi bi-pencil"></i>
@@ -411,7 +285,7 @@ function StaffDestinations() {
               </tbody>
             </table>
           </div>
-          
+
           {!isLoading && totalPages > 1 && (
             <div className="management-pagination-bar">
               <div>
@@ -443,138 +317,31 @@ function StaffDestinations() {
         </div>
       </section>
 
-      {destinationToDelete && (
-        <>
-          <div
-            className="modal fade show d-block"
-            tabIndex="-1"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-destination-title"
-          >
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header">
-                  <h2 id="delete-destination-title" className="modal-title h5 fw-bold">
-                    Xác nhận xóa điểm đến
-                  </h2>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setDestinationToDelete(null)}
-                    disabled={isDeleting}
-                    aria-label="Đóng"
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <p className="mb-2">
-                    Bạn có chắc muốn xóa <strong>{destinationToDelete.name}</strong>?
-                  </p>
-                  <p className="text-muted small mb-0">
-                    Điểm đến sẽ bị ẩn khỏi hệ thống và danh sách yêu thích. Dữ liệu lịch trình cũ vẫn được giữ lại.
-                  </p>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setDestinationToDelete(null)}
-                    disabled={isDeleting}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                        Đang xóa...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-trash me-2"></i>
-                        Xóa điểm đến
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show"></div>
-        </>
-      )}
+      <DestinationFormModal
+        isOpen={modalState.open}
+        destination={modalState.destination}
+        categories={categories}
+        saving={isSaving}
+        onClose={closeModal}
+        onSubmit={handleFormSubmit}
+      />
 
-      {showUpdateConfirm && (
-        <>
-          <div
-            className="modal fade show d-block"
-            tabIndex="-1"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="update-destination-title"
-          >
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header">
-                  <h2 id="update-destination-title" className="modal-title h5 fw-bold">
-                    Xác nhận cập nhật điểm đến
-                  </h2>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setShowUpdateConfirm(false)}
-                    disabled={isSaving}
-                    aria-label="Đóng"
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <p className="mb-2">
-                    Bạn có chắc chắn muốn lưu các thay đổi cho điểm đến <strong>{formData.name}</strong>?
-                  </p>
-                  <p className="text-muted small mb-0">
-                    Thông tin điểm đến sau khi cập nhật sẽ được hiển thị cho khách hàng và áp dụng trên toàn hệ thống.
-                  </p>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setShowUpdateConfirm(false)}
-                    disabled={isSaving}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleConfirmUpdate}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                        Đang lưu...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-check-circle me-2"></i>
-                        Xác nhận cập nhật
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show"></div>
-        </>
-      )}
-
+      <ConfirmDeleteModal
+        isOpen={Boolean(destinationToDelete)}
+        title="Xác nhận xóa điểm đến"
+        message={
+          <>
+            Bạn có chắc muốn xóa <strong>{destinationToDelete?.name}</strong>?
+            <br />
+            <small className="text-muted">
+              Điểm đến sẽ bị ẩn khỏi hệ thống và danh sách yêu thích. Dữ liệu lịch trình cũ vẫn được giữ lại.
+            </small>
+          </>
+        }
+        loading={isDeleting}
+        onConfirm={handleDelete}
+        onClose={() => setDestinationToDelete(null)}
+      />
     </>
   );
 }
