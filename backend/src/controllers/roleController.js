@@ -1,5 +1,6 @@
 import Role from '../models/Role.js';
 import User from '../models/User.js';
+import { logActivity } from '../utils/activityLogger.js';
 
 export const getRoles = async (req, res) => {
   try {
@@ -27,6 +28,16 @@ export const createRole = async (req, res) => {
       name: name.trim(),
       description: description?.trim() || ''
     });
+
+    await logActivity({
+      admin: req.user,
+      action: 'CREATE_ROLE',
+      targetType: 'Role',
+      targetId: role._id,
+      details: `Tạo vai trò mới "${role.name}"`,
+      req
+    });
+
     res.status(201).json({ success: true, message: 'Tạo vai trò thành công', role });
   } catch (error) {
     console.error('Create role error:', error);
@@ -65,6 +76,15 @@ export const updateRole = async (req, res) => {
       await User.updateMany({ role: oldName }, { $set: { role: name.trim() } });
     }
 
+    await logActivity({
+      admin: req.user,
+      action: 'UPDATE_ROLE',
+      targetType: 'Role',
+      targetId: role._id,
+      details: `Cập nhật thông tin vai trò "${role.name}"${oldName !== name.trim() ? ` thành "${name.trim()}"` : ''}`,
+      req
+    });
+
     res.json({ success: true, message: 'Cập nhật vai trò thành công', role: updatedRole });
   } catch (error) {
     console.error('Update role error:', error);
@@ -88,6 +108,16 @@ export const deleteRole = async (req, res) => {
     }
 
     await Role.findByIdAndDelete(role._id);
+
+    await logActivity({
+      admin: req.user,
+      action: 'DELETE_ROLE',
+      targetType: 'Role',
+      targetId: role._id,
+      details: `Xóa vai trò "${role.name}"`,
+      req
+    });
+
     res.json({ success: true, message: 'Đã xóa vai trò' });
   } catch (error) {
     console.error('Delete role error:', error);

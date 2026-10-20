@@ -45,6 +45,32 @@ const tourSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Available seats cannot be negative']
   },
+  itinerary: [
+    {
+      day: { type: Number, required: true },
+      title: { type: String, required: true, trim: true },
+      description: { type: String, required: true, trim: true },
+      meals: { type: [String], default: [] }
+    }
+  ],
+  includedServices: {
+    type: [String],
+    default: []
+  },
+  excludedServices: {
+    type: [String],
+    default: []
+  },
+  cancellationPolicy: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  notes: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   averageRating: {
     type: Number,
     default: 0,

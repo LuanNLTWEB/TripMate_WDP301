@@ -1,14 +1,17 @@
 import express from 'express';
-import { protect, authorize } from '../middleware/auth.js';
+import { protect, authorize, optionalAuth } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
 import {
 	createDestination,
 	deleteDestination,
-	getAllDestinations,
-	getDestinationById,
-	updateDestination,
-	updateDestinationStatus,
+  getAllDestinations,
+  getDestinationById,
+  getManagedDestinations,
+  updateDestination,
+  updateDestinationStatus,
 	getFavoriteDestinations,
-	toggleFavorite
+	toggleFavorite,
+	removeFavoriteDestination
 } from '../controllers/destinationController.js';
 import {
 	createDestinationValidation,
@@ -22,7 +25,7 @@ const router = express.Router();
 // @route   GET /api/destinations/favorites
 // @desc    Get favorite destinations of current user
 // @access  Private (Customer)
-router.get('/favorites', protect, authorize('customer'), getFavoriteDestinations);
+router.get('/favorites', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getFavoriteDestinations);
 
 // @route   POST /api/destinations/:id/favorite
 // @desc    Toggle save/unsave a destination
@@ -30,20 +33,44 @@ router.get('/favorites', protect, authorize('customer'), getFavoriteDestinations
 router.post(
 	'/:id/favorite',
 	protect,
-	authorize('customer'),
+	authorize(...ACCESS_ROLES.CUSTOMER_ONLY),
 	destinationIdValidation,
 	toggleFavorite
 );
 
+router.delete(
+	'/:id/favorite',
+	protect,
+	authorize(...ACCESS_ROLES.CUSTOMER_ONLY),
+	destinationIdValidation,
+	removeFavoriteDestination
+);
+
+// @route   GET /api/destinations/management
+// @desc    List all destinations for staff moderation, including inactive ones
+// @access  Private (Staff)
+router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getManagedDestinations);
+
+// @route   GET /api/destinations/management/:id
+// @desc    Get single destination for staff moderation
+// @access  Private (Staff)
+router.get(
+	'/management/:id',
+	protect,
+	authorize(...ACCESS_ROLES.STAFF_ONLY),
+	destinationIdValidation,
+	getDestinationById
+);
+
 // @route   GET /api/destinations
-// @desc    Get all destinations
+// @desc    Get all active destinations
 // @access  Public
 router.get('/', getAllDestinations);
 
 router.post(
 	'/',
 	protect,
-	authorize('staff', 'admin'),
+	authorize(...ACCESS_ROLES.STAFF_ONLY),
 	createDestinationValidation,
 	createDestination
 );
@@ -51,7 +78,7 @@ router.post(
 router.patch(
 	'/:id/status',
 	protect,
-	authorize('staff', 'admin'),
+	authorize(...ACCESS_ROLES.STAFF_ONLY),
 	updateDestinationStatusValidation,
 	updateDestinationStatus
 );
@@ -59,7 +86,7 @@ router.patch(
 router.put(
 	'/:id',
 	protect,
-	authorize('staff', 'admin'),
+	authorize(...ACCESS_ROLES.STAFF_ONLY),
 	updateDestinationValidation,
 	updateDestination
 );
@@ -67,7 +94,7 @@ router.put(
 router.delete(
 	'/:id',
 	protect,
-	authorize('staff', 'admin'),
+	authorize(...ACCESS_ROLES.STAFF_ONLY),
 	destinationIdValidation,
 	deleteDestination
 );
@@ -75,6 +102,6 @@ router.delete(
 // @route   GET /api/destinations/:id
 // @desc    Get single destination
 // @access  Public
-router.get('/:id', getDestinationById);
+router.get('/:id', optionalAuth, destinationIdValidation, getDestinationById);
 
 export default router;

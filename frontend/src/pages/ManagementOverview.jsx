@@ -5,7 +5,7 @@ import { getManagementNavigation } from '../config/managementNavigation';
 function ManagementOverview() {
   const { user } = useAuth();
   const actions = getManagementNavigation(user?.role).filter((item) => item.key !== 'overview');
-  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên';
+  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
 
   return (
     <section className="management-overview">

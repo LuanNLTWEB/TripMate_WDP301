@@ -7,6 +7,8 @@ import CustomTimePicker from '../components/CustomTimePicker';
 import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
+import EditItineraryModal from './EditItineraryModal';
+import TripBudgetModal from './TripBudgetModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -33,6 +35,8 @@ function Itinerary() {
   const [activeTab, setActiveTab] = useState('mine');
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [editingActivityId, setEditingActivityId] = useState(null);
   const activityFormRef = useRef(null);
@@ -42,15 +46,21 @@ function Itinerary() {
   const [tourId, setTourId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteActivity, setPendingDeleteActivity] = useState(null);
   const [pendingRemoveCollaborator, setPendingRemoveCollaborator] = useState(null);
+  const [pendingLeaveItinerary, setPendingLeaveItinerary] = useState(false);
+  const [pendingTransferOwnerId, setPendingTransferOwnerId] = useState(null);
+  const [leavingItinerary, setLeavingItinerary] = useState(false);
   const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderList, setReorderList] = useState([]);
+  const [draggedActivityId, setDraggedActivityId] = useState(null);
+  const [dropTarget, setDropTarget] = useState({ activityId: null, position: null });
   const [shareModal, setShareModal] = useState({
     open: false,
     email: '',
@@ -298,29 +308,51 @@ function Itinerary() {
     }
   };
 
-  const exportItinerary = () => {
-    if (!selected) return;
+  const exportItinerary = async () => {
+    if (!selected || isExporting) return;
 
     const previousTitle = document.title;
     const safeTitle = selected.title?.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'itinerary';
     document.title = `${safeTitle} - TripMate`;
+    setIsExporting(true);
 
     try {
+      const logoImages = Array.from(document.querySelectorAll('.itinerary-print-root img'));
+      const imageTasks = logoImages.map((image) => {
+        if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+        if (typeof image.decode === 'function') return image.decode().catch(() => undefined);
+        return new Promise((resolve) => {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', resolve, { once: true });
+        });
+      });
+      const assetTasks = [...imageTasks];
+      if (document.fonts?.ready) assetTasks.push(document.fonts.ready);
+      await Promise.race([
+        Promise.all(assetTasks),
+        new Promise((resolve) => setTimeout(resolve, 2500))
+      ]);
+
       window.print();
-      toast.info('Đã mở bản xem trước để bạn in hoặc lưu thành PDF.');
+      toast.info('Đã mở bản xem trước PDF với bố cục tối ưu cho khổ A4.');
     } finally {
       document.title = previousTitle;
+      setIsExporting(false);
     }
   };
 
   const startReorder = () => {
     setReorderList(selected.activities.map((a) => a._id));
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
     setReorderMode(true);
   };
 
   const cancelReorder = () => {
     setReorderMode(false);
     setReorderList([]);
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
   };
 
   const moveActivity = (index, direction) => {
@@ -331,6 +363,80 @@ function Itinerary() {
     setReorderList(updated);
   };
 
+  const resetDragState = () => {
+    setDraggedActivityId(null);
+    setDropTarget({ activityId: null, position: null });
+  };
+
+  const handleActivityDragStart = (event, activityId) => {
+    if (!reorderMode || saving) {
+      event.preventDefault();
+      return;
+    }
+
+    const normalizedId = String(activityId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', normalizedId);
+    setDraggedActivityId(normalizedId);
+    setDropTarget({ activityId: null, position: null });
+  };
+
+  const handleActivityDragOver = (event, activityId) => {
+    const normalizedId = String(activityId);
+    if (!draggedActivityId) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+
+    if (draggedActivityId === normalizedId) {
+      setDropTarget({ activityId: null, position: null });
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+
+    setDropTarget((current) => (
+      current.activityId === normalizedId && current.position === position
+        ? current
+        : { activityId: normalizedId, position }
+    ));
+  };
+
+  const handleActivityDrop = (event, targetActivityId) => {
+    event.preventDefault();
+    const sourceId = draggedActivityId || event.dataTransfer.getData('text/plain');
+    const targetId = String(targetActivityId);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const dropPosition = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+
+    if (!sourceId || sourceId === targetId) {
+      resetDragState();
+      return;
+    }
+
+    setReorderList((current) => {
+      if (!current.some((id) => String(id) === sourceId)) return current;
+
+      const withoutSource = current.filter((id) => String(id) !== sourceId);
+      const targetIndex = withoutSource.findIndex((id) => String(id) === targetId);
+      if (targetIndex < 0) return current;
+
+      const next = [...withoutSource];
+      const insertAt = targetIndex + (dropPosition === 'after' ? 1 : 0);
+      const originalId = current.find((id) => String(id) === sourceId);
+      next.splice(insertAt, 0, originalId);
+      return next;
+    });
+    resetDragState();
+  };
+
+  const handleDragHandleKeyDown = (event, index) => {
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    moveActivity(index, event.key === 'ArrowUp' ? -1 : 1);
+  };
+
   const saveReorder = async () => {
     if (!selected) return;
     setSaving(true);
@@ -339,6 +445,7 @@ function Itinerary() {
       applyItinerary(response.itinerary);
       setReorderMode(false);
       setReorderList([]);
+      resetDragState();
       toast.success(response.message || 'Đã sắp xếp lại hoạt động.');
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể sắp xếp lại hoạt động.');
@@ -425,6 +532,43 @@ function Itinerary() {
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
+  const isCollaborator = Boolean(!isOwner && myPermission);
+
+  const handleLeaveItinerary = async () => {
+    if (!selected) return;
+
+    setLeavingItinerary(true);
+    try {
+      const response = await itineraryApi.leave(selected._id);
+      toast.success(response.message || 'Bạn đã rời khỏi lịch trình.');
+
+      const itineraryId = selected._id;
+      setSharedItineraries((current) => current.filter((item) => item._id !== itineraryId));
+      setItineraries((current) => current.filter((item) => item._id !== itineraryId));
+      setSelected(null);
+    } catch (err) {
+      toast.error(err.message || 'Không thể rời khỏi lịch trình.');
+    } finally {
+      setLeavingItinerary(false);
+      setPendingLeaveItinerary(false);
+    }
+  };
+
+  // UC-120 (BR-72) - standalone ownership transfer: owner picks a collaborator
+  // to become the new owner. The old owner becomes a collaborator (edit).
+  const handleTransferOwnership = async () => {
+    if (!selected || !pendingTransferOwnerId) return;
+    try {
+      const response = await itineraryApi.transferOwnership(selected._id, pendingTransferOwnerId);
+      toast.success(response.message || 'Chuyển quyền sở hữu thành công.');
+      setPendingTransferOwnerId(null);
+      await loadItineraries();
+    } catch (err) {
+      toast.error(err.message || 'Không thể chuyển quyền sở hữu.');
+    } finally {
+      setLeavingItinerary(false);
+    }
+  };
 
   const conflictedActivityIds = new Set();
   (selected?.conflicts || []).forEach((conflict) => {
@@ -526,6 +670,20 @@ function Itinerary() {
                             )}
                           </div>
                           <div className="d-flex align-items-center">
+                            {(activeTab === 'mine' || (itinerary.collaborators || []).some((c) => String(c.user?._id || c.user) === String(user?._id || user?.id) && c.permission === 'edit')) && (
+                              <button
+                                type="button"
+                                className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
+                                title="Chỉnh sửa thông tin lịch trình"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelected(itinerary);
+                                  setEditModalOpen(true);
+                                }}
+                              >
+                                <i className="bi bi-pencil"></i>
+                              </button>
+                            )}
                             <button
                               type="button"
                               className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
@@ -582,6 +740,17 @@ function Itinerary() {
                               </span>
                             </div>
                             <div className="d-flex align-items-center flex-wrap gap-2">
+                              {canEditSelected && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
+                                  onClick={() => setEditModalOpen(true)}
+                                  title="Chỉnh sửa thông tin lịch trình"
+                                >
+                                  <i className="bi bi-pencil-square me-1"></i>
+                                  <span>Chỉnh sửa</span>
+                                </button>
+                              )}
                               {isOwner && (
                                 <button
                                   type="button"
@@ -606,12 +775,31 @@ function Itinerary() {
                               )}
                               <button
                                 type="button"
+                                className="btn btn-outline-success btn-sm text-nowrap d-inline-flex align-items-center"
+                                onClick={() => setBudgetModalOpen(true)}
+                                title="Tính toán chi phí chuyến đi"
+                              >
+                                <i className="bi bi-calculator me-1"></i>
+                                <span>Tính toán chi phí</span>
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={exportItinerary}
+                                disabled={isExporting}
                                 title="Xuất lịch trình ra bản in hoặc PDF"
                               >
-                                <i className="bi bi-printer me-1"></i>
-                                <span>Xuất lịch trình</span>
+                                {isExporting ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                    <span>Đang chuẩn bị PDF...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-file-earmark-pdf me-1"></i>
+                                    <span>Xuất PDF</span>
+                                  </>
+                                )}
                               </button>
                               <button
                                 type="button"
@@ -690,6 +878,28 @@ function Itinerary() {
                                   </span>
                                 );
                               })}
+{isCollaborator && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger ms-auto d-inline-flex align-items-center gap-1"
+                                    onClick={() => setPendingLeaveItinerary(true)}
+                                    disabled={leavingItinerary}
+                                  >
+                                    <i className="bi bi-box-arrow-right"></i>
+                                    <span>Rời khỏi lịch trình</span>
+                                  </button>
+                                )}
+                                {isOwner && (selected?.collaborators || []).length > 0 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary ms-auto d-inline-flex align-items-center gap-1"
+                                    onClick={() => setPendingTransferOwnerId((selected?.collaborators || [])[0]?.user?._id || (selected?.collaborators || [])[0]?.user || null)}
+                                    disabled={leavingItinerary}
+                                  >
+                                    <i className="bi bi-arrow-left-right"></i>
+                                    <span>Chuyển quyền sở hữu</span>
+                                  </button>
+                                )}
                             </div>
                           )}
 
@@ -738,38 +948,56 @@ function Itinerary() {
                                 </div>
                               )}
                               {reorderMode && (
-                                <div className="d-flex justify-content-end gap-2 mb-3">
-                                  <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={cancelReorder}>Hủy</button>
-                                  <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveReorder}>
-                                    {saving ? 'Đang lưu...' : 'Lưu thứ tự'}
-                                  </button>
+                                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 p-2 rounded bg-light border">
+                                  <span className="small text-muted">
+                                    <i className="bi bi-grip-vertical me-1"></i>
+                                    Giữ biểu tượng kéo rồi thả hoạt động vào vị trí mong muốn.
+                                  </span>
+                                  <div className="d-flex gap-2">
+                                    <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={cancelReorder}>Hủy</button>
+                                    <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={saveReorder}>
+                                      {saving ? 'Đang lưu...' : 'Lưu thứ tự'}
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                               <div className="vstack gap-2">
                                 {(reorderMode ? reorderList.map((id) => selected.activities.find((a) => a._id === id)).filter(Boolean) : selected.activities).map((activity, index) => {
                                   const conflicted = conflictedActivityIds.has(String(activity._id));
                                   const isEditingThis = editingActivityId === activity._id;
+                                  const normalizedActivityId = String(activity._id);
+                                  const isDragging = draggedActivityId === normalizedActivityId;
+                                  const isDropTarget = dropTarget.activityId === normalizedActivityId;
                                   return (
                                     <div
-                                      className={`border rounded p-3 transition-all ${
+                                      className={`border rounded p-3 transition-all ${reorderMode ? 'itinerary-reorder-card' : ''} ${
                                         isEditingThis
                                           ? 'border-primary border-2 shadow-sm bg-primary-subtle bg-opacity-10'
                                           : reorderMode
                                             ? 'bg-white'
                                             : 'border-start border-primary border-3'
+                                      } ${isDragging ? 'is-dragging' : ''} ${
+                                        isDropTarget ? `drop-${dropTarget.position}` : ''
                                       }`}
                                       key={activity._id}
+                                      onDragOver={(event) => handleActivityDragOver(event, activity._id)}
+                                      onDrop={(event) => handleActivityDrop(event, activity._id)}
                                     >
-                                      <div className="d-flex align-items-center gap-2">
+                                      <div className="d-flex align-items-start gap-2">
                                         {reorderMode && (
-                                          <div className="d-flex flex-column gap-1">
-                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === 0} onClick={() => moveActivity(index, -1)} title="Di chuyển lên">
-                                              <i className="bi bi-chevron-up"></i>
-                                            </button>
-                                            <button type="button" className="btn btn-sm btn-outline-secondary py-0" disabled={saving || index === reorderList.length - 1} onClick={() => moveActivity(index, 1)} title="Di chuyển xuống">
-                                              <i className="bi bi-chevron-down"></i>
-                                            </button>
-                                          </div>
+                                          <span
+                                            className="itinerary-drag-handle"
+                                            role="button"
+                                            tabIndex={saving ? -1 : 0}
+                                            draggable={!saving}
+                                            aria-label={`Kéo để sắp xếp hoạt động ${activity.title}. Dùng phím mũi tên lên hoặc xuống nếu sử dụng bàn phím.`}
+                                            title="Giữ và kéo để thay đổi thứ tự"
+                                            onDragStart={(event) => handleActivityDragStart(event, activity._id)}
+                                            onDragEnd={resetDragState}
+                                            onKeyDown={(event) => handleDragHandleKeyDown(event, index)}
+                                          >
+                                            <i className="bi bi-grip-vertical" aria-hidden="true"></i>
+                                          </span>
                                         )}
                                         <div className="flex-grow-1">
                                           <div className="d-flex justify-content-between align-items-start">
@@ -1157,6 +1385,19 @@ function Itinerary() {
         onCreated={handleCreated}
       />
 
+      <EditItineraryModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        itinerary={selected}
+        onUpdated={applyItinerary}
+      />
+
+      <TripBudgetModal
+        open={budgetModalOpen}
+        itinerary={selected}
+        onClose={() => setBudgetModalOpen(false)}
+      />
+
       <ConfirmDeleteModal
         isOpen={Boolean(pendingDeleteId)}
         title="Xác nhận xóa lịch trình"
@@ -1188,6 +1429,110 @@ function Itinerary() {
         }}
         onClose={() => setPendingDeleteActivity(null)}
       />
+
+<ConfirmDeleteModal
+          isOpen={pendingLeaveItinerary}
+          title="Xác nhận rời khỏi lịch trình"
+          confirmText="Rời khỏi"
+          message={
+            <>
+              Bạn có chắc muốn rời khỏi lịch trình{' '}
+              <strong>{selected?.title || 'này'}</strong> không? Bạn sẽ mất quyền xem và chỉnh sửa lịch trình này.
+            </>
+          }
+          loading={leavingItinerary}
+          onConfirm={handleLeaveItinerary}
+          onClose={() => setPendingLeaveItinerary(false)}
+        />
+
+        {/* UC-120 (BR-72) - owner transfer modal */}
+        {pendingTransferOwnerId !== null && (
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !leavingItinerary) {
+                setPendingTransferOwnerId(null);
+              }
+            }}
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div className="modal-header bg-light px-4 py-3 border-bottom">
+                  <h5 className="modal-title fw-bold text-dark mb-0">
+                    <i className="bi bi-arrow-left-right me-2 text-primary"></i>Chuyển quyền sở hữu
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setPendingTransferOwnerId(null)}
+                    disabled={leavingItinerary}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <div className="modal-body px-4">
+                  <p className="text-muted small mb-3">
+                    Lịch trình <strong className="text-dark">{selected?.title}</strong> còn các thành viên khác.
+                    Theo quy tắc sở hữu duy nhất, bạn phải chọn một thành viên để nhận quyền sở hữu trước khi rời khỏi.
+                  </p>
+                  <div className="mb-2">
+                    <label htmlFor="transfer-owner-select" className="form-label fw-semibold">
+                      Người nhận quyền sở hữu <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      id="transfer-owner-select"
+                      className="form-select"
+                      value={pendingTransferOwnerId || ''}
+                      onChange={(e) => setPendingTransferOwnerId(e.target.value)}
+                      disabled={leavingItinerary}
+                    >
+                      {(selected?.collaborators || []).map((c) => {
+                        const cid = c.user?._id || c.user;
+                        return (
+                          <option key={cid} value={cid}>
+                            {c.user?.username || c.user?.email || cid} ({c.permission === 'edit' ? 'Sửa' : 'Xem'})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div className="alert alert-light border small mt-3 mb-0">
+                    <i className="bi bi-info-circle me-1"></i>
+                    Sau khi chuyển quyền, bạn sẽ mất quyền truy cập vào lịch trình này.
+                  </div>
+                </div>
+                <div className="modal-footer border-0 px-4 pb-4 pt-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setPendingTransferOwnerId(null)}
+                    disabled={leavingItinerary}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary px-4"
+                    onClick={handleTransferOwnership}
+                    disabled={leavingItinerary || !pendingTransferOwnerId}
+                  >
+                    {leavingItinerary ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <><i className="bi bi-arrow-left-right me-2"></i>Chuyển quyền sở hữu</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       <ConfirmDeleteModal
         isOpen={Boolean(pendingRemoveCollaborator)}

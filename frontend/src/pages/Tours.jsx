@@ -220,7 +220,9 @@ const Tours = () => {
           style={{
             borderRadius: '20px',
             minHeight: '260px',
-            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%), url(${toursBanner})`,
+            backgroundImage: `url(${toursBanner})`,
+            backgroundColor: 'rgba(0, 0, 0, 0.42)',
+            backgroundBlendMode: 'multiply',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             display: 'flex',
@@ -397,7 +399,7 @@ const Tours = () => {
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {user?.role === 'tourProvider' && (
                 <Link
-                  to="/provider/create-tour"
+                  to="/management/my-tours?action=create"
                   className="btn btn-primary btn-sm rounded-pill px-3 py-2 d-flex align-items-center gap-1 shadow-sm text-decoration-none"
                 >
                   <i className="bi bi-plus-lg"></i>
@@ -529,9 +531,20 @@ const Tours = () => {
                       </p>
                       <div className="pt-3 border-top border-light-subtle mt-auto d-flex justify-content-between align-items-center">
                         <span className="small text-muted d-inline-flex align-items-center">
-                          <i className="bi bi-check-circle-fill text-success me-1.5"></i>Còn {tour.availableSeats ?? 0} chỗ
+                          <i className="bi bi-check-circle-fill text-success me-2"></i>Còn {tour.availableSeats ?? 0} chỗ
                         </span>
                         <div className="d-flex align-items-center gap-2">
+                          {user?.role === 'tourProvider' && (tour.providerId === user._id || tour.providerId?._id === user._id) && (
+                            <Link
+                              to={`/provider/tours/${tour._id}/details`}
+                              className="badge bg-warning-subtle text-dark border border-warning-subtle py-1.5 px-2 text-decoration-none d-inline-flex align-items-center gap-1"
+                              title="Cài đặt chi tiết tour"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <i className="bi bi-gear-fill text-warning"></i>
+                              <span>Cài đặt</span>
+                            </Link>
+                          )}
                           <span className="small fw-bold text-warning d-inline-flex align-items-center">
                             <i className="bi bi-star-fill me-1"></i>{tour.averageRating ? tour.averageRating.toFixed(1) : '5.0'}
                           </span>

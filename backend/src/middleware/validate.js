@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import Role from '../models/Role.js';
 
 export const createDestinationValidation = [
@@ -33,23 +33,23 @@ export const registerValidation = [
     .notEmpty().withMessage('Vui lòng nhập tên người dùng')
     .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
-  
+
   body('email')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập email')
     .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
     .normalizeEmail(),
-  
+
   body('password')
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
     .isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số'),
-  
+
   body('phone')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập số điện thoại')
     .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại phải gồm 10-11 chữ số'),
-  
+
   body('dateOfBirth')
     .optional()
     .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
@@ -69,7 +69,7 @@ export const registerValidation = [
       }
       return true;
     }),
-  
+
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
@@ -81,7 +81,7 @@ export const loginValidation = [
     .notEmpty().withMessage('Vui lòng nhập email')
     .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
     .normalizeEmail(),
-  
+
   body('password')
     .notEmpty().withMessage('Vui lòng nhập mật khẩu')
 ];
@@ -103,12 +103,12 @@ export const updateProfileValidation = [
     .notEmpty().withMessage('Tên người dùng không được để trống')
     .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
-  
+
   body('phone')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập số điện thoại')
     .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại phải gồm 10-11 chữ số'),
-  
+
   body('dateOfBirth')
     .optional({ values: 'falsy' })
     .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
@@ -128,7 +128,7 @@ export const updateProfileValidation = [
       }
       return true;
     }),
-  
+
   body('gender')
     .optional()
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
@@ -190,6 +190,30 @@ export const itineraryValidation = [
   body('title')
     .trim()
     .notEmpty().withMessage('Vui lòng nhập tên lịch trình')
+    .isLength({ min: 3, max: 120 }).withMessage('Tên lịch trình phải từ 3 đến 120 ký tự'),
+  body('budget')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0, max: 500000000 }).withMessage('Ngân sách không hợp lệ'),
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày kết thúc không hợp lệ')
+    .custom((endDate, { req }) => {
+      if (req.body.startDate && new Date(endDate) < new Date(req.body.startDate)) {
+        throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
+      }
+      return true;
+    })
+];
+
+export const updateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Tên lịch trình không được để trống')
     .isLength({ min: 3, max: 120 }).withMessage('Tên lịch trình phải từ 3 đến 120 ký tự'),
   body('budget')
     .optional({ values: 'falsy' })
@@ -412,3 +436,417 @@ export const createTourValidation = [
     .optional()
     .isArray().withMessage('Hình ảnh phải là một mảng URL')
 ];
+
+export const setTourDetailsValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('itinerary')
+    .optional()
+    .isArray().withMessage('Lịch trình chi tiết phải là một danh sách các ngày'),
+  body('itinerary.*.day')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số thứ tự ngày phải là số nguyên dương'),
+  body('itinerary.*.title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Tiêu đề ngày không được để trống'),
+  body('itinerary.*.description')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Mô tả hoạt động ngày không được để trống'),
+  body('itinerary.*.meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng'),
+  body('includedServices')
+    .optional()
+    .isArray().withMessage('Dịch vụ bao gồm phải là một mảng'),
+  body('excludedServices')
+    .optional()
+    .isArray().withMessage('Dịch vụ không bao gồm phải là một mảng'),
+  body('cancellationPolicy')
+    .optional()
+    .isString().withMessage('Chính sách hoàn hủy phải là chuỗi ký tự'),
+  body('notes')
+    .optional()
+    .isString().withMessage('Lưu ý tour phải là chuỗi ký tự')
+];
+
+// Validation khi customer đặt tour
+export const createBookingValidation = [
+  body('fullName')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập họ và tên')
+    .isLength({ min: 2, max: 100 }).withMessage('Họ và tên phải từ 2 đến 100 ký tự'),
+  body('phone')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập số điện thoại')
+    .matches(/^0[35789][0-9]{8}$/).withMessage('Số điện thoại không hợp lệ (ví dụ: 0901234567)'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i)
+    .withMessage('Email không hợp lệ (chỉ chấp nhận đuôi .com, .vn, .edu, .edu.vn)'),
+  body('address')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 5, max: 200 }).withMessage('Địa chỉ phải từ 5 đến 200 ký tự')
+    .custom((val) => {
+      if (!/[a-zA-ZÀ-ỹ]{2,}/.test(val)) {
+        throw new Error('Địa chỉ không hợp lệ (không được chỉ chứa số hoặc ký tự đặc biệt)');
+      }
+      return true;
+    }),
+  body('numberOfPeople')
+    .notEmpty().withMessage('Vui lòng nhập số lượng người')
+    .isInt({ min: 1, max: 100 }).withMessage('Số lượng người phải từ 1 đến 100'),
+  body('departureDate')
+    .notEmpty().withMessage('Vui lòng chọn ngày khởi hành')
+    .isISO8601().withMessage('Ngày khởi hành không đúng định dạng')
+    .custom((value) => {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        throw new Error('Ngày khởi hành phải là ngày trong tương lai');
+      }
+      return true;
+    }),
+  body('note')
+    .optional()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+
+export const createTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề ngày lịch trình')
+    .isLength({ min: 3, max: 150 }).withMessage('Tiêu đề phải từ 3 đến 150 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả hoạt động cho ngày')
+    .isLength({ min: 5, max: 2000 }).withMessage('Mô tả hoạt động phải từ 5 đến 2000 ký tự'),
+  body('day')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số ngày phải là số nguyên từ 1 đến 50'),
+  body('meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+    .custom((meals) => Array.isArray(meals) && meals.every((meal) => ['Sáng', 'Trưa', 'Tối'].includes(meal)))
+    .withMessage('Bữa ăn chỉ được gồm Sáng, Trưa hoặc Tối')
+];
+
+export const updateProviderTourValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên tour')
+    .isLength({ max: 100 }).withMessage('Tên tour không được vượt quá 100 ký tự'),
+  body('description')
+    .trim()
+    .isLength({ min: 10, max: 5000 }).withMessage('Giới thiệu tour phải từ 10 đến 5000 ký tự'),
+  body('location')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập địa điểm')
+    .isLength({ max: 150 }).withMessage('Địa điểm không được vượt quá 150 ký tự'),
+  body('departureLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm khởi hành')
+    .isLength({ max: 150 }).withMessage('Điểm khởi hành không được vượt quá 150 ký tự'),
+  body('destinationLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm đến')
+    .isLength({ max: 150 }).withMessage('Điểm đến không được vượt quá 150 ký tự'),
+  body('duration')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập thời lượng tour')
+    .isLength({ max: 100 }).withMessage('Thời lượng không được vượt quá 100 ký tự'),
+  body('price')
+    .isFloat({ min: 0 }).withMessage('Giá tour phải là số không âm')
+    .toFloat(),
+  body('availableSeats')
+    .isInt({ min: 0, max: 10000 }).withMessage('Số chỗ phải là số nguyên từ 0 đến 10000')
+    .toInt(),
+  body('categoryId')
+    .optional({ values: 'falsy' })
+    .isMongoId().withMessage('Mã danh mục không hợp lệ'),
+  body('images')
+    .isArray({ min: 1, max: 10 }).withMessage('Tour phải có từ 1 đến 10 hình ảnh'),
+  body('images.*')
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('URL hình ảnh không hợp lệ')
+];
+
+export const updateTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề ngày lịch trình')
+    .isLength({ min: 3, max: 150 }).withMessage('Tiêu đề phải từ 3 đến 150 ký tự'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mô tả hoạt động cho ngày')
+    .isLength({ min: 5, max: 2000 }).withMessage('Mô tả hoạt động phải từ 5 đến 2000 ký tự'),
+  body('day')
+    .isInt({ min: 1, max: 50 }).withMessage('Số ngày phải là số nguyên từ 1 đến 50')
+    .toInt(),
+  body('meals')
+    .optional()
+    .isArray().withMessage('Danh sách bữa ăn phải là một mảng')
+    .custom((meals) => Array.isArray(meals) && meals.every((meal) => ['Sáng', 'Trưa', 'Tối'].includes(meal)))
+    .withMessage('Bữa ăn chỉ được gồm Sáng, Trưa hoặc Tối')
+];
+
+export const deleteTourScheduleValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ')
+];
+
+export const updateTourCapacityValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('availableSeats')
+    .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt()
+];
+
+export const updateTourPriceValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('price')
+    .notEmpty().withMessage('Vui lòng nhập giá tour mới')
+    .isFloat({ gt: 0 }).withMessage('Giá tour mới phải là số hợp lệ lớn hơn 0')
+];
+
+export const providerBookingListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('status')
+    .optional()
+    .isIn(['all', 'pending', 'confirmed', 'cancelled'])
+    .withMessage('Trạng thái booking không hợp lệ'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số booking mỗi trang phải từ 1 đến 50')
+    .toInt()
+];
+
+export const moderateReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('status')
+    .isIn(['approved', 'rejected', 'flagged', 'pending'])
+    .withMessage('Trạng thái kiểm duyệt không hợp lệ'),
+  body('moderationReason').custom((value, { req }) => {
+    const reason = typeof value === 'string' ? value.trim() : '';
+    if (['rejected', 'flagged'].includes(req.body.status) && reason.length < 5) {
+      throw new Error('Lý do kiểm duyệt phải có ít nhất 5 ký tự');
+    }
+    if (reason.length > 500) {
+      throw new Error('Lý do kiểm duyệt không được vượt quá 500 ký tự');
+    }
+    return true;
+  })
+];
+
+export const updateReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('rating')
+    .notEmpty().withMessage('Vui lòng chọn số sao đánh giá')
+    .isInt({ min: 1, max: 5 }).withMessage('Điểm đánh giá phải là số nguyên từ 1 đến 5 sao')
+    .toInt(),
+  body('comment')
+    .trim()
+    .isLength({ min: 10, max: 1000 })
+    .withMessage('Nội dung đánh giá phải có từ 10 đến 1000 ký tự')
+];
+
+export const restoreReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
+];
+
+export const cancelBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),
+  body('reason')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập lý do hủy đặt tour')
+    .isLength({ min: 10, max: 500 })
+    .withMessage('Lý do hủy phải có từ 10 đến 500 ký tự')
+];
+
+export const reportedReviewListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('status')
+    .optional()
+    .isIn(['all', 'pending', 'approved', 'rejected', 'flagged'])
+    .withMessage('Trạng thái đánh giá không hợp lệ'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số báo cáo mỗi trang phải từ 1 đến 50')
+    .toInt()
+];
+
+export const reviewEligibilityValidation = [
+  param('tourId').isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
+export const createReviewValidation = [
+  param('tourId').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('rating')
+    .notEmpty().withMessage('Vui lòng chọn số sao đánh giá')
+    .isInt({ min: 1, max: 5 }).withMessage('Số sao phải là số nguyên từ 1 đến 5')
+    .toInt(),
+  body('comment')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung đánh giá')
+    .isLength({ min: 10, max: 1000 }).withMessage('Nội dung đánh giá phải từ 10 đến 1000 ký tự')
+];
+
+export const createDepartureValidation = [
+  body('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour')
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('departureDate')
+    .notEmpty().withMessage('Vui lòng chọn ngày khởi hành')
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate(),
+  body('availableSeats')
+    .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt(),
+  body('price')
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min: 0 }).withMessage('Giá khởi hành phải là số không âm')
+    .toFloat(),
+  body('note')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+
+export const listDeparturesValidation = [
+  query('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour')
+    .isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
+export const announcementIdValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
+
+export const createAnnouncementValidation = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 5000 }).withMessage('Nội dung thông báo không được vượt quá 5000 ký tự'),
+  body('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('isActive')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
+];
+
+export const announcementListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 50 }).withMessage('Số thông báo mỗi trang phải từ 1 đến 50')
+    .toInt()
+];
+
+export const managedAnnouncementListValidation = [
+  ...announcementListValidation,
+  query('status')
+    .optional()
+    .isIn(['all', 'active', 'draft']).withMessage('Trạng thái thông báo không hợp lệ'),
+  query('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ')
+];
+
+export const updateAnnouncementValidation = [
+  ...announcementIdValidation,
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 5000 }).withMessage('Nội dung thông báo không được vượt quá 5000 ký tự'),
+  body('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('isActive')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
+];
+
+export const updateTourDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('departureLocation')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập điểm khởi hành')
+    .isLength({ max: 100 }).withMessage('Điểm khởi hành không được vượt quá 100 ký tự'),
+  body('destinationLocation')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Điểm đến không được vượt quá 100 ký tự'),
+  body('departureDate')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate()
+];
+
+export const updateDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
+  body('departureDate')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Ngày khởi hành không hợp lệ')
+    .toDate(),
+  body('availableSeats')
+    .optional()
+    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .toInt(),
+  body('price')
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min: 0 }).withMessage('Giá khởi hành phải là số không âm')
+    .toFloat(),
+  body('note')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự'),
+  body('status')
+    .optional()
+    .isIn(['scheduled', 'cancelled']).withMessage('Trạng thái không hợp lệ')
+];
+
+export const transferOwnershipValidation = [
+    param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+    body('newOwnerId')
+      .notEmpty().withMessage('Vui lòng chọn người nhận quyền sở hữu')
+      .isMongoId().withMessage('Mã người dùng không hợp lệ')
+  ];

@@ -53,7 +53,7 @@ export const protect = async (req, res, next) => {
 
 // Authorize roles
 export const authorize = (...roles) => {
-  return (req, res, next) => {
+  const authorizationMiddleware = (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -70,4 +70,32 @@ export const authorize = (...roles) => {
     
     next();
   };
+
+  authorizationMiddleware.allowedRoles = Object.freeze([...roles]);
+  return authorizationMiddleware;
 };
+
+// Optional authentication - attach user if valid token exists, but don't reject if not
+export const optionalAuth = async (req, res, next) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (user && !user.isDeleted && user.isActive !== false) {
+      req.user = user;
+    }
+  } catch (err) {
+    // ignore invalid token for optional auth
+  }
+
+  next();
+};
+

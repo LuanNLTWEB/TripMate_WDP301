@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { canAccessManagement } from '../config/managementNavigation';
+import { canAccessRoleGroup, ACCESS_ROLES } from '../config/accessControl';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-const logo = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823913/tripmate_assets/d4gczttux14p0fwdvxst.png';
+import { TRIPMATE_LOGO_URL } from '../constants/brand';
 
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -11,7 +12,7 @@ function Navbar() {
   const location = useLocation();
   const toast = useToast();
   const isManagementUser = canAccessManagement(user?.role);
-  const canUseProfile = ['admin', 'staff', 'tourProvider', 'customer'].includes(user?.role);
+  const canUseProfile = canAccessRoleGroup(user?.role, ACCESS_ROLES.CUSTOMER_ONLY);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -106,11 +107,26 @@ function Navbar() {
 
           {user?.role === 'tourProvider' && (
             <Link
-              to="/provider/create-tour"
+              to="/announcements"
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
               onClick={() => setIsDropdownOpen(false)}
             >
-              <span>Tạo tour mới</span>
+              <i className="bi bi-megaphone fs-6"></i>
+              <span>Thông báo hệ thống</span>
+            </Link>
+          )}
+
+
+
+          {user?.role === 'customer' && (
+            <Link
+              to="/my-bookings"
+              id="navbar-my-bookings-link"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <i className="bi bi-clock-history fs-6"></i>
+              <span>Lịch sử đặt tour</span>
             </Link>
           )}
 
@@ -167,7 +183,7 @@ function Navbar() {
     <nav className="navbar navbar-expand-lg navbar-dark shadow-sm sticky-top navbar-glass tripmate-navbar py-2">
       <div className="container">
         <Link className="navbar-brand d-flex align-items-center gap-2 text-decoration-none" to="/">
-          <img src={logo} alt="TripMate" className="tripmate-navbar-logo" />
+          <img src={TRIPMATE_LOGO_URL} alt="TripMate" className="tripmate-navbar-logo" />
           <span className="font-display fw-bold fs-3 text-white tracking-tight">TripMate</span>
         </Link>
 
@@ -194,19 +210,20 @@ function Navbar() {
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/tours') ? 'active' : ''}`} to="/tours">Tour du lịch</Link>
                 </li>
-                {user?.role === 'tourProvider' && (
+
+                {user?.role === 'customer' && (
                   <li className="nav-item">
-                    <Link className={`nav-pill-link ${isActiveRoute('/provider/create-tour') ? 'active' : ''}`} to="/provider/create-tour">
-                      Tạo tour
-                    </Link>
+                    <Link className={`nav-pill-link ${isActiveRoute('/itinerary') ? 'active' : ''}`} to="/itinerary">Lịch trình của tôi</Link>
                   </li>
                 )}
                 <li className="nav-item">
-                  <Link className={`nav-pill-link ${isActiveRoute('/itinerary') ? 'active' : ''}`} to="/itinerary">Lịch trình của tôi</Link>
-                </li>
-                <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/about') ? 'active' : ''}`} to="/about">Giới thiệu</Link>
                 </li>
+                {user?.role === 'customer' && (
+                  <li className="nav-item">
+                    <Link className={`nav-pill-link ${isActiveRoute('/announcements') ? 'active' : ''}`} to="/announcements">Thông báo</Link>
+                  </li>
+                )}
               </ul>
               <div className="d-flex align-items-center gap-2">{accountActions}</div>
             </div>

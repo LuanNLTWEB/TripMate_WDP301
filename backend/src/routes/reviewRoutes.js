@@ -3,15 +3,36 @@ import {
   getReviewsByTour,
   deleteReview,
   getAllReviewsForModeration,
-  moderateReview
+  getReportedReviews,
+  getReviewEligibility,
+  createReview,
+  moderateReview,
+  reportReview,
+  restoreReview,
+  updateReview
 } from '../controllers/reviewController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
+import {
+  moderateReviewValidation,
+  reportedReviewListValidation,
+  reviewEligibilityValidation,
+  createReviewValidation,
+  updateReviewValidation,
+  restoreReviewValidation
+} from '../middleware/validate.js';
 
 const router = Router();
 
-router.get('/tours/:tourId', getReviewsByTour);
-router.get('/moderation', protect, authorize('admin', 'staff'), getAllReviewsForModeration);
-router.patch('/:id/moderate', protect, authorize('admin', 'staff'), moderateReview);
-router.delete('/:id', protect, authorize('customer', 'admin', 'staff'), deleteReview);
+router.get('/tours/:tourId/eligibility', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reviewEligibilityValidation, getReviewEligibility);
+router.post('/tours/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createReviewValidation, createReview);
+router.get('/tours/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getReviewsByTour);
+router.get('/moderation', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getAllReviewsForModeration);
+router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reportedReviewListValidation, getReportedReviews);
+router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);
+router.patch('/:id/moderate', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), moderateReviewValidation, moderateReview);
+router.patch('/:id/restore', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), restoreReviewValidation, restoreReview);
+router.put('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateReviewValidation, updateReview);
+router.delete('/:id', protect, authorize(...ACCESS_ROLES.REVIEW_REMOVE), deleteReview);
 
 export default router;

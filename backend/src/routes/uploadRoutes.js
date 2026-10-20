@@ -1,10 +1,11 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
 import { upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
-router.post('/', protect, upload.single('image'), (req, res) => {
+router.post('/', protect, authorize(...ACCESS_ROLES.CONTENT_UPLOAD), upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Vui lòng chọn một file ảnh.' });
   }

@@ -2,18 +2,21 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { destinationCategoryApi } from '../services/api';
+import CategoryFormModal from '../components/CategoryFormModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import ManagementPagination from '../components/management/ManagementPagination';
+
+const PAGE_SIZE = 10;
 
 function StaffDestinationCategories() {
   const { user } = useAuth();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [modalState, setModalState] = useState({ open: false, category: null });
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ name: '', description: '' });
   const [search, setSearch] = useState('');
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -32,49 +35,42 @@ function StaffDestinationCategories() {
   };
 
   useEffect(() => {
-    if (user?.role !== 'staff' && user?.role !== 'admin') return;
+    if (user?.role !== 'staff') return;
     loadCategories();
   }, [user?.role]);
 
-  const handleFormChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setCurrentPage(1);
   };
 
-  const openCreateForm = () => {
-    setEditingId(null);
-    setFormData({ name: '', description: '' });
-    setShowForm(true);
-    setError('');
+  const openCreateModal = () => {
+    setModalState({ open: true, category: null });
   };
 
-  const openEditForm = (category) => {
-    setEditingId(category._id);
-    setFormData({ name: category.name, description: category.description || '' });
-    setShowForm(true);
-    setError('');
+  const openEditModal = (category) => {
+    setModalState({ open: true, category });
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setFormData({ name: '', description: '' });
-    setError('');
+  const closeModal = () => {
+    if (!isSaving) {
+      setModalState({ open: false, category: null });
+    }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleFormSubmit = async (payload) => {
     setIsSaving(true);
-    setError('');
+    const isEditing = Boolean(modalState.category?._id);
 
     try {
-      if (editingId) {
-        await destinationCategoryApi.update(editingId, formData);
+      if (isEditing) {
+        await destinationCategoryApi.update(modalState.category._id, payload);
+        toast.success('Đã cập nhật danh mục điểm đến.');
       } else {
-        await destinationCategoryApi.create(formData);
+        await destinationCategoryApi.create(payload);
+        toast.success('Đã tạo danh mục điểm đến mới.');
       }
-      toast.success(editingId ? 'Đã cập nhật danh mục.' : 'Đã tạo danh mục mới.');
-      handleCancel();
+      setModalState({ open: false, category: null });
       await loadCategories();
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể lưu danh mục.');
@@ -103,6 +99,8 @@ function StaffDestinationCategories() {
     const q = search.toLowerCase();
     return cat.name?.toLowerCase().includes(q) || cat.description?.toLowerCase().includes(q);
   });
+  const totalPages = Math.ceil(filteredCategories.length / PAGE_SIZE) || 1;
+  const paginatedCategories = filteredCategories.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <section className="management-page-section">
@@ -115,53 +113,12 @@ function StaffDestinationCategories() {
         <button
           type="button"
           className="btn btn-primary d-inline-flex align-items-center gap-2"
-          onClick={showForm ? handleCancel : openCreateForm}
+          onClick={openCreateModal}
         >
-          <i className={`bi ${showForm ? 'bi-x-lg' : 'bi-plus-circle'}`}></i>
-          <span>{showForm ? 'Đóng biểu mẫu' : 'Thêm danh mục'}</span>
+          <i className="bi bi-plus-lg"></i>
+          <span>Thêm danh mục</span>
         </button>
       </div>
-
-      {showForm && (
-        <form className="card shadow-sm border-0 rounded-3 mb-4" onSubmit={handleSubmit}>
-          <div className="card-body p-4">
-            <h2 className="h5 fw-bold mb-3">{editingId ? 'Chỉnh sửa danh mục' : 'Tạo danh mục mới'}</h2>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold" htmlFor="category-name">Tên danh mục</label>
-                <input
-                  id="category-name"
-                  name="name"
-                  className="form-control"
-                  value={formData.name}
-                  onChange={handleFormChange}
-                  placeholder="Ví dụ: Bãi biển, Di tích lịch sử..."
-                  required
-                />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold" htmlFor="category-description">Mô tả</label>
-                <input
-                  id="category-description"
-                  name="description"
-                  className="form-control"
-                  value={formData.description}
-                  onChange={handleFormChange}
-                  placeholder="Mô tả ngắn gọn về danh mục..."
-                />
-              </div>
-            </div>
-            <div className="d-flex gap-2 mt-4">
-              <button className="btn btn-primary" type="submit" disabled={isSaving}>
-                {isSaving ? 'Đang lưu...' : (editingId ? 'Cập nhật danh mục' : 'Lưu danh mục')}
-              </button>
-              <button className="btn btn-outline-secondary" type="button" onClick={handleCancel}>
-                Hủy
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
 
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
@@ -177,13 +134,13 @@ function StaffDestinationCategories() {
             <input
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Tìm kiếm danh mục theo tên hoặc mô tả..."
               aria-label="Tìm kiếm danh mục"
             />
           </div>
           <div className="text-muted small">
-            Hiển thị <strong>{filteredCategories.length}</strong> / {categories.length} danh mục
+            Hiển thị <strong>{paginatedCategories.length}</strong> / {filteredCategories.length} danh mục
           </div>
         </div>
 
@@ -205,7 +162,7 @@ function StaffDestinationCategories() {
                     Đang tải danh mục...
                   </td>
                 </tr>
-              ) : filteredCategories.length === 0 ? (
+              ) : paginatedCategories.length === 0 ? (
                 <tr>
                   <td colSpan="4">
                     <div className="management-empty-state">
@@ -218,7 +175,7 @@ function StaffDestinationCategories() {
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category) => (
+                paginatedCategories.map((category) => (
                   <tr key={category._id}>
                     <td>
                       <span className="badge bg-light text-secondary border font-monospace py-1 px-2">
@@ -236,7 +193,7 @@ function StaffDestinationCategories() {
                         <button
                           type="button"
                           className="management-action-btn btn-edit"
-                          onClick={() => openEditForm(category)}
+                          onClick={() => openEditModal(category)}
                           title="Chỉnh sửa danh mục"
                         >
                           <i className="bi bi-pencil"></i>
@@ -257,7 +214,26 @@ function StaffDestinationCategories() {
             </tbody>
           </table>
         </div>
+
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredCategories.length}
+          itemLabel="danh mục"
+          isLoading={isLoading}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
+
+      <CategoryFormModal
+        isOpen={modalState.open}
+        category={modalState.category}
+        type="destination"
+        saving={isSaving}
+        onClose={closeModal}
+        onSubmit={handleFormSubmit}
+      />
+
       <ConfirmDeleteModal
         isOpen={Boolean(categoryToDelete)}
         title="Xác nhận xóa danh mục điểm đến"

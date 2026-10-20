@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
+import { ACCESS_ROLES } from '../config/accessControl.js';
 import {
   addActivity,
+  calculateTripBudget,
   addDestination,
   addTour,
   createItinerary,
@@ -16,8 +18,12 @@ import {
   removeTour,
   removeActivity,
   updateActivity,
+  updateItinerary,
   shareItinerary,
-  removeCollaborator
+  removeCollaborator,
+    leaveItinerary,
+    transferOwnership
+
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -32,6 +38,7 @@ import {
   itineraryIdValidation,
   itineraryTourValidation,
   itineraryValidation,
+  updateItineraryValidation,
   removeDestinationValidation,
   removeTourFromItineraryValidation,
   reorderActivitiesValidation,
@@ -41,11 +48,13 @@ import {
   removeCollaboratorValidation,
   inviteCollaboratorValidation,
   respondInvitationValidation,
-  changeCollaboratorRoleValidation
+    changeCollaboratorRoleValidation,
+    transferOwnershipValidation
+
 } from '../middleware/validate.js';
 
 const router = Router();
-const customerAccess = [protect, authorize('customer')];
+const customerAccess = [protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY)];
 
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
 router.get('/', ...customerAccess, listItineraries);
@@ -53,13 +62,17 @@ router.get('/shared', ...customerAccess, listSharedItineraries);
 router.get('/invitations', ...customerAccess, listReceivedInvitations);
 router.post('/invitations/:notificationId/respond', ...customerAccess, respondInvitationValidation, respondToInvitation);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
+router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTripBudget);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
+router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
+router.put('/:id/owner', ...customerAccess, transferOwnershipValidation, transferOwnership);
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
 router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
+router.delete('/:id/leave', ...customerAccess, itineraryIdValidation, leaveItinerary);
 router.put('/:id/collaborators/:userId', ...customerAccess, changeCollaboratorRoleValidation, changeCollaboratorRole);
 router.post('/:id/activities', ...customerAccess, activityValidation, addActivity);
 router.put('/:id/activities/reorder', ...customerAccess, reorderActivitiesValidation, reorderActivities);

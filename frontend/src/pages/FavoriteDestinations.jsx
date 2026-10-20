@@ -83,7 +83,7 @@ const FavoriteDestinations = () => {
     setRemovingKey(itemKey);
     setError('');
     try {
-      await destinationApi.toggleFavorite(destinationId);
+      await destinationApi.removeFavorite(destinationId);
       setFavoriteDestinations((current) => current.filter((destination) => destination._id !== destinationId));
       toast.success('Đã bỏ lưu điểm đến yêu thích.');
     } catch (err) {

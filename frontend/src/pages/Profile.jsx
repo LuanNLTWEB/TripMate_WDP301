@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { authApi } from '../services/api';
@@ -158,6 +158,18 @@ function ProfileForm({ user, onUpdateProfile }) {
                       <i className="bi bi-calendar3 me-1"></i>
                       Thành viên từ: {formattedJoinDate}
                     </p>
+                  )}
+                  {user.role === 'customer' && (
+                    <div className="mt-3">
+                      <Link
+                        to="/my-bookings"
+                        id="profile-view-bookings-link"
+                        className="btn btn-outline-primary btn-sm rounded-pill d-inline-flex align-items-center gap-2"
+                      >
+                        <i className="bi bi-clock-history"></i>
+                        <span>Xem lịch sử đặt tour</span>
+                      </Link>
+                    </div>
                   )}
                 </div>
               </div>
