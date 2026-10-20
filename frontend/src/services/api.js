@@ -285,6 +285,13 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify({ action })
   }),
+  addComment: (id, content) => apiRequest(`/itineraries/${id}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  }),
+  deleteComment: (id, commentId) => apiRequest(`/itineraries/${id}/comments/${commentId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 

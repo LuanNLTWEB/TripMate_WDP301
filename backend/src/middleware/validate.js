@@ -311,6 +311,19 @@ export const respondInvitationValidation = [
   body('action').isIn(['accept', 'decline']).withMessage('Hành động phải là "accept" hoặc "decline"')
 ];
 
+export const addCommentValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Nội dung bình luận không được để trống và không vượt quá 500 ký tự')
+    .isLength({ max: 500 }).withMessage('Nội dung bình luận không được để trống và không vượt quá 500 ký tự')
+];
+
+export const deleteCommentValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('commentId').isMongoId().withMessage('Mã bình luận không hợp lệ')
+];
+
 export const tourIdValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ')
 ];

@@ -21,9 +21,10 @@ import {
   updateItinerary,
   shareItinerary,
   removeCollaborator,
-    leaveItinerary,
-    transferOwnership
-
+  leaveItinerary,
+  transferOwnership,
+  addComment,
+  deleteComment
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -48,9 +49,10 @@ import {
   removeCollaboratorValidation,
   inviteCollaboratorValidation,
   respondInvitationValidation,
-    changeCollaboratorRoleValidation,
-    transferOwnershipValidation
-
+  changeCollaboratorRoleValidation,
+  transferOwnershipValidation,
+  addCommentValidation,
+  deleteCommentValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -82,5 +84,7 @@ router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidati
 router.delete('/:id/destinations/:destinationId', ...customerAccess, removeDestinationValidation, removeDestination);
 router.post('/:id/tours', ...customerAccess, itineraryTourValidation, addTour);
 router.delete('/:id/tours/:tourId', ...customerAccess, removeTourFromItineraryValidation, removeTour);
+router.post('/:id/comments', ...customerAccess, addCommentValidation, addComment);
+router.delete('/:id/comments/:commentId', ...customerAccess, deleteCommentValidation, deleteComment);
 
 export default router;

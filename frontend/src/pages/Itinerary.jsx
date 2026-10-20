@@ -68,6 +68,9 @@ function Itinerary() {
     submitting: false,
     error: ''
   });
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
 
   const applyItinerary = (updated) => {
     setSelected(updated);
@@ -525,6 +528,41 @@ function Itinerary() {
     }
   };
 
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    const text = commentText.trim();
+    if (!selected || !text) return;
+    if (text.length > 500) {
+      toast.error('Nội dung bình luận không được vượt quá 500 ký tự');
+      return;
+    }
+
+    setSubmittingComment(true);
+    try {
+      const response = await itineraryApi.addComment(selected._id, text);
+      applyItinerary(response.itinerary);
+      setCommentText('');
+      toast.success(response.message || 'Đã gửi bình luận thành công');
+    } catch (err) {
+      toast.error(err.message || 'Không thể gửi bình luận');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!selected || !commentId || deletingCommentId) return;
+    setDeletingCommentId(commentId);
+    try {
+      const response = await itineraryApi.deleteComment(selected._id, commentId);
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã xóa bình luận thành công');
+    } catch (err) {
+      toast.error(err.message || 'Không thể xóa bình luận');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
 
   const currentUserId = String(user?._id || user?.id || '');
   const isOwner = selected && String(selected.owner?._id || selected.owner) === currentUserId;
@@ -1373,6 +1411,144 @@ function Itinerary() {
                   )}
                 </div>
               </div>
+
+              {/* UC-61: Thảo luận & Bình luận lịch trình */}
+              {selected && (
+              <section className="itinerary-discussion card border-0 mt-4">
+                <div className="card-body p-4 p-lg-4">
+                  <div className="itinerary-discussion-heading d-flex align-items-center justify-content-between">
+                    <h2 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-chat-dots-fill text-primary"></i>
+                      <span>Thảo luận lịch trình</span>
+                    </h2>
+                    <span className="itinerary-comment-count">
+                      {(selected.comments || []).length} bình luận
+                    </span>
+                  </div>
+
+                  {/* Form gửi bình luận */}
+                  <form onSubmit={handleAddComment} className="mb-4">
+                    <div className="itinerary-comment-composer">
+                      <label htmlFor="itinerary-comment-input" className="form-label small fw-semibold mb-2">
+                        <i className="bi bi-pencil me-1"></i>Ý kiến, đóng góp cho chuyến đi:
+                      </label>
+                      <textarea
+                        id="itinerary-comment-input"
+                        className="form-control itinerary-comment-input"
+                        rows="2"
+                        maxLength={500}
+                        placeholder="Nhập ý kiến, thảo luận hoặc đóng góp của bạn..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        disabled={submittingComment}
+                      />
+                      <div className="itinerary-comment-actions">
+                        <span className={`small ${commentText.length >= 480 ? 'text-danger fw-bold' : 'text-muted'}`}>
+                          {commentText.length}/500 ký tự
+                        </span>
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-sm itinerary-comment-submit"
+                          disabled={submittingComment || !commentText.trim()}
+                        >
+                          {submittingComment ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              <span>Đang gửi...</span>
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-send-fill"></i>
+                              <span>Gửi bình luận</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Danh sách bình luận */}
+                  {(!selected.comments || selected.comments.length === 0) ? (
+                    <div className="text-center py-4 text-muted bg-light-subtle rounded-3 border border-dashed">
+                      <i className="bi bi-chat-square-text fs-3 text-secondary d-block mb-2 opacity-50"></i>
+                      <p className="small mb-0">Chưa có bình luận nào cho lịch trình này.</p>
+                      <small className="text-secondary">Hãy để lại ý kiến đầu tiên để cùng lên kế hoạch nhé!</small>
+                    </div>
+                  ) : (
+                    <div className="itinerary-comment-list">
+                      {selected.comments.map((c) => {
+                        const commentUserId = String(c.user?._id || c.user || '');
+                        const isAuthor = currentUserId === commentUserId;
+                        const canDelete = isAuthor || isOwner;
+                        const displayName = c.user?.username || c.user?.email || 'Người dùng';
+                        const initial = displayName.charAt(0).toUpperCase();
+                        const isCommentOwner = String(c.user?._id || c.user || '') === String(selected.owner?._id || selected.owner || '');
+                        const commentDate = c.createdAt
+                          ? new Date(c.createdAt).toLocaleString('vi-VN', {
+                              hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+                            })
+                          : '';
+
+                        return (
+                          <div
+                            key={c._id}
+                            className="itinerary-comment-item"
+                          >
+                            <div className="d-flex justify-content-between align-items-start gap-2">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="itinerary-comment-avatar"
+                                >
+                                  {initial}
+                                </div>
+                                <div>
+                                  <div className="d-flex align-items-center gap-1 flex-wrap">
+                                    <span className="fw-semibold text-dark small">{displayName}</span>
+                                    {isCommentOwner ? (
+                                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
+                                        Chủ sở hữu
+                                      </span>
+                                    ) : (
+                                      <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
+                                        Cộng tác viên
+                                      </span>
+                                    )}
+                                  </div>
+                                  {commentDate && (
+                                    <small className="text-muted" style={{ fontSize: '0.72rem' }}>
+                                      {commentDate}
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="btn itinerary-comment-delete"
+                                  title="Xóa bình luận này"
+                                  disabled={deletingCommentId === c._id}
+                                  onClick={() => handleDeleteComment(c._id)}
+                                >
+                                  {deletingCommentId === c._id ? (
+                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                  ) : (
+                                    <i className="bi bi-trash3"></i>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            <p className="itinerary-comment-content" style={{ whiteSpace: 'pre-line' }}>
+                              {c.content}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+              )}
             </>
           )}
         </div>

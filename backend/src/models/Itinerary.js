@@ -55,6 +55,24 @@ const collaboratorSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const commentSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  content: {
+    type: String,
+    required: [true, 'Nội dung bình luận không được để trống'],
+    trim: true,
+    maxlength: [500, 'Nội dung bình luận không được vượt quá 500 ký tự']
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: true });
+
 const itinerarySchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
@@ -84,7 +102,8 @@ const itinerarySchema = new mongoose.Schema({
     ref: 'Tour'
   }],
   activities: [activitySchema],
-  collaborators: [collaboratorSchema]
+  collaborators: [collaboratorSchema],
+  comments: [commentSchema]
 }, { timestamps: true });
 
 const Itinerary = mongoose.model('Itinerary', itinerarySchema);
