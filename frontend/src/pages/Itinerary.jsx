@@ -8,6 +8,7 @@ import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
 import EditItineraryModal from './EditItineraryModal';
+import TripBudgetModal from './TripBudgetModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -35,6 +36,7 @@ function Itinerary() {
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [editingActivityId, setEditingActivityId] = useState(null);
   const activityFormRef = useRef(null);
@@ -756,6 +758,15 @@ function Itinerary() {
                               )}
                               <button
                                 type="button"
+                                className="btn btn-outline-success btn-sm text-nowrap d-inline-flex align-items-center"
+                                onClick={() => setBudgetModalOpen(true)}
+                                title="Tính toán chi phí chuyến đi"
+                              >
+                                <i className="bi bi-calculator me-1"></i>
+                                <span>Tính toán chi phí</span>
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={exportItinerary}
                                 disabled={isExporting}
@@ -1351,6 +1362,12 @@ function Itinerary() {
         onClose={() => setEditModalOpen(false)}
         itinerary={selected}
         onUpdated={applyItinerary}
+      />
+
+      <TripBudgetModal
+        open={budgetModalOpen}
+        itinerary={selected}
+        onClose={() => setBudgetModalOpen(false)}
       />
 
       <ConfirmDeleteModal

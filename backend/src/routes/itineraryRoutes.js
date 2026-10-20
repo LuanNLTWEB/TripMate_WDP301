@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import {
   addActivity,
+  calculateTripBudget,
   addDestination,
   addTour,
   createItinerary,
@@ -56,6 +57,7 @@ router.get('/shared', ...customerAccess, listSharedItineraries);
 router.get('/invitations', ...customerAccess, listReceivedInvitations);
 router.post('/invitations/:notificationId/respond', ...customerAccess, respondInvitationValidation, respondToInvitation);
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
+router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTripBudget);
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);
 router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
