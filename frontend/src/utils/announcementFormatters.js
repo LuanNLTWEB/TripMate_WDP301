@@ -5,9 +5,36 @@ export const ANNOUNCEMENT_AUDIENCE_OPTIONS = [
 ];
 
 const AUDIENCE_PRESENTATION = {
-  all: { label: 'Tất cả người dùng', icon: 'bi-people', className: 'badge-primary' },
-  customer: { label: 'Khách hàng', icon: 'bi-person', className: 'badge-success' },
-  tourProvider: { label: 'Nhà cung cấp', icon: 'bi-building', className: 'badge-warning' }
+  all: {
+    label: 'Tất cả người dùng',
+    icon: 'bi-people',
+    theme: 'theme-all',
+    iconClass: 'bi-megaphone-fill',
+    iconBg: '#eff6ff',
+    iconColor: '#2563eb',
+    accentColor: '#2563eb',
+    className: 'badge-primary'
+  },
+  customer: {
+    label: 'Khách du lịch',
+    icon: 'bi-person',
+    theme: 'theme-customer',
+    iconClass: 'bi-people-fill',
+    iconBg: '#ecfdf5',
+    iconColor: '#059669',
+    accentColor: '#059669',
+    className: 'badge-success'
+  },
+  tourProvider: {
+    label: 'Nhà cung cấp tour',
+    icon: 'bi-building',
+    theme: 'theme-provider',
+    iconClass: 'bi-buildings-fill',
+    iconBg: '#eef2ff',
+    iconColor: '#7c3aed',
+    accentColor: '#7c3aed',
+    className: 'badge-warning'
+  }
 };
 
 export const getAnnouncementAudience = (audience) => (

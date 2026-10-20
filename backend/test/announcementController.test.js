@@ -3,21 +3,27 @@ import { afterEach, test } from 'node:test';
 import Announcement from '../src/models/Announcement.js';
 import {
   createAnnouncement,
+  deleteAnnouncement,
   getAnnouncementById,
   getAnnouncements,
-  getManagedAnnouncements
+  getManagedAnnouncements,
+  updateAnnouncement
 } from '../src/controllers/announcementController.js';
 
 const originalCreate = Announcement.create;
 const originalCountDocuments = Announcement.countDocuments;
 const originalFind = Announcement.find;
 const originalFindOne = Announcement.findOne;
+const originalFindById = Announcement.findById;
+const originalFindByIdAndDelete = Announcement.findByIdAndDelete;
 
 afterEach(() => {
   Announcement.create = originalCreate;
   Announcement.countDocuments = originalCountDocuments;
   Announcement.find = originalFind;
   Announcement.findOne = originalFindOne;
+  Announcement.findById = originalFindById;
+  Announcement.findByIdAndDelete = originalFindByIdAndDelete;
 });
 
 const createResponse = () => {
@@ -211,6 +217,98 @@ test('returns not found when an announcement is outside the visible scope', asyn
   await getAnnouncementById({
     params: { id: 'announcement-2' },
     user: { role: 'customer' }
+  }, result.response);
+
+  assert.equal(result.statusCode, 404);
+  assert.equal(result.body.success, false);
+});
+
+test('staff updates an announcement with trimmed content and audit fields', async () => {
+  let populatedPaths;
+  const mockAnnouncement = {
+    _id: 'announcement-1',
+    title: 'Cũ',
+    content: 'Cũ',
+    audience: 'all',
+    isActive: true,
+    async save() { return this; },
+    async populate(paths) {
+      populatedPaths = paths;
+      return this;
+    }
+  };
+  Announcement.findById = async (id) => {
+    if (id === 'announcement-1') return mockAnnouncement;
+    return null;
+  };
+
+  const result = createResponse();
+  await updateAnnouncement({
+    params: { id: 'announcement-1' },
+    body: {
+      title: '  Tiêu đề đã sửa  ',
+      content: '  Nội dung đã sửa.  ',
+      audience: 'tourProvider',
+      isActive: false
+    },
+    user: { _id: 'staff-2', role: 'staff' }
+  }, result.response);
+
+  assert.equal(mockAnnouncement.title, 'Tiêu đề đã sửa');
+  assert.equal(mockAnnouncement.content, 'Nội dung đã sửa.');
+  assert.equal(mockAnnouncement.audience, 'tourProvider');
+  assert.equal(mockAnnouncement.isActive, false);
+  assert.equal(mockAnnouncement.updatedBy, 'staff-2');
+  assert.deepEqual(populatedPaths, [
+    { path: 'createdBy', select: 'username' },
+    { path: 'updatedBy', select: 'username' }
+  ]);
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.message, 'Đã lưu thông báo dưới dạng bản nháp');
+});
+
+test('update returns 404 when announcement does not exist', async () => {
+  Announcement.findById = async () => null;
+
+  const result = createResponse();
+  await updateAnnouncement({
+    params: { id: 'missing-id' },
+    body: { title: 'Test', content: 'Test' },
+    user: { _id: 'staff-1', role: 'staff' }
+  }, result.response);
+
+  assert.equal(result.statusCode, 404);
+  assert.equal(result.body.success, false);
+});
+
+test('staff deletes an announcement by id', async () => {
+  let deletedId;
+  Announcement.findById = async (id) => ({ _id: id });
+  Announcement.findByIdAndDelete = async (id) => {
+    deletedId = id;
+    return { _id: id };
+  };
+
+  const result = createResponse();
+  await deleteAnnouncement({
+    params: { id: 'announcement-del' },
+    user: { role: 'staff' }
+  }, result.response);
+
+  assert.equal(deletedId, 'announcement-del');
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.message, 'Đã xóa thông báo hệ thống thành công');
+});
+
+test('delete returns 404 when announcement does not exist', async () => {
+  Announcement.findById = async () => null;
+
+  const result = createResponse();
+  await deleteAnnouncement({
+    params: { id: 'missing-id' },
+    user: { role: 'staff' }
   }, result.response);
 
   assert.equal(result.statusCode, 404);

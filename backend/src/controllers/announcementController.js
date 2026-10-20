@@ -157,3 +157,63 @@ export const getAnnouncementById = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải chi tiết thông báo' });
   }
 };
+
+export const updateAnnouncement = async (req, res) => {
+  if (sendValidationError(req, res)) return;
+
+  try {
+    const announcement = await Announcement.findById(req.params.id);
+    if (!announcement) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy thông báo phù hợp' });
+    }
+
+    announcement.title = req.body.title.trim();
+    announcement.content = req.body.content.trim();
+    if (req.body.audience !== undefined) {
+      announcement.audience = req.body.audience;
+    }
+    if (req.body.isActive !== undefined) {
+      announcement.isActive = req.body.isActive;
+    }
+    announcement.updatedBy = req.user._id;
+
+    await announcement.save();
+    await announcement.populate([
+      { path: 'createdBy', select: 'username' },
+      { path: 'updatedBy', select: 'username' }
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: announcement.isActive
+        ? 'Đã cập nhật và phát hành thông báo'
+        : 'Đã lưu thông báo dưới dạng bản nháp',
+      data: announcement
+    });
+  } catch (error) {
+    console.error('Update announcement error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật thông báo hệ thống' });
+  }
+};
+
+export const deleteAnnouncement = async (req, res) => {
+  if (sendValidationError(req, res)) return;
+
+  try {
+    const announcement = await Announcement.findById(req.params.id);
+    if (!announcement) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy thông báo phù hợp' });
+    }
+
+    await Announcement.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa thông báo hệ thống thành công',
+      data: {}
+    });
+  } catch (error) {
+    console.error('Delete announcement error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa thông báo hệ thống' });
+  }
+};

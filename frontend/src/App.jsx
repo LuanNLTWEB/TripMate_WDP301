@@ -33,7 +33,9 @@ import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
 import Announcements from './pages/Announcements';
+import AnnouncementDetails from './pages/AnnouncementDetails';
 import StaffAnnouncements from './pages/StaffAnnouncements';
+import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -79,6 +81,14 @@ function App() {
               element={(
                 <ProtectedRoute allowedRoles={['staff', 'customer', 'tourProvider']}>
                   <Announcements />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/announcements/:id"
+              element={(
+                <ProtectedRoute allowedRoles={['staff', 'customer', 'tourProvider']}>
+                  <AnnouncementDetails />
                 </ProtectedRoute>
               )}
             />
@@ -129,6 +139,7 @@ function App() {
                   <Route path="pending-tours" element={<StaffPendingTours />} />
                   <Route path="statistics" element={<Stats />} />
                   <Route path="announcements" element={<StaffAnnouncements />} />
+                  <Route path="announcements/:id" element={<StaffAnnouncementDetails />} />
                 </Route>
                 <Route
                   path="my-tours"

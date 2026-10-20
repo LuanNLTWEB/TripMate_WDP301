@@ -276,6 +276,13 @@ export const announcementApi = {
   create: (announcement) => apiRequest('/announcements', {
     method: 'POST',
     body: JSON.stringify(announcement)
+  }),
+  update: (id, announcement) => apiRequest(`/announcements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(announcement)
+  }),
+  delete: (id) => apiRequest(`/announcements/${id}`, {
+    method: 'DELETE'
   })
 };
 

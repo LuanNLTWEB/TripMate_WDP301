@@ -762,5 +762,23 @@ export const managedAnnouncementListValidation = [
     .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ')
 ];
 
+export const updateAnnouncementValidation = [
+  ...announcementIdValidation,
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('content')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 5000 }).withMessage('Nội dung thông báo không được vượt quá 5000 ký tự'),
+  body('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('isActive')
+    .optional()
+    .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
+];
+
 
 
