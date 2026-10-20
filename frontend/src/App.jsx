@@ -8,6 +8,9 @@ import { MANAGEMENT_ROLES } from './config/managementNavigation';
 import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp from './pages/VerifyOtp';
+import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import AdminAccounts from './pages/AdminAccounts';
 import AdminRoles from './pages/AdminRoles';
@@ -38,6 +41,8 @@ import AnnouncementDetails from './pages/AnnouncementDetails';
 import StaffAnnouncements from './pages/StaffAnnouncements';
 import StaffDestinationDetails from './pages/StaffDestinationDetails';
 import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
+import Notifications from './pages/Notifications';
+import StaffNotifications from './pages/StaffNotifications';
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -82,6 +87,9 @@ function App() {
             <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/profile"
               element={(
@@ -120,6 +128,14 @@ function App() {
               element={(
                 <ProtectedRoute allowedRoles={ACCESS_ROLES.ANNOUNCEMENT_VIEW}>
                   <AnnouncementDetails />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/notifications"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.NOTIFICATION_VIEW}>
+                  <Notifications />
                 </ProtectedRoute>
               )}
             />
@@ -188,6 +204,7 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="announcements" element={<StaffAnnouncements />} />
                   <Route path="announcements/:id" element={<StaffAnnouncementDetails />} />
+                  <Route path="notifications" element={<StaffNotifications />} />
                 </Route>
                 <Route
                   path="my-tours"

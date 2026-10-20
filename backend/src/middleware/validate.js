@@ -96,6 +96,44 @@ export const changePasswordValidation = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số')
 ];
 
+export const forgotPasswordValidation = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
+    .normalizeEmail()
+];
+
+export const verifyOtpValidation = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
+    .normalizeEmail(),
+  body('otp')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập mã OTP')
+    .isLength({ min: 6, max: 6 }).withMessage('Mã OTP phải gồm 6 chữ số')
+    .matches(/^[0-9]{6}$/).withMessage('Mã OTP chỉ bao gồm chữ số')
+];
+
+export const resendOtpValidation = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ')
+    .normalizeEmail()
+];
+
+export const resetPasswordValidation = [
+  body('resetToken')
+    .notEmpty().withMessage('Mã xác thực reset không hợp lệ hoặc thiếu'),
+  body('newPassword')
+    .notEmpty().withMessage('Vui lòng nhập mật khẩu mới')
+    .isLength({ min: 6 }).withMessage('Mật khẩu mới phải có ít nhất 6 ký tự')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Mật khẩu mới phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số')
+];
+
 export const updateProfileValidation = [
   body('username')
     .optional()
@@ -858,3 +896,41 @@ export const transferOwnershipValidation = [
       .notEmpty().withMessage('Vui lòng chọn người nhận quyền sở hữu')
       .isMongoId().withMessage('Mã người dùng không hợp lệ')
   ];
+
+
+export const createNotificationValidation = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('message')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 500 }).withMessage('Nội dung thông báo không được vượt quá 500 ký tự'),
+  body('targetType')
+    .isIn(['all', 'customer', 'tourProvider', 'staff', 'specific_user']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  body('targetEmail')
+    .if(body('targetType').equals('specific_user'))
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email người nhận')
+    .isEmail().withMessage('Email người nhận không hợp lệ')
+    .normalizeEmail()
+];
+
+export const notificationListValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 }).withMessage('Số thông báo mỗi trang phải từ 1 đến 100')
+    .toInt(),
+  query('status')
+    .optional()
+    .isIn(['all', 'unread', 'read']).withMessage('Trạng thái không hợp lệ'),
+  query('type')
+    .optional()
+    .trim()
+    .isLength({ max: 30 }).withMessage('Loại thông báo không hợp lệ')
+];

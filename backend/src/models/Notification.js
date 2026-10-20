@@ -16,18 +16,23 @@ const notificationSchema = new mongoose.Schema({
   message: {
     type: String,
     required: [true, 'Notification message is required'],
+    trim: true,
     maxlength: [500, 'Notification message cannot exceed 500 characters']
   },
   notificationType: {
     type: String,
     required: true,
-    default: 'itinerary_invite',
-    maxlength: [20, 'Notification type cannot exceed 20 characters']
+    default: 'system',
+    maxlength: [30, 'Notification type cannot exceed 30 characters']
   },
   isRead: {
     type: Boolean,
     default: false,
     index: true
+  },
+  sender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   itinerary: {
     type: mongoose.Schema.Types.ObjectId,
@@ -44,12 +49,12 @@ const notificationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'declined'],
-    default: 'pending'
+    default: 'sent'
   }
 }, { timestamps: true });
 
 notificationSchema.index({ recipient: 1, notificationType: 1, status: 1 });
+notificationSchema.index({ recipient: 1, createdAt: -1 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
 

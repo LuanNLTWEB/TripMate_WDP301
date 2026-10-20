@@ -92,6 +92,14 @@ const managementNavigation = [
     roles: ACCESS_ROLES.STAFF_ONLY
   },
   {
+    key: 'notifications',
+    label: 'Quản lý thông báo',
+    description: 'Tạo và xem danh sách thông báo người dùng',
+    icon: 'bi-bell',
+    path: '/management/notifications',
+    roles: ACCESS_ROLES.STAFF_ONLY
+  },
+  {
     key: 'statistics',
     label: 'Thống kê',
     description: 'Theo dõi số liệu toàn hệ thống',

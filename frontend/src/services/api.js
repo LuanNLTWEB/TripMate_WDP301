@@ -77,6 +77,26 @@ export const authApi = {
   changePassword: (passwordData) => apiRequest('/auth/change-password', {
     method: 'PUT',
     body: JSON.stringify(passwordData)
+  }),
+
+  forgotPassword: (data) => apiRequest('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  verifyOtp: (data) => apiRequest('/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  resendOtp: (data) => apiRequest('/auth/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  resetPassword: (data) => apiRequest('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data)
   })
 };
 
@@ -478,6 +498,22 @@ export const bookingApi = {
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
+  })
+};
+
+export const notificationApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.type && params.type !== 'all') query.append('type', params.type);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/notifications${qs}`, { method: 'GET' });
+  },
+  create: (payload) => apiRequest('/notifications', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   })
 };
 

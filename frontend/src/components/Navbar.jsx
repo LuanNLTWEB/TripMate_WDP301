@@ -52,7 +52,18 @@ function Navbar() {
   };
 
   const accountActions = isAuthenticated ? (
-    <div className="position-relative" ref={dropdownRef}>
+    <div className="d-flex align-items-center gap-2">
+      {['customer', 'tourProvider', 'staff'].includes(user?.role) && (
+        <Link
+          to="/notifications"
+          className="btn d-flex align-items-center justify-content-center text-white bg-white bg-opacity-10 rounded-circle border border-white border-opacity-15 shadow-sm"
+          style={{ width: '40px', height: '40px' }}
+          title="Hộp thư thông báo"
+        >
+          <i className="bi bi-bell"></i>
+        </Link>
+      )}
+      <div className="position-relative" ref={dropdownRef}>
       <button
         type="button"
         className="btn d-flex align-items-center gap-2 text-white bg-white bg-opacity-10 px-3 py-2 rounded-pill border border-white border-opacity-15 shadow-sm user-profile-link"
@@ -152,6 +163,17 @@ function Navbar() {
             </Link>
           )}
 
+          {['customer', 'tourProvider', 'staff'].includes(user?.role) && (
+            <Link
+              to="/notifications"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <i className="bi bi-bell fs-6"></i>
+              <span>Thông báo của tôi</span>
+            </Link>
+          )}
+
           <div className="dropdown-divider border-secondary border-opacity-25 my-1"></div>
 
           <button
@@ -167,6 +189,7 @@ function Navbar() {
           </button>
         </div>
       )}
+    </div>
     </div>
   ) : (
     <div className="d-flex align-items-center gap-2">

@@ -11,6 +11,7 @@ import departureRoutes from '../src/routes/departureRoutes.js';
 import destinationCategoryRoutes from '../src/routes/destinationCategoryRoutes.js';
 import destinationRoutes from '../src/routes/destinationRoutes.js';
 import itineraryRoutes from '../src/routes/itineraryRoutes.js';
+import notificationRoutes from '../src/routes/notificationRoutes.js';
 import reviewRoutes from '../src/routes/reviewRoutes.js';
 import roleRoutes from '../src/routes/roleRoutes.js';
 import statsRoutes from '../src/routes/statsRoutes.js';
@@ -74,6 +75,7 @@ test('role groups match the actors defined in the backlog', () => {
   assert.deepEqual([...ACCESS_ROLES.CUSTOMER_ONLY], ['customer']);
   assert.deepEqual([...ACCESS_ROLES.REVIEW_REMOVE], ['customer', 'staff']);
   assert.deepEqual([...ACCESS_ROLES.ANNOUNCEMENT_VIEW], ['staff', 'customer', 'tourProvider']);
+  assert.deepEqual([...ACCESS_ROLES.NOTIFICATION_VIEW], ['staff', 'customer', 'tourProvider']);
   assert.deepEqual([...ACCESS_ROLES.TOUR_SCHEDULE_VIEW], ['customer', 'tourProvider']);
   assert.deepEqual([...ACCESS_ROLES.CONTENT_UPLOAD], ['staff', 'tourProvider']);
 });
@@ -136,6 +138,8 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [announcementRoutes, 'post', '/', ACCESS_ROLES.STAFF_ONLY],
     [announcementRoutes, 'put', '/:id', ACCESS_ROLES.STAFF_ONLY],
     [announcementRoutes, 'delete', '/:id', ACCESS_ROLES.STAFF_ONLY],
+    [notificationRoutes, 'get', '/', ACCESS_ROLES.NOTIFICATION_VIEW],
+    [notificationRoutes, 'post', '/', ACCESS_ROLES.STAFF_ONLY],
     [itineraryRoutes, 'get', '/', ACCESS_ROLES.CUSTOMER_ONLY],
     [itineraryRoutes, 'post', '/', ACCESS_ROLES.CUSTOMER_ONLY],
     [itineraryRoutes, 'get', '/:id/budget', ACCESS_ROLES.CUSTOMER_ONLY],
