@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { roleApi } from '../services/api';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const emptyForm = { name: '', description: '' };
 
@@ -67,10 +68,14 @@ function RoleForm({ role, onClose, onSaved }) {
   );
 }
 
+const PAGE_SIZE = 10;
+
 function AdminRoles() {
   const { user } = useAuth();
   const toast = useToast();
   const [roles, setRoles] = useState([]);
+  const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState(null);
@@ -94,6 +99,11 @@ function AdminRoles() {
   useEffect(() => {
     if (user?.role === 'admin') loadRoles();
   }, [user?.role]);
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setCurrentPage(1);
+  };
 
   const openCreateForm = () => {
     setSelectedRole(null);
@@ -126,6 +136,14 @@ function AdminRoles() {
     }
   };
 
+  const filteredRoles = roles.filter((role) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return role.name?.toLowerCase().includes(q) || role.description?.toLowerCase().includes(q);
+  });
+  const totalPages = Math.ceil(filteredRoles.length / PAGE_SIZE) || 1;
+  const paginatedRoles = filteredRoles.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <>
       <section className="management-page-section">
@@ -139,11 +157,27 @@ function AdminRoles() {
           {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div className="input-group" style={{ maxWidth: '400px' }}>
+                  <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                  <input
+                    type="search"
+                    className="form-control"
+                    value={search}
+                    onChange={handleSearchChange}
+                    placeholder="Tìm theo tên vai trò hoặc mô tả..."
+                    aria-label="Tìm kiếm vai trò"
+                  />
+                </div>
+                <div className="text-muted small">
+                  Hiển thị <strong>{paginatedRoles.length}</strong> / {filteredRoles.length} vai trò
+                </div>
+              </div>
               <div className="table-responsive">
                 <table className="table align-middle mb-0">
                   <thead><tr><th>Tên vai trò</th><th>Mô tả</th><th>Loại</th><th>Ngày tạo</th><th className="text-end">Thao tác</th></tr></thead>
                   <tbody>
-                    {isLoading ? <tr><td colSpan="5" className="text-center py-5"><span className="spinner-border spinner-border-sm me-2"></span>Đang tải...</td></tr> : roles.length === 0 ? <tr><td colSpan="5" className="text-center text-muted py-5">Chưa có vai trò nào.</td></tr> : roles.map((role) => (
+                    {isLoading ? <tr><td colSpan="5" className="text-center py-5"><span className="spinner-border spinner-border-sm me-2"></span>Đang tải...</td></tr> : paginatedRoles.length === 0 ? <tr><td colSpan="5" className="text-center text-muted py-5">Chưa có vai trò nào.</td></tr> : paginatedRoles.map((role) => (
                       <tr key={role._id}>
                         <td><span className="fw-semibold">{role.name}</span></td>
                         <td className="text-muted">{role.description || '—'}</td>
@@ -166,6 +200,15 @@ function AdminRoles() {
                   </tbody>
                 </table>
               </div>
+
+              <ManagementPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredRoles.length}
+                itemLabel="vai trò"
+                isLoading={isLoading}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             </div>
           </div>
         </div>

@@ -81,7 +81,18 @@ export const authApi = {
 };
 
 export const accountApi = {
-  getAll: (search = '') => apiRequest(`/admin/accounts${search ? `?search=${encodeURIComponent(search)}` : ''}`, { method: 'GET' }),
+  getAll: (params = '') => {
+    if (typeof params === 'string') {
+      const search = params;
+      return apiRequest(`/admin/accounts${search ? `?search=${encodeURIComponent(search)}` : ''}`, { method: 'GET' });
+    }
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/admin/accounts${queryString}`, { method: 'GET' });
+  },
   getById: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'GET' }),
   create: (accountData) => apiRequest('/admin/accounts', { method: 'POST', body: JSON.stringify(accountData) }),
   update: (id, accountData) => apiRequest(`/admin/accounts/${id}`, { method: 'PUT', body: JSON.stringify(accountData) }),

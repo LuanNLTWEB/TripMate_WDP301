@@ -5,6 +5,7 @@ import { accountApi, roleApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const emptyForm = {
   username: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'other', role: 'customer'
@@ -182,6 +183,9 @@ function AdminAccounts() {
   const [accounts, setAccounts] = useState([]);
   const [roles, setRoles] = useState([]);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedAccount, setSelectedAccount] = useState(null);
@@ -204,11 +208,18 @@ function AdminAccounts() {
     }
   }, [user?.role]);
 
-  const loadAccounts = async (searchTerm = search) => {
+  const loadAccounts = async (searchTerm = search, page = currentPage) => {
     setIsLoading(true);
     try {
-      const response = await accountApi.getAll(searchTerm);
+      const response = await accountApi.getAll({
+        search: searchTerm,
+        page,
+        limit: 10
+      });
       setAccounts(response.accounts || []);
+      setCurrentPage(response.currentPage || 1);
+      setTotalPages(response.totalPages || 1);
+      setTotal(typeof response.total === 'number' ? response.total : (response.accounts || []).length);
       setError('');
     } catch (requestError) {
       setError(requestError.message || 'Không thể tải danh sách tài khoản.');
@@ -219,9 +230,14 @@ function AdminAccounts() {
 
   useEffect(() => {
     if (user?.role !== 'admin') return;
-    const timer = setTimeout(() => loadAccounts(search), 300);
+    const timer = setTimeout(() => loadAccounts(search, currentPage), 300);
     return () => clearTimeout(timer);
-  }, [search, user?.role]);
+  }, [search, currentPage, user?.role]);
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setCurrentPage(1);
+  };
 
   const openCreateForm = () => {
     setSelectedAccount(null);
@@ -244,7 +260,7 @@ function AdminAccounts() {
   const handleSaved = async (savedMessage) => {
     setIsFormOpen(false);
     toast.success(savedMessage || 'Đã lưu tài khoản.');
-    await loadAccounts();
+    await loadAccounts(search, currentPage);
   };
 
   const handleStatus = async (account) => {
@@ -252,7 +268,7 @@ function AdminAccounts() {
     try {
       const response = await accountApi.setStatus(account.id, !account.isActive);
       toast.success(response.message || 'Đã cập nhật trạng thái tài khoản.');
-      await loadAccounts();
+      await loadAccounts(search, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể cập nhật trạng thái tài khoản.');
     } finally {
@@ -267,7 +283,7 @@ function AdminAccounts() {
       const response = await accountApi.remove(accountToDelete.id);
       toast.success(response.message || 'Đã xóa tài khoản.');
       setAccountToDelete(null);
-      await loadAccounts();
+      await loadAccounts(search, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể xóa tài khoản.');
     } finally {
@@ -288,9 +304,14 @@ function AdminAccounts() {
           {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
-              <div className="input-group mb-4">
-                <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
-                <input type="search" className="form-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tên người dùng hoặc email" aria-label="Tìm kiếm tài khoản" />
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div className="input-group" style={{ maxWidth: '400px' }}>
+                  <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                  <input type="search" className="form-control" value={search} onChange={handleSearchChange} placeholder="Tìm theo tên người dùng hoặc email" aria-label="Tìm kiếm tài khoản" />
+                </div>
+                <div className="text-muted small">
+                  Hiển thị <strong>{accounts.length}</strong> / {total} tài khoản
+                </div>
               </div>
               <div className="table-responsive">
                 <table className="table align-middle mb-0">
@@ -312,6 +333,15 @@ function AdminAccounts() {
                   </tbody>
                 </table>
               </div>
+
+              <ManagementPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={total}
+                itemLabel="tài khoản"
+                isLoading={isLoading}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             </div>
           </div>
         </div>

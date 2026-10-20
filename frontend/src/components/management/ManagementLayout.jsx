@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import Navbar from '../Navbar';
-import { useAuth } from '../../hooks/useAuth';
-import { getManagementNavigation } from '../../config/managementNavigation';
+import ManagementSidebar from './ManagementSidebar';
 
 function ManagementLayout() {
-  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const navigation = getManagementNavigation(user?.role);
-  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
 
   return (
     <div className="management-root">
@@ -33,36 +29,10 @@ function ManagementLayout() {
           ></button>
         )}
 
-        <aside className={`management-sidebar ${isSidebarOpen ? 'is-open' : ''}`}>
-          <div className="management-sidebar-header">
-            <div>
-              <span className="management-sidebar-eyebrow">Khu vực quản lý</span>
-              <strong>{roleLabel}</strong>
-            </div>
-            <button
-              type="button"
-              className="btn-close d-lg-none"
-              onClick={() => setIsSidebarOpen(false)}
-              aria-label="Đóng menu"
-            ></button>
-          </div>
-
-          <nav className="management-navigation" aria-label="Điều hướng quản lý">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.key}
-                to={item.path}
-                end={item.end || item.path === '/management'}
-                className={({ isActive }) => `management-nav-link ${isActive ? 'active' : ''}`}
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                <i className={`bi ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-        </aside>
+        <ManagementSidebar
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+        />
 
         <main className="management-content">
           <Outlet />
