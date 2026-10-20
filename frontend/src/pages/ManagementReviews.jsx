@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import ReviewDetailModal from '../components/ReviewDetailModal';
 import ReviewManagementTable from '../components/ReviewManagementTable';
 import { useToast } from '../hooks/useToast';
@@ -138,7 +137,6 @@ export default function ManagementReviews() {
   const [reloadKey, setReloadKey] = useState(0);
   const [selectedReview, setSelectedReview] = useState(null);
   const [rejectModal, setRejectModal] = useState({ open: false, review: null, reason: '' });
-  const [deleteReview, setDeleteReview] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -250,30 +248,6 @@ export default function ManagementReviews() {
     if (success) closeRejectModal();
   };
 
-  const openDeleteModal = (review) => {
-    setSelectedReview(null);
-    setDeleteReview(review);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteReview) return;
-    setActionLoading(true);
-    try {
-      await reviewApi.delete(deleteReview._id);
-      toast.success('Đã xóa đánh giá vĩnh viễn khỏi hệ thống.');
-      setDeleteReview(null);
-      if (reviews.length === 1 && currentPage > 1) {
-        setCurrentPage((page) => page - 1);
-      } else {
-        refreshReviews();
-      }
-    } catch (requestError) {
-      toast.error(requestError.message || 'Không thể xóa đánh giá.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
@@ -350,7 +324,6 @@ export default function ManagementReviews() {
           onApprove={handleApprove}
           onReject={openRejectModal}
           onFlag={handleFlag}
-          onDelete={openDeleteModal}
         />
 
         {!loading && totalPages > 1 && (
@@ -388,7 +361,6 @@ export default function ManagementReviews() {
         onApprove={handleApprove}
         onReject={openRejectModal}
         onFlag={handleFlag}
-        onDelete={openDeleteModal}
       />
 
       <RejectReviewModal
@@ -399,19 +371,6 @@ export default function ManagementReviews() {
         onConfirm={confirmReject}
       />
 
-      <ConfirmDeleteModal
-        isOpen={Boolean(deleteReview)}
-        title="Xóa đánh giá vĩnh viễn"
-        message={(
-          <p className="mb-0">
-            Hành động này sẽ <strong>xóa hoàn toàn</strong> đánh giá khỏi cơ sở dữ liệu và tính lại điểm trung bình của tour. Bạn có chắc chắn muốn tiếp tục?
-          </p>
-        )}
-        confirmText="Xác nhận xóa"
-        loading={actionLoading}
-        onConfirm={confirmDelete}
-        onClose={() => setDeleteReview(null)}
-      />
     </section>
   );
 }

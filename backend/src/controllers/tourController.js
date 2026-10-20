@@ -182,6 +182,7 @@ export const getAllTours = async (req, res) => {
 
     const total = await Tour.countDocuments(query);
     const tours = await Tour.find(query)
+      .select('-itinerary')
       .sort(sortOptions[sort] || sortOptions.newest)
       .skip(startIndex)
       .limit(limitNum);
@@ -225,10 +226,9 @@ export const getTourById = async (req, res) => {
       });
     }
 
-    // Nếu tour chưa active, chỉ cho phép chủ sở hữu (providerId) hoặc staff, admin xem
+    // Nếu tour chưa active, chỉ staff hoặc nhà cung cấp sở hữu tour được xem.
     if (tour.status !== 'active') {
       const isPrivileged = req.user && (
-        req.user.role === 'admin' ||
         req.user.role === 'staff' ||
         (req.user.role === 'tourProvider' && tour.providerId && (
           (tour.providerId._id && tour.providerId._id.equals(req.user._id)) ||
@@ -244,9 +244,17 @@ export const getTourById = async (req, res) => {
       }
     }
 
+    const providerId = tour.providerId?._id || tour.providerId;
+    const isOwner = req.user?.role === 'tourProvider'
+      && providerId
+      && String(providerId) === String(req.user._id);
+    const canViewSchedule = req.user?.role === 'customer' || isOwner;
+    const responseTour = tour.toObject();
+    if (!canViewSchedule) delete responseTour.itinerary;
+
     res.status(200).json({
       success: true,
-      data: tour
+      data: responseTour
     });
   } catch (error) {
     console.error('Error fetching tour by ID:', error);
@@ -575,7 +583,7 @@ export const getProviderTours = async (req, res) => {
       limit = 10
     } = req.query;
 
-    const filters = req.user.role === 'admin' ? [] : [{ providerId: req.user._id }];
+    const filters = [{ providerId: req.user._id }];
 
     if (search) {
       const safeSearch = escapeRegex(search);
@@ -648,7 +656,7 @@ export const getProviderTourById = async (req, res) => {
       });
     }
 
-    if (req.user.role !== 'admin' && (!tour.providerId || !tour.providerId._id.equals(req.user._id))) {
+    if (!tour.providerId || !tour.providerId._id.equals(req.user._id)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền truy cập tour này'
@@ -1073,9 +1081,9 @@ export const deleteTourSchedule = async (req, res) => {
 };
 
 /**
- * Cập nhật số chỗ của tour (Provider hoặc Admin)
+ * Cập nhật số chỗ của tour thuộc nhà cung cấp.
  * @route PUT /api/tours/:id/capacity
- * @access Provider, Admin
+ * @access Provider
  */
 export const updateTourCapacity = async (req, res) => {
   const errors = validationResult(req);
@@ -1097,7 +1105,7 @@ export const updateTourCapacity = async (req, res) => {
     }
 
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật số chỗ của tour này'
@@ -1155,9 +1163,9 @@ export const updateTourCapacity = async (req, res) => {
 };
 
 /**
- * Update tour price (Provider or Admin)
+ * Update the owning provider's tour price.
  * @route PUT /api/tours/:id/price
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const updateTourPrice = async (req, res) => {
   const errors = validationResult(req);
@@ -1179,7 +1187,7 @@ export const updateTourPrice = async (req, res) => {
     }
 
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật giá của tour này'
@@ -1217,7 +1225,7 @@ export const updateTourPrice = async (req, res) => {
 /**
  * Get tour schedule (itinerary)
  * @route GET /api/tours/:id/schedule
- * @access Public for active tours; owner/provider, staff and admin for other statuses
+ * @access Customer for active tours; owning provider for own tours
  */
 export const getTourSchedule = async (req, res) => {
   const errors = validationResult(req);
@@ -1239,19 +1247,22 @@ export const getTourSchedule = async (req, res) => {
       });
     }
 
-    if (tour.status !== 'active') {
-      const isOwner = req.user?.role === 'tourProvider'
-        && tour.providerId
-        && tour.providerId.equals(req.user._id);
-      const canManageTour = req.user
-        && (req.user.role === 'admin' || req.user.role === 'staff' || isOwner);
+    const isOwner = req.user.role === 'tourProvider'
+      && tour.providerId
+      && String(tour.providerId) === String(req.user._id);
 
-      if (!canManageTour) {
+    if (req.user.role === 'tourProvider' && !isOwner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch trình tour'
+      });
+    }
+
+    if (tour.status !== 'active' && !isOwner) {
         return res.status(404).json({
           success: false,
           message: 'Không tìm thấy lịch trình tour'
         });
-      }
     }
 
     const sortedItinerary = [...(tour.itinerary || [])].sort((a, b) => a.day - b.day);

@@ -1,7 +1,6 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
-import { logActivity } from '../utils/activityLogger.js';
 import { validationResult } from 'express-validator';
 
 const VALID_REPORT_REASONS = [
@@ -430,17 +429,6 @@ export const moderateReview = async (req, res) => {
       .populate('tourId', 'title location departureLocation')
       .populate('moderatedBy', 'username email');
 
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'MODERATE_REVIEW',
-        targetType: 'Review',
-        targetId: review._id,
-        details: `Kiểm duyệt đánh giá thành trạng thái "${status}"${moderationReason ? ` (Lý do: ${moderationReason})` : ''}`,
-        req
-      });
-    }
-
     res.status(200).json({
       success: true,
       message: 'Kiểm duyệt đánh giá thành công',
@@ -470,8 +458,7 @@ export const deleteReview = async (req, res) => {
     }
 
     const isOwner = review.userId.toString() === req.user._id.toString();
-    const isManager = req.user.role === 'admin' || req.user.role === 'staff';
-    if (!isOwner && !isManager) {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền xóa đánh giá này'
@@ -482,17 +469,6 @@ export const deleteReview = async (req, res) => {
     await review.deleteOne();
 
     const { averageRating, totalReviews } = await recalculateTourRating(tourId);
-
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'DELETE_REVIEW',
-        targetType: 'Review',
-        targetId: id,
-        details: `Xóa vĩnh viễn đánh giá ID "${id}"`,
-        req
-      });
-    }
 
     res.status(200).json({
       success: true,

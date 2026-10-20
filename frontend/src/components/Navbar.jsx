@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { canAccessManagement } from '../config/managementNavigation';
+import { canAccessRoleGroup, ACCESS_ROLES } from '../config/accessControl';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { TRIPMATE_LOGO_URL } from '../constants/brand';
@@ -11,7 +12,7 @@ function Navbar() {
   const location = useLocation();
   const toast = useToast();
   const isManagementUser = canAccessManagement(user?.role);
-  const canUseProfile = ['admin', 'staff', 'tourProvider', 'customer'].includes(user?.role);
+  const canUseProfile = canAccessRoleGroup(user?.role, ACCESS_ROLES.CUSTOMER_ONLY);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -104,7 +105,7 @@ function Navbar() {
             </Link>
           )}
 
-          {['staff', 'tourProvider'].includes(user?.role) && (
+          {user?.role === 'tourProvider' && (
             <Link
               to="/announcements"
               className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
@@ -210,9 +211,11 @@ function Navbar() {
                   <Link className={`nav-pill-link ${isActiveRoute('/tours') ? 'active' : ''}`} to="/tours">Tour du lịch</Link>
                 </li>
 
-                <li className="nav-item">
-                  <Link className={`nav-pill-link ${isActiveRoute('/itinerary') ? 'active' : ''}`} to="/itinerary">Lịch trình của tôi</Link>
-                </li>
+                {user?.role === 'customer' && (
+                  <li className="nav-item">
+                    <Link className={`nav-pill-link ${isActiveRoute('/itinerary') ? 'active' : ''}`} to="/itinerary">Lịch trình của tôi</Link>
+                  </li>
+                )}
                 <li className="nav-item">
                   <Link className={`nav-pill-link ${isActiveRoute('/about') ? 'active' : ''}`} to="/about">Giới thiệu</Link>
                 </li>

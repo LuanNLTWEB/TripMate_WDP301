@@ -22,9 +22,13 @@ function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const defaultPath = ['admin', 'staff'].includes(user?.role) ? '/management' : '/';
-      const from = location.state?.from?.pathname || defaultPath;
-      navigate(from, { replace: true });
+      if (['admin', 'staff'].includes(user?.role)) {
+        navigate('/management', { replace: true });
+      } else {
+        const defaultPath = user?.role === 'tourProvider' ? '/management' : '/';
+        const from = location.state?.from?.pathname || defaultPath;
+        navigate(from, { replace: true });
+      }
     }
   }, [isAuthenticated, navigate, location, user?.role]);
 
@@ -66,10 +70,14 @@ function Login() {
 
     try {
       const response = await login(formData.email.trim(), formData.password, formData.rememberMe);
-      const defaultPath = ['admin', 'staff'].includes(response.user.role) ? '/management' : '/';
-      const from = location.state?.from?.pathname || defaultPath;
       toast.success(`Chào mừng ${response.user.username || 'bạn'} quay lại!`);
-      navigate(from, { replace: true });
+      if (['admin', 'staff'].includes(response.user.role)) {
+        navigate('/management', { replace: true });
+      } else {
+        const defaultPath = response.user.role === 'tourProvider' ? '/management' : '/';
+        const from = location.state?.from?.pathname || defaultPath;
+        navigate(from, { replace: true });
+      }
     } catch (error) {
       toast.error(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {

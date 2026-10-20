@@ -3,6 +3,7 @@ import AuthProvider from './context/AuthProvider';
 import ToastProvider from './context/ToastProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import ManagementLayout from './components/management/ManagementLayout';
+import { ACCESS_ROLES } from './config/accessControl';
 import { MANAGEMENT_ROLES } from './config/managementNavigation';
 import Home from './pages/Home';
 import Register from './pages/Register';
@@ -42,6 +43,14 @@ function ProviderTourDetailsRedirect() {
   return <Navigate to={`/management/my-tours/${id}/details`} replace />;
 }
 
+function RoleRedirect({ to, allowedRoles }) {
+  return (
+    <ProtectedRoute allowedRoles={allowedRoles}>
+      <Navigate to={to} replace />
+    </ProtectedRoute>
+  );
+}
+
 function App() {
   return (
     <ToastProvider>
@@ -56,7 +65,7 @@ function App() {
             <Route
               path="/tours/:tourId/booking"
               element={
-                <ProtectedRoute allowedRoles={['customer']}>
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
                   <BookingPage />
                 </ProtectedRoute>
               }
@@ -64,22 +73,43 @@ function App() {
             <Route
               path="/my-bookings"
               element={
-                <ProtectedRoute allowedRoles={['customer']}>
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
                   <BookingHistory />
                 </ProtectedRoute>
               }
             />
-            <Route path="/bookings" element={<Navigate to="/my-bookings" replace />} />
+            <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/itinerary" element={<Itinerary />} />
-            <Route path="/favorites" element={<FavoriteDestinations />} />
+            <Route
+              path="/profile"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                  <Profile />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/itinerary"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                  <Itinerary />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/favorites"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                  <FavoriteDestinations />
+                </ProtectedRoute>
+              )}
+            />
             <Route path="/about" element={<AboutVietnam />} />
             <Route
               path="/announcements"
               element={(
-                <ProtectedRoute allowedRoles={['staff', 'customer', 'tourProvider']}>
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.ANNOUNCEMENT_VIEW}>
                   <Announcements />
                 </ProtectedRoute>
               )}
@@ -87,13 +117,27 @@ function App() {
             <Route
               path="/announcements/:id"
               element={(
-                <ProtectedRoute allowedRoles={['staff', 'customer', 'tourProvider']}>
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.ANNOUNCEMENT_VIEW}>
                   <AnnouncementDetails />
                 </ProtectedRoute>
               )}
             />
-            <Route path="/provider/create-tour" element={<Navigate to="/management/my-tours?action=create" replace />} />
-            <Route path="/provider/tours/:id/details" element={<ProviderTourDetailsRedirect />} />
+            <Route
+              path="/provider/create-tour"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                  <Navigate to="/management/my-tours?action=create" replace />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
+              path="/provider/tours/:id/details"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                  <ProviderTourDetailsRedirect />
+                </ProtectedRoute>
+              )}
+            />
 
             <Route element={<ProtectedRoute allowedRoles={MANAGEMENT_ROLES} />}>
               <Route path="/management" element={<ManagementLayout />}>
@@ -101,7 +145,7 @@ function App() {
                 <Route
                   path="accounts"
                   element={(
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.ADMIN_ONLY}>
                       <AdminAccounts />
                     </ProtectedRoute>
                   )}
@@ -109,7 +153,7 @@ function App() {
                 <Route
                   path="roles"
                   element={(
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.ADMIN_ONLY}>
                       <AdminRoles />
                     </ProtectedRoute>
                   )}
@@ -117,7 +161,7 @@ function App() {
                 <Route
                   path="activity-logs"
                   element={(
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.ADMIN_ONLY}>
                       <AdminActivityLogs />
                     </ProtectedRoute>
                   )}
@@ -125,12 +169,12 @@ function App() {
                 <Route
                   path="reviews"
                   element={(
-                    <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY}>
                       <ManagementReviews />
                     </ProtectedRoute>
                   )}
                 />
-                <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
+                <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="destinations" element={<StaffDestinations />} />
                   <Route path="destination-categories" element={<StaffDestinationCategories />} />
                   <Route path="tour-categories" element={<StaffTourCategories />} />
@@ -138,13 +182,15 @@ function App() {
                   <Route path="tours/:id" element={<ReviewTourSubmission />} />
                   <Route path="pending-tours" element={<StaffPendingTours />} />
                   <Route path="statistics" element={<Stats />} />
+                </Route>
+                <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="announcements" element={<StaffAnnouncements />} />
                   <Route path="announcements/:id" element={<StaffAnnouncementDetails />} />
                 </Route>
                 <Route
                   path="my-tours"
                   element={(
-                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
                       <ProviderTours />
                     </ProtectedRoute>
                   )}
@@ -152,19 +198,19 @@ function App() {
                 <Route
                   path="my-tours/:id/details"
                   element={(
-                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
                       <ProviderTourDetails />
                     </ProtectedRoute>
                   )}
                 />
                 <Route
                   path="reported-reviews"
-                  element={<Navigate to="/management/reviews?view=reported" replace />}
+                  element={<RoleRedirect to="/management/reviews?view=reported" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}
                 />
                 <Route
                   path="booking-requests"
                   element={(
-                    <ProtectedRoute allowedRoles={['tourProvider']}>
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
                       <ProviderBookingRequests />
                     </ProtectedRoute>
                   )}
@@ -172,14 +218,14 @@ function App() {
               </Route>
             </Route>
 
-            <Route path="/admin/accounts" element={<Navigate to="/management/accounts" replace />} />
-            <Route path="/admin/roles" element={<Navigate to="/management/roles" replace />} />
-            <Route path="/admin/activity-logs" element={<Navigate to="/management/activity-logs" replace />} />
-            <Route path="/staff/destinations" element={<Navigate to="/management/destinations" replace />} />
-            <Route path="/staff/destination-categories" element={<Navigate to="/management/destination-categories" replace />} />
-            <Route path="/staff/tour-categories" element={<Navigate to="/management/tour-categories" replace />} />
-            <Route path="/staff/tours" element={<Navigate to="/management/tours" replace />} />
-            <Route path="/stats" element={<Navigate to="/management/statistics" replace />} />
+            <Route path="/admin/accounts" element={<RoleRedirect to="/management/accounts" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
+            <Route path="/admin/roles" element={<RoleRedirect to="/management/roles" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
+            <Route path="/admin/activity-logs" element={<RoleRedirect to="/management/activity-logs" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
+            <Route path="/staff/destinations" element={<RoleRedirect to="/management/destinations" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />} />
+            <Route path="/staff/destination-categories" element={<RoleRedirect to="/management/destination-categories" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />} />
+            <Route path="/staff/tour-categories" element={<RoleRedirect to="/management/tour-categories" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />} />
+            <Route path="/staff/tours" element={<RoleRedirect to="/management/tours" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />} />
+            <Route path="/stats" element={<RoleRedirect to="/management/statistics" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

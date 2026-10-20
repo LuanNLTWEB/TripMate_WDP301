@@ -7,7 +7,7 @@ const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
 /**
  * Tạo lịch khởi hành mới cho một tour (UC-40 - Create Tour Departure)
  * @route POST /api/departures
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
@@ -28,9 +28,9 @@ export const createDeparture = async (req, res) => {
       });
     }
 
-    // BR-43 - Chỉ chủ tour hoặc admin được tạo lịch khởi hành cho tour này
+    // BR-43 - Chỉ nhà cung cấp sở hữu tour được tạo lịch khởi hành.
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền tạo lịch khởi hành cho tour này'
@@ -96,7 +96,7 @@ export const createDeparture = async (req, res) => {
 /**
  * Xem các lịch khởi hành của một tour (đọc lại sau khi tạo)
  * @route GET /api/departures?tourId=:tourId
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const getDeparturesByTour = async (req, res) => {
   const errors = validationResult(req);
@@ -118,7 +118,7 @@ export const getDeparturesByTour = async (req, res) => {
     }
 
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền xem lịch khởi hành của tour này'
