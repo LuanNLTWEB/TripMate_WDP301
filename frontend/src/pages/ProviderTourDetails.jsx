@@ -815,7 +815,8 @@ export default function ProviderTourDetails() {
                           <td>{d.availableSeats}</td>
                           <td>{d.price != null ? formatCurrency(d.price) : <span className="text-muted">Theo giá tour</span>}</td>
                           <td>
-                            <span className={`badge ${d.status === 'scheduled' ? 'badge-success' : 'badge-secondary'}`}>
+                            <span className={`management-badge ${d.status === 'scheduled' ? 'badge-success' : 'badge-danger'}`}>
+                              <span className="management-badge-dot"></span>
                               {d.status === 'scheduled' ? 'Đang lên lịch' : 'Đã hủy'}
                             </span>
                           </td>
