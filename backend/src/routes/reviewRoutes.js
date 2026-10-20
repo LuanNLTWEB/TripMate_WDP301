@@ -7,6 +7,7 @@ import {
   getReviewEligibility,
   createReview,
   moderateReview,
+  hideReview,
   reportReview,
   restoreReview,
   updateReview
@@ -19,7 +20,8 @@ import {
   reviewEligibilityValidation,
   createReviewValidation,
   updateReviewValidation,
-  restoreReviewValidation
+  restoreReviewValidation,
+  hideReviewValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -31,8 +33,9 @@ router.get('/moderation', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getAll
 router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reportedReviewListValidation, getReportedReviews);
 router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);
 router.patch('/:id/moderate', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), moderateReviewValidation, moderateReview);
+router.patch('/:id/hide', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), hideReviewValidation, hideReview);
 router.patch('/:id/restore', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), restoreReviewValidation, restoreReview);
 router.put('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateReviewValidation, updateReview);
-router.delete('/:id', protect, authorize(...ACCESS_ROLES.REVIEW_REMOVE), deleteReview);
+router.delete('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), deleteReview);
 
 export default router;

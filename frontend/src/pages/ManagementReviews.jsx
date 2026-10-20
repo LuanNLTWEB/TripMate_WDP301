@@ -148,7 +148,8 @@ export default function ManagementReviews() {
   const [reloadKey, setReloadKey] = useState(0);
   const [selectedReview, setSelectedReview] = useState(null);
   const [rejectModal, setRejectModal] = useState({ open: false, review: null, reason: '' });
-  const [deleteReview, setDeleteReview] = useState(null);
+  const [hideReview, setHideReview] = useState(null);
+  const [hideReason, setHideReason] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -266,23 +267,30 @@ export default function ManagementReviews() {
 
   const openDeleteModal = (review) => {
     setSelectedReview(null);
-    setDeleteReview(review);
+    setHideReview(review);
+    setHideReason('');
   };
 
   const confirmDelete = async () => {
-    if (!deleteReview) return;
+    if (!hideReview) return;
+    const reason = hideReason.trim();
+    if (reason.length < 5) {
+      toast.warning('Vui lòng nhập lý do ẩn đánh giá có ít nhất 5 ký tự.');
+      return;
+    }
     setActionLoading(true);
     try {
-      await reviewApi.delete(deleteReview._id);
+      await reviewApi.hide(hideReview._id, reason);
       toast.success('Đã ẩn đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
-      setDeleteReview(null);
+      setHideReview(null);
+      setHideReason('');
       if (reviews.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1);
       } else {
         refreshReviews();
       }
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể xóa đánh giá.');
+      toast.error(requestError.message || 'Không thể ẩn đánh giá.');
     } finally {
       setActionLoading(false);
     }
@@ -443,7 +451,7 @@ export default function ManagementReviews() {
       />
 
       <ConfirmDeleteModal
-        isOpen={Boolean(deleteReview)}
+        isOpen={Boolean(hideReview)}
         title="Ẩn đánh giá"
         message={(
           <p className="mb-0">
@@ -453,8 +461,15 @@ export default function ManagementReviews() {
         )}
         confirmText="Xác nhận ẩn"
         loading={actionLoading}
+        reason={hideReason}
+        reasonLabel="Lý do ẩn đánh giá"
+        reasonPlaceholder="Nhập lý do vi phạm quy chuẩn cộng đồng..."
+        onReasonChange={setHideReason}
         onConfirm={confirmDelete}
-        onClose={() => setDeleteReview(null)}
+        onClose={() => {
+          setHideReview(null);
+          setHideReason('');
+        }}
       />
 
     </section>

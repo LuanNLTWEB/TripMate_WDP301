@@ -313,6 +313,10 @@ export const reviewApi = {
     body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  hide: (id, moderationReason) => apiRequest(`/reviews/${id}/hide`, {
+    method: 'PATCH',
+    body: JSON.stringify({ moderationReason })
+  }),
   update: (id, payload) => apiRequest(`/reviews/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)

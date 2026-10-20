@@ -468,18 +468,16 @@ export const deleteReview = async (req, res) => {
       });
     }
 
-    const isOwner = review.userId.toString() === req.user._id.toString();
-    const isStaff = req.user.role === 'staff';
-    if (!isOwner && !isStaff) {
+    if (review.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không có quyền xóa đánh giá này'
+        message: 'Bạn chỉ có thể xóa đánh giá của chính mình'
       });
     }
 
     const tourId = review.tourId;
 
-    // Xóa mềm để Staff có thể khôi phục, đồng thời ẩn khỏi danh sách công khai.
+    // Customer xóa mềm đánh giá của chính mình.
     review.isDeleted = true;
     review.deletedAt = new Date();
     review.deletedBy = req.user._id;
@@ -499,6 +497,66 @@ export const deleteReview = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Không thể xóa đánh giá'
+    });
+  }
+};
+
+/**
+ * Ẩn đánh giá bởi Staff (UC Review Moderation - Hide Review).
+ * @route PATCH /api/reviews/:id/hide
+ * @access Private (staff)
+ */
+export const hideReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu ẩn đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const moderationReason = req.body.moderationReason.trim();
+    const review = await Review.findById(id);
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá'
+      });
+    }
+
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị ẩn trước đó'
+      });
+    }
+
+    const tourId = review.tourId;
+    review.isDeleted = true;
+    review.deletedAt = new Date();
+    review.deletedBy = req.user._id;
+    review.moderatedBy = req.user._id;
+    review.moderationReason = moderationReason;
+    await review.save();
+
+    const { averageRating, totalReviews } = await recalculateTourRating(tourId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã ẩn đánh giá thành công',
+      reviewId: id,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    console.error('Error hiding review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể ẩn đánh giá'
     });
   }
 };

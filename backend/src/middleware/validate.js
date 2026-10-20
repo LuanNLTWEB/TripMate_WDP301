@@ -669,6 +669,14 @@ export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
 
+export const hideReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('moderationReason')
+    .trim()
+    .isLength({ min: 5, max: 500 })
+    .withMessage('Lý do ẩn đánh giá phải có từ 5 đến 500 ký tự')
+];
+
 export const cancelBookingValidation = [
   param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),
   body('reason')
