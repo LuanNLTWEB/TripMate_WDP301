@@ -192,6 +192,7 @@ export const tourCategoryApi = {
 export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
+  getBudget: (id) => apiRequest(`/itineraries/${id}/budget`, { method: 'GET' }),
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
     body: JSON.stringify(itinerary)
@@ -227,11 +228,10 @@ export const itineraryApi = {
     body: JSON.stringify({ tourId })
   }),
   removeTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours/${tourId}`, {
-    method: 'DELETE'
-  }),
-  duplicate: (id, payload = {}) => apiRequest(`/itineraries/${id}/duplicate`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
+  method: 'DELETE'
+}),
+  getById: (id) => apiRequest(`/itineraries/${id}`, {
+    method: 'GET'
   }),
   share: (id, payload) => apiRequest(`/itineraries/${id}/share`, {
     method: 'POST',
@@ -240,7 +240,14 @@ export const itineraryApi = {
   removeCollaborator: (id, userId) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'DELETE'
   }),
-  leave: (id) => apiRequest(`/itineraries/${id}/leave`, { method: 'DELETE' }),
+  leave: (id, newOwnerId) => apiRequest(`/itineraries/${id}/leave`, {
+    method: 'DELETE',
+    ...(newOwnerId ? { body: JSON.stringify({ newOwnerId }) } : {})
+  }),
+  transferOwnership: (id, newOwnerId) => apiRequest(`/itineraries/${id}/owner`, {
+    method: 'PUT',
+    body: JSON.stringify({ newOwnerId })
+  }),
   changeCollaboratorRole: (id, userId, permission) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'PUT',
     body: JSON.stringify({ permission })
@@ -306,6 +313,11 @@ export const reviewApi = {
     body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  update: (id, payload) => apiRequest(`/reviews/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  restore: (id) => apiRequest(`/reviews/${id}/restore`, { method: 'PATCH' }),
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -316,6 +328,7 @@ export const reviewApi = {
     if (params.search) query.append('search', params.search);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
+    if (params.deleted) query.append('deleted', params.deleted);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/reviews/moderation${queryString}`, { method: 'GET' });
   },
@@ -411,6 +424,10 @@ export const tourApi = {
   updatePrice: (id, price) => apiRequest(`/tours/${id}/price`, {
     method: 'PATCH',
     body: JSON.stringify({ price })
+  }),
+  updateDeparture: (id, payload) => apiRequest(`/tours/${id}/departure`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   })
 };
 export const departureApi = {
@@ -418,8 +435,13 @@ export const departureApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
-  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' })
+  listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' }),
+  update: (id, payload) => apiRequest(`/departures/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
 };
+
 export const uploadApi = {
   uploadImage: (formData) => apiRequest('/upload', {
     method: 'POST',
@@ -447,7 +469,11 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
-  getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' })
+  getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' }),
+  cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason })
+  })
 };
 
 export default authApi;

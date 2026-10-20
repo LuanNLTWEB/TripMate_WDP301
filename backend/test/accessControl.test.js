@@ -72,6 +72,7 @@ test('role groups match the actors defined in the backlog', () => {
   assert.deepEqual([...ACCESS_ROLES.STAFF_ONLY], ['staff']);
   assert.deepEqual([...ACCESS_ROLES.PROVIDER_ONLY], ['tourProvider']);
   assert.deepEqual([...ACCESS_ROLES.CUSTOMER_ONLY], ['customer']);
+  assert.deepEqual([...ACCESS_ROLES.REVIEW_REMOVE], ['customer', 'staff']);
   assert.deepEqual([...ACCESS_ROLES.ANNOUNCEMENT_VIEW], ['staff', 'customer', 'tourProvider']);
   assert.deepEqual([...ACCESS_ROLES.TOUR_SCHEDULE_VIEW], ['customer', 'tourProvider']);
   assert.deepEqual([...ACCESS_ROLES.CONTENT_UPLOAD], ['staff', 'tourProvider']);
@@ -106,21 +107,27 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [tourRoutes, 'put', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'put', '/:id/capacity', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'patch', '/:id/price', ACCESS_ROLES.PROVIDER_ONLY],
+    [tourRoutes, 'patch', '/:id/departure', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'get', '/:id/schedule', ACCESS_ROLES.TOUR_SCHEDULE_VIEW],
     [tourRoutes, 'patch', '/:id/status', ACCESS_ROLES.STAFF_ONLY],
     [tourRoutes, 'patch', '/:id/revision', ACCESS_ROLES.STAFF_ONLY],
     [departureRoutes, 'get', '/', ACCESS_ROLES.PROVIDER_ONLY],
     [departureRoutes, 'post', '/', ACCESS_ROLES.PROVIDER_ONLY],
+    [departureRoutes, 'put', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
+    [departureRoutes, 'patch', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
     [bookingRoutes, 'post', '/:tourId', ACCESS_ROLES.CUSTOMER_ONLY],
     [bookingRoutes, 'get', '/my', ACCESS_ROLES.CUSTOMER_ONLY],
     [bookingRoutes, 'get', '/provider', ACCESS_ROLES.PROVIDER_ONLY],
+    [bookingRoutes, 'patch', '/:id/cancel', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'get', '/tours/:tourId', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'post', '/tours/:tourId', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'get', '/moderation', ACCESS_ROLES.STAFF_ONLY],
     [reviewRoutes, 'get', '/reported', ACCESS_ROLES.STAFF_ONLY],
     [reviewRoutes, 'post', '/:id/report', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'patch', '/:id/moderate', ACCESS_ROLES.STAFF_ONLY],
-    [reviewRoutes, 'delete', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
+    [reviewRoutes, 'patch', '/:id/restore', ACCESS_ROLES.STAFF_ONLY],
+    [reviewRoutes, 'put', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
+    [reviewRoutes, 'delete', '/:id', ACCESS_ROLES.REVIEW_REMOVE],
     [statsRoutes, 'get', '/platform', ACCESS_ROLES.STAFF_ONLY],
     [announcementRoutes, 'get', '/', ACCESS_ROLES.ANNOUNCEMENT_VIEW],
     [announcementRoutes, 'get', '/management', ACCESS_ROLES.STAFF_ONLY],
@@ -129,7 +136,10 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [announcementRoutes, 'delete', '/:id', ACCESS_ROLES.STAFF_ONLY],
     [itineraryRoutes, 'get', '/', ACCESS_ROLES.CUSTOMER_ONLY],
     [itineraryRoutes, 'post', '/', ACCESS_ROLES.CUSTOMER_ONLY],
+    [itineraryRoutes, 'get', '/:id/budget', ACCESS_ROLES.CUSTOMER_ONLY],
     [itineraryRoutes, 'put', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
+    [itineraryRoutes, 'put', '/:id/owner', ACCESS_ROLES.CUSTOMER_ONLY],
+    [itineraryRoutes, 'delete', '/:id/leave', ACCESS_ROLES.CUSTOMER_ONLY],
     [itineraryRoutes, 'delete', '/:id', ACCESS_ROLES.CUSTOMER_ONLY]
   ];
 

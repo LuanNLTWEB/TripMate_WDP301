@@ -41,15 +41,36 @@ export function ReviewStatusBadge({ status, reported = false }) {
 }
 
 export function ReviewActions({
-  review,
-  disabled = false,
-  onView,
-  onApprove,
-  onReject,
-  onFlag,
-  onDelete
-}) {
-  return (
+    review,
+    disabled = false,
+    onView,
+    onApprove,
+    onReject,
+    onFlag,
+    onDelete,
+    onRestore
+  }) {
+    // Đánh giá đã xóa mềm chỉ có thể khôi phục, không hiển thị các hành động kiểm duyệt
+    if (review.isDeleted) {
+      return (
+        <div className="management-actions justify-content-center">
+          {onRestore && (
+            <button
+              type="button"
+              className="management-action-btn btn-approve"
+              title="Khôi phục đánh giá"
+              aria-label="Khôi phục đánh giá"
+              disabled={disabled}
+              onClick={() => onRestore(review)}
+            >
+              <i className="bi bi-arrow-counterclockwise"></i>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
     <div className="management-actions justify-content-center">
       {onView && (
         <button
@@ -103,8 +124,8 @@ export function ReviewActions({
         <button
           type="button"
           className="management-action-btn btn-delete"
-          title="Xóa vĩnh viễn"
-          aria-label="Xóa vĩnh viễn đánh giá"
+          title="Ẩn đánh giá"
+          aria-label="Ẩn đánh giá"
           disabled={disabled}
           onClick={() => onDelete(review)}
         >

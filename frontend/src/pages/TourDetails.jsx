@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ReportReviewModal from '../components/ReportReviewModal';
 import CreateReviewModal from '../components/CreateReviewModal';
+import EditReviewModal from '../components/EditReviewModal';
 import { tourApi, reviewApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -30,6 +31,7 @@ const TourDetails = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
   const [reviewToDelete, setReviewToDelete] = useState(null);
+  const [reviewToEdit, setReviewToEdit] = useState(null);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
   const [reviewToReport, setReviewToReport] = useState(null);
   const [reportedReviewIds, setReportedReviewIds] = useState([]);
@@ -773,6 +775,17 @@ const TourDetails = () => {
                               {isMyReview && (
                                 <button
                                   type="button"
+                                  className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
+                                  title="Sửa đánh giá"
+                                  aria-label="Sửa đánh giá"
+                                  onClick={() => setReviewToEdit(review)}
+                                >
+                                  <i className="bi bi-pencil"></i>
+                                </button>
+                              )}
+                              {isMyReview && (
+                                <button
+                                  type="button"
                                   className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
                                   title="Xóa đánh giá"
                                   aria-label="Xóa đánh giá"
@@ -878,6 +891,27 @@ const TourDetails = () => {
             tourTitle={tour.title}
             onClose={() => setShowCreateReview(false)}
             onCreated={handleReviewCreated}
+          />
+        )}
+        {/* UC-89 - sửa đánh giá của chính khách hàng */}
+        {reviewToEdit && (
+          <EditReviewModal
+            review={reviewToEdit}
+            tourTitle={tour.title}
+            onClose={() => setReviewToEdit(null)}
+            onUpdated={(response) => {
+              if (response.data) {
+                setReviews((current) =>
+                  current.map((review) =>
+                    review._id === response.data._id ? response.data : review
+                  )
+                );
+              }
+              setReviewStats((current) => ({
+                averageRating: response.averageRating ?? current.averageRating,
+                totalReviews: response.totalReviews ?? current.totalReviews
+              }));
+            }}
           />
         )}
     </>

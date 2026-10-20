@@ -8,6 +8,7 @@ import CustomDatePicker from '../components/CustomDatePicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CreateItineraryModal from './CreateItineraryModal';
 import EditItineraryModal from './EditItineraryModal';
+import TripBudgetModal from './TripBudgetModal';
 import { destinationApi, itineraryApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -35,6 +36,7 @@ function Itinerary() {
   const [selected, setSelected] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
   const [editingActivityId, setEditingActivityId] = useState(null);
   const activityFormRef = useRef(null);
@@ -50,6 +52,7 @@ function Itinerary() {
   const [pendingDeleteActivity, setPendingDeleteActivity] = useState(null);
   const [pendingRemoveCollaborator, setPendingRemoveCollaborator] = useState(null);
   const [pendingLeaveItinerary, setPendingLeaveItinerary] = useState(false);
+  const [pendingTransferOwnerId, setPendingTransferOwnerId] = useState(null);
   const [leavingItinerary, setLeavingItinerary] = useState(false);
   const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
@@ -551,6 +554,22 @@ function Itinerary() {
     }
   };
 
+  // UC-120 (BR-72) - standalone ownership transfer: owner picks a collaborator
+  // to become the new owner. The old owner becomes a collaborator (edit).
+  const handleTransferOwnership = async () => {
+    if (!selected || !pendingTransferOwnerId) return;
+    try {
+      const response = await itineraryApi.transferOwnership(selected._id, pendingTransferOwnerId);
+      toast.success(response.message || 'Chuyển quyền sở hữu thành công.');
+      setPendingTransferOwnerId(null);
+      await loadItineraries();
+    } catch (err) {
+      toast.error(err.message || 'Không thể chuyển quyền sở hữu.');
+    } finally {
+      setLeavingItinerary(false);
+    }
+  };
+
   const conflictedActivityIds = new Set();
   (selected?.conflicts || []).forEach((conflict) => {
     conflictedActivityIds.add(String(conflict.first._id));
@@ -756,6 +775,15 @@ function Itinerary() {
                               )}
                               <button
                                 type="button"
+                                className="btn btn-outline-success btn-sm text-nowrap d-inline-flex align-items-center"
+                                onClick={() => setBudgetModalOpen(true)}
+                                title="Tính toán chi phí chuyến đi"
+                              >
+                                <i className="bi bi-calculator me-1"></i>
+                                <span>Tính toán chi phí</span>
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={exportItinerary}
                                 disabled={isExporting}
@@ -850,17 +878,28 @@ function Itinerary() {
                                   </span>
                                 );
                               })}
-                              {isCollaborator && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger ms-auto d-inline-flex align-items-center gap-1"
-                                  onClick={() => setPendingLeaveItinerary(true)}
-                                  disabled={leavingItinerary}
-                                >
-                                  <i className="bi bi-box-arrow-right"></i>
-                                  <span>Rời khỏi lịch trình</span>
-                                </button>
-                              )}
+{isCollaborator && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger ms-auto d-inline-flex align-items-center gap-1"
+                                    onClick={() => setPendingLeaveItinerary(true)}
+                                    disabled={leavingItinerary}
+                                  >
+                                    <i className="bi bi-box-arrow-right"></i>
+                                    <span>Rời khỏi lịch trình</span>
+                                  </button>
+                                )}
+                                {isOwner && (selected?.collaborators || []).length > 0 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary ms-auto d-inline-flex align-items-center gap-1"
+                                    onClick={() => setPendingTransferOwnerId((selected?.collaborators || [])[0]?.user?._id || (selected?.collaborators || [])[0]?.user || null)}
+                                    disabled={leavingItinerary}
+                                  >
+                                    <i className="bi bi-arrow-left-right"></i>
+                                    <span>Chuyển quyền sở hữu</span>
+                                  </button>
+                                )}
                             </div>
                           )}
 
@@ -1353,6 +1392,12 @@ function Itinerary() {
         onUpdated={applyItinerary}
       />
 
+      <TripBudgetModal
+        open={budgetModalOpen}
+        itinerary={selected}
+        onClose={() => setBudgetModalOpen(false)}
+      />
+
       <ConfirmDeleteModal
         isOpen={Boolean(pendingDeleteId)}
         title="Xác nhận xóa lịch trình"
@@ -1385,20 +1430,109 @@ function Itinerary() {
         onClose={() => setPendingDeleteActivity(null)}
       />
 
-      <ConfirmDeleteModal
-        isOpen={pendingLeaveItinerary}
-        title="Xác nhận rời khỏi lịch trình"
-        confirmText="Rời khỏi"
-        message={
-          <>
-            Bạn có chắc muốn rời khỏi lịch trình{' '}
-            <strong>{selected?.title || 'này'}</strong> không? Bạn sẽ mất quyền xem và chỉnh sửa lịch trình này.
-          </>
-        }
-        loading={leavingItinerary}
-        onConfirm={handleLeaveItinerary}
-        onClose={() => setPendingLeaveItinerary(false)}
-      />
+<ConfirmDeleteModal
+          isOpen={pendingLeaveItinerary}
+          title="Xác nhận rời khỏi lịch trình"
+          confirmText="Rời khỏi"
+          message={
+            <>
+              Bạn có chắc muốn rời khỏi lịch trình{' '}
+              <strong>{selected?.title || 'này'}</strong> không? Bạn sẽ mất quyền xem và chỉnh sửa lịch trình này.
+            </>
+          }
+          loading={leavingItinerary}
+          onConfirm={handleLeaveItinerary}
+          onClose={() => setPendingLeaveItinerary(false)}
+        />
+
+        {/* UC-120 (BR-72) - owner transfer modal */}
+        {pendingTransferOwnerId !== null && (
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !leavingItinerary) {
+                setPendingTransferOwnerId(null);
+              }
+            }}
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div className="modal-header bg-light px-4 py-3 border-bottom">
+                  <h5 className="modal-title fw-bold text-dark mb-0">
+                    <i className="bi bi-arrow-left-right me-2 text-primary"></i>Chuyển quyền sở hữu
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setPendingTransferOwnerId(null)}
+                    disabled={leavingItinerary}
+                    aria-label="Đóng"
+                  ></button>
+                </div>
+                <div className="modal-body px-4">
+                  <p className="text-muted small mb-3">
+                    Lịch trình <strong className="text-dark">{selected?.title}</strong> còn các thành viên khác.
+                    Theo quy tắc sở hữu duy nhất, bạn phải chọn một thành viên để nhận quyền sở hữu trước khi rời khỏi.
+                  </p>
+                  <div className="mb-2">
+                    <label htmlFor="transfer-owner-select" className="form-label fw-semibold">
+                      Người nhận quyền sở hữu <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      id="transfer-owner-select"
+                      className="form-select"
+                      value={pendingTransferOwnerId || ''}
+                      onChange={(e) => setPendingTransferOwnerId(e.target.value)}
+                      disabled={leavingItinerary}
+                    >
+                      {(selected?.collaborators || []).map((c) => {
+                        const cid = c.user?._id || c.user;
+                        return (
+                          <option key={cid} value={cid}>
+                            {c.user?.username || c.user?.email || cid} ({c.permission === 'edit' ? 'Sửa' : 'Xem'})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <div className="alert alert-light border small mt-3 mb-0">
+                    <i className="bi bi-info-circle me-1"></i>
+                    Sau khi chuyển quyền, bạn sẽ mất quyền truy cập vào lịch trình này.
+                  </div>
+                </div>
+                <div className="modal-footer border-0 px-4 pb-4 pt-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setPendingTransferOwnerId(null)}
+                    disabled={leavingItinerary}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary px-4"
+                    onClick={handleTransferOwnership}
+                    disabled={leavingItinerary || !pendingTransferOwnerId}
+                  >
+                    {leavingItinerary ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      <><i className="bi bi-arrow-left-right me-2"></i>Chuyển quyền sở hữu</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       <ConfirmDeleteModal
         isOpen={Boolean(pendingRemoveCollaborator)}

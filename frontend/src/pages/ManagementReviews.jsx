@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import ReviewDetailModal from '../components/ReviewDetailModal';
 import ReviewManagementTable from '../components/ReviewManagementTable';
 import { useToast } from '../hooks/useToast';
@@ -27,6 +28,11 @@ const REPORTED_STATUS_OPTIONS = [
   { value: 'pending', label: 'Chờ duyệt' },
   { value: 'approved', label: 'Đã cho hiển thị' },
   { value: 'rejected', label: 'Đã từ chối' }
+];
+
+// UC-95 - các đánh giá đã xóa mềm, danh sách không lọc theo trạng thái kiểm duyệt
+const DELETED_STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả đã xóa' }
 ];
 
 function ReportSummary({ summary }) {
@@ -119,9 +125,14 @@ function RejectReviewModal({ state, loading, onReasonChange, onClose, onConfirm 
 export default function ManagementReviews() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeView = searchParams.get('view') === 'reported' ? 'reported' : 'all';
+  const activeView = searchParams.get('view') === 'reported' ? 'reported' : searchParams.get('view') === 'deleted' ? 'deleted' : 'all';
   const isReportedView = activeView === 'reported';
-  const statusOptions = isReportedView ? REPORTED_STATUS_OPTIONS : ALL_STATUS_OPTIONS;
+  const isDeletedView = activeView === 'deleted';
+  const statusOptions = isReportedView
+    ? REPORTED_STATUS_OPTIONS
+    : isDeletedView
+      ? DELETED_STATUS_OPTIONS
+      : ALL_STATUS_OPTIONS;
 
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
@@ -137,6 +148,7 @@ export default function ManagementReviews() {
   const [reloadKey, setReloadKey] = useState(0);
   const [selectedReview, setSelectedReview] = useState(null);
   const [rejectModal, setRejectModal] = useState({ open: false, review: null, reason: '' });
+  const [deleteReview, setDeleteReview] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -150,6 +162,10 @@ export default function ManagementReviews() {
           status: statusFilter,
           search: appliedSearch
         };
+        if (isDeletedView) {
+          params.deleted = 'true';
+          params.status = 'all';
+        }
         const response = isReportedView
           ? await reviewApi.getReported(params)
           : await reviewApi.getForModeration(params);
@@ -181,10 +197,10 @@ export default function ManagementReviews() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, currentPage, isReportedView, reloadKey, statusFilter]);
+  }, [appliedSearch, currentPage, isDeletedView, isReportedView, reloadKey, statusFilter]);
 
   const changeView = (view) => {
-    setSearchParams(view === 'reported' ? { view: 'reported' } : {});
+    setSearchParams(view === 'all' ? {} : { view });
     setStatusFilter('all');
     setSearchInput('');
     setAppliedSearch('');
@@ -248,6 +264,48 @@ export default function ManagementReviews() {
     if (success) closeRejectModal();
   };
 
+  const openDeleteModal = (review) => {
+    setSelectedReview(null);
+    setDeleteReview(review);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteReview) return;
+    setActionLoading(true);
+    try {
+      await reviewApi.delete(deleteReview._id);
+      toast.success('Đã ẩn đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
+      setDeleteReview(null);
+      if (reviews.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        refreshReviews();
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa đánh giá.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // UC-95 - khôi phục một đánh giá đã bị xóa
+  const handleRestore = async (review) => {
+    setActionLoading(true);
+    try {
+      const response = await reviewApi.restore(review._id);
+      toast.success(response.message || 'Khôi phục đánh giá thành công.');
+      if (reviews.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        refreshReviews();
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể khôi phục đánh giá.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
@@ -260,8 +318,8 @@ export default function ManagementReviews() {
         <li className="nav-item">
           <button
             type="button"
-            className={`nav-link ${!isReportedView ? 'active' : ''}`}
-            aria-current={!isReportedView ? 'page' : undefined}
+            className={`nav-link ${!isReportedView && !isDeletedView ? 'active' : ''}`}
+            aria-current={!isReportedView && !isDeletedView ? 'page' : undefined}
             onClick={() => changeView('all')}
           >
             <i className="bi bi-chat-square-quote me-2"></i>Tất cả đánh giá
@@ -275,6 +333,16 @@ export default function ManagementReviews() {
             onClick={() => changeView('reported')}
           >
             <i className="bi bi-flag me-2"></i>Đánh giá bị báo cáo
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${isDeletedView ? 'active' : ''}`}
+            aria-current={isDeletedView ? 'page' : undefined}
+            onClick={() => changeView('deleted')}
+          >
+            <i className="bi bi-trash me-2"></i>Đã xóa
           </button>
         </li>
       </ul>
@@ -324,6 +392,8 @@ export default function ManagementReviews() {
           onApprove={handleApprove}
           onReject={openRejectModal}
           onFlag={handleFlag}
+          onDelete={openDeleteModal}
+          onRestore={isDeletedView ? handleRestore : undefined}
         />
 
         {!loading && totalPages > 1 && (
@@ -361,6 +431,7 @@ export default function ManagementReviews() {
         onApprove={handleApprove}
         onReject={openRejectModal}
         onFlag={handleFlag}
+        onDelete={openDeleteModal}
       />
 
       <RejectReviewModal
@@ -369,6 +440,21 @@ export default function ManagementReviews() {
         onReasonChange={(reason) => setRejectModal((current) => ({ ...current, reason }))}
         onClose={closeRejectModal}
         onConfirm={confirmReject}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteReview)}
+        title="Ẩn đánh giá"
+        message={(
+          <p className="mb-0">
+            Đánh giá sẽ bị ẩn khỏi hệ thống và có thể được khôi phục trong tab <strong>Đã xóa</strong>.
+            Bạn có chắc chắn muốn tiếp tục?
+          </p>
+        )}
+        confirmText="Xác nhận ẩn"
+        loading={actionLoading}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleteReview(null)}
       />
 
     </section>

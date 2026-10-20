@@ -19,7 +19,8 @@ import {
   deleteTourSchedule,
   getTourSchedule,
   updateTourCapacity,
-  updateTourPrice
+  updateTourPrice,
+  updateTourDeparture
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -34,7 +35,8 @@ import {
   updateTourScheduleValidation,
   deleteTourScheduleValidation,
   updateTourCapacityValidation,
-  updateTourPriceValidation
+  updateTourPriceValidation,
+  updateTourDepartureValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -50,6 +52,7 @@ router.put('/:id/details', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), se
 router.put('/:id/capacity', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourCapacityValidation, updateTourCapacity);
 router.patch('/:id/price', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourPriceValidation, updateTourPrice);
 router.put('/:id/price', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourPriceValidation, updateTourPrice);
+router.patch('/:id/departure', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourDepartureValidation, updateTourDeparture);
 router.post('/:id/schedule', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), createTourScheduleValidation, createTourSchedule);
 router.put('/:id/schedule/:scheduleId', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourScheduleValidation, updateTourSchedule);
 router.delete('/:id/schedule/:scheduleId', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), deleteTourScheduleValidation, deleteTourSchedule);

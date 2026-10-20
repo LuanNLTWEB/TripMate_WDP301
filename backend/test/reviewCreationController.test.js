@@ -127,7 +127,7 @@ test('creates an approved review after a confirmed trip and recalculates tour ra
   };
   Review.find = (query) => ({
     async select(fields) {
-      assert.deepEqual(query, { tourId: 'tour-1', status: 'approved' });
+      assert.deepEqual(query, { tourId: 'tour-1', status: 'approved', isDeleted: false });
       assert.equal(fields, 'rating');
       return [{ rating: 5 }, { rating: 4 }];
     }

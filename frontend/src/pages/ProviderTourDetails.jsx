@@ -6,6 +6,7 @@ import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
 import TourFormModal from './TourFormModal';
 import CreateTourDepartureModal from './CreateTourDepartureModal';
+import EditDepartureSlotModal from './EditDepartureSlotModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -42,6 +43,7 @@ export default function ProviderTourDetails() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDepartureModal, setShowDepartureModal] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
+  const [editingDeparture, setEditingDeparture] = useState(null);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -803,6 +805,7 @@ export default function ProviderTourDetails() {
                         <th scope="col">Giá</th>
                         <th scope="col">Trạng thái</th>
                         <th scope="col">Ghi chú</th>
+                        <th scope="col" className="text-end">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -817,6 +820,16 @@ export default function ProviderTourDetails() {
                             </span>
                           </td>
                           <td className="text-muted small">{d.note || '—'}</td>
+                          <td className="text-end">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary py-0 px-2"
+                              title="Chỉnh sửa lịch khởi hành"
+                              onClick={() => setEditingDeparture(d)}
+                            >
+                              <i className="bi bi-pencil me-1"></i>Sửa
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -880,6 +893,15 @@ export default function ProviderTourDetails() {
         }}
       />
 
+      {/* Edit Departure Slot Modal (Chỉnh sửa lịch khởi hành) */}
+      <EditDepartureSlotModal
+        open={!!editingDeparture}
+        onClose={() => setEditingDeparture(null)}
+        departure={editingDeparture}
+        tourPrice={tour?.price}
+        onUpdated={() => loadDepartures()}
+      />
+
       {showEditModal && (
         <TourFormModal
           mode="update"
@@ -888,6 +910,7 @@ export default function ProviderTourDetails() {
           onSaved={(updatedTour) => setTour(updatedTour)}
         />
       )}
+
     </section>
   );
 }
