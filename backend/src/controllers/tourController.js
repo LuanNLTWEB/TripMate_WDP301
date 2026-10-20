@@ -473,6 +473,53 @@ export const updateTourStatus = async (req, res) => {
   }
 };
 
+/**
+ * Khôi phục tour đã bị tạm ngưng (UC Tour Moderation - Restore Tour).
+ * @route PATCH /api/tours/:id/restore
+ * @access Private (staff)
+ */
+export const restoreTour = async (req, res) => {
+  try {
+    const tour = await Tour.findById(req.params.id);
+
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    if (tour.status !== 'suspended') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ có thể khôi phục tour đang tạm ngưng'
+      });
+    }
+
+    tour.status = 'active';
+    tour.suspensionReason = '';
+    tour.suspendedAt = null;
+    tour.suspendedBy = null;
+    await tour.save();
+    await tour.populate([
+      { path: 'suspendedBy', select: 'username email' },
+      { path: 'rejectedBy', select: 'username email' }
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã kích hoạt lại tour',
+      data: tour
+    });
+  } catch (error) {
+    console.error('Error restoring tour:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể khôi phục tour'
+    });
+  }
+};
+
 export const requestTourRevision = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

@@ -110,6 +110,7 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [tourRoutes, 'patch', '/:id/departure', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'get', '/:id/schedule', ACCESS_ROLES.TOUR_SCHEDULE_VIEW],
     [tourRoutes, 'patch', '/:id/status', ACCESS_ROLES.STAFF_ONLY],
+    [tourRoutes, 'patch', '/:id/restore', ACCESS_ROLES.STAFF_ONLY],
     [tourRoutes, 'patch', '/:id/revision', ACCESS_ROLES.STAFF_ONLY],
     [departureRoutes, 'get', '/', ACCESS_ROLES.PROVIDER_ONLY],
     [departureRoutes, 'post', '/', ACCESS_ROLES.PROVIDER_ONLY],

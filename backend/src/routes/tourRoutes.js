@@ -9,6 +9,7 @@ import {
   removeFavoriteTour,
   saveFavoriteTour,
   updateTourStatus,
+  restoreTour,
   requestTourRevision,
   getProviderTours,
   getProviderTourById,
@@ -61,6 +62,7 @@ router.get('/favorites', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getF
 router.post('/:id/favorite', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), tourIdValidation, saveFavoriteTour);
 router.delete('/:id/favorite', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), tourIdValidation, removeFavoriteTour);
 router.patch('/:id/status', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), updateTourStatusValidation, updateTourStatus);
+router.patch('/:id/restore', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), tourIdValidation, restoreTour);
 router.patch('/:id/revision', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), requestRevisionValidation, requestTourRevision);
 router.get('/:id', optionalAuth, tourIdValidation, getTourById);
 
