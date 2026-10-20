@@ -36,6 +36,10 @@ function ReviewTourSubmission() {
   const [isSubmittingRevision, setIsSubmittingRevision] = useState(false);
   const [revisionError, setRevisionError] = useState('');
 
+  // State cho kích hoạt lại tour tạm ngưng
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -88,6 +92,21 @@ function ReviewTourSubmission() {
       setRevisionError(err.message || 'Không thể gửi yêu cầu chỉnh sửa.');
     } finally {
       setIsSubmittingRevision(false);
+    }
+  };
+
+  const handleRestoreTour = async () => {
+    if (isRestoring) return;
+    setIsRestoring(true);
+    try {
+      const response = await tourApi.setStatus(id, 'active', '');
+      setTour(response.data);
+      setShowRestoreModal(false);
+      toast.success(response.message || 'Đã kích hoạt lại tour.');
+    } catch (err) {
+      toast.error(err.message || 'Không thể kích hoạt lại tour.');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -228,6 +247,13 @@ function ReviewTourSubmission() {
                   <DetailItem label="Người tạm ngưng" value={suspendedByName} />
                 </div>
               </div>
+              <button
+                type="button"
+                className="btn btn-success btn-sm mt-3"
+                onClick={() => setShowRestoreModal(true)}
+              >
+                <i className="bi bi-play-circle me-1"></i>Kích hoạt lại tour
+              </button>
             </div>
           )}
 
@@ -359,6 +385,60 @@ function ReviewTourSubmission() {
                       <i className="bi bi-send me-2"></i>Gửi yêu cầu
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal kích hoạt lại tour tạm ngưng */}
+      {showRestoreModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-play-circle me-2"></i>Kích hoạt lại tour
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowRestoreModal(false)}
+                  disabled={isRestoring}
+                  aria-label="Đóng"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p className="mb-2">
+                  Bạn có chắc muốn kích hoạt lại tour <strong>{tour.title}</strong>?
+                </p>
+                <p className="text-muted small mb-0">
+                  Tour sẽ xuất hiện trở lại trong danh sách và khách hàng có thể truy cập chi tiết tour.
+                  Thông tin tạm ngưng sẽ được xóa.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowRestoreModal(false)}
+                  disabled={isRestoring}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleRestoreTour}
+                  disabled={isRestoring}
+                >
+                  {isRestoring ? 'Đang xử lý...' : 'Xác nhận kích hoạt'}
                 </button>
               </div>
             </div>

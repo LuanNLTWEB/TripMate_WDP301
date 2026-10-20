@@ -397,7 +397,7 @@ export const updateTourStatus = async (req, res) => {
       tour.rejectedAt = new Date();
       tour.rejectedBy = req.user._id;
     } else {
-      tour.suspensionReason = '';
+      tour.suspensionReason = null;
       tour.suspendedAt = null;
       tour.suspendedBy = null;
       tour.rejectionReason = '';
