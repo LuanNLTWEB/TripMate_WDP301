@@ -9,6 +9,9 @@ node_modules/
 # Build output
 dist/
 
+# Original high-resolution 3D source exports
+/Meshy_AI_*.glb
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

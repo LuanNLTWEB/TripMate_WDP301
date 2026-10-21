@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+test-artifacts/
+model-sources/
 
 # Editor directories and files
 .vscode/*
