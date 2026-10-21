@@ -276,6 +276,9 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
+  deleteSentInvitation: (id, notificationId) => apiRequest(`/itineraries/${id}/invitations/${notificationId}`, {
+    method: 'DELETE'
+  }),
   listCollaborators: (id) => apiRequest(`/itineraries/${id}/collaborators`, { method: 'GET' }),
   listReceivedInvitations: (status) => apiRequest(
     `/itineraries/invitations${status ? `?status=${encodeURIComponent(status)}` : ''}`,

@@ -1938,17 +1938,39 @@ main {
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+  min-width: 0;
+}
+
+.tm-collaborator-modal-dialog {
+  width: calc(100% - 2rem);
+  max-width: 800px;
+}
+
+.tm-collaborator-modal {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tm-collaborator-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
+  gap: 10px;
   padding: 10px 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   transition: all 0.2s ease;
+}
+
+.tm-collaborator-item > .d-flex {
+  min-width: 0;
+}
+
+.tm-collaborator-item > .d-flex:last-child {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .tm-collaborator-item:hover {
@@ -1992,6 +2014,18 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+@media (max-width: 576px) {
+  .tm-collaborator-modal-dialog {
+    width: calc(100% - 1rem);
+    margin: 0.5rem auto;
+  }
+
+  .tm-collaborator-item {
+    align-items: flex-start;
+  }
 }
 
 /* Itinerary activity drag-and-drop */

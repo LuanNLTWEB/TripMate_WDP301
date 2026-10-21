@@ -253,6 +253,46 @@ export const listCollaborators = async (req, res) => {
 };
 
 /**
+ * Delete a sent itinerary invitation (owner only).
+ * This only removes the invitation history and does not remove an accepted collaborator.
+ * @route DELETE /api/itineraries/:id/invitations/:notificationId
+ * @access Customer (owner only)
+ */
+export const deleteSentInvitation = async (req, res) => {
+  try {
+    const itinerary = await Itinerary.findById(req.params.id).select('owner');
+
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (String(itinerary.owner) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa lời mời của lịch trình này' });
+    }
+
+    const invitation = await Notification.findOne({
+      _id: req.params.notificationId,
+      itinerary: req.params.id,
+      notificationType: INVITE_TYPE
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lời mời' });
+    }
+
+    await invitation.deleteOne();
+
+    return res.json({
+      success: true,
+      message: invitation.status === 'pending' ? 'Đã hủy lời mời cộng tác' : 'Đã xóa lịch sử lời mời'
+    });
+  } catch (error) {
+    console.error('Delete sent invitation error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa lời mời' });
+  }
+};
+
+/**
  * Change a collaborator's permission level (view <-> edit) on an owned itinerary (owner only).
  * @route PUT /api/itineraries/:id/collaborators/:userId
  * @access Customer (owner only)

@@ -31,7 +31,8 @@ import {
   inviteCollaborator,
   listCollaborators,
   listReceivedInvitations,
-  respondToInvitation
+  respondToInvitation,
+  deleteSentInvitation
 } from '../controllers/invitationController.js';
 import {
   activityValidation,
@@ -48,6 +49,7 @@ import {
   shareItineraryValidation,
   removeCollaboratorValidation,
   inviteCollaboratorValidation,
+  deleteInvitationValidation,
   respondInvitationValidation,
   changeCollaboratorRoleValidation,
   transferOwnershipValidation,
@@ -72,6 +74,7 @@ router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary)
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
 router.put('/:id/owner', ...customerAccess, transferOwnershipValidation, transferOwnership);
 router.post('/:id/invitations', ...customerAccess, inviteCollaboratorValidation, inviteCollaborator);
+router.delete('/:id/invitations/:notificationId', ...customerAccess, deleteInvitationValidation, deleteSentInvitation);
 router.get('/:id/collaborators', ...customerAccess, itineraryIdValidation, listCollaborators);
 router.delete('/:id/collaborators/:userId', ...customerAccess, removeCollaboratorValidation, removeCollaborator);
 router.delete('/:id/leave', ...customerAccess, itineraryIdValidation, leaveItinerary);
