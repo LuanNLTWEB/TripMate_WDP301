@@ -7,7 +7,7 @@ const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
 /**
  * Tạo lịch khởi hành mới cho một tour (UC-40)
  * @route POST /api/departures
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
@@ -29,7 +29,7 @@ export const createDeparture = async (req, res) => {
     }
 
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền tạo lịch khởi hành cho tour này'
@@ -89,11 +89,10 @@ export const createDeparture = async (req, res) => {
     });
   }
 };
-
 /**
  * Lấy danh sách lịch khởi hành của một tour
  * @route GET /api/departures?tourId=:tourId
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const getDeparturesByTour = async (req, res) => {
   const errors = validationResult(req);
@@ -115,7 +114,7 @@ export const getDeparturesByTour = async (req, res) => {
     }
 
     const isOwner = tour.providerId && tour.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền xem lịch khởi hành của tour này'
@@ -138,11 +137,10 @@ export const getDeparturesByTour = async (req, res) => {
     });
   }
 };
-
 /**
  * Cập nhật lịch khởi hành của tour (UC-42)
  * @route PUT/PATCH /api/departures/:id
- * @access Private (tourProvider, admin)
+ * @access Private (tourProvider)
  */
 export const updateDeparture = async (req, res) => {
   const errors = validationResult(req);
@@ -164,7 +162,7 @@ export const updateDeparture = async (req, res) => {
     }
 
     const isOwner = departure.providerId && departure.providerId.equals(req.user._id);
-    if (!isOwner && req.user.role !== 'admin') {
+    if (!isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật lịch khởi hành này'
@@ -233,4 +231,3 @@ export const updateDeparture = async (req, res) => {
     });
   }
 };
-

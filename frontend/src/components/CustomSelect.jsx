@@ -29,9 +29,11 @@ export default function CustomSelect({
   triggerClassName = '',
   style,
   triggerStyle,
-  required = false
+  required = false,
+  dropup = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(Boolean(dropup));
   const containerRef = useRef(null);
 
   // Normalize options array
@@ -49,6 +51,24 @@ export default function CustomSelect({
 
   // Find currently selected option
   const selectedOption = normalizedOptions.find((opt) => String(opt.value) === String(value));
+
+  // Auto-detect direction (upward vs downward)
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      if (dropup) {
+        setOpenUpward(true);
+      } else {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const estimatedHeight = Math.min(normalizedOptions.length * 42 + 20, 220);
+        if (spaceBelow < estimatedHeight && rect.top > estimatedHeight) {
+          setOpenUpward(true);
+        } else {
+          setOpenUpward(false);
+        }
+      }
+    }
+  }, [isOpen, dropup, normalizedOptions.length]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -134,7 +154,7 @@ export default function CustomSelect({
       </button>
 
       {isOpen && (
-        <div className="tm-select-dropdown" role="listbox" tabIndex="-1">
+        <div className={`tm-select-dropdown ${openUpward ? 'is-dropup' : ''}`} role="listbox" tabIndex="-1">
           {normalizedOptions.length === 0 ? (
             <div className="p-3 text-center text-muted small">Không có lựa chọn</div>
           ) : (

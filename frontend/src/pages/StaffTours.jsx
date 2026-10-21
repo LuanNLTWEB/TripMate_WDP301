@@ -78,11 +78,9 @@ function StaffTours() {
 
     setIsSaving(true);
     try {
-      const response = await tourApi.setStatus(
-        pendingTour._id,
-        isSuspending ? 'suspended' : 'active',
-        isSuspending ? cleanReason : ''
-      );
+      const response = isSuspending
+        ? await tourApi.setStatus(pendingTour._id, 'suspended', cleanReason)
+        : await tourApi.restore(pendingTour._id);
       toast.success(response.message);
       setPendingTour(null);
       setReason('');
@@ -143,7 +141,8 @@ function StaffTours() {
                 { value: 'all', label: 'Tất cả trạng thái' },
                 { value: 'active', label: 'Đang hoạt động', icon: 'bi bi-check-circle text-success' },
                 { value: 'needs_revision', label: 'Cần chỉnh sửa', icon: 'bi bi-pencil-square text-warning' },
-                { value: 'suspended', label: 'Tạm ngưng', icon: 'bi bi-slash-circle text-danger' }
+                { value: 'suspended', label: 'Tạm ngưng', icon: 'bi bi-slash-circle text-danger' },
+                { value: 'rejected', label: 'Đã từ chối', icon: 'bi bi-x-circle text-danger' }
               ]}
             />
           </div>
@@ -183,8 +182,22 @@ function StaffTours() {
               ) : tours.map((tour) => {
                 const isSuspended = tour.status === 'suspended';
                 const isNeedsRevision = tour.status === 'needs_revision';
-                const statusLabel = isSuspended ? 'Tạm ngưng' : isNeedsRevision ? 'Cần chỉnh sửa' : 'Đang hoạt động';
-                const badgeVariant = isSuspended ? 'badge-danger' : isNeedsRevision ? 'badge-warning' : 'badge-success';
+                const isRejected = tour.status === 'rejected';
+                const canToggleSuspension = isSuspended || tour.status === 'active';
+                const statusLabel = isSuspended
+                  ? 'Tạm ngưng'
+                  : isNeedsRevision
+                    ? 'Cần chỉnh sửa'
+                    : isRejected
+                      ? 'Đã từ chối'
+                      : 'Đang hoạt động';
+                const badgeVariant = isSuspended
+                  ? 'badge-danger'
+                  : isNeedsRevision
+                    ? 'badge-warning'
+                    : isRejected
+                      ? 'badge-danger'
+                      : 'badge-success';
 
                 return (
                   <tr key={tour._id}>
@@ -237,26 +250,26 @@ function StaffTours() {
                     </td>
                     <td className="text-end">
                       <div className="management-actions">
-                        {!isSuspended && (
-                          <Link
-                            className="management-action-btn btn-view"
-                            to={isNeedsRevision ? `/management/tours/${tour._id}` : `/tours/${tour._id}`}
-                            title="Xem chi tiết tour"
-                            aria-label={`Xem ${tour.title}`}
-                          >
-                            <i className="bi bi-eye"></i>
-                          </Link>
-                        )}
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${isSuspended ? 'btn-outline-success' : 'btn-outline-danger'} d-inline-flex align-items-center gap-1 rounded-3 py-1 px-2 fw-semibold`}
-                          style={{ fontSize: '0.78rem' }}
-                          onClick={() => openStatusDialog(tour)}
-                          title={isSuspended ? 'Kích hoạt lại tour' : 'Tạm ngưng tour'}
+                        <Link
+                          className="management-action-btn btn-view"
+                          to={`/management/tours/${tour._id}?from=tours`}
+                          title="Xem chi tiết tour"
+                          aria-label={`Xem ${tour.title}`}
                         >
-                          <i className={`bi ${isSuspended ? 'bi-play-circle' : 'bi-pause-circle'}`}></i>
-                          <span>{isSuspended ? 'Kích hoạt' : 'Tạm ngưng'}</span>
-                        </button>
+                          <i className="bi bi-eye"></i>
+                        </Link>
+                        {canToggleSuspension && (
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${isSuspended ? 'btn-outline-success' : 'btn-outline-danger'} d-inline-flex align-items-center gap-1 rounded-3 py-1 px-2 fw-semibold`}
+                            style={{ fontSize: '0.78rem' }}
+                            onClick={() => openStatusDialog(tour)}
+                            title={isSuspended ? 'Kích hoạt lại tour' : 'Tạm ngưng tour'}
+                          >
+                            <i className={`bi ${isSuspended ? 'bi-play-circle' : 'bi-pause-circle'}`}></i>
+                            <span>{isSuspended ? 'Kích hoạt' : 'Tạm ngưng'}</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

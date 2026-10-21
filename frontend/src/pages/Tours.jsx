@@ -531,7 +531,7 @@ const Tours = () => {
                       </p>
                       <div className="pt-3 border-top border-light-subtle mt-auto d-flex justify-content-between align-items-center">
                         <span className="small text-muted d-inline-flex align-items-center">
-                          <i className="bi bi-check-circle-fill text-success me-1.5"></i>Còn {tour.availableSeats ?? 0} chỗ
+                          <i className="bi bi-check-circle-fill text-success me-2"></i>Còn {tour.availableSeats ?? 0} chỗ
                         </span>
                         <div className="d-flex align-items-center gap-2">
                           {user?.role === 'tourProvider' && (tour.providerId === user._id || tour.providerId?._id === user._id) && (

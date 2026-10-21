@@ -157,13 +157,15 @@ const findAllPopulated = (filter) => Itinerary.find(filter)
   .populate('destinations', destinationFields)
   .populate('tours', tourFields)
   .populate('owner', 'username email')
-  .populate('collaborators.user', 'username email');
+  .populate('collaborators.user', 'username email')
+  .populate('comments.user', 'username email');
 
 const findByIdPopulated = (id) => Itinerary.findById(id)
   .populate('destinations', destinationFields)
   .populate('tours', tourFields)
   .populate('owner', 'username email')
-  .populate('collaborators.user', 'username email');
+  .populate('collaborators.user', 'username email')
+  .populate('comments.user', 'username email');
 
 /**
  * List personal itineraries owned by the authenticated customer.
@@ -984,5 +986,115 @@ export const transferOwnership = async (req, res) => {
   } catch (error) {
     console.error('Transfer ownership error:', error);
     return res.status(500).json({ success: false, message: 'Không thể chuyển quyền sở hữu lịch trình' });
+  }
+};
+
+/**
+ * UC-61: Comment on Itinerary
+ * Post a comment on an itinerary (owner or any accepted collaborator).
+ * BR-74: Collaborators with read-only ("view") permission can still post comments.
+ * @route POST /api/itineraries/:id/comments
+ * @access Customer
+ */
+export const addComment = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Nội dung bình luận không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (!canView(itinerary, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền tham gia thảo luận trong lịch trình này'
+      });
+    }
+
+    const content = String(req.body.content || '').trim();
+    if (!content || content.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nội dung bình luận không được để trống và không vượt quá 500 ký tự'
+      });
+    }
+
+    itinerary.comments.push({
+      user: req.user._id,
+      content,
+      createdAt: new Date()
+    });
+
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(201).json({
+      success: true,
+      message: 'Đã gửi bình luận thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Add itinerary comment error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể gửi bình luận' });
+  }
+};
+
+/**
+ * UC-61: Delete Comment on Itinerary
+ * Delete a comment (author of the comment or owner of the itinerary).
+ * @route DELETE /api/itineraries/:id/comments/:commentId
+ * @access Customer
+ */
+export const deleteComment = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã bình luận không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    const comment = itinerary.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bình luận' });
+    }
+
+    const isItineraryOwner = String(itinerary.owner) === String(req.user._id);
+    const isCommentAuthor = String(comment.user) === String(req.user._id);
+
+    if (!isItineraryOwner && !isCommentAuthor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xóa bình luận này'
+      });
+    }
+
+    itinerary.comments.pull(req.params.commentId);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa bình luận thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Delete itinerary comment error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa bình luận' });
   }
 };

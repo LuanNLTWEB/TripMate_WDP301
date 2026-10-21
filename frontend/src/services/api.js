@@ -77,11 +77,42 @@ export const authApi = {
   changePassword: (passwordData) => apiRequest('/auth/change-password', {
     method: 'PUT',
     body: JSON.stringify(passwordData)
+  }),
+
+  forgotPassword: (data) => apiRequest('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  verifyOtp: (data) => apiRequest('/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  resendOtp: (data) => apiRequest('/auth/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  resetPassword: (data) => apiRequest('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data)
   })
 };
 
 export const accountApi = {
-  getAll: (search = '') => apiRequest(`/admin/accounts${search ? `?search=${encodeURIComponent(search)}` : ''}`, { method: 'GET' }),
+  getAll: (params = '') => {
+    if (typeof params === 'string') {
+      const search = params;
+      return apiRequest(`/admin/accounts${search ? `?search=${encodeURIComponent(search)}` : ''}`, { method: 'GET' });
+    }
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/admin/accounts${queryString}`, { method: 'GET' });
+  },
   getById: (id) => apiRequest(`/admin/accounts/${id}`, { method: 'GET' }),
   create: (accountData) => apiRequest('/admin/accounts', { method: 'POST', body: JSON.stringify(accountData) }),
   update: (id, accountData) => apiRequest(`/admin/accounts/${id}`, { method: 'PUT', body: JSON.stringify(accountData) }),
@@ -133,6 +164,7 @@ export const destinationApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/destinations/management${queryString}`, { method: 'GET' });
   },
+  getManagedById: (id) => apiRequest(`/destinations/management/${id}`, { method: 'GET' }),
   create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)
@@ -253,11 +285,51 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify({ action })
   }),
+  addComment: (id, content) => apiRequest(`/itineraries/${id}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  }),
+  deleteComment: (id, commentId) => apiRequest(`/itineraries/${id}/comments/${commentId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
 export const statsApi = {
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
+};
+
+export const announcementApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/announcements${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/announcements/${id}`, { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.audience && params.audience !== 'all') query.append('audience', params.audience);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/announcements/management${queryString}`, { method: 'GET' });
+  },
+  create: (announcement) => apiRequest('/announcements', {
+    method: 'POST',
+    body: JSON.stringify(announcement)
+  }),
+  update: (id, announcement) => apiRequest(`/announcements/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(announcement)
+  }),
+  delete: (id) => apiRequest(`/announcements/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 export const reviewApi = {
@@ -268,6 +340,10 @@ export const reviewApi = {
     body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  hide: (id, moderationReason) => apiRequest(`/reviews/${id}/hide`, {
+    method: 'PATCH',
+    body: JSON.stringify({ moderationReason })
+  }),
   update: (id, payload) => apiRequest(`/reviews/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
@@ -339,6 +415,7 @@ export const tourApi = {
     method: 'PATCH',
     body: JSON.stringify({ status, reason })
   }),
+  restore: (id) => apiRequest(`/tours/${id}/restore`, { method: 'PATCH' }),
   getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
   saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
   removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' }),
@@ -428,6 +505,22 @@ export const bookingApi = {
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
+  })
+};
+
+export const notificationApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.type && params.type !== 'all') query.append('type', params.type);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/notifications${qs}`, { method: 'GET' });
+  },
+  create: (payload) => apiRequest('/notifications', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   })
 };
 
