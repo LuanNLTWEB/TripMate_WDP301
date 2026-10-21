@@ -30,7 +30,7 @@ router.get('/moderation', protect, authorize('admin', 'staff'), getAllReviewsFor
 router.get('/reported', protect, authorize('admin', 'staff'), reportedReviewListValidation, getReportedReviews);
 router.post('/:id/report', protect, authorize('customer'), reportReview);
 router.patch('/:id/moderate', protect, authorize('admin', 'staff'), moderateReviewValidation, moderateReview);
-router.patch('/:id/restore', protect, authorize('admin', 'staff'), restoreReviewValidation, restoreReview);
+router.patch('/:id/restore', protect, authorize('staff'), restoreReviewValidation, restoreReview);
 router.put('/:id', protect, authorize('customer'), updateReviewValidation, updateReview);
 router.delete('/:id', protect, authorize('customer', 'admin', 'staff'), deleteReview);
 

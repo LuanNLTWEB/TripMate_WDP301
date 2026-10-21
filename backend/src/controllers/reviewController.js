@@ -562,17 +562,6 @@ export const restoreReview = async (req, res) => {
 
     const { averageRating, totalReviews } = await recalculateTourRating(review.tourId);
 
-    if (req.user?.role === 'admin') {
-      await logActivity({
-        admin: req.user,
-        action: 'RESTORE_REVIEW',
-        targetType: 'Review',
-        targetId: id,
-        details: `Khôi phục đánh giá ID "${id}" về trạng thái chờ duyệt`,
-        req
-      });
-    }
-
     const populated = await Review.findById(id)
       .populate('userId', 'username email')
       .populate('tourId', 'title location departureLocation');
