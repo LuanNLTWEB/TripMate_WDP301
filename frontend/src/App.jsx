@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import AuthProvider from './context/AuthProvider';
 import ToastProvider from './context/ToastProvider';
@@ -25,7 +26,6 @@ import StaffTourCategories from './pages/StaffTourCategories';
 import Itinerary from './pages/Itinerary';
 import FavoriteDestinations from './pages/FavoriteDestinations';
 import Stats from './pages/Stats';
-import AboutVietnam from './pages/AboutVietnam';
 import ManagementOverview from './pages/ManagementOverview';
 import StaffTours from './pages/StaffTours';
 import ReviewTourSubmission from './pages/ReviewTourSubmission';
@@ -43,6 +43,8 @@ import StaffDestinationDetails from './pages/StaffDestinationDetails';
 import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
 import Notifications from './pages/Notifications';
 import StaffNotifications from './pages/StaffNotifications';
+
+const AboutExperience = lazy(() => import('./pages/AboutExperience'));
 
 function ProviderTourDetailsRedirect() {
   const { id } = useParams();
@@ -114,7 +116,14 @@ function App() {
                 </ProtectedRoute>
               )}
             />
-            <Route path="/about" element={<AboutVietnam />} />
+            <Route
+              path="/about"
+              element={(
+                <Suspense fallback={<div className="min-vh-100 bg-dark" aria-label="Đang tải hành trình" />}>
+                  <AboutExperience />
+                </Suspense>
+              )}
+            />
             <Route
               path="/announcements"
               element={(
