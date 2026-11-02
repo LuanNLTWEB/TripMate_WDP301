@@ -299,7 +299,13 @@ export const itineraryApi = {
 };
 
 export const statsApi = {
-  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' })
+  getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' }),
+  getAdminStats: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.months) query.append('months', params.months);
+    const queryString = query.toString() ? '?' + query.toString() : '';
+    return apiRequest('/stats/admin' + queryString, { method: 'GET' });
+  }
 };
 
 export const announcementApi = {

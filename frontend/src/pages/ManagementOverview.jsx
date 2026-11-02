@@ -1,11 +1,18 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getManagementNavigation } from '../config/managementNavigation';
+import AdminDashboard from './AdminDashboard';
 
 function ManagementOverview() {
   const { user } = useAuth();
+
+  // If user is Admin, render the Admin System Dashboard
+  if (user?.role === 'admin') {
+    return <AdminDashboard />;
+  }
+
   const actions = getManagementNavigation(user?.role).filter((item) => item.key !== 'overview');
-  const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
+  const roleLabel = user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
 
   return (
     <section className="management-overview">

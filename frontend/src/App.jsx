@@ -13,6 +13,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import VerifyOtp from './pages/VerifyOtp';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminAccounts from './pages/AdminAccounts';
 import AdminRoles from './pages/AdminRoles';
 import AdminActivityLogs from './pages/AdminActivityLogs';
@@ -168,6 +169,14 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={MANAGEMENT_ROLES} />}>
               <Route path="/management" element={<ManagementLayout />}>
                 <Route index element={<ManagementOverview />} />
+                <Route
+                  path="dashboard"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.ADMIN_ONLY}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  )}
+                />
                 <Route
                   path="accounts"
                   element={(

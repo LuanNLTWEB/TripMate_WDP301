@@ -21,6 +21,7 @@ test('management navigation exposes only the backlog areas for each actor', () =
     'pending-tours',
     'reviews',
     'announcements',
+    'notifications',
     'statistics'
   ]);
   assert.deepEqual(navigationKeys('tourProvider'), [
