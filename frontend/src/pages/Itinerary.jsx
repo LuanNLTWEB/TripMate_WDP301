@@ -636,6 +636,60 @@ function Itinerary() {
 
   const visibleItineraries = activeTab === 'shared' ? sharedItineraries : itineraries;
   const displayedPackingItems = selected?.packingItems || [];
+  const [editingPackingItemId, setEditingPackingItemId] = useState(null);
+  const [editingPackingItemName, setEditingPackingItemName] = useState('');
+  const [pendingDeletePackingItem, setPendingDeletePackingItem] = useState(null);
+
+  const startEditPackingItem = (item) => {
+    setEditingPackingItemId(item._id);
+    setEditingPackingItemName(item.name || '');
+  };
+
+  const cancelEditPackingItem = () => {
+    setEditingPackingItemId(null);
+    setEditingPackingItemName('');
+  };
+
+  const handleUpdatePackingItem = async (event, itemId) => {
+    event.preventDefault();
+    if (!selected || !itemId) return;
+
+    const trimmedName = editingPackingItemName.trim();
+    if (!trimmedName) {
+      toast.error('Vui lòng nhập tên vật dụng');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.updatePackingItem(selected._id, itemId, { name: trimmedName });
+      applyItinerary(response.itinerary);
+      cancelEditPackingItem();
+      toast.success(response.message || 'Đã cập nhật vật dụng thành công');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể cập nhật vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePackingItem = async (itemId) => {
+    if (!selected || !itemId) return;
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.removePackingItem(selected._id, itemId);
+      applyItinerary(response.itinerary);
+      if (editingPackingItemId === itemId) {
+        cancelEditPackingItem();
+      }
+      toast.success(response.message || 'Đã xóa vật dụng khỏi danh sách hành lý');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -1119,7 +1173,64 @@ function Itinerary() {
                               {displayedPackingItems.map((item) => (
                                 <div className="list-group-item d-flex align-items-center gap-3 px-3 py-3" key={item._id || item.name}>
                                   <i className={`bi ${item.isPacked ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} fs-5`} aria-hidden="true"></i>
-                                  <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
+                                  {editingPackingItemId === item._id ? (
+                                    <form
+                                      onSubmit={(e) => handleUpdatePackingItem(e, item._id)}
+                                      className="d-flex align-items-center gap-2 flex-grow-1"
+                                    >
+                                      <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={editingPackingItemName}
+                                        onChange={(e) => setEditingPackingItemName(e.target.value)}
+                                        maxLength={160}
+                                        placeholder="Nhập tên vật dụng..."
+                                        disabled={saving}
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="submit"
+                                        className="btn btn-sm btn-primary text-nowrap"
+                                        disabled={saving}
+                                      >
+                                        Lưu
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary text-nowrap"
+                                        onClick={cancelEditPackingItem}
+                                        disabled={saving}
+                                      >
+                                        Hủy
+                                      </button>
+                                    </form>
+                                  ) : (
+                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-grow-1">
+                                      <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
+                                      {canEditSelected && item._id && (
+                                        <div className="d-flex align-items-center gap-1 ms-2">
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-primary border-0 p-1"
+                                            onClick={() => startEditPackingItem(item)}
+                                            disabled={saving}
+                                            title="Chỉnh sửa vật dụng"
+                                          >
+                                            <i className="bi bi-pencil-square"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-danger border-0 p-1"
+                                            onClick={() => setPendingDeletePackingItem(item)}
+                                            disabled={saving}
+                                            title="Xóa vật dụng"
+                                          >
+                                            <i className="bi bi-trash"></i>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1634,6 +1745,25 @@ function Itinerary() {
           }
         }}
         onClose={() => setPendingDeleteActivity(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeletePackingItem)}
+        title="Xác nhận xóa vật dụng"
+        message={
+          <>
+            Bạn có chắc muốn xóa vật dụng <strong>{pendingDeletePackingItem?.name || 'này'}</strong> khỏi danh sách hành lý? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={saving}
+        onConfirm={async () => {
+          if (pendingDeletePackingItem) {
+            const id = pendingDeletePackingItem._id;
+            setPendingDeletePackingItem(null);
+            await handleDeletePackingItem(id);
+          }
+        }}
+        onClose={() => setPendingDeletePackingItem(null)}
       />
 
 <ConfirmDeleteModal

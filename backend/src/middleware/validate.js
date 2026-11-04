@@ -952,3 +952,18 @@ export const notificationListValidation = [
     .trim()
     .isLength({ max: 30 }).withMessage('Loại thông báo không hợp lệ')
 ];
+
+
+export const updatePackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ'),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên vật dụng')
+    .isLength({ max: 160 }).withMessage('Tên vật dụng không được vượt quá 160 ký tự')
+];
+
+export const removePackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
+];

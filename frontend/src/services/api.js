@@ -295,6 +295,13 @@ export const itineraryApi = {
   deleteComment: (id, commentId) => apiRequest(`/itineraries/${id}/comments/${commentId}`, {
     method: 'DELETE'
   }),
+  updatePackingItem: (id, itemId, payload) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 

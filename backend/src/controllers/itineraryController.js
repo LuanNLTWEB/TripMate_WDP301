@@ -1102,3 +1102,78 @@ export const deleteComment = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa bình luận' });
   }
 };
+
+
+/**
+ * Update a packing item in an owned or edit-enabled shared itinerary.
+ * @route PUT /api/itineraries/:id/packing-items/:itemId
+ * @access Customer
+ */
+export const updatePackingItem = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const item = itinerary.packingItems.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
+    }
+
+    item.name = req.body.name.trim();
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã cập nhật vật dụng thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Update packing item error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật vật dụng' });
+  }
+};
+
+/**
+ * Remove a packing item from an owned or edit-enabled shared itinerary.
+ * @route DELETE /api/itineraries/:id/packing-items/:itemId
+ * @access Customer
+ */
+export const removePackingItem = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const item = itinerary.packingItems.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
+    }
+
+    itinerary.packingItems.pull(req.params.itemId);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã xóa vật dụng khỏi danh sách hành lý',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove packing item error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa vật dụng' });
+  }
+};
