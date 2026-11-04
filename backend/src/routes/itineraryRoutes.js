@@ -25,7 +25,8 @@ import {
   transferOwnership,
   addComment,
   deleteComment,
-  updatePackingItem
+  updatePackingItem,
+  removePackingItem
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -56,7 +57,8 @@ import {
   transferOwnershipValidation,
   addCommentValidation,
   deleteCommentValidation,
-  updatePackingItemValidation
+  updatePackingItemValidation,
+  removePackingItemValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -92,5 +94,6 @@ router.delete('/:id/tours/:tourId', ...customerAccess, removeTourFromItineraryVa
 router.post('/:id/comments', ...customerAccess, addCommentValidation, addComment);
 router.delete('/:id/comments/:commentId', ...customerAccess, deleteCommentValidation, deleteComment);
 router.put('/:id/packing-items/:itemId', ...customerAccess, updatePackingItemValidation, updatePackingItem);
+router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItemValidation, removePackingItem);
 
 export default router;

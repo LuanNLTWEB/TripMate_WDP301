@@ -962,3 +962,8 @@ export const updatePackingItemValidation = [
     .notEmpty().withMessage('Vui lòng nhập tên vật dụng')
     .isLength({ max: 160 }).withMessage('Tên vật dụng không được vượt quá 160 ký tự')
 ];
+
+export const removePackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
+];

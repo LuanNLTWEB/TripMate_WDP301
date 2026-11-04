@@ -638,6 +638,7 @@ function Itinerary() {
   const displayedPackingItems = selected?.packingItems || [];
   const [editingPackingItemId, setEditingPackingItemId] = useState(null);
   const [editingPackingItemName, setEditingPackingItemName] = useState('');
+  const [pendingDeletePackingItem, setPendingDeletePackingItem] = useState(null);
 
   const startEditPackingItem = (item) => {
     setEditingPackingItemId(item._id);
@@ -667,6 +668,24 @@ function Itinerary() {
       toast.success(response.message || 'Đã cập nhật vật dụng thành công');
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể cập nhật vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePackingItem = async (itemId) => {
+    if (!selected || !itemId) return;
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.removePackingItem(selected._id, itemId);
+      applyItinerary(response.itinerary);
+      if (editingPackingItemId === itemId) {
+        cancelEditPackingItem();
+      }
+      toast.success(response.message || 'Đã xóa vật dụng khỏi danh sách hành lý');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa vật dụng');
     } finally {
       setSaving(false);
     }
@@ -1189,15 +1208,26 @@ function Itinerary() {
                                     <div className="d-flex align-items-center justify-content-between gap-2 flex-grow-1">
                                       <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
                                       {canEditSelected && item._id && (
-                                        <button
-                                          type="button"
-                                          className="btn btn-sm btn-outline-secondary"
-                                          onClick={() => startEditPackingItem(item)}
-                                          disabled={saving}
-                                          title="Chỉnh sửa vật dụng"
-                                        >
-                                          <i className="bi bi-pencil me-1"></i>Sửa
-                                        </button>
+                                        <div className="d-flex align-items-center gap-1 ms-2">
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-primary border-0 p-1"
+                                            onClick={() => startEditPackingItem(item)}
+                                            disabled={saving}
+                                            title="Chỉnh sửa vật dụng"
+                                          >
+                                            <i className="bi bi-pencil-square"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-danger border-0 p-1"
+                                            onClick={() => setPendingDeletePackingItem(item)}
+                                            disabled={saving}
+                                            title="Xóa vật dụng"
+                                          >
+                                            <i className="bi bi-trash"></i>
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   )}
@@ -1715,6 +1745,25 @@ function Itinerary() {
           }
         }}
         onClose={() => setPendingDeleteActivity(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeletePackingItem)}
+        title="Xác nhận xóa vật dụng"
+        message={
+          <>
+            Bạn có chắc muốn xóa vật dụng <strong>{pendingDeletePackingItem?.name || 'này'}</strong> khỏi danh sách hành lý? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={saving}
+        onConfirm={async () => {
+          if (pendingDeletePackingItem) {
+            const id = pendingDeletePackingItem._id;
+            setPendingDeletePackingItem(null);
+            await handleDeletePackingItem(id);
+          }
+        }}
+        onClose={() => setPendingDeletePackingItem(null)}
       />
 
 <ConfirmDeleteModal

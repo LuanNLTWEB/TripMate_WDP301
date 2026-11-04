@@ -299,6 +299,9 @@ export const itineraryApi = {
     method: 'PUT',
     body: JSON.stringify(payload)
   }),
+  removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
+    method: 'DELETE'
+  }),
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
