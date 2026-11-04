@@ -635,6 +635,7 @@ function Itinerary() {
   };
 
   const visibleItineraries = activeTab === 'shared' ? sharedItineraries : itineraries;
+  const displayedPackingItems = selected?.packingItems || [];
 
   return (
     <>
@@ -1093,6 +1094,35 @@ function Itinerary() {
                         })}
                       </div>
                     </>
+                          )}
+                        </div>
+                      </section>
+
+                      <section className="card border-0 shadow-sm mb-4">
+                        <div className="card-body p-4">
+                          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                            <div>
+                              <h2 className="h5 fw-bold mb-1">Danh sách hành lý</h2>
+                              <p className="small text-muted mb-0">Kiểm tra những vật dụng cần chuẩn bị cho chuyến đi.</p>
+                            </div>
+                            <span className="badge text-bg-light border text-secondary">
+                              {displayedPackingItems.filter((item) => item.isPacked).length}/{displayedPackingItems.length}
+                            </span>
+                          </div>
+                          {displayedPackingItems.length === 0 ? (
+                            <div className="text-center text-muted border rounded p-4 bg-light">
+                              <i className="bi bi-backpack2 fs-2 d-block mb-2 text-primary"></i>
+                              <p className="mb-0">Chưa có vật dụng nào trong checklist.</p>
+                            </div>
+                          ) : (
+                            <div className="list-group list-group-flush border rounded">
+                              {displayedPackingItems.map((item) => (
+                                <div className="list-group-item d-flex align-items-center gap-3 px-3 py-3" key={item._id || item.name}>
+                                  <i className={`bi ${item.isPacked ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} fs-5`} aria-hidden="true"></i>
+                                  <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </section>

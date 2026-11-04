@@ -73,6 +73,19 @@ const commentSchema = new mongoose.Schema({
   }
 }, { _id: true });
 
+const packingItemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Packing item name is required'],
+    trim: true,
+    maxlength: [160, 'Packing item name cannot exceed 160 characters']
+  },
+  isPacked: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: true });
+
 const itinerarySchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
@@ -102,6 +115,7 @@ const itinerarySchema = new mongoose.Schema({
     ref: 'Tour'
   }],
   activities: [activitySchema],
+  packingItems: [packingItemSchema],
   collaborators: [collaboratorSchema],
   comments: [commentSchema]
 }, { timestamps: true });
