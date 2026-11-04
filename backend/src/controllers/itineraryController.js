@@ -694,6 +694,10 @@ export const duplicateItinerary = async (req, res) => {
         estimatedCost: activity.estimatedCost || 0,
         notes: activity.notes || ''
       })),
+      packingItems: (source.packingItems || []).map((item) => ({
+        name: item.name,
+        isPacked: item.isPacked
+      })),
       collaborators: []
     });
 
