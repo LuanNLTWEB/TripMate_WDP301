@@ -21,7 +21,7 @@ export const createDeparture = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.body.tourId);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -106,7 +106,7 @@ export const getDeparturesByTour = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.query.tourId);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'

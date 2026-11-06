@@ -22,7 +22,7 @@ const getPlatformStats = async (req, res) => {
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
       DestinationCategory.countDocuments(),
-      Tour.countDocuments(),
+      Tour.countDocuments({ isDeleted: { $ne: true } }),
       Itinerary.countDocuments(),
       Itinerary.aggregate([{ $unwind: '$activities' }, { $count: 'total' }]),
       User.find().sort({ createdAt: -1 }).limit(5).select('username email role createdAt'),

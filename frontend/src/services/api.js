@@ -417,6 +417,7 @@ export const tourApi = {
     method: 'PUT',
     body: JSON.stringify(tour)
   }),
+  remove: (id) => apiRequest(`/tours/${id}`, { method: 'DELETE' }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);

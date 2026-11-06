@@ -19,7 +19,7 @@ export const createBooking = async (req, res) => {
     const { fullName, phone, email, address, numberOfPeople, departureDate, note } = req.body;
     const tourId = req.params.tourId;
 
-    const tour = await Tour.findOne({ _id: tourId, status: 'active' });
+    const tour = await Tour.findOne({ _id: tourId, status: 'active', isDeleted: { $ne: true } });
     if (!tour) {
       return res.status(404).json({
         success: false,

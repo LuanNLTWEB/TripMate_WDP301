@@ -21,7 +21,8 @@ import {
   getTourSchedule,
   updateTourCapacity,
   updateTourPrice,
-  updateTourDeparture
+  updateTourDeparture,
+  deleteTour
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -57,6 +58,7 @@ router.patch('/:id/departure', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY)
 router.post('/:id/schedule', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), createTourScheduleValidation, createTourSchedule);
 router.put('/:id/schedule/:scheduleId', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateTourScheduleValidation, updateTourSchedule);
 router.delete('/:id/schedule/:scheduleId', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), deleteTourScheduleValidation, deleteTourSchedule);
+router.delete('/:id', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), tourIdValidation, deleteTour);
 router.get('/:id/schedule', protect, authorize(...ACCESS_ROLES.TOUR_SCHEDULE_VIEW), tourIdValidation, getTourSchedule);
 router.get('/favorites', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getFavoriteTours);
 router.post('/:id/favorite', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), tourIdValidation, saveFavoriteTour);
