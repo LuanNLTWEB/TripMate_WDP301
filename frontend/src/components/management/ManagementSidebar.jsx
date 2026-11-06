@@ -9,7 +9,7 @@ export function checkIsActive(item, location, user) {
 
   // 1. Overview dashboard: only exact '/management' or '/management/'
   if (item.path === '/management') {
-    return pathname === '/management' || pathname === '/management/';
+    return pathname === '/management' || pathname === '/management/' || pathname === '/management/dashboard';
   }
 
   // 2. Public tour view /tours/:id when viewed in management mode

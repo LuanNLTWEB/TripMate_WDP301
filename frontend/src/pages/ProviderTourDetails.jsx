@@ -55,7 +55,7 @@ export default function ProviderTourDetails() {
   const [newIncluded, setNewIncluded] = useState('');
   const [newExcluded, setNewExcluded] = useState('');
 
-  // Capacity editor (UC-44 - Update Tour Capacity)
+  // Capacity editor (UC-45 - Update Tour Capacity)
   const [capacityInput, setCapacityInput] = useState('');
   const [confirmedSeats, setConfirmedSeats] = useState(0);
   const [savingCapacity, setSavingCapacity] = useState(false);
@@ -84,6 +84,13 @@ export default function ProviderTourDetails() {
       });
   };
 
+  // START UC-45 Update Tour Capacity
+  /**
+   * Lưu tổng số chỗ mới cho tour.
+   * Phức tạp: số chỗ được kiểm tra nguyên/không âm ở client nhưng chặn thật sự là ở
+   * backend (không thấp hơn số chỗ đã bán - BR-51); response trả confirmedSeats để
+   * UI hiển thị ngưỡng tối thiểu và availableSeats để đồng bộ lại input.
+   */
   const handleSaveCapacity = async () => {
     const parsed = Number(capacityInput);
     if (!Number.isInteger(parsed) || parsed < 0) {
@@ -106,7 +113,11 @@ export default function ProviderTourDetails() {
       setSavingCapacity(false);
     }
   };
+  // END UC-45 Update Tour Capacity
 
+  // START UC-40 Create Tour Departure
+  // Nạp các lịch khởi hành của tour để hiển thị danh sách; lỗi thì để danh sách
+  // rỗng thay vì chặn cả trang chi tiết tour.
   const loadDepartures = async () => {
     setLoadingDepartures(true);
     try {
@@ -118,6 +129,7 @@ export default function ProviderTourDetails() {
       setLoadingDepartures(false);
     }
   };
+  // END UC-40 Create Tour Departure
 
   useEffect(() => {
     loadTourDetails();
@@ -707,7 +719,7 @@ export default function ProviderTourDetails() {
             </div>
           </div>
 
-          {/* 4. Số chỗ (UC-44 - Update Tour Capacity) */}
+          {/* 4. Số chỗ (UC-45 - Update Tour Capacity) */}
           <div className="mt-4 pt-4 border-top">
             <h3 className="h5 fw-bold mb-3 d-flex align-items-center gap-2">
               <i className="bi bi-people text-primary"></i>

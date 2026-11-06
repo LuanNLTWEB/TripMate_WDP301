@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+// START UC-40 Create Tour Departure
 /**
  * Lịch khởi hành (Tour Departure)
  * Một bản ghi là một ngày khởi hành cụ thể của một tour, có số chỗ và giá riêng.
@@ -52,6 +53,8 @@ const departureSchema = new mongoose.Schema({
 
 // Một tour chỉ có một lịch khởi hành cho mỗi ngày
 departureSchema.index({ tourId: 1, departureDate: 1 });
+
+// END UC-40 Create Tour Departure
 
 const Departure = mongoose.model('Departure', departureSchema);
 

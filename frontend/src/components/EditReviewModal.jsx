@@ -4,7 +4,17 @@ import { useToast } from '../hooks/useToast';
 
 const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Tuyệt vời'];
 
-const EditReviewModal = ({ review, tourTitle, onClose, onUpdated }) => {
+// START UC-89 Update Tour Review
+/**
+ * UC-89 – Update Tour Review (modal sửa đánh giá của khách).
+ *
+ * Phần phức tạp:
+ *  - Form khởi tạo từ review hiện tại (rating/comment) để khách chỉ sửa phần cần đổi.
+ *  - Validate 1-5 sao và nội dung >= 10 ký tự, khớp updateReviewValidation (BR-104).
+ *  - hoveredRating tách khỏi rating để hiệu ứng hover không ghi đè lựa chọn thật.
+ *  - Thành công thì gọi onUpdated(response) để trang cha thay đánh giá tại chỗ,
+ *    không phải tải lại cả danh sách.
+ */const EditReviewModal = ({ review, tourTitle, onClose, onUpdated }) => {
   const toast = useToast();
   const [rating, setRating] = useState(review?.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -168,3 +178,4 @@ const EditReviewModal = ({ review, tourTitle, onClose, onUpdated }) => {
 };
 
 export default EditReviewModal;
+// END UC-89 Update Tour Review

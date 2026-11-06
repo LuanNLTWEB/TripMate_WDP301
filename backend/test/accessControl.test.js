@@ -17,6 +17,7 @@ import roleRoutes from '../src/routes/roleRoutes.js';
 import statsRoutes from '../src/routes/statsRoutes.js';
 import tourCategoryRoutes from '../src/routes/tourCategoryRoutes.js';
 import tourRoutes from '../src/routes/tourRoutes.js';
+import tourSubmissionRoutes from '../src/routes/tourSubmissionRoutes.js';
 
 const APPLICATION_ROLES = ['admin', 'staff', 'tourProvider', 'customer'];
 
@@ -107,6 +108,7 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [tourRoutes, 'get', '/provider', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'get', '/provider/:id', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'put', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
+    [tourRoutes, 'delete', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'put', '/:id/capacity', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'patch', '/:id/price', ACCESS_ROLES.PROVIDER_ONLY],
     [tourRoutes, 'patch', '/:id/departure', ACCESS_ROLES.PROVIDER_ONLY],
@@ -114,6 +116,11 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [tourRoutes, 'patch', '/:id/status', ACCESS_ROLES.STAFF_ONLY],
     [tourRoutes, 'patch', '/:id/restore', ACCESS_ROLES.STAFF_ONLY],
     [tourRoutes, 'patch', '/:id/revision', ACCESS_ROLES.STAFF_ONLY],
+    [tourSubmissionRoutes, 'post', '/', ACCESS_ROLES.PROVIDER_ONLY],
+    [tourSubmissionRoutes, 'get', '/', ACCESS_ROLES.SUBMISSION_VIEW],
+    [tourSubmissionRoutes, 'get', '/:id', ACCESS_ROLES.SUBMISSION_VIEW],
+    [tourSubmissionRoutes, 'put', '/:id', ACCESS_ROLES.SUBMISSION_VIEW],
+    [tourSubmissionRoutes, 'delete', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
     [departureRoutes, 'get', '/', ACCESS_ROLES.PROVIDER_ONLY],
     [departureRoutes, 'post', '/', ACCESS_ROLES.PROVIDER_ONLY],
     [departureRoutes, 'put', '/:id', ACCESS_ROLES.PROVIDER_ONLY],
@@ -133,6 +140,7 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [reviewRoutes, 'put', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'delete', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
     [statsRoutes, 'get', '/platform', ACCESS_ROLES.STAFF_ONLY],
+    [statsRoutes, 'get', '/admin', ACCESS_ROLES.ADMIN_ONLY],
     [announcementRoutes, 'get', '/', ACCESS_ROLES.ANNOUNCEMENT_VIEW],
     [announcementRoutes, 'get', '/management', ACCESS_ROLES.STAFF_ONLY],
     [announcementRoutes, 'post', '/', ACCESS_ROLES.STAFF_ONLY],

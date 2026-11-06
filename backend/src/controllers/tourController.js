@@ -1,3 +1,10 @@
+/**
+ * Tour Management — các use case do Toan phụ trách
+ *  - UC-25 View Tour Details
+ *  - UC-30 View Favorite Tours
+ *  - UC-35 View Approval Status
+ *  - UC-45 Update Tour Capacity
+ */
 import Tour from '../models/Tour.js';
 import TourCategory from '../models/TourCategory.js';
 import User from '../models/User.js';
@@ -7,11 +14,23 @@ import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// START UC-30 View Favorite Tours
+/**
+ * UC-30 – View Favorite Tours (khách xem danh sách tour đã lưu yêu thích).
+ *
+ * Đọc mảng favoriteTours của user hiện tại và populate sang collection Tour.
+ *
+ * Phần phức tạp:
+ *  - populate kèm `match: { status: 'active' }` nên tour đã bị ngưng/duyệt lại sẽ
+ *    tự rơi khỏi kết quả, không cần lọc thêm ở client.
+ *  - filter(Boolean) để loại các phần tử null còn sót lại khi tour tham chiếu đã bị xóa.
+ *  - Trả cả `favoriteTourIds` (mảng id) để UI tô trạng thái tim ở màn danh sách tour.
+ */
 export const getFavoriteTours = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'favoriteTours',
-      match: { status: 'active' }
+      match: { status: 'active', isDeleted: { $ne: true } }
     });
 
     if (!user) {
@@ -37,6 +56,8 @@ export const getFavoriteTours = async (req, res) => {
     });
   }
 };
+
+// END UC-30 View Favorite Tours
 
 export const removeFavoriteTour = async (req, res) => {
   const errors = validationResult(req);
@@ -83,7 +104,7 @@ export const saveFavoriteTour = async (req, res) => {
       _id: req.params.id,
       status: 'active'
     });
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -126,7 +147,7 @@ export const getAllTours = async (req, res) => {
       page = 1,
       limit = 10
     } = req.query;
-    const filters = [{ status: 'active' }];
+    const filters = [{ status: 'active' }, { isDeleted: { $ne: true } }];
 
     if (search) {
       const safeSearch = escapeRegex(search);
@@ -205,6 +226,20 @@ export const getAllTours = async (req, res) => {
   }
 };
 
+// START UC-25 View Tour Details
+/**
+ * UC-25 – View Tour Details (Guest/Customer xem chi tiết một tour).
+ *
+ * Tìm tour theo id, populate category và provider rồi trả về object thuần.
+ *
+ * Phần phức tạp:
+ *  - Tour chưa ở trạng thái active chỉ staff hoặc provider sở hữu tour được xem;
+ *    các trường hợp khác trả 404 (không trả 403) để không lộ sự tồn tại của tour.
+ *  - Lịch trình chi tiết (itinerary) bị xóa khỏi response khi người xem không phải
+ *    customer hoặc provider sở hữu (BR-90 – provider privacy).
+ *  - providerId có thể là ObjectId thô hoặc đã populate, nên phải so sánh cả hai dạng.
+ *  - CastError của id sai định dạng được quy về 404 thay vì 500.
+ */
 export const getTourById = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -220,7 +255,7 @@ export const getTourById = async (req, res) => {
       .populate('categoryId', 'name')
       .populate('providerId', 'username email phone');
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Tour not found'
@@ -274,6 +309,8 @@ export const getTourById = async (req, res) => {
   }
 };
 
+// END UC-25 View Tour Details
+
 export const getManagedTours = async (req, res) => {
   try {
     const {
@@ -282,7 +319,7 @@ export const getManagedTours = async (req, res) => {
       page = 1,
       limit = 10
     } = req.query;
-    const filters = [];
+    const filters = [{ isDeleted: { $ne: true } }];
 
     if (search) {
       const safeSearch = escapeRegex(search);
@@ -359,7 +396,7 @@ export const getManagedTourById = async (req, res) => {
       .populate('revisionRequestedBy', 'username email')
       .populate('rejectedBy', 'username email');
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -401,7 +438,7 @@ export const updateTourStatus = async (req, res) => {
     const { status, reason = '' } = req.body;
     const tour = await Tour.findById(req.params.id);
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -482,7 +519,7 @@ export const restoreTour = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id);
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -533,7 +570,7 @@ export const requestTourRevision = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id);
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -604,13 +641,14 @@ export const createTour = async (req, res) => {
       availableSeats: Number(availableSeats) || 0,
       categoryId: categoryId || null,
       images: Array.isArray(images) ? images : [],
-      status: 'pending',
+      // Tour mới luôn là bản nháp; provider phải gửi yêu cầu duyệt (UC-128) để mở bán.
+      status: 'draft',
       providerId: req.user._id
     });
 
     res.status(201).json({
       success: true,
-      message: 'Tạo tour thành công. Tour đang chờ nhân viên kiểm duyệt.',
+      message: 'Tạo tour nháp thành công. Hãy gửi duyệt để tour được mở bán.',
       data: tour
     });
   } catch (error) {
@@ -622,6 +660,20 @@ export const createTour = async (req, res) => {
   }
 };
 
+// START UC-35 View Approval Status
+/**
+ * UC-35 – View Approval Status (provider xem trạng thái duyệt tour của mình).
+ *
+ * Trả danh sách tour thuộc provider đang đăng nhập kèm trạng thái duyệt để UI
+ * hiển thị badge "Chờ kiểm duyệt / Cần chỉnh sửa / Bị từ chối / Tạm ngưng".
+ *
+ * Phần phức tạp:
+ *  - Lọc theo status do staff cập nhật, tách khỏi filter tìm kiếm bằng $and để
+ *    không ghi đè điều kiện providerId.
+ *  - Populate rejectedBy và revisionRequestedBy để hiện người duyệt; các field
+ *    rejectionReason/revisionNote đi kèm chính document tour.
+ *  - Từ khóa tìm kiếm được escape trước khi đưa vào RegExp để tránh lỗi regex.
+ */
 export const getProviderTours = async (req, res) => {
   try {
     const {
@@ -631,7 +683,7 @@ export const getProviderTours = async (req, res) => {
       limit = 10
     } = req.query;
 
-    const filters = [{ providerId: req.user._id }];
+    const filters = [{ providerId: req.user._id }, { isDeleted: { $ne: true } }];
 
     if (search) {
       const safeSearch = escapeRegex(search);
@@ -682,6 +734,8 @@ export const getProviderTours = async (req, res) => {
   }
 };
 
+// END UC-35 View Approval Status
+
 export const getProviderTourById = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -697,7 +751,7 @@ export const getProviderTourById = async (req, res) => {
       .populate('categoryId', 'name')
       .populate('providerId', 'username email phone');
 
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -736,7 +790,7 @@ export const updateProviderTour = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
@@ -857,7 +911,7 @@ export const setTourDetails = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -936,7 +990,7 @@ export const createTourSchedule = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -1016,7 +1070,7 @@ export const updateTourSchedule = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
@@ -1089,7 +1143,7 @@ export const deleteTourSchedule = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
@@ -1129,9 +1183,89 @@ export const deleteTourSchedule = async (req, res) => {
 };
 
 /**
+ * Xóa mềm tour thuộc nhà cung cấp (UC-34 - Delete Tour).
+ * Tour được ẩn khỏi các truy vấn công khai, giữ nguyên booking/đánh giá/lịch trình.
+ * @route DELETE /api/tours/:id
+ * @access Provider owner
+ */
+export const deleteTour = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour || tour.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
+    }
+
+    if (!tour.providerId || !tour.providerId.equals(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xóa tour này'
+      });
+    }
+
+    if (tour.status === 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xóa tour đang hoạt động. Vui lòng tạm ngưng tour trước khi xóa.'
+      });
+    }
+
+    const activeBookings = await Booking.countDocuments({
+      tourId: tour._id,
+      status: { $in: ['pending', 'confirmed'] }
+    });
+    if (activeBookings > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xóa tour đã có khách đặt. Tour chỉ được xóa khi không còn đặt tour đang chờ hoặc đã xác nhận.'
+      });
+    }
+
+    // BR-COM-03 - xóa mềm, giữ nguyên bản ghi nghiệp vụ (booking, đánh giá, lịch trình);
+    // BR-COM-04 - tour bị ẩn khỏi các truy vấn công khai.
+    tour.isDeleted = true;
+    tour.deletedAt = new Date();
+    await tour.save();
+    await User.updateMany({ favoriteTours: tour._id }, { $pull: { favoriteTours: tour._id } });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Xóa tour thành công',
+      data: { _id: tour._id, isDeleted: tour.isDeleted }
+    });
+  } catch (error) {
+    console.error('Error deleting tour:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xóa tour'
+    });
+  }
+};
+
+/**
  * Cập nhật số chỗ của tour thuộc nhà cung cấp.
  * @route PUT /api/tours/:id/capacity
  * @access Provider
+ */
+// START UC-45 Update Tour Capacity
+/**
+ * UC-45 – Update Tour Capacity (provider thay đổi tổng số chỗ nhận khách).
+ *
+ * Phần phức tạp:
+ *  - BR-51: aggregate tổng numberOfPeople của các booking 'confirmed' trước khi ghi,
+ *    không cho hạ số chỗ xuống dưới số chỗ đã bán.
+ *  - Chỉ tính booking 'confirmed' (không tính pending/cancelled) để khớp với
+ *    nghiệp vụ giữ chỗ thực tế (BR-50).
+ *  - Nếu số chỗ mới trùng số cũ thì trả 200 "không thay đổi" và bỏ qua save,
+ *    tránh cập nhật updatedAt vô ích.
  */
 export const updateTourCapacity = async (req, res) => {
   const errors = validationResult(req);
@@ -1145,7 +1279,7 @@ export const updateTourCapacity = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -1210,6 +1344,8 @@ export const updateTourCapacity = async (req, res) => {
   }
 };
 
+// END UC-45 Update Tour Capacity
+
 /**
  * Update the owning provider's tour price.
  * @route PUT /api/tours/:id/price
@@ -1227,7 +1363,7 @@ export const updateTourPrice = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'
@@ -1287,8 +1423,8 @@ export const getTourSchedule = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id)
-      .select('title duration itinerary location departureLocation destinationLocation status providerId');
-    if (!tour) {
+      .select('title duration itinerary location departureLocation destinationLocation status providerId isDeleted');
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy lịch trình tour'
@@ -1352,7 +1488,7 @@ export const updateTourDeparture = async (req, res) => {
 
   try {
     const tour = await Tour.findById(req.params.id);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy tour'

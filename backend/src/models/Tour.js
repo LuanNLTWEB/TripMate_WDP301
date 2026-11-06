@@ -77,10 +77,11 @@ const tourSchema = new mongoose.Schema({
     min: [0, 'Rating must be at least 0'],
     max: [5, 'Rating cannot exceed 5']
   },
+  // 'draft' = tour nháp của provider, chưa gửi duyệt và khách hàng không thấy.
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended', 'needs_revision', 'rejected'],
-    default: 'pending',
+    enum: ['draft', 'pending', 'active', 'suspended', 'needs_revision', 'rejected'],
+    default: 'draft',
     index: true
   },
   suspensionReason: {
@@ -138,6 +139,15 @@ const tourSchema = new mongoose.Schema({
     ref: 'User',
     default: null,
     index: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

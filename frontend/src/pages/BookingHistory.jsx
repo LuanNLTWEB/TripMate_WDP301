@@ -667,6 +667,7 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết đơn</span>
                                   </button>
 
+                                                                    {/* START UC-74 Cancel Booking */}
                                   {booking.status !== 'cancelled' && (
                                     <button
                                       type="button"
@@ -678,6 +679,7 @@ const BookingHistory = () => {
                                       <span>Hủy đặt tour</span>
                                     </button>
                                   )}
+                                  {/* END UC-74 Cancel Booking */}
 
                                   {tour._id && (
                                     <Link

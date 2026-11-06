@@ -37,7 +37,11 @@ const FavoriteDestinations = () => {
 
       const [destinationResult, tourResult] = await Promise.allSettled([
         destinationApi.getFavorites(),
-        tourApi.getFavorites()
+        // START UC-30 View Favorite Tours
+        // Tải song song danh sách tour đã lưu; dùng allSettled để lỗi một bên
+        // không làm mất dữ liệu của bên còn lại.
+        tourApi.getFavorites(),
+        // END UC-30 View Favorite Tours
       ]);
 
       if (!isMounted) return;
@@ -255,6 +259,7 @@ const FavoriteDestinations = () => {
               </section>
               )}
 
+              {/* START UC-30 View Favorite Tours */}
               {activeTab === 'tours' && (
               <section aria-labelledby="favorite-tours-heading">
                 <div className="mb-3">
@@ -349,6 +354,7 @@ const FavoriteDestinations = () => {
                 )}
               </section>
               )}
+              {/* END UC-30 View Favorite Tours */}
             </>
           )}
         </div>

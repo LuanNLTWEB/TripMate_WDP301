@@ -1,3 +1,10 @@
+/**
+ * Itinerary Planning — các use case do Toan phụ trách
+ *  - UC-48 View Personal Itinerary
+ *  - UC-53 Add Activity to Itinerary (gồm detectScheduleConflicts – BR-62)
+ *  - UC-120 Transfer Itinerary Ownership
+ *  - UC-137 Leave Itinerary
+ */
 import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
@@ -12,6 +19,25 @@ const tourFields = 'title price images departureLocation destinationLocation loc
  * Detect overlapping activities within an itinerary (same date, time overlap).
  * @param {Object} itinerary
  * @returns {Array<{first:{_id,title,startTime,endTime}, second:{_id,title,startTime,endTime}}>}
+ */
+// START UC-53 Add Activity to Itinerary
+/**
+ * UC-53 – phát hiện trùng lịch giữa các hoạt động (BR-62).
+ *
+ * So từng cặp hoạt động (O(n^2) vì số hoạt động trong một lịch trình nhỏ):
+ * hai hoạt động bị coi là trùng khi CÙNG NGÀY và các khoảng [startTime, endTime)
+ * giao nhau.
+ *
+ * Phần phức tạp:
+ *  - date lưu dạng Date nhưng startTime/endTime lưu dạng chuỗi "HH:mm"; vì cùng
+ *    định dạng 24 giờ, so sánh chuỗi cho kết quả đúng thứ tự thời gian mà không
+ *    phải parse lại thành Date.
+ *  - toDateString() chuẩn hóa phần giờ của date, nên hai hoạt động khác giờ trong
+ *    cùng một ngày vẫn được coi là cùng ngày.
+ *  - Điều kiện giao nhau dùng dạng a.start < b.end && b.start < a.end (nửa mở),
+ *    nhờ vậy hai hoạt động nối tiếp nhau (kết thúc = bắt đầu) KHÔNG bị báo trùng.
+ *  - Chỉ trả về cặp id/tên/khung giờ, không trả cả document, để response nhẹ và
+ *    không lộ dữ liệu chi phí của hoạt động.
  */
 const detectScheduleConflicts = (itinerary) => {
   const conflicts = [];
@@ -31,6 +57,8 @@ const detectScheduleConflicts = (itinerary) => {
   }
   return conflicts;
 };
+
+// END UC-53 Add Activity to Itinerary
 
 /**
  * Return a plain-object itinerary with a computed `conflicts` field.
@@ -172,6 +200,14 @@ const findByIdPopulated = (id) => Itinerary.findById(id)
  * @route GET /api/itineraries
  * @access Customer
  */
+// START UC-48 View Personal Itinerary
+/**
+ * UC-48 – View Personal Itinerary (khách xem danh sách lịch trình của mình).
+ *
+ * Chỉ lấy lịch trình có owner là user đang đăng nhập (BR-67 – owner only), sắp
+ * xếp theo updatedAt giảm dần, và map qua hydrateItinerary để mỗi item có sẵn
+ * mảng conflicts (BR-62) cho UI cảnh báo trùng lịch ngay ở danh sách.
+ */
 export const listItineraries = async (req, res) => {
   try {
     const itineraries = await findAllPopulated({ owner: req.user._id }).sort({ updatedAt: -1 });
@@ -181,6 +217,8 @@ export const listItineraries = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Unable to load itineraries' });
   }
 };
+
+// END UC-48 View Personal Itinerary
 
 /**
  * Delete a personal itinerary (owner only).
@@ -236,6 +274,14 @@ export const listSharedItineraries = async (req, res) => {
  * @route GET /api/itineraries/:id
  * @access Customer
  */
+// START UC-48 View Personal Itinerary
+/**
+ * UC-48 – View Personal Itinerary (xem chi tiết một lịch trình).
+ *
+ * canView cho phép owner hoặc collaborator đã được chấp nhận (BR-69); người
+ * không có quyền nhận 404 thay vì 403 để không lộ id lịch trình.
+ * Kết quả được hydrate để kèm danh sách conflicts mới nhất.
+ */
 export const getItinerary = async (req, res) => {
   try {
     const itinerary = await findByIdPopulated(req.params.id);
@@ -248,6 +294,8 @@ export const getItinerary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Unable to load itinerary' });
   }
 };
+
+// END UC-48 View Personal Itinerary
 
 /**
  * Calculate the trip budget of an itinerary: total cost = activity costs + tour prices.
@@ -298,6 +346,13 @@ export const calculateTripBudget = async (req, res) => {
  * @route GET /api/itineraries/:id/conflicts
  * @access Customer
  */
+// START UC-53 Add Activity to Itinerary
+/**
+ * UC-53 – trả về danh sách trùng lịch hiện tại của một lịch trình.
+ *
+ * Dùng chung detectScheduleConflicts với addActivity, nhưng trả riêng để UI có
+ * thể refresh cảnh báo mà không phải tải lại toàn bộ lịch trình.
+ */
 export const getActivityConflicts = async (req, res) => {
   try {
     const itinerary = await Itinerary.findById(req.params.id);
@@ -311,10 +366,26 @@ export const getActivityConflicts = async (req, res) => {
   }
 };
 
+// END UC-53 Add Activity to Itinerary
+
 /**
  * Add an activity to an owned or edit-enabled shared itinerary.
  * @route POST /api/itineraries/:id/activities
  * @access Customer
+ */
+// START UC-53 Add Activity to Itinerary
+/**
+ * UC-53 – Add Activity to Itinerary (thêm hoạt động vào lịch trình).
+ *
+ * Luồng: validate -> tìm lịch trình + kiểm tra quyền sửa -> kiểm tra giờ hợp lệ
+ * -> push hoạt động -> lưu -> trả lại lịch trình đã populate kèm conflicts.
+ *
+ * Phần phức tạp:
+ *  - canEdit: owner luôn được sửa, collaborator chỉ khi permission = 'edit'
+ *    (BR-69); người chỉ xem không thêm được hoạt động.
+ *  - Chặn endTime <= startTime ngay tại server vì UI có thể bị bỏ qua.
+ *  - Sau khi lưu phải đọc lại bằng findByIdPopulated rồi hydrate, nhờ vậy
+ *    conflicts trong response đã tính cả hoạt động vừa thêm (BR-62).
  */
 export const addActivity = async (req, res) => {
   const errors = validationResult(req);
@@ -342,6 +413,8 @@ export const addActivity = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Unable to add activity' });
   }
 };
+
+// END UC-53 Add Activity to Itinerary
 
 /**
  * Reorder activities in an owned or edit-enabled shared itinerary.
@@ -588,7 +661,7 @@ export const addTour = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình hoặc bạn không có quyền chỉnh sửa' });
     }
 
-    const tour = await Tour.findOne({ _id: req.body.tourId, status: 'active' });
+    const tour = await Tour.findOne({ _id: req.body.tourId, status: 'active', isDeleted: { $ne: true } });
     if (!tour) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour đang hoạt động' });
     }
@@ -694,6 +767,10 @@ export const duplicateItinerary = async (req, res) => {
         estimatedCost: activity.estimatedCost || 0,
         notes: activity.notes || ''
       })),
+      packingItems: (source.packingItems || []).map((item) => ({
+        name: item.name,
+        isPacked: item.isPacked
+      })),
       collaborators: []
     });
 
@@ -780,6 +857,21 @@ export const shareItinerary = async (req, res) => {
  * @route DELETE /api/itineraries/:id/leave
  * @access Customer (collaborator only)
  */
+// START UC-137 Leave Itinerary
+/**
+ * UC-137 – Leave Itinerary (collaborator tự rời lịch trình được chia sẻ).
+ *
+ * Phần phức tạp:
+ *  - BR-72 Sole Ownership: owner không được "rời" — phải chuyển quyền hoặc xóa
+ *    lịch trình; response kèm reason 'owner_must_transfer_or_delete' để UI mở
+ *    đúng luồng chuyển quyền.
+ *  - Tìm collaborator theo cả hai dạng c.user (ObjectId thô hoặc đã populate)
+ *    rồi splice theo index, thay vì filter, để giữ nguyên các phần tử khác.
+ *  - markModified('collaborators') là bắt buộc vì mảng con bị sửa tại chỗ, nếu
+ *    không Mongoose sẽ không phát hiện thay đổi.
+ *  - Sau khi rời, gửi thông báo (Notification.insertMany) cho các thành viên còn
+ *    lại; người rời lấy tên từ token nên không cần populate.
+ */
 export const leaveItinerary = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -864,6 +956,8 @@ export const leaveItinerary = async (req, res) => {
     }
   };
 
+// END UC-137 Leave Itinerary
+
 export const removeCollaborator = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -908,6 +1002,20 @@ export const removeCollaborator = async (req, res) => {
  * Chuyển quyền sở hữu lịch trình cho một cộng tác viên (BR-72)
  * @route PUT /api/itineraries/:id/owner
  * @access Customer (owner only)
+ */
+// START UC-120 Transfer Itinerary Ownership
+/**
+ * UC-120 – Transfer Itinerary Ownership (owner chuyển quyền sở hữu – BR-72).
+ *
+ * Phần phức tạp:
+ *  - Chỉ owner hiện tại được chuyển quyền; người nhận phải đang là collaborator,
+ *    nếu không trả 400 kèm eligibleOwners để UI hiện danh sách chọn hợp lệ.
+ *  - Hoán đổi vai trò trong một lần lưu: owner mới bị bỏ khỏi collaborators,
+ *    owner cũ được push lại với permission 'edit' — nhờ vậy lịch trình luôn có
+ *    đúng một owner và không mất quyền của người chuyển.
+ *  - markModified('collaborators') vì mảng bị thay đổi tại chỗ.
+ *  - Thông báo chỉ gửi cho các thành viên còn lại (trừ owner mới) để tránh tự
+ *    thông báo cho chính người vừa nhận quyền.
  */
 export const transferOwnership = async (req, res) => {
   const errors = validationResult(req);
@@ -988,6 +1096,8 @@ export const transferOwnership = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể chuyển quyền sở hữu lịch trình' });
   }
 };
+
+// END UC-120 Transfer Itinerary Ownership
 
 /**
  * UC-61: Comment on Itinerary
@@ -1096,5 +1206,80 @@ export const deleteComment = async (req, res) => {
   } catch (error) {
     console.error('Delete itinerary comment error:', error);
     return res.status(500).json({ success: false, message: 'Không thể xóa bình luận' });
+  }
+};
+
+
+/**
+ * Update a packing item in an owned or edit-enabled shared itinerary.
+ * @route PUT /api/itineraries/:id/packing-items/:itemId
+ * @access Customer
+ */
+export const updatePackingItem = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const item = itinerary.packingItems.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
+    }
+
+    item.name = req.body.name.trim();
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã cập nhật vật dụng thành công',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Update packing item error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật vật dụng' });
+  }
+};
+
+/**
+ * Remove a packing item from an owned or edit-enabled shared itinerary.
+ * @route DELETE /api/itineraries/:id/packing-items/:itemId
+ * @access Customer
+ */
+export const removePackingItem = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const item = itinerary.packingItems.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
+    }
+
+    itinerary.packingItems.pull(req.params.itemId);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.json({
+      success: true,
+      message: 'Đã xóa vật dụng khỏi danh sách hành lý',
+      itinerary: hydrateItinerary(populated)
+    });
+  } catch (error) {
+    console.error('Remove packing item error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể xóa vật dụng' });
   }
 };

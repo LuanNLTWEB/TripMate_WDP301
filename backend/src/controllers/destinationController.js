@@ -1,3 +1,8 @@
+/**
+ * Destination Management — các use case do Toan phụ trách
+ *  - UC-17 Create Destination
+ *  - UC-121 Update Destination Status
+ */
 import Destination from '../models/Destination.js';
 import User from '../models/User.js';
 import Itinerary from '../models/Itinerary.js';
@@ -13,6 +18,20 @@ const DESTINATION_STATUS_VALUES = ['active', 'inactive'];
  * Create a destination in the Staff catalogue.
  * @route POST /api/destinations
  * @access Staff
+ */
+// START UC-17 Create Destination
+/**
+ * UC-17 – Create Destination (staff thêm điểm đến vào danh mục).
+ *
+ * Tạo document Destination với createdBy là staff đang đăng nhập, sau đó ghi
+ * ActivityLog để phục vụ kiểm toán (BR-23).
+ *
+ * Phần phức tạp:
+ *  - isPopular đến từ form (multipart/form-data) nên có thể là boolean hoặc chuỗi
+ *    "true"; phải chuẩn hóa cả hai dạng trước khi lưu.
+ *  - categoryId rỗng được quy về null thay vì chuỗi rỗng để không vi phạm ref.
+ *  - status không lấy từ body: model tự gán mặc định 'active' (BR-35).
+ *  - Chỉ ghi log sau khi tạo thành công, nên log luôn trỏ tới _id thật.
  */
 export const createDestination = async (req, res) => {
   const errors = validationResult(req);
@@ -57,6 +76,8 @@ export const createDestination = async (req, res) => {
     });
   }
 };
+
+// END UC-17 Create Destination
 
 /**
  * Update a destination.
@@ -120,6 +141,17 @@ export const updateDestination = async (req, res) => {
  * Activate or deactivate a destination in the catalogue.
  * @route PATCH /api/destinations/:id/status
  * @access Staff
+ */
+// START UC-121 Update Destination Status
+/**
+ * UC-121 – Update Destination Status (staff bật/tắt trạng thái điểm đến).
+ *
+ * Phần phức tạp:
+ *  - Chặn giá trị ngoài enum active/inactive trước khi chạm DB (BR-35).
+ *  - Đọc previousStatus trước khi update để câu log ghi rõ "từ ... sang ..." (BR-23).
+ *  - Điều kiện isDeleted: { $ne: true } lặp lại ở cả find lẫn findOneAndUpdate để
+ *    không vô tình hồi sinh điểm đến đã xóa mềm (BR-36).
+ *  - CastError (id sai định dạng) và ValidationError đều được quy về 400 thay vì 500.
  */
 export const updateDestinationStatus = async (req, res) => {
   const errors = validationResult(req);
@@ -197,6 +229,8 @@ export const updateDestinationStatus = async (req, res) => {
     });
   }
 };
+
+// END UC-121 Update Destination Status
 
 // @desc    Get all destinations
 // @route   GET /api/destinations

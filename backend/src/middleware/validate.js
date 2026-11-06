@@ -1,6 +1,8 @@
 import { body, param, query } from 'express-validator';
 import Role from '../models/Role.js';
 
+// START UC-17 Create Destination
+// Điều kiện đầu vào khi staff tạo điểm đến: tên/mô tả/vị trí bắt buộc, 1-10 ảnh là URL hợp lệ.
 export const createDestinationValidation = [
   body('name')
     .trim()
@@ -20,12 +22,16 @@ export const createDestinationValidation = [
     .optional()
     .isBoolean().withMessage('Trạng thái phổ biến không hợp lệ')
 ];
+// END UC-17 Create Destination
 
+// START UC-121 Update Destination Status
+// Chỉ nhận active/inactive và id Mongo hợp lệ.
 export const updateDestinationStatusValidation = [
   param('id').isMongoId().withMessage('Mã điểm đến không hợp lệ'),
   body('status')
     .isIn(['active', 'inactive']).withMessage('Trạng thái phải là active hoặc inactive')
 ];
+// END UC-121 Update Destination Status
 
 export const registerValidation = [
   body('username')
@@ -270,6 +276,8 @@ export const updateItineraryValidation = [
     })
 ];
 
+// START UC-53 Add Activity to Itinerary
+// Hoạt động phải có tên, ngày ISO, giờ HH:mm và chi phí không âm.
 export const activityValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('title').trim().notEmpty().withMessage('Vui lòng nhập tên hoạt động'),
@@ -278,6 +286,7 @@ export const activityValidation = [
   body('endTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ kết thúc phải có dạng HH:mm'),
   body('estimatedCost').optional().isFloat({ min: 0 }).withMessage('Chi phí không được âm')
 ];
+// END UC-53 Add Activity to Itinerary
 
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
@@ -658,6 +667,8 @@ export const deleteTourScheduleValidation = [
   param('scheduleId').isMongoId().withMessage('Mã ngày lịch trình không hợp lệ')
 ];
 
+// START UC-45 Update Tour Capacity
+// Số chỗ phải là số nguyên không âm (BR-50).
 export const updateTourCapacityValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('availableSeats')
@@ -665,6 +676,7 @@ export const updateTourCapacityValidation = [
     .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
     .toInt()
 ];
+// END UC-45 Update Tour Capacity
 
 export const updateTourPriceValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
@@ -709,6 +721,8 @@ export const moderateReviewValidation = [
   })
 ];
 
+// START UC-89 Update Tour Review
+// Điểm 1-5 sao (BR-104) và nội dung 10-1000 ký tự.
 export const updateReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
   body('rating')
@@ -720,10 +734,14 @@ export const updateReviewValidation = [
     .isLength({ min: 10, max: 1000 })
     .withMessage('Nội dung đánh giá phải có từ 10 đến 1000 ký tự')
 ];
+// END UC-89 Update Tour Review
 
+// START UC-95 Restore Review
+// Chỉ cần id đánh giá hợp lệ.
 export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
+// END UC-95 Restore Review
 
 export const hideReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
@@ -733,6 +751,8 @@ export const hideReviewValidation = [
     .withMessage('Lý do ẩn đánh giá phải có từ 5 đến 500 ký tự')
 ];
 
+// START UC-74 Cancel Booking
+// Bắt buộc lý do hủy từ 10 đến 500 ký tự.
 export const cancelBookingValidation = [
   param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),
   body('reason')
@@ -741,6 +761,7 @@ export const cancelBookingValidation = [
     .isLength({ min: 10, max: 500 })
     .withMessage('Lý do hủy phải có từ 10 đến 500 ký tự')
 ];
+// END UC-74 Cancel Booking
 
 export const reportedReviewListValidation = [
   query('search')
@@ -777,6 +798,8 @@ export const createReviewValidation = [
     .isLength({ min: 10, max: 1000 }).withMessage('Nội dung đánh giá phải từ 10 đến 1000 ký tự')
 ];
 
+// START UC-40 Create Tour Departure
+// Tour/ngày khởi hành/số chỗ bắt buộc, giá tùy chọn không âm.
 export const createDepartureValidation = [
   body('tourId')
     .notEmpty().withMessage('Vui lòng chọn tour')
@@ -798,6 +821,7 @@ export const createDepartureValidation = [
     .trim()
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
 ];
+// END UC-40 Create Tour Departure
 
 export const listDeparturesValidation = [
   query('tourId')
@@ -908,6 +932,8 @@ export const updateDepartureValidation = [
     .isIn(['scheduled', 'cancelled']).withMessage('Trạng thái không hợp lệ')
 ];
 
+// START UC-120 Transfer Itinerary Ownership
+// Bắt buộc chọn newOwnerId là Mongo id hợp lệ.
 export const transferOwnershipValidation = [
     param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
     body('newOwnerId')
@@ -934,6 +960,7 @@ export const createNotificationValidation = [
     .isEmail().withMessage('Email người nhận không hợp lệ')
     .normalizeEmail()
 ];
+// END UC-120 Transfer Itinerary Ownership
 
 export const notificationListValidation = [
   query('page')
@@ -952,3 +979,75 @@ export const notificationListValidation = [
     .trim()
     .isLength({ max: 30 }).withMessage('Loại thông báo không hợp lệ')
 ];
+
+
+export const updatePackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ'),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên vật dụng')
+    .isLength({ max: 160 }).withMessage('Tên vật dụng không được vượt quá 160 ký tự')
+];
+
+export const removePackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
+];
+
+// START UC-128 Create Tour Submission
+// Yêu cầu duyệt gắn với một tour nháp đã có: bắt buộc tourId hợp lệ, ghi chú tùy chọn.
+export const createTourSubmissionValidation = [
+  body('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour cần gửi duyệt')
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('providerNote')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+// END UC-128 Create Tour Submission
+
+// START UC-129 Update Tour Submission
+// Provider sửa ghi chú (gửi lại), staff đổi status kèm lý do duyệt.
+export const updateTourSubmissionValidation = [
+  param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ'),
+  body('providerNote')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự'),
+  body('status')
+    .optional()
+    .isIn(['pending', 'approved', 'rejected', 'needs_revision']).withMessage('Trạng thái duyệt không hợp lệ'),
+  body('reviewNote')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 1000 }).withMessage('Nội dung phản hồi không được vượt quá 1000 ký tự')
+];
+// END UC-129 Update Tour Submission
+
+// START UC-130 View Tour Submission List
+export const tourSubmissionListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('status')
+    .optional()
+    .isIn(['all', 'pending', 'needs_revision', 'approved', 'rejected']).withMessage('Trạng thái bài gửi không hợp lệ'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 }).withMessage('Số bản ghi mỗi trang phải từ 1 đến 100')
+    .toInt()
+];
+// END UC-130 View Tour Submission List
+
+// START UC-131 Delete Tour Submission
+export const tourSubmissionIdValidation = [
+  param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
+];
+// END UC-131 Delete Tour Submission

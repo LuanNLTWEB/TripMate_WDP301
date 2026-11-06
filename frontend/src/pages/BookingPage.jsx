@@ -75,6 +75,10 @@ const validateForm = (fields, availableSeats) => {
     }
   }
 
+  if (!fields.agreePolicy) {
+    newErrors.agreePolicy = 'Vui lòng xác nhận đồng ý với quy định hủy chỗ trước khi đặt tour';
+  }
+
   return newErrors;
 };
 
@@ -95,6 +99,7 @@ const BookingPage = () => {
   const [numberOfPeople, setNumberOfPeople] = useState(1);
   const [departureDate, setDepartureDate] = useState('');
   const [note, setNote] = useState('');
+  const [agreePolicy, setAgreePolicy] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
@@ -149,7 +154,7 @@ const BookingPage = () => {
     setApiError('');
 
     const formErrors = validateForm(
-      { fullName, phone, email, address, numberOfPeople, departureDate },
+      { fullName, phone, email, address, numberOfPeople, departureDate, agreePolicy },
       tour.availableSeats
     );
 
@@ -423,6 +428,43 @@ const BookingPage = () => {
                         maxLength={500}
                         disabled={submitting}
                       />
+                    </div>
+
+                    <div className="card border-0 rounded-4 p-3 mb-4" style={{ backgroundColor: '#f0f7ff', border: '1px solid #cce5ff' }}>
+                      <div className="d-flex align-items-center gap-2 mb-2 text-primary fw-bold">
+                        <i className="bi bi-shield-check fs-5"></i>
+                        <span>Quy định giữ chỗ &amp; hủy tour</span>
+                      </div>
+                      <div className="small text-secondary mb-3 lh-base">
+                        {tour.cancellationPolicy ? (
+                          <p className="mb-0" style={{ whiteSpace: 'pre-line' }}>{tour.cancellationPolicy}</p>
+                        ) : (
+                          <ul className="mb-0 ps-3">
+                            <li>Đơn đặt sẽ được chuyển tới nhà cung cấp để xác nhận giữ chỗ.</li>
+                            <li>Quý khách có thể tự hủy đặt tour miễn phí trước thời điểm khởi hành tối thiểu 48 giờ.</li>
+                            <li>Hủy trong vòng 48 giờ trước ngày khởi hành: Vui lòng liên hệ trực tiếp nhà cung cấp để được hỗ trợ.</li>
+                          </ul>
+                        )}
+                      </div>
+                      <div className="form-check">
+                        <input
+                          id="agreePolicy"
+                          type="checkbox"
+                          className={`form-check-input ${errors.agreePolicy ? 'is-invalid' : ''}`}
+                          checked={agreePolicy}
+                          onChange={(e) => {
+                            setAgreePolicy(e.target.checked);
+                            clearError('agreePolicy');
+                          }}
+                          disabled={submitting}
+                        />
+                        <label htmlFor="agreePolicy" className="form-check-label small fw-medium text-dark user-select-none">
+                          Tôi đã đọc và đồng ý với các quy định hủy chỗ &amp; điều khoản đặt tour <span className="text-danger">(*)</span>
+                        </label>
+                        {errors.agreePolicy && (
+                          <div className="invalid-feedback d-block mt-1">{errors.agreePolicy}</div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="pt-2">

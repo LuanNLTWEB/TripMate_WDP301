@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { tourApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
 import TourFormModal from './TourFormModal';
@@ -12,8 +14,21 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(value || 0);
 
+// START UC-35 View Approval Status
+/**
+ * Ánh xạ trạng thái duyệt của tour sang nhãn + màu badge.
+ * Phức tạp: 'needs_revision' và 'rejected' là hai trạng thái cần provider xử lý,
+ * nên được tách màu riêng để không bị nhầm với 'active'/'suspended'.
+ * 'draft' là tour nháp chưa gửi duyệt nên phải hiện khác 'pending' để provider biết
+ * cần bấm "Gửi duyệt" thì tour mới tới được hàng đợi của staff.
+ */
 const getStatusBadge = (status) => {
   switch (status) {
+    case 'draft':
+      return {
+        label: 'Bản nháp',
+        variant: 'badge-secondary'
+      };
     case 'active':
       return {
         label: 'Đang hoạt động',
@@ -46,9 +61,11 @@ const getStatusBadge = (status) => {
       };
   }
 };
+// END UC-35 View Approval Status
 
 export default function ProviderTours() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Modal state for Creating a Tour
   const [showCreateModal, setShowCreateModal] = useState(
@@ -66,6 +83,9 @@ export default function ProviderTours() {
   const [selectedTourForSchedule, setSelectedTourForSchedule] = useState(null);
   const [selectedTourForPrice, setSelectedTourForPrice] = useState(null);
   const [selectedTourForEdit, setSelectedTourForEdit] = useState(null);
+  const [tourToDelete, setTourToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
 
   // Load tours list
   const loadTours = async (searchTerm = search, selectedStatus = status, page = currentPage) => {
@@ -118,6 +138,29 @@ export default function ProviderTours() {
     setStatus('all');
     setCurrentPage(1);
     await loadTours('', 'all', 1);
+  };
+
+  const handleDelete = async () => {
+    if (!tourToDelete || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await tourApi.remove(tourToDelete._id);
+      toast.success(`Đã xóa tour "${tourToDelete.title}".`);
+      setTourToDelete(null);
+
+      // Tour cuối cùng của trang đang xem: lùi về trang trước để không bị trang rỗng
+      if (tours.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await loadTours(search, status, currentPage);
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa tour.');
+      setTourToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -176,6 +219,7 @@ export default function ProviderTours() {
               onChange={handleFilterChange}
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'draft', label: 'Bản nháp', icon: 'bi bi-file-earmark text-secondary' },
                 { value: 'active', label: 'Đang hoạt động', icon: 'bi bi-check-circle text-success' },
                 { value: 'pending', label: 'Chờ kiểm duyệt', icon: 'bi bi-hourglass-split text-warning' },
                 { value: 'needs_revision', label: 'Cần chỉnh sửa', icon: 'bi bi-pencil-square text-info' },
@@ -268,6 +312,7 @@ export default function ProviderTours() {
                           {badge.label}
                         </span>
 
+                        {/* START UC-35 View Approval Status */}
                         {tour.status === 'needs_revision' && tour.revisionNote && (
                           <div className="small text-muted mt-1 text-truncate" style={{ maxWidth: '200px' }} title={tour.revisionNote}>
                             <i className="bi bi-info-circle me-1"></i>{tour.revisionNote}
@@ -279,10 +324,22 @@ export default function ProviderTours() {
                             <i className="bi bi-exclamation-circle me-1"></i>{tour.rejectionReason}
                           </div>
                         )}
+                        {/* END UC-35 View Approval Status */}
                       </td>
 
                       <td className="text-end">
                         <div className="management-actions justify-content-end">
+                          {['draft', 'needs_revision', 'rejected'].includes(tour.status) && (
+                            <button
+                              type="button"
+                              className="management-action-btn text-primary border-0 bg-transparent px-2"
+                              title="Gửi duyệt tour để mở bán"
+                              aria-label={`Gửi duyệt ${tour.title}`}
+                              onClick={() => navigate(`/management/my-submissions?tour=${tour._id}`)}
+                            >
+                              <i className="bi bi-send fs-5"></i>
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="management-action-btn btn-edit"
@@ -326,6 +383,15 @@ export default function ProviderTours() {
                           >
                             <i className="bi bi-sliders"></i>
                           </Link>
+                          <button
+                            type="button"
+                            className="management-action-btn btn-delete"
+                            title="Xóa tour"
+                            aria-label={`Xóa ${tour.title}`}
+                            onClick={() => setTourToDelete(tour)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -415,6 +481,24 @@ export default function ProviderTours() {
           onSaved={() => loadTours(search, status, currentPage)}
         />
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(tourToDelete)}
+        title="Xác nhận xóa tour"
+        message={
+          <>
+            Bạn có chắc muốn xóa tour <strong>{tourToDelete?.title}</strong>?
+            <br />
+            <small className="text-muted">
+              Tour sẽ bị ẩn khỏi danh sách công khai và danh sách tour của bạn. Lịch sử đặt tour,
+              đánh giá và lịch trình của khách vẫn được giữ lại.
+            </small>
+          </>
+        }
+        loading={isDeleting}
+        onConfirm={handleDelete}
+        onClose={() => setTourToDelete(null)}
+      />
     </section>
   );
 }
