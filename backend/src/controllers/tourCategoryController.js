@@ -137,7 +137,8 @@ export const deleteCategory = async (req, res) => {
     }
 
     const tourCount = await Tour.countDocuments({
-      categoryId: req.params.id
+      categoryId: req.params.id,
+      isDeleted: { $ne: true }
     });
     if (tourCount > 0) {
       return res.status(400).json({
