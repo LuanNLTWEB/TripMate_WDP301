@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { tourApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import TourScheduleModal from './TourScheduleModal';
@@ -17,9 +17,16 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
  * Ánh xạ trạng thái duyệt của tour sang nhãn + màu badge.
  * Phức tạp: 'needs_revision' và 'rejected' là hai trạng thái cần provider xử lý,
  * nên được tách màu riêng để không bị nhầm với 'active'/'suspended'.
+ * 'draft' là tour nháp chưa gửi duyệt nên phải hiện khác 'pending' để provider biết
+ * cần bấm "Gửi duyệt" thì tour mới tới được hàng đợi của staff.
  */
 const getStatusBadge = (status) => {
   switch (status) {
+    case 'draft':
+      return {
+        label: 'Bản nháp',
+        variant: 'badge-secondary'
+      };
     case 'active':
       return {
         label: 'Đang hoạt động',
@@ -56,6 +63,7 @@ const getStatusBadge = (status) => {
 
 export default function ProviderTours() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Modal state for Creating a Tour
   const [showCreateModal, setShowCreateModal] = useState(
@@ -183,6 +191,7 @@ export default function ProviderTours() {
               onChange={handleFilterChange}
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'draft', label: 'Bản nháp', icon: 'bi bi-file-earmark text-secondary' },
                 { value: 'active', label: 'Đang hoạt động', icon: 'bi bi-check-circle text-success' },
                 { value: 'pending', label: 'Chờ kiểm duyệt', icon: 'bi bi-hourglass-split text-warning' },
                 { value: 'needs_revision', label: 'Cần chỉnh sửa', icon: 'bi bi-pencil-square text-info' },
@@ -292,6 +301,17 @@ export default function ProviderTours() {
 
                       <td className="text-end">
                         <div className="management-actions justify-content-end">
+                          {['draft', 'needs_revision', 'rejected'].includes(tour.status) && (
+                            <button
+                              type="button"
+                              className="management-action-btn text-primary border-0 bg-transparent px-2"
+                              title="Gửi duyệt tour để mở bán"
+                              aria-label={`Gửi duyệt ${tour.title}`}
+                              onClick={() => navigate(`/management/my-submissions?tour=${tour._id}`)}
+                            >
+                              <i className="bi bi-send fs-5"></i>
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="management-action-btn btn-edit"

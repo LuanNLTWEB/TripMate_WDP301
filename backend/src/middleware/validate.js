@@ -994,3 +994,60 @@ export const removePackingItemValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
 ];
+
+// START UC-128 Create Tour Submission
+// Yêu cầu duyệt gắn với một tour nháp đã có: bắt buộc tourId hợp lệ, ghi chú tùy chọn.
+export const createTourSubmissionValidation = [
+  body('tourId')
+    .notEmpty().withMessage('Vui lòng chọn tour cần gửi duyệt')
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
+  body('providerNote')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+// END UC-128 Create Tour Submission
+
+// START UC-129 Update Tour Submission
+// Provider sửa ghi chú (gửi lại), staff đổi status kèm lý do duyệt.
+export const updateTourSubmissionValidation = [
+  param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ'),
+  body('providerNote')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự'),
+  body('status')
+    .optional()
+    .isIn(['pending', 'approved', 'rejected', 'needs_revision']).withMessage('Trạng thái duyệt không hợp lệ'),
+  body('reviewNote')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 1000 }).withMessage('Nội dung phản hồi không được vượt quá 1000 ký tự')
+];
+// END UC-129 Update Tour Submission
+
+// START UC-130 View Tour Submission List
+export const tourSubmissionListValidation = [
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('status')
+    .optional()
+    .isIn(['all', 'pending', 'needs_revision', 'approved', 'rejected']).withMessage('Trạng thái bài gửi không hợp lệ'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 }).withMessage('Số bản ghi mỗi trang phải từ 1 đến 100')
+    .toInt()
+];
+// END UC-130 View Tour Submission List
+
+// START UC-131 Delete Tour Submission
+export const tourSubmissionIdValidation = [
+  param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
+];
+// END UC-131 Delete Tour Submission

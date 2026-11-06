@@ -34,6 +34,7 @@ import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
+import TourSubmissions from './pages/TourSubmissions';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
@@ -217,6 +218,9 @@ function App() {
                   <Route path="tours" element={<StaffTours />} />
                   <Route path="tours/:id" element={<ReviewTourSubmission />} />
                   <Route path="pending-tours" element={<StaffPendingTours />} />
+                  {/* START UC-130 View Tour Submission List */}
+                  <Route path="tour-submissions" element={<TourSubmissions />} />
+                  {/* END UC-130 View Tour Submission List */}
                   <Route path="statistics" element={<Stats />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
@@ -252,6 +256,16 @@ function App() {
                   path="reported-reviews"
                   element={<RoleRedirect to="/management/reviews?view=reported" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}
                 />
+                {/* START UC-130 View Tour Submission List */}
+                <Route
+                  path="my-submissions"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                      <TourSubmissions />
+                    </ProtectedRoute>
+                  )}
+                />
+                {/* END UC-130 View Tour Submission List */}
                 <Route
                   path="booking-requests"
                   element={(

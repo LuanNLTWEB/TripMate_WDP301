@@ -641,13 +641,14 @@ export const createTour = async (req, res) => {
       availableSeats: Number(availableSeats) || 0,
       categoryId: categoryId || null,
       images: Array.isArray(images) ? images : [],
-      status: 'pending',
+      // Tour mới luôn là bản nháp; provider phải gửi yêu cầu duyệt (UC-128) để mở bán.
+      status: 'draft',
       providerId: req.user._id
     });
 
     res.status(201).json({
       success: true,
-      message: 'Tạo tour thành công. Tour đang chờ nhân viên kiểm duyệt.',
+      message: 'Tạo tour nháp thành công. Hãy gửi duyệt để tour được mở bán.',
       data: tour
     });
   } catch (error) {

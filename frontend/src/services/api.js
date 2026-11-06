@@ -572,4 +572,36 @@ export const notificationApi = {
   })
 };
 
+// START UC-130 View Tour Submission List
+// API bài gửi duyệt tour: staff thấy toàn bộ, provider chỉ thấy bài của mình.
+export const tourSubmissionApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/tour-submissions${queryString}`, { method: 'GET' });
+  },
+  // END UC-130 View Tour Submission List
+  getById: (id) => apiRequest(`/tour-submissions/${id}`, { method: 'GET' }),
+  // START UC-128 Create Tour Submission
+  create: (payload) => apiRequest('/tour-submissions', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-128 Create Tour Submission
+  // START UC-129 Update Tour Submission
+  // Provider gửi nội dung đã sửa, staff gửi status kèm reviewNote.
+  update: (id, payload) => apiRequest(`/tour-submissions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-129 Update Tour Submission
+  // START UC-131 Delete Tour Submission
+  remove: (id) => apiRequest(`/tour-submissions/${id}`, { method: 'DELETE' })
+  // END UC-131 Delete Tour Submission
+};
+
 export default authApi;
