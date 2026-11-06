@@ -48,7 +48,7 @@ const buildEligibility = (eligible, reason, extra = {}) => ({
 
 const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
   const tour = await Tour.findById(tourId);
-  if (!tour) return { tour: null };
+  if (!tour || tour.isDeleted) return { tour: null };
 
   const existingReview = await Review.findOne({ tourId, userId });
   if (existingReview) {
@@ -241,7 +241,7 @@ export const getReviewsByTour = async (req, res) => {
     const { tourId } = req.params;
 
     const tour = await Tour.findById(tourId);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 

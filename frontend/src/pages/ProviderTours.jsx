@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { tourApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
 import TourFormModal from './TourFormModal';
@@ -81,6 +83,9 @@ export default function ProviderTours() {
   const [selectedTourForSchedule, setSelectedTourForSchedule] = useState(null);
   const [selectedTourForPrice, setSelectedTourForPrice] = useState(null);
   const [selectedTourForEdit, setSelectedTourForEdit] = useState(null);
+  const [tourToDelete, setTourToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
 
   // Load tours list
   const loadTours = async (searchTerm = search, selectedStatus = status, page = currentPage) => {
@@ -133,6 +138,29 @@ export default function ProviderTours() {
     setStatus('all');
     setCurrentPage(1);
     await loadTours('', 'all', 1);
+  };
+
+  const handleDelete = async () => {
+    if (!tourToDelete || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await tourApi.remove(tourToDelete._id);
+      toast.success(`Đã xóa tour "${tourToDelete.title}".`);
+      setTourToDelete(null);
+
+      // Tour cuối cùng của trang đang xem: lùi về trang trước để không bị trang rỗng
+      if (tours.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        await loadTours(search, status, currentPage);
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa tour.');
+      setTourToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -355,6 +383,15 @@ export default function ProviderTours() {
                           >
                             <i className="bi bi-sliders"></i>
                           </Link>
+                          <button
+                            type="button"
+                            className="management-action-btn btn-delete"
+                            title="Xóa tour"
+                            aria-label={`Xóa ${tour.title}`}
+                            onClick={() => setTourToDelete(tour)}
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -444,6 +481,24 @@ export default function ProviderTours() {
           onSaved={() => loadTours(search, status, currentPage)}
         />
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(tourToDelete)}
+        title="Xác nhận xóa tour"
+        message={
+          <>
+            Bạn có chắc muốn xóa tour <strong>{tourToDelete?.title}</strong>?
+            <br />
+            <small className="text-muted">
+              Tour sẽ bị ẩn khỏi danh sách công khai và danh sách tour của bạn. Lịch sử đặt tour,
+              đánh giá và lịch trình của khách vẫn được giữ lại.
+            </small>
+          </>
+        }
+        loading={isDeleting}
+        onConfirm={handleDelete}
+        onClose={() => setTourToDelete(null)}
+      />
     </section>
   );
 }
