@@ -30,12 +30,16 @@ const destinationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // START UC-121 Update Destination Status
+  // Chỉ staff đổi được giá trị này qua PATCH /api/destinations/:id/status;
+  // điểm đến inactive sẽ bị ẩn khỏi phía public (BR-32/BR-35).
   status: {
     type: String,
     enum: ['active', 'inactive'],
     default: 'active',
     index: true
   },
+  // END UC-121 Update Destination Status
   isDeleted: {
     type: Boolean,
     default: false,

@@ -79,6 +79,13 @@ const TourDetails = () => {
     }
   };
 
+  // START UC-25 View Tour Details
+  /**
+   * Tải chi tiết tour khi mở trang.
+   * Phức tạp: cờ isMounted chặn setState sau khi component đã unmount (đổi tour
+   * nhanh), tránh cảnh báo memory leak; lỗi 404 của tour chưa duyệt được hiển thị
+   * như lỗi tải chứ không phải trang trắng.
+   */
   useEffect(() => {
     let isMounted = true;
 
@@ -98,6 +105,7 @@ const TourDetails = () => {
       isMounted = false;
     };
   }, [id]);
+  // END UC-25 View Tour Details
 
   useEffect(() => {
     if (!id || !isAuthenticated || user?.role !== 'customer') return;
@@ -893,7 +901,7 @@ const TourDetails = () => {
             onCreated={handleReviewCreated}
           />
         )}
-        {/* UC-89 - sửa đánh giá của chính khách hàng */}
+        {/* START UC-89 Update Tour Review */}
         {reviewToEdit && (
           <EditReviewModal
             review={reviewToEdit}
@@ -914,6 +922,7 @@ const TourDetails = () => {
             }}
           />
         )}
+        {/* END UC-89 Update Tour Review */}
     </>
   );
 

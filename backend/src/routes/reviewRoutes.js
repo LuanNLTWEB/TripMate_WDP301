@@ -34,8 +34,14 @@ router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reported
 router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);
 router.patch('/:id/moderate', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), moderateReviewValidation, moderateReview);
 router.patch('/:id/hide', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), hideReviewValidation, hideReview);
+// START UC-95 Restore Review
+// PATCH /api/reviews/:id/restore - chỉ staff được khôi phục đánh giá đã xóa mềm.
 router.patch('/:id/restore', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), restoreReviewValidation, restoreReview);
+// END UC-95 Restore Review
+// START UC-89 Update Tour Review
+// PUT /api/reviews/:id - chỉ customer (tác giả) sửa đánh giá của mình.
 router.put('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateReviewValidation, updateReview);
+// END UC-89 Update Tour Review
 router.delete('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), deleteReview);
 
 export default router;

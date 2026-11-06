@@ -1,3 +1,8 @@
+/**
+ * Booking (Đặt tour) — các use case do Toan phụ trách
+ *  - UC-74 Cancel Booking: cancelBooking (BR-88 khung hủy 48 giờ, BR-91 chỉ hủy đơn
+ *    của chính mình, BR-57 trả lại số chỗ trống ngay trong cùng thao tác).
+ */
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import { validationResult } from 'express-validator';
@@ -273,10 +278,21 @@ export const getBookingById = async (req, res) => {
 // thanh toán; thao tác này chỉ trả lại chỗ trống và ghi nhận lý do.
 const FREE_CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+// START UC-74 Cancel Booking
 /**
- * Hủy đặt tour của chính khách hàng (UC-74 - Cancel Booking)
- * @route PATCH /api/bookings/:id/cancel
- * @access Private (customer)
+ * UC-74 – Cancel Booking (khách hàng tự hủy đơn đặt tour của mình).
+ *
+ * Luồng: kiểm tra dữ liệu đầu vào -> tìm booking -> chặn hủy đơn của người khác
+ * -> chặn hủy lần hai -> kiểm tra còn đủ 48 giờ trước ngày khởi hành -> đánh dấu
+ * cancelled, lưu lý do/thời điểm hủy -> trả lại số chỗ cho tour.
+ *
+ * Phần phức tạp:
+ *  - FREE_CANCEL_WINDOW_MS (BR-88): so sánh hiệu số giữa departureDate và hiện tại
+ *    theo mili-giây thay vì theo ngày, để mốc 48 giờ chính xác đến giờ/phút.
+ *  - Trả lại chỗ (BR-57): cộng numberOfPeople vào availableSeats của tour ngay sau
+ *    khi lưu booking, nhờ vậy sức chứa của tour không bị lệch với danh sách đơn.
+ *  - Không tính hoàn tiền ở đây: hệ thống chưa có module thanh toán tách riêng,
+ *    totalPrice chỉ được đọc lại từ booking để đối soát sau này.
  */
 export const cancelBooking = async (req, res) => {
   const errors = validationResult(req);
@@ -356,3 +372,4 @@ export const cancelBooking = async (req, res) => {
     });
   }
 };
+// END UC-74 Cancel Booking

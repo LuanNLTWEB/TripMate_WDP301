@@ -1,3 +1,7 @@
+/**
+ * Reporting & Analytics — use case do Toan phụ trách
+ *  - UC-102 View Platform Statistics
+ */
 import User from '../models/User.js';
 import Destination from '../models/Destination.js';
 import DestinationCategory from '../models/DestinationCategory.js';
@@ -9,6 +13,22 @@ import Role from '../models/Role.js';
  * Build aggregate platform statistics for staff.
  * @route GET /api/stats/platform
  * @access Staff
+ */
+// START UC-102 View Platform Statistics
+/**
+ * UC-102 – View Platform Statistics (staff xem số liệu tổng hợp của nền tảng).
+ *
+ * Phần phức tạp:
+ *  - Toàn bộ truy vấn đếm/aggregate chạy song song bằng Promise.all để giảm thời
+ *    gian chờ; mỗi truy vấn là một phép đếm độc lập nên không phụ thuộc nhau.
+ *  - Các số liệu điểm đến đều lọc isDeleted: { $ne: true } để khớp với danh mục
+ *    đang hiển thị (BR-36); riêng tour/itinerary đếm toàn bộ vì phục vụ thống kê.
+ *  - Số hoạt động dùng aggregate $unwind + $count vì activities là mảng con,
+ *    countDocuments không đếm được phần tử bên trong.
+ *  - Ba danh sách "recent" bị giới hạn 5 bản ghi và chỉ select các field cần cho
+ *    bảng tổng quan, tránh trả cả document nặng.
+ *  - popularCount là truy vấn bổ sung chạy sau Promise.all (phụ thuộc dữ liệu đã
+ *    có, không thể gộp vào cùng batch).
  */
 const getPlatformStats = async (req, res) => {
   try {
@@ -79,6 +99,8 @@ const DEFAULT_ROLE_BADGE_CLASSES = {
   tourProvider: 'bg-primary',
   customer: 'bg-secondary'
 };
+
+// END UC-102 View Platform Statistics
 
 /**
  * Build system dashboard statistics for Admin.

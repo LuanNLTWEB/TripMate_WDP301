@@ -9,6 +9,22 @@ const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
  * @route POST /api/departures
  * @access Private (tourProvider)
  */
+// START UC-40 Create Tour Departure
+/**
+ * UC-40 – Create Tour Departure (provider tạo lịch khởi hành cho tour của mình).
+ *
+ * Luồng: validate input -> tìm tour -> kiểm tra quyền sở hữu -> chặn lead time
+ * -> chặn trùng ngày -> tạo Departure.
+ *
+ * Phần phức tạp:
+ *  - BR-47: ngày khởi hành phải cách hiện tại ít nhất 24 giờ (LEAD_TIME_MS), so sánh
+ *    bằng mili-giây để không phụ thuộc múi giờ của server.
+ *  - BR-49: chỉ cho một lịch 'scheduled' mỗi ngày; kiểm tra theo khoảng
+ *    [00:00, 24:00) của ngày được chọn thay vì so sánh bằng đúng timestamp.
+ *  - price là tùy chọn: chuỗi rỗng/null được quy về null (dùng giá của tour),
+ *    còn lại ép Number để model không lưu string.
+ *  - providerId lấy từ tour (không lấy từ body) để provider không tạo lịch hộ tour khác.
+ */
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -89,6 +105,8 @@ export const createDeparture = async (req, res) => {
     });
   }
 };
+// END UC-40 Create Tour Departure
+
 /**
  * Lấy danh sách lịch khởi hành của một tour
  * @route GET /api/departures?tourId=:tourId

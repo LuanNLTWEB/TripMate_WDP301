@@ -5,6 +5,7 @@ import { getPlatformStats, getAdminDashboardStats } from '../controllers/statsCo
 
 const router = Router();
 
+// START UC-102 View Platform Statistics
 /**
  * Platform statistics for staff.
  * @route GET /api/stats/platform
@@ -16,6 +17,7 @@ router.get(
   authorize(...ACCESS_ROLES.STAFF_ONLY),
   getPlatformStats
 );
+// END UC-102 View Platform Statistics
 
 /**
  * System dashboard statistics for admin.

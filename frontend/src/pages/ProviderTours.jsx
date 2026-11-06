@@ -12,6 +12,12 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(value || 0);
 
+// START UC-35 View Approval Status
+/**
+ * Ánh xạ trạng thái duyệt của tour sang nhãn + màu badge.
+ * Phức tạp: 'needs_revision' và 'rejected' là hai trạng thái cần provider xử lý,
+ * nên được tách màu riêng để không bị nhầm với 'active'/'suspended'.
+ */
 const getStatusBadge = (status) => {
   switch (status) {
     case 'active':
@@ -46,6 +52,7 @@ const getStatusBadge = (status) => {
       };
   }
 };
+// END UC-35 View Approval Status
 
 export default function ProviderTours() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -268,6 +275,7 @@ export default function ProviderTours() {
                           {badge.label}
                         </span>
 
+                        {/* START UC-35 View Approval Status */}
                         {tour.status === 'needs_revision' && tour.revisionNote && (
                           <div className="small text-muted mt-1 text-truncate" style={{ maxWidth: '200px' }} title={tour.revisionNote}>
                             <i className="bi bi-info-circle me-1"></i>{tour.revisionNote}
@@ -279,6 +287,7 @@ export default function ProviderTours() {
                             <i className="bi bi-exclamation-circle me-1"></i>{tour.rejectionReason}
                           </div>
                         )}
+                        {/* END UC-35 View Approval Status */}
                       </td>
 
                       <td className="text-end">

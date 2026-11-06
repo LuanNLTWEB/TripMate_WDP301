@@ -91,6 +91,14 @@ function Itinerary() {
   });
   const { setReceivedInvites, openMembersModal, removingCollaboratorId, handleRemoveCollaborator } = collab;
 
+  // START UC-48 View Personal Itinerary
+  /**
+   * Tải song song lịch trình của mình, lịch trình được chia sẻ, danh mục điểm đến,
+   * tour đang active và lời mời đang chờ.
+   * Phức tạp: chọn sẵn lịch trình đầu tiên của chính mình làm mặc định; điểm đến
+   * inactive và tour bị tạm ngưng bị loại khỏi danh sách chọn để không thêm vào
+   * lịch trình được (BR-32).
+   */
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
       setLoading(false);
@@ -117,6 +125,7 @@ function Itinerary() {
       setLoading(false);
     }
   };
+  // END UC-48 View Personal Itinerary
 
   useEffect(() => {
     loadItineraries();
@@ -187,10 +196,14 @@ function Itinerary() {
         setActivityForm(initialActivity);
         toast.success(response.message || 'Đã cập nhật hoạt động thành công.');
       } else {
+        // START UC-53 Add Activity to Itinerary
+        // Gọi POST /itineraries/:id/activities; response trả về cả itinerary đã
+        // hydrate (kèm conflicts) nên chỉ cần applyItinerary thay vì tải lại trang.
         const response = await itineraryApi.addActivity(selected._id, payload);
         applyItinerary(response.itinerary);
         setActivityForm(initialActivity);
         toast.success('Đã thêm hoạt động vào lịch trình.');
+        // END UC-53 Add Activity to Itinerary
       }
     } catch (requestError) {
       toast.error(requestError.message || (editingActivityId ? 'Không thể cập nhật hoạt động.' : 'Không thể thêm hoạt động.'));
@@ -572,6 +585,13 @@ function Itinerary() {
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
   const isCollaborator = Boolean(!isOwner && myPermission);
 
+  // START UC-137 Leave Itinerary
+  /**
+   * Collaborator tự rời lịch trình được chia sẻ.
+   * Phức tạp: phải xóa lịch trình khỏi cả hai danh sách (của tôi / được chia sẻ)
+   * rồi bỏ chọn, vì sau khi rời người dùng không còn quyền xem lịch trình đó nữa;
+   * nút chỉ hiện với collaborator, owner bị backend chặn (BR-72).
+   */
   const handleLeaveItinerary = async () => {
     if (!selected) return;
 
@@ -591,9 +611,15 @@ function Itinerary() {
       setPendingLeaveItinerary(false);
     }
   };
+  // END UC-137 Leave Itinerary
 
-  // UC-120 (BR-72) - standalone ownership transfer: owner picks a collaborator
-  // to become the new owner. The old owner becomes a collaborator (edit).
+  // START UC-120 Transfer Itinerary Ownership
+  /**
+   * UC-120 (BR-72) - owner chọn một collaborator làm chủ sở hữu mới; chủ cũ trở
+   * thành collaborator quyền 'edit'.
+   * Phức tạp: sau khi chuyển phải loadItineraries() để vai trò của cả hai người
+   * được tính lại từ dữ liệu server (nút chuyển quyền biến mất với chủ cũ).
+   */
   const handleTransferOwnership = async () => {
     if (!selected || !pendingTransferOwnerId) return;
     try {
@@ -607,12 +633,17 @@ function Itinerary() {
       setLeavingItinerary(false);
     }
   };
+  // END UC-120 Transfer Itinerary Ownership
 
+  // START UC-53 Add Activity to Itinerary
+  // Gom id của các hoạt động nằm trong một cặp trùng giờ do backend trả về
+  // (conflicts) để tô cảnh báo trên từng thẻ hoạt động.
   const conflictedActivityIds = new Set();
   (selected?.conflicts || []).forEach((conflict) => {
     conflictedActivityIds.add(String(conflict.first._id));
     conflictedActivityIds.add(String(conflict.second._id));
   });
+  // END UC-53 Add Activity to Itinerary
 
   const addedDestinationIds = new Set(
     (selected?.destinations || []).map((destination) => String(destination._id || destination))

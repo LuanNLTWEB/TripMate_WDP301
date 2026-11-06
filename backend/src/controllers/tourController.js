@@ -1,3 +1,10 @@
+/**
+ * Tour Management — các use case do Toan phụ trách
+ *  - UC-25 View Tour Details
+ *  - UC-30 View Favorite Tours
+ *  - UC-35 View Approval Status
+ *  - UC-45 Update Tour Capacity
+ */
 import Tour from '../models/Tour.js';
 import TourCategory from '../models/TourCategory.js';
 import User from '../models/User.js';
@@ -7,6 +14,18 @@ import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// START UC-30 View Favorite Tours
+/**
+ * UC-30 – View Favorite Tours (khách xem danh sách tour đã lưu yêu thích).
+ *
+ * Đọc mảng favoriteTours của user hiện tại và populate sang collection Tour.
+ *
+ * Phần phức tạp:
+ *  - populate kèm `match: { status: 'active' }` nên tour đã bị ngưng/duyệt lại sẽ
+ *    tự rơi khỏi kết quả, không cần lọc thêm ở client.
+ *  - filter(Boolean) để loại các phần tử null còn sót lại khi tour tham chiếu đã bị xóa.
+ *  - Trả cả `favoriteTourIds` (mảng id) để UI tô trạng thái tim ở màn danh sách tour.
+ */
 export const getFavoriteTours = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
@@ -37,6 +56,8 @@ export const getFavoriteTours = async (req, res) => {
     });
   }
 };
+
+// END UC-30 View Favorite Tours
 
 export const removeFavoriteTour = async (req, res) => {
   const errors = validationResult(req);
@@ -205,6 +226,20 @@ export const getAllTours = async (req, res) => {
   }
 };
 
+// START UC-25 View Tour Details
+/**
+ * UC-25 – View Tour Details (Guest/Customer xem chi tiết một tour).
+ *
+ * Tìm tour theo id, populate category và provider rồi trả về object thuần.
+ *
+ * Phần phức tạp:
+ *  - Tour chưa ở trạng thái active chỉ staff hoặc provider sở hữu tour được xem;
+ *    các trường hợp khác trả 404 (không trả 403) để không lộ sự tồn tại của tour.
+ *  - Lịch trình chi tiết (itinerary) bị xóa khỏi response khi người xem không phải
+ *    customer hoặc provider sở hữu (BR-90 – provider privacy).
+ *  - providerId có thể là ObjectId thô hoặc đã populate, nên phải so sánh cả hai dạng.
+ *  - CastError của id sai định dạng được quy về 404 thay vì 500.
+ */
 export const getTourById = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -273,6 +308,8 @@ export const getTourById = async (req, res) => {
     });
   }
 };
+
+// END UC-25 View Tour Details
 
 export const getManagedTours = async (req, res) => {
   try {
@@ -622,6 +659,20 @@ export const createTour = async (req, res) => {
   }
 };
 
+// START UC-35 View Approval Status
+/**
+ * UC-35 – View Approval Status (provider xem trạng thái duyệt tour của mình).
+ *
+ * Trả danh sách tour thuộc provider đang đăng nhập kèm trạng thái duyệt để UI
+ * hiển thị badge "Chờ kiểm duyệt / Cần chỉnh sửa / Bị từ chối / Tạm ngưng".
+ *
+ * Phần phức tạp:
+ *  - Lọc theo status do staff cập nhật, tách khỏi filter tìm kiếm bằng $and để
+ *    không ghi đè điều kiện providerId.
+ *  - Populate rejectedBy và revisionRequestedBy để hiện người duyệt; các field
+ *    rejectionReason/revisionNote đi kèm chính document tour.
+ *  - Từ khóa tìm kiếm được escape trước khi đưa vào RegExp để tránh lỗi regex.
+ */
 export const getProviderTours = async (req, res) => {
   try {
     const {
@@ -681,6 +732,8 @@ export const getProviderTours = async (req, res) => {
     });
   }
 };
+
+// END UC-35 View Approval Status
 
 export const getProviderTourById = async (req, res) => {
   const errors = validationResult(req);
@@ -1133,6 +1186,18 @@ export const deleteTourSchedule = async (req, res) => {
  * @route PUT /api/tours/:id/capacity
  * @access Provider
  */
+// START UC-45 Update Tour Capacity
+/**
+ * UC-45 – Update Tour Capacity (provider thay đổi tổng số chỗ nhận khách).
+ *
+ * Phần phức tạp:
+ *  - BR-51: aggregate tổng numberOfPeople của các booking 'confirmed' trước khi ghi,
+ *    không cho hạ số chỗ xuống dưới số chỗ đã bán.
+ *  - Chỉ tính booking 'confirmed' (không tính pending/cancelled) để khớp với
+ *    nghiệp vụ giữ chỗ thực tế (BR-50).
+ *  - Nếu số chỗ mới trùng số cũ thì trả 200 "không thay đổi" và bỏ qua save,
+ *    tránh cập nhật updatedAt vô ích.
+ */
 export const updateTourCapacity = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1209,6 +1274,8 @@ export const updateTourCapacity = async (req, res) => {
     });
   }
 };
+
+// END UC-45 Update Tour Capacity
 
 /**
  * Update the owning provider's tour price.

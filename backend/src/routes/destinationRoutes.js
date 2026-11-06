@@ -67,6 +67,8 @@ router.get(
 // @access  Public
 router.get('/', getAllDestinations);
 
+// START UC-17 Create Destination
+// POST /api/destinations - chỉ staff được tạo điểm đến mới.
 router.post(
 	'/',
 	protect,
@@ -74,7 +76,10 @@ router.post(
 	createDestinationValidation,
 	createDestination
 );
+// END UC-17 Create Destination
 
+// START UC-121 Update Destination Status
+// PATCH /api/destinations/:id/status - bật/tắt trạng thái hiển thị của điểm đến.
 router.patch(
 	'/:id/status',
 	protect,
@@ -82,6 +87,7 @@ router.patch(
 	updateDestinationStatusValidation,
 	updateDestinationStatus
 );
+// END UC-121 Update Destination Status
 
 router.put(
 	'/:id',

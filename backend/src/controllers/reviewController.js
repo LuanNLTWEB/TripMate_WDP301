@@ -1,3 +1,8 @@
+/**
+ * Reviews & Moderation — các use case do Toan phụ trách
+ *  - UC-89 Update Tour Review
+ *  - UC-95 Restore Review
+ */
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
@@ -566,6 +571,18 @@ export const hideReview = async (req, res) => {
  * @route PATCH /api/reviews/:id/restore
  * @access Private (staff)
  */
+// START UC-95 Restore Review
+/**
+ * UC-95 – Restore Review (staff khôi phục đánh giá đã bị xóa mềm).
+ *
+ * Phần phức tạp:
+ *  - Chỉ xử lý đánh giá đang isDeleted = true; đánh giá còn sống trả 409 để
+ *    tránh thao tác vô nghĩa.
+ *  - Khi khôi phục, đánh giá được đưa về status 'pending' (không phải 'approved')
+ *    để staff kiểm duyệt lại trước khi nội dung xuất hiện công khai (BR-105/BR-108).
+ *  - Gọi recalculateTourRating để điểm trung bình của tour (BR-106) được tính lại
+ *    ngay, tránh lệch cho tới lần đánh giá kế tiếp.
+ */
 export const restoreReview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -615,10 +632,22 @@ export const restoreReview = async (req, res) => {
   }
 };
 
+// END UC-95 Restore Review
+
+// START UC-89 Update Tour Review
 /**
- * Sửa đánh giá của chính khách hàng (UC-89 - Update Tour Review)
+ * UC-89 – Update Tour Review (khách sửa đánh giá của chính mình).
  * @route PUT /api/reviews/:id
  * @access Private (customer)
+ *
+ * Phần phức tạp:
+ *  - BR-109: chỉ tác giả được sửa; kiểm duyệt/ẩn là luồng riêng của staff.
+ *  - Đánh giá đã bị xóa mềm (isDeleted) không được sửa — trả 409.
+ *  - Đánh giá đang bị báo cáo (status 'flagged') bị khóa sửa cho tới khi staff
+ *    kiểm duyệt xong, tránh việc tác giả sửa nội dung để né báo cáo (BR-107).
+ *  - rating được ép Number và comment được trim để dữ liệu sạch trước khi lưu.
+ *  - recalculateTourRating chạy lại sau khi lưu vì điểm trung bình tour (BR-106)
+ *    phụ thuộc vào rating mới.
  */
 export const updateReview = async (req, res) => {
   const errors = validationResult(req);
@@ -689,3 +718,4 @@ export const updateReview = async (req, res) => {
     });
   }
 };
+// END UC-89 Update Tour Review
