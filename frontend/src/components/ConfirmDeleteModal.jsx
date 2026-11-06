@@ -7,6 +7,7 @@ export default function ConfirmDeleteModal({
   confirmText = 'Xóa',
   cancelText = 'Hủy',
   loading = false,
+  confirmDisabled = false,
   reason = '',
   reasonLabel,
   reasonPlaceholder,
@@ -95,7 +96,7 @@ export default function ConfirmDeleteModal({
                 type="button"
                 className="btn btn-danger btn-sm"
                 onClick={onConfirm}
-                disabled={loading}
+                disabled={loading || confirmDisabled}
               >
                 {loading ? (
                   <>

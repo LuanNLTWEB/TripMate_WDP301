@@ -286,7 +286,13 @@ export const getTourById = async (req, res) => {
       && String(providerId) === String(req.user._id);
     const canViewSchedule = req.user?.role === 'customer' || isOwner;
     const responseTour = tour.toObject();
-    if (!canViewSchedule) delete responseTour.itinerary;
+    if (!canViewSchedule) {
+      delete responseTour.itinerary;
+    } else {
+      // UC39 - lịch trình đã xóa mềm không hiển thị trong danh sách đang hoạt động.
+      responseTour.itinerary = (responseTour.itinerary || [])
+        .filter((item) => !item.isDeleted);
+    }
 
     res.status(200).json({
       success: true,
@@ -402,6 +408,9 @@ export const getManagedTourById = async (req, res) => {
         message: 'Không tìm thấy tour'
       });
     }
+
+    // UC39 - ẩn các ngày lịch trình đã xóa mềm khỏi màn hình quản lý tour.
+    tour.itinerary = (tour.itinerary || []).filter((item) => !item.isDeleted);
 
     res.status(200).json({
       success: true,
@@ -765,6 +774,9 @@ export const getProviderTourById = async (req, res) => {
       });
     }
 
+    // UC39 - ẩn các ngày lịch trình đã xóa mềm khỏi màn hình chi tiết tour của provider.
+    tour.itinerary = (tour.itinerary || []).filter((item) => !item.isDeleted);
+
     res.status(200).json({
       success: true,
       data: tour
@@ -934,7 +946,10 @@ export const setTourDetails = async (req, res) => {
     } = req.body;
 
     if (itinerary !== undefined) {
-      tour.itinerary = Array.isArray(itinerary) ? itinerary : [];
+      // UC39 - bảo toàn các ngày lịch trình đã xóa mềm khi ghi đè toàn bộ itinerary.
+      const deletedSchedules = (tour.itinerary || []).filter((item) => item.isDeleted);
+      const nextItinerary = Array.isArray(itinerary) ? itinerary : [];
+      tour.itinerary = [...nextItinerary, ...deletedSchedules];
     }
     if (includedServices !== undefined) {
       tour.includedServices = Array.isArray(includedServices)
@@ -1006,7 +1021,9 @@ export const createTourSchedule = async (req, res) => {
 
     const { title, description, day, meals } = req.body;
 
-    const currentItinerary = Array.isArray(tour.itinerary) ? tour.itinerary : [];
+    // UC39 - chỉ tính các ngày đang hoạt động khi đánh số và kiểm tra trùng ngày.
+    const currentItinerary = (Array.isArray(tour.itinerary) ? tour.itinerary : [])
+      .filter((item) => !item.isDeleted);
     const targetDay = (day !== undefined && day !== null && day !== '')
       ? Number(day)
       : (currentItinerary.length > 0 ? Math.max(...currentItinerary.map((i) => i.day || 0)) + 1 : 1);
@@ -1034,15 +1051,16 @@ export const createTourSchedule = async (req, res) => {
 
     await tour.save();
 
-    const createdItem = tour.itinerary.find(
+    const activeItinerary = tour.itinerary.filter((item) => !item.isDeleted);
+    const createdItem = activeItinerary.find(
       (item) => item.day === targetDay && item.title === newSchedule.title
-    ) || tour.itinerary[tour.itinerary.length - 1];
+    ) || activeItinerary[activeItinerary.length - 1];
 
     res.status(201).json({
       success: true,
       message: `Đã thêm lịch trình Ngày ${targetDay} thành công`,
       data: createdItem,
-      itinerary: tour.itinerary
+      itinerary: tour.itinerary.filter((item) => !item.isDeleted)
     });
   } catch (error) {
     console.error('Error creating tour schedule:', error);
@@ -1082,7 +1100,7 @@ export const updateTourSchedule = async (req, res) => {
     }
 
     const schedule = tour.itinerary.find(
-      (item) => String(item._id) === String(req.params.scheduleId)
+      (item) => String(item._id) === String(req.params.scheduleId) && !item.isDeleted
     );
     if (!schedule) {
       return res.status(404).json({
@@ -1093,7 +1111,9 @@ export const updateTourSchedule = async (req, res) => {
 
     const targetDay = Number(req.body.day);
     const duplicateDay = tour.itinerary.some(
-      (item) => String(item._id) !== String(schedule._id) && item.day === targetDay
+      (item) => !item.isDeleted
+        && String(item._id) !== String(schedule._id)
+        && item.day === targetDay
     );
     if (duplicateDay) {
       return res.status(409).json({
@@ -1154,6 +1174,15 @@ export const deleteTourSchedule = async (req, res) => {
       });
     }
 
+    // Tour đang hoạt động (đang hiển thị cho khách): phải tạm ngưng trước khi xóa lịch trình,
+    // tránh thay đổi nội dung công khai mà khách đang xem/đã đặt.
+    if (tour.status === 'active') {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour đang hoạt động. Vui lòng tạm ngưng tour trước khi xóa lịch trình.'
+      });
+    }
+
     const scheduleIndex = tour.itinerary.findIndex(
       (item) => String(item._id) === String(req.params.scheduleId)
     );
@@ -1164,14 +1193,48 @@ export const deleteTourSchedule = async (req, res) => {
       });
     }
 
-    const [removedSchedule] = tour.itinerary.splice(scheduleIndex, 1);
+    const schedule = tour.itinerary[scheduleIndex];
+    if (schedule.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Lịch trình này đã bị xóa trước đó'
+      });
+    }
+
+    // Không xóa ngày cuối cùng còn hoạt động để tour vẫn có lịch trình tối thiểu.
+    const activeSchedules = tour.itinerary.filter((item) => !item.isDeleted);
+    if (activeSchedules.length <= 1) {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể xóa lịch trình cuối cùng của tour. Vui lòng tạo lịch trình mới trước khi xóa ngày này.'
+      });
+    }
+
+    // Kiểm tra dữ liệu liên quan: không xóa dây chuyền Tour Departure hoặc Booking.
+    const [scheduledDepartures, activeBookings] = await Promise.all([
+      Departure.countDocuments({ tourId: tour._id, status: 'scheduled' }),
+      Booking.countDocuments({ tourId: tour._id, status: { $in: ['pending', 'confirmed'] } })
+    ]);
+
+    if (scheduledDepartures > 0 || activeBookings > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể xóa lịch trình vì tour đang có lịch khởi hành hoặc đặt tour liên quan. Vui lòng hủy lịch khởi hành và xử lý các đặt tour trước khi xóa.',
+        scheduledDepartures,
+        activeBookings
+      });
+    }
+
+    // BR: xóa mềm - giữ nguyên bản ghi ngày lịch trình, chỉ ẩn khỏi danh sách đang hoạt động.
+    schedule.isDeleted = true;
+    schedule.deletedAt = new Date();
     await tour.save();
 
     return res.status(200).json({
       success: true,
-      message: `Đã xóa lịch trình Ngày ${removedSchedule.day}`,
-      scheduleId: req.params.scheduleId,
-      itinerary: tour.itinerary
+      message: `Đã xóa lịch trình Ngày ${schedule.day}`,
+      scheduleId: schedule._id,
+      itinerary: tour.itinerary.filter((item) => !item.isDeleted)
     });
   } catch (error) {
     console.error('Error deleting tour schedule:', error);
@@ -1449,7 +1512,9 @@ export const getTourSchedule = async (req, res) => {
         });
     }
 
-    const sortedItinerary = [...(tour.itinerary || [])].sort((a, b) => a.day - b.day);
+    const sortedItinerary = [...(tour.itinerary || [])]
+      .filter((item) => !item.isDeleted)
+      .sort((a, b) => a.day - b.day);
 
     res.status(200).json({
       success: true,

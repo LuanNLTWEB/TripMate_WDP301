@@ -50,7 +50,10 @@ const tourSchema = new mongoose.Schema({
       day: { type: Number, required: true },
       title: { type: String, required: true, trim: true },
       description: { type: String, required: true, trim: true },
-      meals: { type: [String], default: [] }
+      meals: { type: [String], default: [] },
+      // UC39 - xóa mềm lịch trình: giữ bản ghi ngày cũ, chỉ ẩn khỏi danh sách đang hoạt động.
+      isDeleted: { type: Boolean, default: false },
+      deletedAt: { type: Date, default: null }
     }
   ],
   includedServices: {
