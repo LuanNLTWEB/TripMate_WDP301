@@ -14,6 +14,7 @@ import {
   getProviderTours,
   getProviderTourById,
   updateProviderTour,
+  duplicateTour,
   setTourDetails,
   createTourSchedule,
   updateTourSchedule,
@@ -52,6 +53,10 @@ router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), to
 router.get('/provider', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), getProviderTours);
 // END UC-35 View Approval Status
 router.get('/provider/:id', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), tourIdValidation, getProviderTourById);
+// START UC-24 Duplicate Tour
+// POST /api/tours/:id/duplicate - nhân bản tour thuộc sở hữu của provider đang đăng nhập.
+router.post('/:id/duplicate', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), tourIdValidation, duplicateTour);
+// END UC-24 Duplicate Tour
 router.put('/:id', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), updateProviderTourValidation, updateProviderTour);
 router.put('/:id/details', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), setTourDetailsValidation, setTourDetails);
 // START UC-45 Update Tour Capacity

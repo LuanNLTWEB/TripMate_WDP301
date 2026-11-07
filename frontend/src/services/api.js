@@ -476,6 +476,9 @@ export const tourApi = {
   },
   getProviderById: (id) => apiRequest(`/tours/provider/${id}`, { method: 'GET' }),
   // END UC-35 View Approval Status
+  // START UC-24 Duplicate Tour
+  duplicate: (id) => apiRequest(`/tours/${id}/duplicate`, { method: 'POST' }),
+  // END UC-24 Duplicate Tour
   setDetails: (id, details) => apiRequest(`/tours/${id}/details`, {
     method: 'PUT',
     body: JSON.stringify(details)

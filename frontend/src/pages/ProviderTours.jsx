@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { tourApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import DuplicateTourModal from '../components/DuplicateTourModal';
 import { useToast } from '../hooks/useToast';
 import TourScheduleModal from './TourScheduleModal';
 import EditTourPriceModal from './EditTourPriceModal';
@@ -85,6 +86,11 @@ export default function ProviderTours() {
   const [selectedTourForEdit, setSelectedTourForEdit] = useState(null);
   const [tourToDelete, setTourToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // START UC-24 Duplicate Tour
+  const [tourToDuplicate, setTourToDuplicate] = useState(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicatedTour, setDuplicatedTour] = useState(null);
+  // END UC-24 Duplicate Tour
   const toast = useToast();
 
   // Load tours list
@@ -140,6 +146,35 @@ export default function ProviderTours() {
     await loadTours('', 'all', 1);
   };
 
+  // START UC-24 Duplicate Tour
+  /**
+   * Nhân bản tour đang chọn. `isDuplicating` vừa khóa nút xác nhận vừa chặn request
+   * thứ hai khi provider bấm liên tục.
+   */
+  const handleDuplicate = async () => {
+    if (!tourToDuplicate || isDuplicating) return;
+
+    const sourceTitle = tourToDuplicate.title;
+    setIsDuplicating(true);
+    try {
+      const response = await tourApi.duplicate(tourToDuplicate._id);
+      setTourToDuplicate(null);
+      setDuplicatedTour(response.data || null);
+      toast.success(`Nhân bản tour "${sourceTitle}" thành công.`);
+
+      // Tour mới là bản nháp và nằm đầu danh sách: bỏ bộ lọc để chắc chắn nhìn thấy nó.
+      setSearch('');
+      setStatus('all');
+      setCurrentPage(1);
+      await loadTours('', 'all', 1);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể nhân bản tour.');
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+  // END UC-24 Duplicate Tour
+
   const handleDelete = async () => {
     if (!tourToDelete || isDeleting) return;
 
@@ -189,6 +224,37 @@ export default function ProviderTours() {
           <button type="button" className="btn-close" onClick={() => setListError('')} aria-label="Đóng"></button>
         </div>
       )}
+
+      {/* START UC-24 Duplicate Tour */}
+      {duplicatedTour && (
+        <div className="alert alert-success d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2" role="status">
+          <div>
+            <i className="bi bi-check-circle me-2"></i>
+            Đã nhân bản tour <strong>{duplicatedTour.title}</strong>. Tour mới đang ở trạng thái Bản nháp và chưa được gửi duyệt.
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-primary text-nowrap"
+              onClick={() => {
+                setDuplicatedTour(null);
+                setSelectedTourForEdit(duplicatedTour);
+              }}
+            >
+              <i className="bi bi-pencil-square me-1"></i>
+              Chỉnh sửa tour mới
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary text-nowrap"
+              onClick={() => setDuplicatedTour(null)}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+      {/* END UC-24 Duplicate Tour */}
 
       {/* Bảng danh sách tour chuẩn Staff UI */}
       <div className="management-table-card">
@@ -367,6 +433,17 @@ export default function ProviderTours() {
                           >
                             <i className="bi bi-tag fs-5"></i>
                           </button>
+                          {/* START UC-24 Duplicate Tour */}
+                          <button
+                            type="button"
+                            className="management-action-btn btn-duplicate"
+                            title="Nhân bản tour"
+                            aria-label={`Nhân bản ${tour.title}`}
+                            onClick={() => setTourToDuplicate(tour)}
+                          >
+                            <i className="bi bi-files"></i>
+                          </button>
+                          {/* END UC-24 Duplicate Tour */}
                           <Link
                             className="management-action-btn btn-view"
                             to={`/management/my-tours/${tour._id}`}
@@ -499,6 +576,18 @@ export default function ProviderTours() {
         onConfirm={handleDelete}
         onClose={() => setTourToDelete(null)}
       />
+
+      {/* START UC-24 Duplicate Tour */}
+      <DuplicateTourModal
+        isOpen={Boolean(tourToDuplicate)}
+        tourTitle={tourToDuplicate?.title}
+        loading={isDuplicating}
+        onConfirm={handleDuplicate}
+        onClose={() => {
+          if (!isDuplicating) setTourToDuplicate(null);
+        }}
+      />
+      {/* END UC-24 Duplicate Tour */}
     </section>
   );
 }

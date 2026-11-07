@@ -1000,6 +1000,16 @@ main {
   background: #e0e7ff;
 }
 
+.management-action-btn.btn-duplicate {
+  color: #0f766e;
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+.management-action-btn.btn-duplicate:hover {
+  color: #115e59;
+  background: #ccfbf1;
+}
+
 .management-action-btn.btn-delete {
   color: #dc2626;
   border-color: #fecaca;
