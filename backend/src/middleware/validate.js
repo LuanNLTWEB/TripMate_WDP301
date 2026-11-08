@@ -1015,6 +1015,10 @@ export const transferOwnershipValidation = [
   ];
 
 
+
+
+// END UC-120 Transfer Itinerary Ownership
+
 export const createNotificationValidation = [
   body('title')
     .trim()
@@ -1033,7 +1037,7 @@ export const createNotificationValidation = [
     .isEmail().withMessage('Email người nhận không hợp lệ')
     .normalizeEmail()
 ];
-// END UC-120 Transfer Itinerary Ownership
+
 
 export const notificationListValidation = [
   query('page')
@@ -1053,6 +1057,44 @@ export const notificationListValidation = [
     .isLength({ max: 30 }).withMessage('Loại thông báo không hợp lệ')
 ];
 
+
+export const managedNotificationListValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 }).withMessage('Số thông báo mỗi trang phải từ 1 đến 100')
+    .toInt(),
+  query('targetType')
+    .optional({ values: 'falsy' })
+    .isIn(['all', 'customer', 'tourProvider', 'staff', 'specific_user']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự')
+];
+
+export const markNotificationReadValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
+
+export const updateNotificationValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('message')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 500 }).withMessage('Nội dung thông báo không được vượt quá 500 ký tự')
+];
+
+export const deleteNotificationValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
 
 export const updatePackingItemValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),

@@ -55,7 +55,8 @@ export const inviteCollaborator = async (req, res) => {
       itinerary: itinerary._id,
       recipient: targetUser._id,
       notificationType: INVITE_TYPE,
-      status: 'pending'
+      status: 'pending',
+      isDeleted: { $ne: true }
     });
 
     let invitation = existingInvite;
@@ -101,7 +102,8 @@ export const listReceivedInvitations = async (req, res) => {
   try {
     const filter = {
       recipient: req.user._id,
-      notificationType: INVITE_TYPE
+      notificationType: INVITE_TYPE,
+      isDeleted: { $ne: true }
     };
 
     if (req.query.status && ['pending', 'accepted', 'declined'].includes(req.query.status)) {
@@ -139,7 +141,8 @@ export const respondToInvitation = async (req, res) => {
     const invitation = await Notification.findOne({
       _id: req.params.notificationId,
       recipient: req.user._id,
-      notificationType: INVITE_TYPE
+      notificationType: INVITE_TYPE,
+      isDeleted: { $ne: true }
     });
 
     if (!invitation) {
@@ -234,7 +237,8 @@ export const listCollaborators = async (req, res) => {
     if (isOwner) {
       invitations = await Notification.find({
         itinerary: itinerary._id,
-        notificationType: INVITE_TYPE
+        notificationType: INVITE_TYPE,
+        isDeleted: { $ne: true }
       })
         .populate('recipient', 'username email')
         .sort({ createdAt: -1 });
@@ -273,14 +277,18 @@ export const deleteSentInvitation = async (req, res) => {
     const invitation = await Notification.findOne({
       _id: req.params.notificationId,
       itinerary: req.params.id,
-      notificationType: INVITE_TYPE
+      notificationType: INVITE_TYPE,
+      isDeleted: { $ne: true }
     });
 
     if (!invitation) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lời mời' });
     }
 
-    await invitation.deleteOne();
+    invitation.isDeleted = true;
+    invitation.deletedAt = new Date();
+    invitation.deletedBy = req.user._id;
+    await invitation.save();
 
     return res.json({
       success: true,
