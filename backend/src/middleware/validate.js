@@ -103,6 +103,21 @@ export const createComplaintValidation = [
 ];
 // END UC-66 Submit Booking Complaint
 
+// START UC-85 Confirm Payment & Check-in
+// Provider ghi nhận đã thu tiền (tiền mặt hoặc chuyển khoản) rồi điểm danh khách.
+export const confirmBookingPaymentValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['cash', 'bank_transfer'])
+    .withMessage('Phương thức thanh toán phải là cash hoặc bank_transfer')
+];
+
+export const checkInBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+// END UC-85 Confirm Payment & Check-in
+
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -736,7 +751,7 @@ export const providerBookingListValidation = [
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
   query('status')
     .optional()
-    .isIn(['all', 'pending', 'confirmed', 'cancelled'])
+    .isIn(['all', 'pending', 'confirmed', 'paid', 'checked_in', 'cancelled'])
     .withMessage('Trạng thái booking không hợp lệ'),
   query('page')
     .optional()
