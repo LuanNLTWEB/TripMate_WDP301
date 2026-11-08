@@ -19,6 +19,7 @@ import departureRoutes from './routes/departureRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import tourSubmissionRoutes from './routes/tourSubmissionRoutes.js';
+import complaintRoutes from './routes/complaintRoutes.js';
 import { seedDefaultRoles } from './models/Role.js';
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/departures', departureRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/tour-submissions', tourSubmissionRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Health check
 

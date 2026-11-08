@@ -4,6 +4,9 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { bookingApi } from '../services/api';
 import CancelBookingModal from '../components/CancelBookingModal';
+// START UC-66 Submit Booking Complaint
+import SubmitComplaintModal from '../components/SubmitComplaintModal';
+// END UC-66 Submit Booking Complaint
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -76,6 +79,9 @@ const BookingHistory = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bookingToCancel, setBookingToCancel] = useState(null);
+  // START UC-66 Submit Booking Complaint
+  const [bookingToComplain, setBookingToComplain] = useState(null);
+  // END UC-66 Submit Booking Complaint
   const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
@@ -667,7 +673,19 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết đơn</span>
                                   </button>
 
-                                                                    {/* START UC-74 Cancel Booking */}
+                                  {/* START UC-66 Submit Booking Complaint */}
+                                  <button
+                                    type="button"
+                                    id={`btn-submit-complaint-${booking._id}`}
+                                    className="btn btn-outline-warning btn-sm rounded-pill px-3 py-2 fw-semibold text-dark d-inline-flex align-items-center justify-content-center gap-1"
+                                    onClick={() => setBookingToComplain(booking)}
+                                  >
+                                    <i className="bi bi-flag"></i>
+                                    <span>Gửi khiếu nại</span>
+                                  </button>
+                                  {/* END UC-66 Submit Booking Complaint */}
+
+                                  {/* START UC-74 Cancel Booking */}
                                   {booking.status !== 'cancelled' && (
                                     <button
                                       type="button"
@@ -717,6 +735,16 @@ const BookingHistory = () => {
           }}
         />
       )}
+
+      {/* START UC-66 Submit Booking Complaint */}
+      {bookingToComplain && (
+        <SubmitComplaintModal
+          bookings={bookings}
+          initialBooking={bookingToComplain}
+          onClose={() => setBookingToComplain(null)}
+        />
+      )}
+      {/* END UC-66 Submit Booking Complaint */}
 
       {/* ================= MODAL XEM CHI TIẾT ĐƠN ĐẶT TOUR (CHỈ VIEW) ================= */}
       {selectedBooking && (
