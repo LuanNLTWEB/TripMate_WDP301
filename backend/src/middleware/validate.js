@@ -121,7 +121,7 @@ export const checkInBookingValidation = [
 export const complaintListValidation = [
   query('status')
     .optional()
-    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected'])
+    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected', 'cancelled'])
     .withMessage('Trạng thái khiếu nại không hợp lệ'),
   query('page').optional().isInt({ min: 1 }).withMessage('Trang không hợp lệ'),
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Giới hạn không hợp lệ')

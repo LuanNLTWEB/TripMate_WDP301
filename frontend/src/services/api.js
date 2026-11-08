@@ -431,6 +431,10 @@ export const tourApi = {
   // START UC-25 View Tour Details
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
+  checkAvailability: (id, date = '') => {
+    const queryString = date ? `?date=${encodeURIComponent(date)}` : '';
+    return apiRequest(`/tours/${id}/availability${queryString}`, { method: 'GET' });
+  },
   create: (tour) => apiRequest('/tours', {
     method: 'POST',
     body: JSON.stringify(tour)
@@ -609,6 +613,7 @@ export const complaintApi = {
   }),
   // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
   getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
