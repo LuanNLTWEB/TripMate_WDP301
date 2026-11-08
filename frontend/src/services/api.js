@@ -551,7 +551,13 @@ export const departureApi = {
   update: (id, payload) => apiRequest(`/departures/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
+  }),
+  // START UC-43 Cancel Tour Departure
+  cancel: (id, payload) => apiRequest(`/departures/${id}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload || {})
   })
+  // END UC-43 Cancel Tour Departure
 };
 
 export const uploadApi = {

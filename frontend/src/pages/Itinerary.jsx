@@ -68,6 +68,7 @@ function Itinerary() {
     submitting: false,
     error: ''
   });
+  const [copiedLink, setCopiedLink] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState(null);
@@ -113,10 +114,29 @@ function Itinerary() {
         tourApi.getAll({ limit: 100, status: 'active' }),
         itineraryApi.listReceivedInvitations('pending')
       ]);
-      setItineraries(itineraryResponse.itineraries || []);
-      setSharedItineraries(sharedResponse.itineraries || []);
+      const allMine = itineraryResponse.itineraries || [];
+      const allShared = sharedResponse.itineraries || [];
+      setItineraries(allMine);
+      setSharedItineraries(allShared);
       setReceivedInvites(inviteResponse.invitations || []);
-      setSelected(itineraryResponse.itineraries?.[0] || null);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlId = urlParams.get('id');
+      if (urlId) {
+        const foundMine = allMine.find((it) => it._id === urlId);
+        const foundShared = allShared.find((it) => it._id === urlId);
+        if (foundMine) {
+          setSelected(foundMine);
+          setActiveTab('mine');
+        } else if (foundShared) {
+          setSelected(foundShared);
+          setActiveTab('shared');
+        } else {
+          setSelected(allMine[0] || null);
+        }
+      } else {
+        setSelected(allMine[0] || null);
+      }
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
       setTours((tourResponse.data || []).filter((tour) => tour.status !== 'suspended'));
     } catch (requestError) {
@@ -494,6 +514,7 @@ function Itinerary() {
   };
 
   const openShareModal = () => {
+    setCopiedLink(false);
     setShareModal({
       open: true,
       email: '',
@@ -505,6 +526,7 @@ function Itinerary() {
 
   const closeShareModal = () => {
     if (shareModal.submitting) return;
+    setCopiedLink(false);
     setShareModal({
       open: false,
       email: '',
@@ -512,6 +534,28 @@ function Itinerary() {
       submitting: false,
       error: ''
     });
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!selected) return;
+    const shareUrl = `${window.location.origin}/itinerary?id=${selected._id}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+      setCopiedLink(true);
+      toast.success('Đã sao chép liên kết lịch trình vào bộ nhớ tạm');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      toast.error('Không thể sao chép liên kết');
+    }
   };
 
   const handleShareItinerary = async (e) => {
@@ -2090,6 +2134,45 @@ function Itinerary() {
                     <p className="text-muted small mb-3">
                       Chia sẻ lịch trình <strong>{selected?.title}</strong> với người dùng khác qua địa chỉ email đã đăng ký trên hệ thống.
                     </p>
+
+                    {/* START UC-60 Share Personal Itinerary - Shareable Link */}
+                    <div className="card bg-light border-0 mb-3">
+                      <div className="card-body p-3">
+                        <label className="form-label fw-semibold small text-secondary text-uppercase mb-1 d-flex align-items-center justify-content-between">
+                          <span>
+                            <i className="bi bi-link-45deg me-1 text-primary"></i>Liên kết chia sẻ
+                          </span>
+                          {copiedLink && (
+                            <span className="text-success fw-semibold small">
+                              <i className="bi bi-check-circle-fill me-1"></i>Đã chép!
+                            </span>
+                          )}
+                        </label>
+                        <div className="input-group">
+                          <input
+                            type="text"
+                            readOnly
+                            className="form-control form-control-sm bg-white"
+                            value={selected ? `${window.location.origin}/itinerary?id=${selected._id}` : ''}
+                            onClick={(e) => e.target.select()}
+                            title="Bấm để chọn liên kết"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                            onClick={handleCopyShareLink}
+                            title="Sao chép liên kết vào bộ nhớ tạm"
+                          >
+                            <i className={`bi ${copiedLink ? 'bi-check2 text-success' : 'bi-clipboard'}`}></i>
+                            <span>{copiedLink ? 'Đã sao chép' : 'Sao chép'}</span>
+                          </button>
+                        </div>
+                        <div className="text-muted small mt-1" style={{ fontSize: '0.8rem' }}>
+                          Gửi liên kết này cho bạn bè để mở trực tiếp lịch trình sau khi đã được chia sẻ quyền.
+                        </div>
+                      </div>
+                    </div>
+                    {/* END UC-60 Share Personal Itinerary - Shareable Link */}
 
                     {shareModal.error && (
                       <div className="alert alert-danger py-2 small mb-3">

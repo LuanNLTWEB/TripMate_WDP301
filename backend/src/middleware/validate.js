@@ -902,6 +902,16 @@ export const departureIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ')
 ];
 
+// START UC-43 Cancel Tour Departure
+export const cancelDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
+  body('reason')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 }).withMessage('Lý do hủy không được vượt quá 500 ký tự')
+];
+// END UC-43 Cancel Tour Departure
+
 export const announcementIdValidation = [
   param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
 ];

@@ -41,6 +41,16 @@ const departureSchema = new mongoose.Schema({
     default: 'scheduled',
     index: true
   },
+  cancelReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Lý do hủy không được vượt quá 500 ký tự'],
+    default: ''
+  },
+  cancelledAt: {
+    type: Date,
+    default: null
+  },
   note: {
     type: String,
     trim: true,
