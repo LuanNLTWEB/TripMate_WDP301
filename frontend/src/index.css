@@ -308,6 +308,9 @@ main {
 }
 
 .management-root > .tripmate-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
   width: 100%;
   margin: 0;
   border-radius: 0;
@@ -3502,4 +3505,22 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .itinerary-comment-content {
     margin-left: 0;
   }
+}
+
+/* Universal Modal Scroll Lock & Anti-Chaining */
+body:has(.modal.show),
+body.modal-open {
+  overflow: hidden !important;
+}
+
+.modal.show {
+  overscroll-behavior: contain;
+}
+
+.modal-dialog {
+  overscroll-behavior: contain;
+}
+
+.modal-body {
+  overscroll-behavior: contain;
 }

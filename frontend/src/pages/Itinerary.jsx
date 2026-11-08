@@ -71,6 +71,20 @@ function Itinerary() {
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState(null);
+  // START UC-58 Check Time Conflict
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const [conflictCheckPassedForId, setConflictCheckPassedForId] = useState(null);
+  const conflictCheckPassed = Boolean(selected?._id && conflictCheckPassedForId === selected._id);
+  const [timeConflictPreview, setTimeConflictPreview] = useState(null);
+  const conflictPanelRef = useRef(null);
+  const hasValidActivityTimeWindow = Boolean(
+    selected?._id
+    && activityForm.date
+    && activityForm.startTime
+    && activityForm.endTime
+    && activityForm.endTime > activityForm.startTime
+  );
+  // END UC-58 Check Time Conflict
 
   const applyItinerary = (updated) => {
     setSelected(updated);
@@ -165,7 +179,65 @@ function Itinerary() {
   const handleCancelEditActivity = () => {
     setEditingActivityId(null);
     setActivityForm(initialActivity);
+    setTimeConflictPreview(null);
   };
+
+  // START UC-58 Check Time Conflict
+  useEffect(() => {
+    if (!hasValidActivityTimeWindow) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await itineraryApi.checkTimeConflict(selected._id, {
+          date: activityForm.date,
+          startTime: activityForm.startTime,
+          endTime: activityForm.endTime,
+          ...(editingActivityId ? { excludeActivityId: editingActivityId } : {})
+        });
+        if (!cancelled) {
+          setTimeConflictPreview(res);
+        }
+      } catch {
+        if (!cancelled) {
+          setTimeConflictPreview(null);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [hasValidActivityTimeWindow, selected?._id, activityForm.date, activityForm.startTime, activityForm.endTime, editingActivityId]);
+
+  const handleCheckItineraryConflicts = async () => {
+    if (!selected?._id || checkingConflicts) return;
+    setCheckingConflicts(true);
+    try {
+      const response = await itineraryApi.getConflicts(selected._id);
+      const conflicts = response.conflicts || [];
+      applyItinerary({ ...selected, conflicts });
+      if (conflicts.length > 0) {
+        setConflictCheckPassedForId(null);
+        toast.warning(`Phát hiện ${conflicts.length} cặp hoạt động trùng thời gian trong lịch trình.`);
+        setTimeout(() => {
+          conflictPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+      } else {
+        setConflictCheckPassedForId(selected._id);
+        toast.success('Lịch trình hợp lệ — không có hoạt động nào bị trùng giờ!');
+      }
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể kiểm tra xung đột lịch trình.');
+    } finally {
+      setCheckingConflicts(false);
+    }
+  };
+
+  // END UC-58 Check Time Conflict
 
   const handleActivitySubmit = async (event) => {
     event.preventDefault();
@@ -908,6 +980,30 @@ function Itinerary() {
                               </button>
                               <button
                                 type="button"
+                                className="btn btn-outline-warning btn-sm text-nowrap d-inline-flex align-items-center"
+                                onClick={handleCheckItineraryConflicts}
+                                disabled={checkingConflicts}
+                                title="Kiểm tra xung đột thời gian giữa các hoạt động trong lịch trình"
+                              >
+                                {checkingConflicts ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                    <span>Đang kiểm tra...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-clock-history me-1"></i>
+                                    <span>Kiểm tra trùng lịch</span>
+                                    {(selected.conflicts || []).length > 0 && (
+                                      <span className="badge text-bg-warning ms-1">
+                                        {(selected.conflicts || []).length}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                type="button"
                                 className="btn btn-outline-primary btn-sm text-nowrap d-inline-flex align-items-center"
                                 onClick={exportItinerary}
                                 disabled={isExporting}
@@ -1027,8 +1123,23 @@ function Itinerary() {
                             </div>
                           )}
 
+                          {conflictCheckPassed && (selected.conflicts || []).length === 0 && (
+                            <div className="alert alert-success py-2 px-3 mb-3 d-flex align-items-center justify-content-between small">
+                              <div>
+                                <i className="bi bi-check-circle-fill me-2 text-success"></i>
+                                <strong>Lịch trình hợp lệ:</strong> Không phát hiện hoạt động nào bị trùng khung giờ.
+                              </div>
+                              <button
+                                type="button"
+                                className="btn-close btn-sm"
+                                aria-label="Đóng"
+                                onClick={() => setConflictCheckPassedForId(null)}
+                              ></button>
+                            </div>
+                          )}
+
                           {(selected.conflicts || []).length > 0 && (
-                            <div className="alert alert-warning mb-3 border border-warning-subtle">
+                            <div ref={conflictPanelRef} className="alert alert-warning mb-3 border border-warning-subtle">
                               <div className="d-flex align-items-center mb-2">
                                 <i className="bi bi-exclamation-triangle-fill me-2 text-warning fs-5"></i>
                                 <div className="fw-semibold">
@@ -1036,23 +1147,66 @@ function Itinerary() {
                                 </div>
                               </div>
                               <div className="vstack gap-2">
-                                {selected.conflicts.map((conflict, index) => (
-                                  <div
-                                    key={index}
-                                    className="bg-white bg-opacity-75 border border-warning rounded p-2 px-3 small d-flex align-items-center flex-wrap gap-2 text-dark"
-                                  >
-                                    <i className="bi bi-clock-history text-warning"></i>
-                                    <strong>{conflict.first.title}</strong>
-                                    <span className="badge text-bg-light border">
-                                      {conflict.first.startTime} - {conflict.first.endTime}
-                                    </span>
-                                    <span className="text-muted fw-semibold">trùng với</span>
-                                    <strong>{conflict.second.title}</strong>
-                                    <span className="badge text-bg-light border">
-                                      {conflict.second.startTime} - {conflict.second.endTime}
-                                    </span>
-                                  </div>
-                                ))}
+                                {selected.conflicts.map((conflict, index) => {
+                                  const overlapStart = conflict.overlapStart || (conflict.first.startTime > conflict.second.startTime ? conflict.first.startTime : conflict.second.startTime);
+                                  const overlapEnd = conflict.overlapEnd || (conflict.first.endTime < conflict.second.endTime ? conflict.first.endTime : conflict.second.endTime);
+                                  const firstAct = selected.activities?.find((a) => String(a._id) === String(conflict.first._id));
+                                  const secondAct = selected.activities?.find((a) => String(a._id) === String(conflict.second._id));
+                                  const conflictDate = conflict.date || firstAct?.date || secondAct?.date;
+                                  return (
+                                    <div
+                                      key={index}
+                                      className="bg-white bg-opacity-75 border border-warning rounded p-2 px-3 small d-flex align-items-center justify-content-between flex-wrap gap-2 text-dark"
+                                    >
+                                      <div className="d-flex align-items-center flex-wrap gap-2">
+                                        <i className="bi bi-clock-history text-warning"></i>
+                                        {conflictDate && (
+                                          <span className="badge bg-secondary-subtle text-secondary border">
+                                            {new Date(conflictDate).toLocaleDateString('vi-VN')}
+                                          </span>
+                                        )}
+                                        <strong>{conflict.first.title}</strong>
+                                        <span className="badge text-bg-light border">
+                                          {conflict.first.startTime} - {conflict.first.endTime}
+                                        </span>
+                                        <span className="text-muted fw-semibold">trùng với</span>
+                                        <strong>{conflict.second.title}</strong>
+                                        <span className="badge text-bg-light border">
+                                          {conflict.second.startTime} - {conflict.second.endTime}
+                                        </span>
+                                        {overlapStart && overlapEnd && (
+                                          <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">
+                                            Trùng{conflict.overlapMinutes ? ` ${conflict.overlapMinutes} phút` : ''}: {overlapStart} - {overlapEnd}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {canEditSelected && (firstAct || secondAct) && (
+                                        <div className="d-flex align-items-center gap-1 ms-auto">
+                                          {firstAct && (
+                                            <button
+                                              type="button"
+                                              className="btn btn-xs btn-outline-primary py-0 px-2 small"
+                                              onClick={() => handleStartEditActivity(firstAct)}
+                                              title={`Chỉnh sửa giờ của "${conflict.first.title}"`}
+                                            >
+                                              <i className="bi bi-pencil-square me-1"></i>Sửa 1
+                                            </button>
+                                          )}
+                                          {secondAct && (
+                                            <button
+                                              type="button"
+                                              className="btn btn-xs btn-outline-primary py-0 px-2 small"
+                                              onClick={() => handleStartEditActivity(secondAct)}
+                                              title={`Chỉnh sửa giờ của "${conflict.second.title}"`}
+                                            >
+                                              <i className="bi bi-pencil-square me-1"></i>Sửa 2
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -1545,7 +1699,46 @@ function Itinerary() {
                               </div>
                             </div>
 
-                            <div className="d-flex align-items-center gap-2 mt-3">
+                            {hasValidActivityTimeWindow && timeConflictPreview?.hasConflict && (
+                              <div className="alert alert-warning border border-warning-subtle mt-3 mb-0 py-2 px-3 small">
+                                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                  <div>
+                                    <i className="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                                    <strong>Cảnh báo trùng khung giờ:</strong> Khung giờ{' '}
+                                    <span className="badge text-bg-light border">
+                                      {activityForm.startTime} - {activityForm.endTime}
+                                    </span>{' '}
+                                    bị trùng với{' '}
+                                    {timeConflictPreview.conflictingActivities.map((item, idx) => (
+                                      <span key={item._id || idx}>
+                                        {idx > 0 && ', '}
+                                        <strong>{item.title}</strong> ({item.startTime} - {item.endTime}
+                                        {item.overlapMinutes ? ` · trùng ${item.overlapMinutes} phút` : ''})
+                                      </span>
+                                    ))}
+                                    .
+                                  </div>
+                                  {timeConflictPreview.suggestedSlot && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-warning fw-semibold rounded-pill px-3"
+                                      onClick={() =>
+                                        setActivityForm((prev) => ({
+                                          ...prev,
+                                          startTime: timeConflictPreview.suggestedSlot.startTime,
+                                          endTime: timeConflictPreview.suggestedSlot.endTime
+                                        }))
+                                      }
+                                    >
+                                      <i className="bi bi-magic me-1"></i>
+                                      Đổi sang giờ trống gợi ý ({timeConflictPreview.suggestedSlot.startTime} - {timeConflictPreview.suggestedSlot.endTime})
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="d-flex align-items-center flex-wrap gap-2 mt-3">
                               <button className="btn btn-primary" disabled={saving}>
                                 {saving ? (
                                   <>

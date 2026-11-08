@@ -7,6 +7,9 @@ import CancelBookingModal from '../components/CancelBookingModal';
 // START UC-66 Submit Booking Complaint
 import SubmitComplaintModal from '../components/SubmitComplaintModal';
 // END UC-66 Submit Booking Complaint
+// START UC-82 Download Booking Voucher
+import BookingVoucherModal from '../components/BookingVoucherModal';
+// END UC-82 Download Booking Voucher
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -56,6 +59,20 @@ const getStatusBadge = (status) => {
         className: 'bg-danger-subtle text-danger border border-danger-subtle',
         desc: 'Đơn đặt tour này đã bị hủy.'
       };
+    case 'rejected':
+      return {
+        label: 'Đã từ chối',
+        icon: 'bi-slash-circle-fill',
+        className: 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        desc: 'Đơn đặt tour đã bị nhà cung cấp từ chối.'
+      };
+    case 'no_show':
+      return {
+        label: 'Vắng mặt',
+        icon: 'bi-person-x-fill',
+        className: 'bg-danger-subtle text-danger-emphasis border border-danger-subtle',
+        desc: 'Khách hàng không có mặt vào ngày khởi hành và không báo hủy trước.'
+      };
     case 'pending':
     default:
       return {
@@ -65,6 +82,14 @@ const getStatusBadge = (status) => {
         desc: 'Đơn đặt tour đang chờ nhà cung cấp kiểm tra và xác nhận chỗ.'
       };
   }
+};
+
+// BR-88: Khách chỉ được tự hủy đơn khi còn ít nhất 48 giờ trước ngày khởi hành
+const canCancelBooking = (booking) => {
+  if (!booking || !['pending', 'confirmed'].includes(booking.status)) return false;
+  if (!booking.departureDate) return false;
+  const hoursToDeparture = (new Date(booking.departureDate).getTime() - Date.now()) / (60 * 60 * 1000);
+  return hoursToDeparture >= 48;
 };
 
 const BookingHistory = () => {
@@ -83,6 +108,9 @@ const BookingHistory = () => {
   // START UC-66 Submit Booking Complaint
   const [bookingToComplain, setBookingToComplain] = useState(null);
   // END UC-66 Submit Booking Complaint
+  // START UC-82 Download Booking Voucher
+  const [voucherBooking, setVoucherBooking] = useState(null);
+  // END UC-82 Download Booking Voucher
   const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
@@ -129,6 +157,34 @@ const BookingHistory = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, bookings, loading]);
 
+  // Khóa cuộn trang nền an toàn và bắt phím Escape khi có bất kỳ modal nào mở
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(
+      selectedBooking ||
+      voucherBooking ||
+      bookingToComplain ||
+      bookingToCancel
+    );
+    if (!isAnyModalOpen) return;
+
+    document.body.classList.add('modal-open');
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (voucherBooking) setVoucherBooking(null);
+        else if (selectedBooking) setSelectedBooking(null);
+        else if (bookingToComplain) setBookingToComplain(null);
+        else if (bookingToCancel) setBookingToCancel(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('modal-open');
+    };
+  }, [selectedBooking, voucherBooking, bookingToComplain, bookingToCancel]);
+
   const copyBookingCode = (code, fullId) => {
     navigator.clipboard.writeText(fullId || code);
     setCopiedId(fullId);
@@ -138,11 +194,13 @@ const BookingHistory = () => {
 
   // Status counts
   const counts = useMemo(() => {
-    const res = { all: bookings.length, pending: 0, confirmed: 0, cancelled: 0 };
+    const res = { all: bookings.length, pending: 0, confirmed: 0, cancelled: 0, rejected: 0, no_show: 0 };
     bookings.forEach((b) => {
-      if (b.status === 'confirmed') res.confirmed++;
-      else if (b.status === 'cancelled') res.cancelled++;
-      else res.pending++;
+      if (res[b.status] !== undefined) {
+        res[b.status]++;
+      } else {
+        res.pending++;
+      }
     });
     return res;
   }, [bookings]);
@@ -177,21 +235,11 @@ const BookingHistory = () => {
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === 'newest') {
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        }
-        if (sortBy === 'oldest') {
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        }
-        if (sortBy === 'departure-soon') {
-          return new Date(a.departureDate) - new Date(b.departureDate);
-        }
-        if (sortBy === 'price-desc') {
-          return (b.totalPrice || 0) - (a.totalPrice || 0);
-        }
-        if (sortBy === 'price-asc') {
-          return (a.totalPrice || 0) - (b.totalPrice || 0);
-        }
+        if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+        if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+        if (sortBy === 'departure-soon') return new Date(a.departureDate) - new Date(b.departureDate);
+        if (sortBy === 'price-desc') return (b.totalPrice || 0) - (a.totalPrice || 0);
+        if (sortBy === 'price-asc') return (a.totalPrice || 0) - (b.totalPrice || 0);
         return 0;
       });
   }, [bookings, statusFilter, searchTerm, sortBy]);
@@ -219,18 +267,6 @@ const BookingHistory = () => {
             </div>
 
             <div className="d-flex align-items-center gap-2">
-              <button
-                type="button"
-                id="btn-refresh-bookings"
-                className="btn btn-white bg-white border shadow-sm rounded-pill px-3 py-2 text-dark d-inline-flex align-items-center gap-2"
-                onClick={fetchBookings}
-                disabled={loading}
-                title="Làm mới danh sách"
-              >
-                <i className={`bi bi-arrow-clockwise ${loading ? 'spin-icon' : ''}`}></i>
-                <span className="small fw-medium">Làm mới</span>
-              </button>
-
               <Link
                 to="/tours"
                 id="btn-explore-more-tours"
@@ -273,85 +309,6 @@ const BookingHistory = () => {
             </div>
           ) : (
             <>
-              {/* Summary Stats Cards */}
-              <div className="row g-3 mb-4">
-                <div className="col-6 col-lg-3">
-                  <div
-                    className={`card border-0 shadow-sm rounded-4 p-3 transition-card h-100 ${
-                      statusFilter === 'all' ? 'border-primary border-2 bg-primary bg-opacity-10' : 'bg-white'
-                    }`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setStatusFilter('all')}
-                  >
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="text-muted small fw-medium">Tổng đơn đặt</span>
-                      <div className="rounded-circle bg-primary bg-opacity-10 text-primary p-2 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                        <i className="bi bi-receipt"></i>
-                      </div>
-                    </div>
-                    <div className="h3 fw-bold mb-0 text-dark">{counts.all}</div>
-                    <span className="text-muted small mt-1">Tất cả thời gian</span>
-                  </div>
-                </div>
-
-                <div className="col-6 col-lg-3">
-                  <div
-                    className={`card border-0 shadow-sm rounded-4 p-3 transition-card h-100 ${
-                      statusFilter === 'pending' ? 'border-warning border-2 bg-warning bg-opacity-10' : 'bg-white'
-                    }`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setStatusFilter('pending')}
-                  >
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="text-muted small fw-medium">Chờ xác nhận</span>
-                      <div className="rounded-circle bg-warning bg-opacity-15 text-warning-emphasis p-2 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                        <i className="bi bi-hourglass-split"></i>
-                      </div>
-                    </div>
-                    <div className="h3 fw-bold mb-0 text-warning-emphasis">{counts.pending}</div>
-                    <span className="text-muted small mt-1">Đang chờ xử lý</span>
-                  </div>
-                </div>
-
-                <div className="col-6 col-lg-3">
-                  <div
-                    className={`card border-0 shadow-sm rounded-4 p-3 transition-card h-100 ${
-                      statusFilter === 'confirmed' ? 'border-success border-2 bg-success bg-opacity-10' : 'bg-white'
-                    }`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setStatusFilter('confirmed')}
-                  >
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="text-muted small fw-medium">Đã xác nhận</span>
-                      <div className="rounded-circle bg-success bg-opacity-15 text-success p-2 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                        <i className="bi bi-check2-circle"></i>
-                      </div>
-                    </div>
-                    <div className="h3 fw-bold mb-0 text-success">{counts.confirmed}</div>
-                    <span className="text-muted small mt-1">Đã giữ chỗ an toàn</span>
-                  </div>
-                </div>
-
-                <div className="col-6 col-lg-3">
-                  <div
-                    className={`card border-0 shadow-sm rounded-4 p-3 transition-card h-100 ${
-                      statusFilter === 'cancelled' ? 'border-danger border-2 bg-danger bg-opacity-10' : 'bg-white'
-                    }`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setStatusFilter('cancelled')}
-                  >
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="text-muted small fw-medium">Đã hủy</span>
-                      <div className="rounded-circle bg-danger bg-opacity-15 text-danger p-2 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}>
-                        <i className="bi bi-x-circle"></i>
-                      </div>
-                    </div>
-                    <div className="h3 fw-bold mb-0 text-danger">{counts.cancelled}</div>
-                    <span className="text-muted small mt-1">Đã kết thúc / Hủy</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Filter & Search Bar */}
               <div className="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-4 bg-white">
                 <div className="row g-3 align-items-center">
@@ -409,6 +366,36 @@ const BookingHistory = () => {
                       >
                         Đã hủy <span className="badge rounded-pill bg-danger-subtle text-danger ms-1">{counts.cancelled}</span>
                       </button>
+
+                      {counts.rejected > 0 && (
+                        <button
+                          type="button"
+                          id="tab-rejected-bookings"
+                          className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                            statusFilter === 'rejected'
+                              ? 'btn-secondary text-white'
+                              : 'btn-outline-secondary border-0 bg-light text-muted'
+                          }`}
+                          onClick={() => setStatusFilter('rejected')}
+                        >
+                          Bị từ chối <span className="badge rounded-pill bg-secondary-subtle text-dark ms-1">{counts.rejected}</span>
+                        </button>
+                      )}
+
+                      {counts.no_show > 0 && (
+                        <button
+                          type="button"
+                          id="tab-noshow-bookings"
+                          className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                            statusFilter === 'no_show'
+                              ? 'btn-dark text-white'
+                              : 'btn-outline-danger border-0 bg-danger-subtle text-danger'
+                          }`}
+                          onClick={() => setStatusFilter('no_show')}
+                        >
+                          Vắng mặt <span className="badge rounded-pill bg-danger text-white ms-1">{counts.no_show}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -668,6 +655,24 @@ const BookingHistory = () => {
                                     )}
                                   </div>
                                 )}
+
+                                {booking.status === 'no_show' && (
+                                  <div className="alert alert-danger py-2 px-3 small mt-2 mb-0 rounded-3 border border-danger-subtle">
+                                    <div className="fw-semibold text-danger">
+                                      <i className="bi bi-person-x-fill me-1"></i>Đơn bị ghi nhận khách vắng mặt
+                                    </div>
+                                    <div className="text-muted mt-0.5">Lý do: {booking.noShowReason || 'Khách không có mặt vào ngày khởi hành và không báo hủy trước.'}</div>
+                                  </div>
+                                )}
+
+                                {booking.status === 'rejected' && (
+                                  <div className="alert alert-secondary py-2 px-3 small mt-2 mb-0 rounded-3 border">
+                                    <div className="fw-semibold text-dark">
+                                      <i className="bi bi-slash-circle-fill text-secondary me-1"></i>Đơn bị nhà cung cấp từ chối
+                                    </div>
+                                    <div className="text-muted mt-0.5">Lý do: {booking.rejectionReason || 'Nhà cung cấp không thể nhận đơn.'}</div>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Price & Action */}
@@ -688,20 +693,37 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết đơn</span>
                                   </button>
 
+                                  {/* START UC-82 Download Booking Voucher */}
+                                  {booking.status === 'confirmed' && (
+                                    <button
+                                      type="button"
+                                      id={`btn-voucher-${booking._id}`}
+                                      className="btn btn-outline-success btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                                      onClick={() => setVoucherBooking(booking)}
+                                      title="Xem và tải phiếu xác nhận đặt chỗ (Booking Voucher)"
+                                    >
+                                      <i className="bi bi-ticket-perforated"></i>
+                                      <span>Xem Voucher</span>
+                                    </button>
+                                  )}
+                                  {/* END UC-82 Download Booking Voucher */}
+
                                   {/* START UC-66 Submit Booking Complaint */}
-                                  <button
-                                    type="button"
-                                    id={`btn-submit-complaint-${booking._id}`}
-                                    className="btn btn-outline-warning btn-sm rounded-pill px-3 py-2 fw-semibold text-dark d-inline-flex align-items-center justify-content-center gap-1"
-                                    onClick={() => setBookingToComplain(booking)}
-                                  >
-                                    <i className="bi bi-flag"></i>
-                                    <span>Gửi khiếu nại</span>
-                                  </button>
+                                  {booking.status === 'confirmed' && (
+                                    <button
+                                      type="button"
+                                      id={`btn-submit-complaint-${booking._id}`}
+                                      className="btn btn-outline-warning btn-sm rounded-pill px-3 py-2 fw-semibold text-dark d-inline-flex align-items-center justify-content-center gap-1"
+                                      onClick={() => setBookingToComplain(booking)}
+                                    >
+                                      <i className="bi bi-flag"></i>
+                                      <span>Gửi khiếu nại</span>
+                                    </button>
+                                  )}
                                   {/* END UC-66 Submit Booking Complaint */}
 
                                   {/* START UC-74 Cancel Booking */}
-                                  {booking.status !== 'cancelled' && (
+                                  {canCancelBooking(booking) && (
                                     <button
                                       type="button"
                                       id={`btn-cancel-booking-${booking._id}`}
@@ -763,17 +785,19 @@ const BookingHistory = () => {
 
       {/* ================= MODAL XEM CHI TIẾT ĐƠN ĐẶT TOUR (CHỈ VIEW) ================= */}
       {selectedBooking && (
-        <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          role="dialog"
-          aria-modal="true"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedBooking(null);
-          }}
-        >
-          <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={() => setSelectedBooking(null)}></div>
+          <div
+            className="modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            style={{ zIndex: 1055, overscrollBehavior: 'contain' }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedBooking(null);
+            }}
+          >
+          <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable" style={{ overscrollBehavior: 'contain' }}>
             <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
               {/* Modal Header */}
               <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -997,19 +1021,44 @@ const BookingHistory = () => {
                   <i className="bi bi-info-circle me-1"></i>
                   Đơn đặt hiển thị ở chế độ xem chi tiết
                 </span>
-                <button
-                  type="button"
-                  id="btn-close-booking-modal"
-                  className="btn btn-secondary rounded-pill px-4"
-                  onClick={() => setSelectedBooking(null)}
-                >
-                  Đóng
-                </button>
+                <div className="d-flex gap-2">
+                  {selectedBooking.status === 'confirmed' && (
+                    <button
+                      type="button"
+                      className="btn btn-success rounded-pill px-4 fw-semibold"
+                      onClick={() => {
+                        setVoucherBooking(selectedBooking);
+                        setSelectedBooking(null);
+                      }}
+                    >
+                      <i className="bi bi-ticket-perforated me-1"></i>Xem Voucher
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    id="btn-close-booking-modal"
+                    className="btn btn-secondary rounded-pill px-4"
+                    onClick={() => setSelectedBooking(null)}
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </>
+    )}
+
+      {/* START UC-82 Download Booking Voucher */}
+      {voucherBooking && (
+        <BookingVoucherModal
+          bookingId={voucherBooking._id}
+          initialBooking={voucherBooking}
+          onClose={() => setVoucherBooking(null)}
+        />
       )}
+      {/* END UC-82 Download Booking Voucher */}
 
       <Footer />
     </>

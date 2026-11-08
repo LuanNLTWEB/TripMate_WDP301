@@ -6,14 +6,16 @@ import {
   createComplaintValidation,
   complaintListValidation,
   complaintIdValidation,
-  resolveComplaintValidation
+  resolveComplaintValidation,
+  updateComplaintValidation
 } from '../middleware/validate.js';
 import {
   createComplaint,
   getMyComplaints,
   getComplaints,
   getComplaintById,
-  resolveComplaint
+  resolveComplaint,
+  updateComplaint
 } from '../controllers/complaintController.js';
 
 const router = express.Router();
@@ -92,5 +94,11 @@ router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyCompla
 router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintListValidation, getComplaints);
 router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintIdValidation, getComplaintById);
 router.patch('/:id/resolve', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), resolveComplaintValidation, resolveComplaint);
+
+
+// START STT 68 Update Booking Complaint (Customer)
+// PATCH /api/complaints/:id - chỉnh sửa khiếu nại của mình khi đang ở trạng thái 'open'
+router.patch('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateComplaintValidation, updateComplaint);
+// END STT 68 Update Booking Complaint (Customer)
 
 export default router;

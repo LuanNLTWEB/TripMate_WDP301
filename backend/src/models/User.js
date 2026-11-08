@@ -66,7 +66,22 @@ const userSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Tour'
     }
-  ]
+  ],
+  // START UC-86 Mark Booking as No-Show & Booking Restriction
+  noShowCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  isBookingRestricted: {
+    type: Boolean,
+    default: false
+  },
+  bookingRestrictedAt: {
+    type: Date,
+    default: null
+  }
+  // END UC-86 Mark Booking as No-Show & Booking Restriction
 }, {
   timestamps: true
 });

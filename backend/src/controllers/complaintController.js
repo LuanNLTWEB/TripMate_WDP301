@@ -187,3 +187,56 @@ export const resolveComplaint = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể cập nhật khiếu nại' });
   }
 };
+
+
+// START STT 68 / UC-68 Update Booking Complaint (Customer)
+/**
+ * STT 68: Update Booking Complaint (Customer)
+ * Khách hàng chỉnh sửa thông tin khiếu nại (danh mục, nội dung, ảnh minh chứng)
+ * khi khiếu nại còn ở trạng thái 'open' (mới gửi, chưa được nhân viên xử lý).
+ */
+export const updateComplaint = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return badRequest(res, errors);
+
+  try {
+    const complaint = await Complaint.findOne({
+      _id: req.params.id,
+      customerId: req.user._id
+    });
+
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại của bạn' });
+    }
+
+    if (complaint.status !== 'open') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ có thể chỉnh sửa khiếu nại khi đang ở trạng thái mới gửi (chờ xử lý)'
+      });
+    }
+
+    if (req.body.category) {
+      complaint.category = req.body.category;
+    }
+    if (req.body.description !== undefined) {
+      complaint.description = String(req.body.description).trim();
+    }
+    if (Array.isArray(req.body.evidenceImages)) {
+      complaint.evidenceImages = req.body.evidenceImages;
+    }
+
+    await complaint.save();
+    await complaint.populate(complaintPopulate);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã cập nhật thông tin khiếu nại thành công.',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Error updating complaint:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'Không thể cập nhật khiếu nại' });
+  }
+};
+// END STT 68 / UC-68 Update Booking Complaint (Customer)

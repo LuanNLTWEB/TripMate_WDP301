@@ -103,6 +103,28 @@ export const createComplaintValidation = [
 ];
 // END UC-66 Submit Booking Complaint
 
+// START STT 68 Update Booking Complaint Validation
+export const updateComplaintValidation = [
+  param('id').isMongoId().withMessage('Mã khiếu nại không hợp lệ'),
+  body('category')
+    .optional()
+    .isIn(['quality_mismatch', 'incorrect_cash_charge', 'wrongful_no_show', 'other'])
+    .withMessage('Loại khiếu nại không hợp lệ'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Nội dung khiếu nại phải từ 20 đến 2000 ký tự'),
+  body('evidenceImages')
+    .optional()
+    .isArray({ max: 5 }).withMessage('Chỉ được gửi tối đa 5 ảnh minh chứng'),
+  body('evidenceImages.*')
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Mỗi ảnh minh chứng phải là một URL hợp lệ')
+];
+// END STT 68 Update Booking Complaint Validation
+
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -736,7 +758,7 @@ export const providerBookingListValidation = [
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
   query('status')
     .optional()
-    .isIn(['all', 'pending', 'confirmed', 'cancelled'])
+    .isIn(['all', 'pending', 'confirmed', 'cancelled', 'rejected', 'no_show'])
     .withMessage('Trạng thái booking không hợp lệ'),
   query('page')
     .optional()
@@ -1095,3 +1117,45 @@ export const tourSubmissionIdValidation = [
   param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
 ];
 // END UC-131 Delete Tour Submission
+
+
+// START UC-58 Check Time Conflict
+export const checkTimeConflictValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('date').isISO8601().withMessage('Ngày hoạt động không hợp lệ'),
+  body('startTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ bắt đầu phải có dạng HH:mm'),
+  body('endTime').matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage('Giờ kết thúc phải có dạng HH:mm'),
+  body('excludeActivityId')
+    .optional({ values: 'falsy' })
+    .isMongoId().withMessage('Mã hoạt động loại trừ không hợp lệ'),
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ max: 160 }).withMessage('Tên hoạt động không được vượt quá 160 ký tự')
+];
+// END UC-58 Check Time Conflict
+
+
+// START UC-78 Respond to Booking (Provider)
+export const respondBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('action')
+    .isIn(['confirm', 'reject'])
+    .withMessage('Hành động phản hồi phải là confirm (duyệt) hoặc reject (từ chối)'),
+  body('rejectionReason')
+    .if(body('action').equals('reject'))
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập lý do từ chối đặt chỗ')
+    .isLength({ min: 5, max: 500 }).withMessage('Lý do từ chối phải từ 5 đến 500 ký tự')
+];
+// END UC-78 Respond to Booking (Provider)
+
+// START UC-86 Mark Booking as No-Show (Provider)
+export const markNoShowValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('noShowReason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú vắng mặt không được vượt quá 500 ký tự')
+];
+// END UC-86 Mark Booking as No-Show (Provider)

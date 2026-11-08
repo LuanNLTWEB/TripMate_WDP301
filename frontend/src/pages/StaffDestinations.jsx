@@ -193,7 +193,6 @@ function StaffDestinations() {
                   <th style={{ width: '80px' }}>Hình ảnh</th>
                   <th>Tên điểm đến</th>
                   <th>Vị trí</th>
-                  <th style={{ width: '120px' }}>Đánh giá</th>
                   <th style={{ width: '150px' }}>Trạng thái</th>
                   <th className="text-end" style={{ width: '160px' }}>Thao tác</th>
                 </tr>
@@ -201,14 +200,14 @@ function StaffDestinations() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-5 text-muted">
+                    <td colSpan="5" className="text-center py-5 text-muted">
                       <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                       Đang tải danh sách điểm đến...
                     </td>
                   </tr>
                 ) : destinations.length === 0 ? (
                   <tr>
-                    <td colSpan="6">
+                    <td colSpan="5">
                       <div className="management-empty-state">
                         <div className="management-empty-icon">
                           <i className="bi bi-geo-alt fs-2"></i>
@@ -241,12 +240,6 @@ function StaffDestinations() {
                         <div className="text-muted">
                           <i className="bi bi-geo-alt-fill text-danger me-1"></i>
                           {dest.location}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="d-inline-flex align-items-center bg-warning bg-opacity-10 text-warning px-2 py-1 rounded fw-semibold small">
-                          <i className="bi bi-star-fill me-1"></i>
-                          {dest.averageRating || 0}
                         </div>
                       </td>
                       <td>

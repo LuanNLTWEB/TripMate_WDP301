@@ -351,16 +351,6 @@ function StaffDestinationDetails() {
                 </div>
 
                 <div className="border-top pt-2">
-                  <span className="text-muted d-block mb-1">Đánh giá trung bình</span>
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-warning bg-opacity-10 text-warning border border-warning px-2 py-1 fw-bold fs-6">
-                      ★ {destination.averageRating || 0}
-                    </span>
-                    <span className="text-muted">({destination.numReviews || 0} lượt đánh giá)</span>
-                  </div>
-                </div>
-
-                <div className="border-top pt-2">
                   <span className="text-muted d-block mb-1">Độ phổ biến</span>
                   {destination.isPopular ? (
                     <span className="text-success fw-bold d-flex align-items-center gap-1">

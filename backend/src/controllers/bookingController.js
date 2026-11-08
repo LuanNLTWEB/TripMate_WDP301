@@ -5,6 +5,7 @@
  */
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
+import User from '../models/User.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -30,6 +31,14 @@ export const createBooking = async (req, res) => {
   try {
     const { fullName, phone, email, address, numberOfPeople, departureDate, note } = req.body;
     const tourId = req.params.tourId;
+
+    const customer = await User.findById(req.user._id).select('isBookingRestricted noShowCount');
+    if (customer?.isBookingRestricted) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn tạm thời bị hạn chế đặt chỗ do ghi nhận vi phạm vắng mặt nhiều lần. Vui lòng liên hệ bộ phận hỗ trợ hoặc gửi khiếu nại giải trình để được mở lại.'
+      });
+    }
 
     const tour = await Tour.findOne({ _id: tourId, status: 'active', isDeleted: { $ne: true } });
     if (!tour) {
@@ -87,7 +96,7 @@ export const getMyBookings = async (req, res) => {
     const { status } = req.query;
     const filter = { customerId: req.user._id };
 
-    if (status && ['pending', 'confirmed', 'cancelled'].includes(status)) {
+    if (status && ['pending', 'confirmed', 'cancelled', 'rejected', 'no_show'].includes(status)) {
       filter.status = status;
     }
 
@@ -302,10 +311,14 @@ export const confirmProviderBooking = async (req, res) => {
     }
 
     booking.status = 'confirmed';
-    await booking.save();
+    booking.respondedAt = new Date();
+    booking.respondedBy = req.user._id;
+    await booking.save({ validateBeforeSave: false });
 
-    tour.availableSeats = Math.max(0, tour.availableSeats - booking.numberOfPeople);
-    await tour.save();
+    await Tour.updateOne(
+      { _id: tour._id },
+      { $set: { availableSeats: Math.max(0, tour.availableSeats - booking.numberOfPeople) } }
+    );
 
     const populated = await Booking.findById(booking._id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
@@ -320,7 +333,7 @@ export const confirmProviderBooking = async (req, res) => {
     console.error('Error confirming booking:', error);
     return res.status(500).json({
       success: false,
-      message: 'Không thể xác nhận đặt tour'
+      message: error?.message || 'Không thể xác nhận đặt tour'
     });
   }
 };
@@ -507,15 +520,14 @@ export const cancelBooking = async (req, res) => {
     booking.status = 'cancelled';
     booking.cancelReason = reason.trim();
     booking.cancelledAt = new Date();
-    await booking.save();
+    await booking.save({ validateBeforeSave: false });
 
     // BR-57 - trả lại chỗ trống trong cùng thao tác đánh dấu hủy, để số chỗ
     // của tour không bao giờ lệch với danh sách đơn đặt
-    const tour = await Tour.findById(booking.tourId);
-    if (tour) {
-      tour.availableSeats = tour.availableSeats + booking.numberOfPeople;
-      await tour.save();
-    }
+    await Tour.updateOne(
+      { _id: booking.tourId },
+      { $inc: { availableSeats: booking.numberOfPeople } }
+    );
 
     const populated = await Booking.findById(id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation');
@@ -535,3 +547,291 @@ export const cancelBooking = async (req, res) => {
   }
 };
 // END UC-74 Cancel Booking
+
+
+// START UC-78 Respond to Booking (Provider)
+/**
+ * UC-78 - Respond to Booking (Provider duyệt hoặc từ chối đặt tour).
+ * action: 'confirm' | 'reject'
+ * rejectionReason: required when action === 'reject'
+ */
+export const respondProviderBooking = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu phản hồi đặt tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { action, rejectionReason } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn đặt tour' });
+    }
+
+    const tour = await Tour.findById(booking.tourId);
+    if (!tour) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy tour của đơn đặt này' });
+    }
+
+    if (!tour.providerId || tour.providerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền phản hồi đơn đặt tour này' });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(409).json({
+        success: false,
+        message: `Đơn đặt tour hiện ở trạng thái "${booking.status}", chỉ đơn đang chờ xử lý (pending) mới được phản hồi`
+      });
+    }
+
+    if (action === 'confirm') {
+      if (tour.availableSeats < booking.numberOfPeople) {
+        return res.status(400).json({
+          success: false,
+          message: `Tour chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${booking.numberOfPeople} người`
+        });
+      }
+
+      booking.status = 'confirmed';
+      booking.respondedAt = new Date();
+      booking.respondedBy = req.user._id;
+      await booking.save({ validateBeforeSave: false });
+
+      await Tour.updateOne(
+        { _id: tour._id },
+        { $set: { availableSeats: Math.max(0, tour.availableSeats - booking.numberOfPeople) } }
+      );
+
+      const populated = await Booking.findById(booking._id)
+        .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+        .populate('customerId', 'username email phone');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đã xác nhận giữ chỗ thành công cho khách hàng',
+        data: populated
+      });
+    }
+
+    if (action === 'reject') {
+      booking.status = 'rejected';
+      booking.rejectionReason = String(rejectionReason || '').trim();
+      booking.respondedAt = new Date();
+      booking.respondedBy = req.user._id;
+      await booking.save({ validateBeforeSave: false });
+
+      const populated = await Booking.findById(booking._id)
+        .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+        .populate('customerId', 'username email phone');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đã từ chối đơn đặt tour thành công',
+        data: populated
+      });
+    }
+
+    return res.status(400).json({ success: false, message: 'Hành động phản hồi không hợp lệ' });
+  } catch (error) {
+    console.error('Error responding to booking:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'Không thể phản hồi yêu cầu đặt tour' });
+  }
+};
+// END UC-78 Respond to Booking (Provider)
+
+// START UC-82 Download Booking Voucher (Customer)
+/**
+ * UC-82 - Download Booking Voucher (Xuất phiếu xác nhận đặt chỗ kèm mã QR).
+ * Chỉ khả dụng cho khách hàng sở hữu đơn và đơn đã được xác nhận (status === 'confirmed').
+ */
+export const getBookingVoucher = async (req, res) => {
+  try {
+    const booking = await Booking.findOne({
+      _id: req.params.id,
+      customerId: req.user._id
+    }).populate({
+      path: 'tourId',
+      select: 'title location duration price images departureLocation destinationLocation providerId includedServices excludedServices',
+      populate: {
+        path: 'providerId',
+        select: 'username email phone'
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn đặt tour' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Phiếu xác nhận chỉ khả dụng cho đơn đặt tour đã được xác nhận (Confirmed)'
+      });
+    }
+
+    const shortCode = `BK-${String(booking._id).slice(-6).toUpperCase()}`;
+    const qrData = JSON.stringify({
+      bookingId: String(booking._id),
+      code: shortCode,
+      customer: booking.fullName,
+      phone: booking.phone,
+      tour: booking.tourId?.title || '',
+      departureDate: booking.departureDate,
+      guests: booking.numberOfPeople,
+      totalPrice: booking.totalPrice,
+      status: booking.status,
+      issuedAt: new Date().toISOString()
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        booking,
+        shortCode,
+        qrData,
+        issuedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Error getting booking voucher:', error);
+    return res.status(500).json({ success: false, message: 'Không thể tạo phiếu xác nhận đặt tour' });
+  }
+};
+// END UC-82 Download Booking Voucher (Customer)
+
+// START UC-86 Mark Booking as No-Show (Provider)
+/**
+ * UC-86 - Mark Booking as No-Show (Đánh dấu khách vắng mặt không báo trước).
+ * - Provider sở hữu tour.
+ * - Đơn đang ở trạng thái confirmed.
+ * - Ngày khởi hành là hôm nay hoặc trong quá khứ.
+ * - Tăng noShowCount của khách hàng, nếu >= 2 tự động đặt isBookingRestricted = true.
+ */
+export const markBookingAsNoShow = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn đặt tour' });
+    }
+
+    const tour = await Tour.findById(booking.tourId);
+    if (!tour || !tour.providerId || tour.providerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền quản lý đơn đặt tour này' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đã xác nhận mới có thể ghi nhận vắng mặt'
+      });
+    }
+
+    const depDate = new Date(booking.departureDate);
+    depDate.setHours(23, 59, 59, 999);
+    if (new Date() < new Date(booking.departureDate).setHours(0, 0, 0, 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể ghi nhận vắng mặt từ ngày khởi hành trở đi'
+      });
+    }
+
+    const reason = req.body.noShowReason
+      ? String(req.body.noShowReason).trim()
+      : 'Khách hàng không có mặt vào ngày khởi hành và không báo hủy trước.';
+
+    booking.status = 'no_show';
+    booking.noShowReason = reason;
+    booking.noShowMarkedAt = new Date();
+    booking.noShowMarkedBy = req.user._id;
+    await booking.save({ validateBeforeSave: false });
+
+    let isCustomerRestricted = false;
+    let customerNoShowCount = 1;
+    const customer = await User.findById(booking.customerId);
+    if (customer) {
+      customer.noShowCount = (customer.noShowCount || 0) + 1;
+      customerNoShowCount = customer.noShowCount;
+      if (customer.noShowCount >= 2) {
+        customer.isBookingRestricted = true;
+        customer.bookingRestrictedAt = new Date();
+        isCustomerRestricted = true;
+      }
+      await customer.save({ validateBeforeSave: false });
+    }
+
+    const populated = await Booking.findById(booking._id)
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+      .populate('customerId', 'username email phone');
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã ghi nhận khách vắng mặt cho đơn đặt tour thành công.${isCustomerRestricted ? ' Tài khoản khách đã đạt ngưỡng vi phạm (2 lần) và bị tạm hạn chế đặt chỗ.' : ''}`,
+      data: populated,
+      customerNoShowCount,
+      isCustomerRestricted
+    });
+  } catch (error) {
+    console.error('Error marking booking as no-show:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'Không thể ghi nhận vắng mặt cho đơn đặt tour' });
+  }
+};
+// END UC-86 Mark Booking as No-Show (Provider)
+
+// START STT 156 / UC-156 Reset No-Show Count (Staff)
+/**
+ * STT 156: Reset No-Show Count (Staff)
+ * Nhân viên Staff / Quản trị viên Admin gỡ bỏ điểm phạt vắng mặt (noShowCount)
+ * và mở lại quyền đặt tour (isBookingRestricted = false) cho khách hàng khi
+ * khách hàng khiếu nại no-show oan hoặc có giải trình hợp lệ.
+ */
+export const resetNoShowCount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason = '' } = req.body;
+
+    const customer = await User.findById(userId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    const previousNoShowCount = customer.noShowCount || 0;
+    const wasRestricted = Boolean(customer.isBookingRestricted);
+
+    customer.noShowCount = 0;
+    customer.isBookingRestricted = false;
+    customer.bookingRestrictedAt = null;
+    await customer.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã đặt lại số lần vắng mặt của khách hàng về 0 và khôi phục quyền đặt tour thành công.',
+      data: {
+        userId: customer._id,
+        username: customer.username,
+        email: customer.email,
+        previousNoShowCount,
+        currentNoShowCount: 0,
+        wasRestricted,
+        isBookingRestricted: false,
+        reason: reason.trim() || 'Nhân viên hỗ trợ xem xét và gỡ vi phạm'
+      }
+    });
+  } catch (error) {
+    console.error('Error resetting no-show count:', error);
+    return res.status(500).json({ success: false, message: error?.message || 'Không thể đặt lại số lần vắng mặt' });
+  }
+};
+// END STT 156 / UC-156 Reset No-Show Count (Staff)

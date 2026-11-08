@@ -28,7 +28,7 @@ const bookingSchema = new mongoose.Schema({
     required: [true, 'Vui lòng nhập email'],
     trim: true,
     lowercase: true,
-    match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i, 'Email không hợp lệ']
+    match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
   },
   address: {
     type: String,
@@ -59,7 +59,7 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'cancelled'],
+    enum: ['pending', 'confirmed', 'cancelled', 'rejected', 'no_show'],
     default: 'pending'
   },
   // UC-74 - lý do hủy và thời điểm hủy, giữ lại để tra cứu về sau
@@ -72,7 +72,41 @@ const bookingSchema = new mongoose.Schema({
   cancelledAt: {
     type: Date,
     default: null
+  },
+  // START UC-78 Respond to Booking (Provider)
+  rejectionReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Lý do từ chối không được vượt quá 500 ký tự'],
+    default: ''
+  },
+  respondedAt: {
+    type: Date,
+    default: null
+  },
+  respondedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  // END UC-78 Respond to Booking (Provider)
+  // START UC-86 Mark Booking as No-Show (Provider)
+  noShowReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Ghi chú vắng mặt không được vượt quá 500 ký tự'],
+    default: ''
+  },
+  noShowMarkedAt: {
+    type: Date,
+    default: null
+  },
+  noShowMarkedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
+  // END UC-86 Mark Booking as No-Show (Provider)
 }, {
   timestamps: true
 });

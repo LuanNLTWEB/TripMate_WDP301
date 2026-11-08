@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { destinationApi } from '../services/api';
@@ -8,6 +8,8 @@ import { useToast } from '../hooks/useToast';
 
 const DestinationDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [similarDestinations, setSimilarDestinations] = useState([]);
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
   const [destination, setDestination] = useState(null);
@@ -100,11 +102,6 @@ const DestinationDetails = () => {
           <h1 className="fw-bold mb-2">{destination.name}</h1>
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div className="d-flex align-items-center text-muted">
-              <span className="me-3">
-                <i className="bi bi-star-fill text-warning me-1"></i>
-                <span className="fw-medium text-dark">{destination.averageRating}</span> 
-                <span className="ms-1">(Đánh giá)</span>
-              </span>
               <span>
                 <i className="bi bi-geo-alt-fill text-danger me-1"></i>
                 <span className="text-decoration-underline">{destination.location}</span>
@@ -200,13 +197,6 @@ const DestinationDetails = () => {
                       <div className="text-muted small">{destination.location}</div>
                     </div>
                   </li>
-                  <li className="d-flex align-items-center mb-3">
-                    <i className="bi bi-star fs-4 text-warning me-3"></i>
-                    <div>
-                      <div className="fw-bold">Đánh giá</div>
-                      <div className="text-muted small">{destination.averageRating} / 5.0</div>
-                    </div>
-                  </li>
                   <li className="d-flex align-items-center">
                     <i className="bi bi-camera fs-4 text-success me-3"></i>
                     <div>
@@ -218,6 +208,83 @@ const DestinationDetails = () => {
               </div>
             </div>
           </div>
+        {/* START UC-83 Recommend Alternative Destination */}
+        {similarDestinations.length > 0 && (
+          <section className="mt-5 pt-4 border-top">
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
+              <div>
+                <span className="small text-uppercase text-primary fw-semibold">Gợi ý dành cho bạn</span>
+                <h3 className="fw-bold mb-0">Điểm đến tương tự bạn có thể thích</h3>
+              </div>
+              <Link to="/destinations" className="btn btn-outline-primary btn-sm rounded-pill px-3 align-self-start align-self-sm-auto">
+                Xem tất cả điểm đến <i className="bi bi-arrow-right ms-1"></i>
+              </Link>
+            </div>
+
+            <div className="row row-cols-1 row-cols-md-3 g-4">
+              {similarDestinations.map((item) => (
+                <div key={item._id} className="col">
+                  <div
+                    className="editorial-card h-100 overflow-hidden d-flex flex-column cursor-pointer shadow-sm rounded-4 bg-white"
+                    onClick={() => {
+                      navigate(`/destinations/${item._id}`);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="editorial-zoom-img position-relative" style={{ height: '200px' }}>
+                      <img
+                        src={item.images?.[0] || 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823911/tripmate_assets/jmgdqrgkput0yvptbvyr.jpg'}
+                        className="w-100 h-100"
+                        alt={item.name}
+                        style={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823911/tripmate_assets/jmgdqrgkput0yvptbvyr.jpg';
+                        }}
+                      />
+                      {item.isPopular && (
+                        <span className="position-absolute top-0 start-0 m-3 badge bg-primary text-white rounded-pill px-3 py-1.5 shadow-sm fw-semibold">
+                          <i className="bi bi-fire me-1"></i>Nổi bật
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3 d-flex flex-column flex-grow-1">
+                      <div className="text-muted small fw-medium mb-1 d-flex align-items-center">
+                        <i className="bi bi-geo-alt-fill text-danger me-1 flex-shrink-0"></i>
+                        <span className="text-truncate">{item.location || 'Việt Nam'}</span>
+                      </div>
+                      <h5 className="font-display fw-bold text-dark mb-2 text-truncate" title={item.name}>
+                        {item.name}
+                      </h5>
+                      <p
+                        className="text-secondary small mb-3 flex-grow-1"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: '1.5'
+                        }}
+                      >
+                        {item.description || 'Khám phá vẻ đẹp tuyệt mỹ và những trải nghiệm khó quên tại điểm đến này.'}
+                      </p>
+                      <div className="pt-2 border-top mt-auto d-flex justify-content-between align-items-center">
+                        <span className="text-muted small">
+                          <i className="bi bi-eye me-1"></i>Xem chi tiết
+                        </span>
+                        <span className="text-primary small fw-semibold d-inline-flex align-items-center gap-1">
+                          Khám phá <i className="bi bi-arrow-right"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {/* END UC-83 Recommend Alternative Destination */}
         </div>
       </div>
       <Footer />

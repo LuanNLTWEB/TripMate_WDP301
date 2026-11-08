@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { complaintApi } from '../services/api';
+import { createPortal } from 'react-dom';
+import { complaintApi, bookingApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
 const STATUS_LABELS = { open: 'Mới', in_review: 'Đang xử lý', resolved: 'Đã giải quyết', rejected: 'Đã từ chối' };
@@ -18,6 +19,23 @@ export default function StaffComplaints() {
   const [status, setStatus] = useState('all');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [resettingNoShow, setResettingNoShow] = useState(false);
+
+  // START STT 156 Reset No-Show Count (Staff)
+  const handleResetNoShow = async (userId) => {
+    if (!userId) return;
+    setResettingNoShow(true);
+    try {
+      const res = await bookingApi.resetNoShow(userId, `Gỡ phạt No-Show theo khiếu nại #${selected?._id}`);
+      toast.success(res.message || 'Đã đặt lại số lần vắng mặt của khách về 0 thành công.');
+      setNote((current) => current && current.trim().length >= 5 ? current : 'Đã chấp thuận giải trình và xóa điểm vi phạm No-Show cho khách hàng.');
+    } catch (err) {
+      toast.error(err.message || 'Không thể đặt lại số lần vắng mặt.');
+    } finally {
+      setResettingNoShow(false);
+    }
+  };
+  // END STT 156 Reset No-Show Count (Staff)
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,18 +103,38 @@ export default function StaffComplaints() {
           </table>
         </div>
       </div>
-      {selected && (
+      {selected && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="modal-backdrop fade show" onClick={() => setSelected(null)}></div>
-          <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+          <div className="modal-backdrop fade show" style={{ zIndex: 1060 }} onClick={() => setSelected(null)}></div>
+          <div className="modal fade show d-block" style={{ zIndex: 1065 }} tabIndex="-1" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
             <div className="modal-dialog modal-dialog-centered modal-lg">
-              <div className="modal-content">
+              <div className="modal-content shadow-lg border-0">
                 <div className="modal-header"><h5 className="modal-title">Chi tiết khiếu nại</h5><button className="btn-close" onClick={() => setSelected(null)} aria-label="Đóng"></button></div>
                 <div className="modal-body">
                   <p><strong>Khách:</strong> {selected.customerId?.username} · {selected.customerId?.email}</p>
                   <p><strong>Tour:</strong> {selected.tourId?.title}</p>
                   <p><strong>Loại:</strong> {CATEGORY_LABELS[selected.category]}</p>
                   <div className="border rounded p-3 mb-3">{selected.description}</div>
+
+                  {/* START STT 156 Reset No-Show Count (Staff) */}
+                  {selected.category === 'wrongful_no_show' && (
+                    <div className="alert alert-warning p-3 mb-3 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border border-warning-subtle">
+                      <div>
+                        <div className="fw-bold text-dark"><i className="bi bi-shield-exclamation me-1 text-warning"></i>Khách khiếu nại bị đánh dấu No-Show oan</div>
+                        <div className="small text-muted">Nếu chấp thuận giải trình, nhân viên có thể xóa điểm vi phạm No-Show để khôi phục quyền đặt tour cho khách.</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-warning btn-sm fw-semibold rounded-pill px-3 shadow-sm d-inline-flex align-items-center gap-1"
+                        onClick={() => handleResetNoShow(selected.customerId?._id || selected.customerId)}
+                        disabled={resettingNoShow}
+                      >
+                        {resettingNoShow ? <span className="spinner-border spinner-border-sm"></span> : <i className="bi bi-arrow-counterclockwise"></i>}
+                        <span>Reset điểm No-Show</span>
+                      </button>
+                    </div>
+                  )}
+                  {/* END STT 156 Reset No-Show Count (Staff) */}
                   {selected.evidenceImages?.length > 0 && (
                     <div className="mb-3">
                       <div className="text-muted small mb-1">Ảnh minh chứng ({selected.evidenceImages.length})</div>
@@ -109,7 +147,27 @@ export default function StaffComplaints() {
                       </div>
                     </div>
                   )}
-                  {['open', 'in_review'].includes(selected.status) && <textarea className="form-control" rows="4" minLength="5" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập kết quả xử lý..."></textarea>}
+                  {['open', 'in_review'].includes(selected.status) && (
+                    <div className="mb-3">
+                      <label className="form-label small fw-semibold text-muted mb-1">Kết quả / Phản hồi xử lý <span className="text-danger">*</span></label>
+                      <textarea
+                        className="form-control"
+                        rows="4"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="Nhập nội dung phản hồi xử lý cho khách hàng (tối thiểu 5 ký tự)..."
+                      ></textarea>
+                      <div className="d-flex justify-content-between align-items-center mt-1">
+                        <small className={note.trim().length >= 5 ? 'text-success' : 'text-danger'}>
+                          {note.trim().length >= 5 ? (
+                            <><i className="bi bi-check-circle me-1"></i>Hợp lệ để giải quyết/từ chối</>
+                          ) : (
+                            <><i className="bi bi-exclamation-circle me-1"></i>Cần tối thiểu 5 ký tự ({note.trim().length}/5)</>
+                          )}
+                        </small>
+                      </div>
+                    </div>
+                  )}
                   {selected.resolutionNote && <div className="alert alert-info">{selected.resolutionNote}</div>}
                 </div>
                 <div className="modal-footer">
@@ -119,7 +177,8 @@ export default function StaffComplaints() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </section>
   );

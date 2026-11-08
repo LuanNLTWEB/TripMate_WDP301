@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { complaintApi } from '../services/api';
+import { useToast } from '../hooks/useToast';
 
 const CATEGORY_LABELS = {
   quality_mismatch: 'Chất lượng tour không giống mô tả',
@@ -34,6 +35,92 @@ export default function MyComplaints() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const toast = useToast();
+
+  // START STT 68 Update Booking Complaint (Customer)
+  const [editingComplaint, setEditingComplaint] = useState(null);
+  const [editCategory, setEditCategory] = useState('quality_mismatch');
+  const [editDescription, setEditDescription] = useState('');
+  const [editImages, setEditImages] = useState([]);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const handleOpenEdit = (complaint) => {
+    setEditingComplaint(complaint);
+    setEditCategory(complaint.category || 'quality_mismatch');
+    setEditDescription(complaint.description || '');
+    setEditImages(Array.isArray(complaint.evidenceImages) ? [...complaint.evidenceImages] : []);
+    setEditError('');
+  };
+
+  const handleCloseEdit = () => {
+    if (editSubmitting || uploadingImage) return;
+    setEditingComplaint(null);
+    setEditError('');
+  };
+
+  const handleRemoveEditImage = (index) => {
+    setEditImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadEditImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (editImages.length >= 5) {
+      toast.error('Chỉ được tải lên tối đa 5 ảnh minh chứng.');
+      return;
+    }
+
+    setUploadingImage(true);
+    setEditError('');
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await complaintApi.uploadEvidence(formData);
+      if (res.url) {
+        setEditImages((prev) => [...prev, res.url]);
+        toast.success('Đã tải ảnh minh chứng lên thành công.');
+      }
+    } catch (uploadErr) {
+      toast.error(uploadErr.message || 'Không thể tải ảnh minh chứng lên.');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    const trimmedDesc = editDescription.trim();
+    if (trimmedDesc.length < 20) {
+      setEditError('Nội dung khiếu nại phải có ít nhất 20 ký tự.');
+      return;
+    }
+    if (trimmedDesc.length > 2000) {
+      setEditError('Nội dung khiếu nại không được vượt quá 2000 ký tự.');
+      return;
+    }
+
+    setEditSubmitting(true);
+    setEditError('');
+    try {
+      const res = await complaintApi.update(editingComplaint._id, {
+        category: editCategory,
+        description: trimmedDesc,
+        evidenceImages: editImages
+      });
+      toast.success(res.message || 'Đã cập nhật khiếu nại thành công!');
+      setEditingComplaint(null);
+      await load();
+    } catch (saveErr) {
+      setEditError(saveErr.message || 'Không thể cập nhật khiếu nại.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+  // END STT 68 Update Booking Complaint (Customer)
 
   const counts = useMemo(() => {
     const result = { total: complaints.length, open: 0, in_review: 0, resolved: 0, rejected: 0 };
@@ -132,6 +219,22 @@ export default function MyComplaints() {
 
                     <p className="mt-3 mb-0">{complaint.description}</p>
 
+                    {/* START STT 68 Update Booking Complaint Button */}
+                    {complaint.status === 'open' && (
+                      <div className="mt-3 pt-2 border-top d-flex justify-content-end">
+                        <button
+                          type="button"
+                          id={`btn-edit-complaint-${complaint._id}`}
+                          className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1 shadow-sm"
+                          onClick={() => handleOpenEdit(complaint)}
+                        >
+                          <i className="bi bi-pencil-square"></i>
+                          <span>Chỉnh sửa khiếu nại</span>
+                        </button>
+                      </div>
+                    )}
+                    {/* END STT 68 Update Booking Complaint Button */}
+
                     {complaint.evidenceImages?.length > 0 && (
                       <>
                         <div className="text-muted small mt-3 mb-2">
@@ -171,6 +274,151 @@ export default function MyComplaints() {
           </div>
         )}
         <Link className="btn btn-link px-0 mt-3" to="/my-bookings">Quay lại lịch sử đặt tour</Link>
+        {/* START STT 68 Update Booking Complaint Modal */}
+        {editingComplaint && (
+          <>
+            <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={handleCloseEdit}></div>
+            <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }} onClick={(e) => { if (e.target === e.currentTarget) handleCloseEdit(); }}>
+              <div className="modal-dialog modal-dialog-centered modal-lg">
+                <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                  <form onSubmit={handleSaveEdit}>
+                    <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+                      <div>
+                        <span className="badge bg-primary-subtle text-primary font-monospace small mb-1">
+                          {complaintCode(editingComplaint._id)}
+                        </span>
+                        <h5 className="modal-title fw-bold text-dark mb-0">Chỉnh sửa khiếu nại</h5>
+                      </div>
+                      <button type="button" className="btn-close" onClick={handleCloseEdit} disabled={editSubmitting} aria-label="Đóng"></button>
+                    </div>
+
+                    <div className="modal-body p-4">
+                      <div className="p-3 bg-light rounded-3 mb-4">
+                        <div className="fw-semibold text-dark mb-1">
+                          <i className="bi bi-info-circle me-1 text-primary"></i>Tour: {editingComplaint.tourId?.title || 'Tour'}
+                        </div>
+                        <div className="small text-muted">
+                          Mã đơn: {bookingCode(editingComplaint.bookingId?._id)} · Trạng thái: Mới gửi (Được phép cập nhật)
+                        </div>
+                      </div>
+
+                      {editError && (
+                        <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
+                          <i className="bi bi-exclamation-circle-fill"></i>
+                          <div>{editError}</div>
+                        </div>
+                      )}
+
+                      <div className="mb-3">
+                        <label htmlFor="edit-complaint-category" className="form-label fw-semibold small text-muted text-uppercase">
+                          Loại khiếu nại <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          id="edit-complaint-category"
+                          className="form-select rounded-3"
+                          value={editCategory}
+                          onChange={(e) => setEditCategory(e.target.value)}
+                          disabled={editSubmitting}
+                        >
+                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                            <option key={key} value={key}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <label htmlFor="edit-complaint-description" className="form-label fw-semibold small text-muted text-uppercase mb-0">
+                            Nội dung chi tiết <span className="text-danger">*</span>
+                          </label>
+                          <span className={`small ${editDescription.trim().length < 20 ? 'text-danger' : 'text-muted'}`}>
+                            {editDescription.trim().length}/2000 (tối thiểu 20 ký tự)
+                          </span>
+                        </div>
+                        <textarea
+                          id="edit-complaint-description"
+                          className="form-control rounded-3"
+                          rows={5}
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Mô tả chi tiết sự cố bạn gặp phải..."
+                          disabled={editSubmitting}
+                          minLength={20}
+                          maxLength={2000}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="form-label fw-semibold small text-muted text-uppercase mb-2">
+                          Ảnh minh chứng ({editImages.length}/5)
+                        </label>
+                        <div className="d-flex flex-wrap gap-2 mb-3">
+                          {editImages.map((url, idx) => (
+                            <div key={idx} className="position-relative rounded-3 overflow-hidden border shadow-sm" style={{ width: 96, height: 72 }}>
+                              <img src={url} alt={`Minh chứng ${idx + 1}`} className="w-100 h-100 object-fit-cover" />
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm p-0 position-absolute top-0 end-0 m-1 rounded-circle d-flex align-items-center justify-content-center"
+                                style={{ width: 22, height: 22, fontSize: 10 }}
+                                onClick={() => handleRemoveEditImage(idx)}
+                                disabled={editSubmitting}
+                                title="Xóa ảnh này"
+                              >
+                                <i className="bi bi-x"></i>
+                              </button>
+                            </div>
+                          ))}
+
+                          {editImages.length < 5 && (
+                            <label className="d-flex flex-column align-items-center justify-content-center border border-dashed rounded-3 p-2 bg-light" style={{ width: 96, height: 72, cursor: uploadingImage ? 'wait' : 'pointer' }}>
+                              {uploadingImage ? (
+                                <span className="spinner-border spinner-border-sm text-primary"></span>
+                              ) : (
+                                <>
+                                  <i className="bi bi-cloud-arrow-up fs-5 text-muted"></i>
+                                  <span className="small text-muted" style={{ fontSize: 10 }}>Thêm ảnh</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="d-none"
+                                onChange={handleUploadEditImage}
+                                disabled={uploadingImage || editSubmitting}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        <div className="small text-muted">Chấp nhận ảnh JPG, PNG, WEBP tối đa 10MB mỗi ảnh.</div>
+                      </div>
+                    </div>
+
+                    <div className="modal-footer bg-light px-4 py-3 border-top d-flex justify-content-end gap-2">
+                      <button type="button" className="btn btn-secondary rounded-pill px-4" onClick={handleCloseEdit} disabled={editSubmitting}>
+                        Hủy
+                      </button>
+                      <button type="submit" className="btn btn-primary rounded-pill px-4 fw-semibold" disabled={editSubmitting || uploadingImage}>
+                        {editSubmitting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Đang lưu...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-check2 me-1"></i>
+                            Lưu thay đổi
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+        {/* END STT 68 Update Booking Complaint Modal */}
       </main>
       <Footer />
     </>

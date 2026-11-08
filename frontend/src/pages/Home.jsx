@@ -415,9 +415,6 @@ function Home() {
                             Điểm đến nổi bật
                           </span>
                         )}
-                        <span className="position-absolute top-0 end-0 m-2 badge bg-white text-dark shadow-sm">
-                          ★ {dest.averageRating || 5.0}
-                        </span>
                       </div>
 
                       <div className="p-4 d-flex flex-column flex-grow-1">

@@ -10,6 +10,7 @@ import {
   deleteItinerary,
   duplicateItinerary,
   getActivityConflicts,
+  checkTimeConflict,
   getItinerary,
   listItineraries,
   listSharedItineraries,
@@ -58,7 +59,8 @@ import {
   addCommentValidation,
   deleteCommentValidation,
   updatePackingItemValidation,
-  removePackingItemValidation
+  removePackingItemValidation,
+  checkTimeConflictValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -76,6 +78,10 @@ router.post('/invitations/:notificationId/respond', ...customerAccess, respondIn
 // GET /api/itineraries/:id/conflicts - danh sách cặp hoạt động trùng giờ (BR-62).
 router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivityConflicts);
 // END UC-53 Add Activity to Itinerary
+// START UC-58 Check Time Conflict
+// POST /api/itineraries/:id/conflicts/check - kiểm tra trùng giờ cho khung giờ dự kiến và gợi ý giờ trống.
+router.post('/:id/conflicts/check', ...customerAccess, checkTimeConflictValidation, checkTimeConflict);
+// END UC-58 Check Time Conflict
 router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTripBudget);
 // START UC-48 View Personal Itinerary
 // GET /api/itineraries/:id - owner hoặc collaborator được xem chi tiết.

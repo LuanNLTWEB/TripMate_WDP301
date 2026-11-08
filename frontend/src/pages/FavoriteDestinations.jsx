@@ -246,9 +246,6 @@ const FavoriteDestinations = () => {
                               <p className="card-text text-secondary flex-grow-1" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                 {destination.description}
                               </p>
-                              <div className="mt-3">
-                                <span className="text-warning"><i className="bi bi-star-fill me-1"></i>{destination.averageRating}</span>
-                              </div>
                             </div>
                           </div>
                         </div>

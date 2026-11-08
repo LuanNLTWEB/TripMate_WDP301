@@ -32,7 +32,6 @@ const Destinations = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [minRating, setMinRating] = useState('');
   const [popularOnly, setPopularOnly] = useState(false);
   const [sort, setSort] = useState('newest');
   const [categories, setCategories] = useState([]);
@@ -111,8 +110,7 @@ const Destinations = () => {
     fetchDestinations({
       search: searchTerm.trim(),
       categoryId,
-      minRating,
-      isPopular: popularOnly ? 'true' : '',
+            isPopular: popularOnly ? 'true' : '',
       sort
     }, 1);
   };
@@ -120,7 +118,6 @@ const Destinations = () => {
   const handleReset = () => {
     setSearchTerm('');
     setCategoryId('');
-    setMinRating('');
     setPopularOnly(false);
     setSort('newest');
     setCurrentPage(1);
@@ -134,8 +131,7 @@ const Destinations = () => {
     fetchDestinations({
       search: searchTerm.trim(),
       categoryId,
-      minRating,
-      isPopular: popularOnly ? 'true' : '',
+            isPopular: popularOnly ? 'true' : '',
       sort: nextSort
     }, 1);
   };
@@ -146,14 +142,13 @@ const Destinations = () => {
     fetchDestinations({
       search: searchTerm.trim(),
       categoryId,
-      minRating,
-      isPopular: popularOnly ? 'true' : '',
+            isPopular: popularOnly ? 'true' : '',
       sort
     }, newPage);
     window.scrollTo({ top: 380, behavior: 'smooth' });
   };
 
-  const hasFilters = Boolean(searchTerm || categoryId || minRating || popularOnly || sort !== 'newest');
+  const hasFilters = Boolean(searchTerm || categoryId || popularOnly || sort !== 'newest');
 
   return (
     <>
@@ -189,7 +184,7 @@ const Destinations = () => {
             <div className="card border-0 shadow-lg p-3 p-md-4 bg-white" style={{ borderRadius: '20px' }}>
               <form onSubmit={handleSearch}>
                 <div className="row g-3 align-items-end">
-                  <div className="col-12 col-md-6 col-lg-4">
+                  <div className="col-12 col-md-5 col-lg-5">
                     <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1">
                       <i className="bi bi-geo-alt text-primary"></i>
                       <span>Tìm kiếm điểm đến</span>
@@ -217,7 +212,7 @@ const Destinations = () => {
                     </div>
                   </div>
 
-                  <div className="col-6 col-md-3 col-lg-2">
+                  <div className="col-6 col-md-3 col-lg-3">
                     <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="destination-category-filter">
                       <i className="bi bi-grid text-primary"></i>
                       <span>Danh mục</span>
@@ -235,27 +230,7 @@ const Destinations = () => {
                     />
                   </div>
 
-                  <div className="col-6 col-md-3 col-lg-2">
-                    <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1" htmlFor="destination-rating-filter">
-                      <i className="bi bi-star-fill text-warning"></i>
-                      <span>Đánh giá</span>
-                    </label>
-                    <CustomSelect
-                      id="destination-rating-filter"
-                      triggerStyle={{ height: '48px', backgroundColor: '#f8fafc' }}
-                      value={minRating}
-                      onChange={(e, val) => setMinRating(val !== undefined ? val : e.target.value)}
-                      placeholder="Tất cả đánh giá"
-                      options={[
-                        { value: '', label: 'Tất cả đánh giá' },
-                        { value: '4', label: 'Từ 4 sao trở lên', icon: 'bi bi-star-fill text-warning' },
-                        { value: '3', label: 'Từ 3 sao trở lên', icon: 'bi bi-star-fill text-warning' },
-                        { value: '2', label: 'Từ 2 sao trở lên', icon: 'bi bi-star-fill text-warning' }
-                      ]}
-                    />
-                  </div>
-
-                  <div className="col-6 col-md-6 col-lg-2">
+                  <div className="col-6 col-md-2 col-lg-2">
                     <label className="form-label small text-secondary fw-semibold mb-1 d-flex align-items-center gap-1">
                       <i className="bi bi-stars text-primary"></i>
                       <span>Đặc điểm</span>
@@ -280,7 +255,7 @@ const Destinations = () => {
                     </div>
                   </div>
 
-                  <div className="col-6 col-md-6 col-lg-2">
+                  <div className="col-12 col-md-2 col-lg-2">
                     <button
                       type="submit"
                       className="btn btn-primary btn-lg w-100 fs-6 fw-semibold d-flex align-items-center justify-content-center gap-2 rounded-pill shadow-sm text-white"
@@ -317,7 +292,6 @@ const Destinations = () => {
                 onChange={handleSortChange}
                 options={[
                   { value: 'newest', label: 'Mới nhất', icon: 'bi bi-sparkles' },
-                  { value: 'rating', label: 'Đánh giá cao', icon: 'bi bi-star-fill text-warning' },
                   { value: 'nameAsc', label: 'Tên A–Z', icon: 'bi bi-sort-alpha-down' }
                 ]}
               />
@@ -402,11 +376,6 @@ const Destinations = () => {
                           <i className={`bi ${favoriteIds.has(destination._id) ? 'bi-heart-fill text-danger' : 'bi-heart text-secondary'} fs-6`}></i>
                         )}
                       </button>
-
-                      <span className="position-absolute bottom-0 start-0 m-3 badge bg-white text-dark shadow-sm px-2.5 py-1.5 rounded-pill fw-bold small" style={{ zIndex: 2 }}>
-                        <i className="bi bi-star-fill text-warning me-1"></i>
-                        {destination.averageRating ? destination.averageRating.toFixed(1) : '5.0'}
-                      </span>
                     </div>
 
                     <div className="p-4 d-flex flex-column flex-grow-1">

@@ -233,6 +233,15 @@ export const itineraryApi = {
     body: JSON.stringify(activity)
   }),
   // END UC-53 Add Activity to Itinerary
+  // START UC-58 Check Time Conflict
+  getConflicts: (id) => apiRequest(`/itineraries/${id}/conflicts`, {
+    method: 'GET'
+  }),
+  checkTimeConflict: (id, payload) => apiRequest(`/itineraries/${id}/conflicts/check`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-58 Check Time Conflict
   reorderActivities: (id, activities) => apiRequest(`/itineraries/${id}/activities/reorder`, {
     method: 'PUT',
     body: JSON.stringify({ activities })
@@ -263,6 +272,10 @@ export const itineraryApi = {
     method: 'GET'
   }),
   // END UC-48 View Personal Itinerary
+  duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }),
   share: (id, payload) => apiRequest(`/itineraries/${id}/share`, {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -553,6 +566,21 @@ export const bookingApi = {
   },
   approveBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   confirmBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
+  // START UC-78 Respond to Booking (Provider)
+  respondBooking: (id, payload) => apiRequest(`/bookings/provider/${id}/respond`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-78 Respond to Booking (Provider)
+  // START UC-86 Mark Booking as No-Show (Provider)
+  markNoShow: (id, noShowReason) => apiRequest(`/bookings/provider/${id}/no-show`, {
+    method: 'PATCH',
+    body: JSON.stringify({ noShowReason })
+  }),
+  // END UC-86 Mark Booking as No-Show (Provider)
+  // START UC-82 Download Booking Voucher (Customer)
+  getVoucher: (id) => apiRequest(`/bookings/${id}/voucher`, { method: 'GET' }),
+  // END UC-82 Download Booking Voucher (Customer)
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
@@ -583,8 +611,14 @@ export const bookingApi = {
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
-  })
+  }),
   // END UC-74 Cancel Booking
+  // START STT 156 Reset No-Show Count (Staff)
+  resetNoShow: (userId, reason) => apiRequest(`/bookings/users/${userId}/reset-no-show`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason })
+  })
+  // END STT 156 Reset No-Show Count (Staff)
 };
 
 // START UC-66 Submit Booking Complaint
@@ -614,7 +648,13 @@ export const complaintApi = {
   resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
+  }),
+  // START STT 68 Update Booking Complaint (Customer)
+  update: (id, payload) => apiRequest(`/complaints/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   })
+  // END STT 68 Update Booking Complaint (Customer)
 };
 // END UC-66 Submit Booking Complaint
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { bookingApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
@@ -28,6 +28,16 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isSubmitting) onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSubmitting, onClose]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const normalizedReason = reason.trim();
@@ -54,17 +64,18 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
 
   return (
     <>
+      <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={onClose}></div>
       <div
         className="modal fade show d-block"
         tabIndex="-1"
         role="dialog"
         aria-modal="true"
-        style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
+        style={{ zIndex: 1055, overscrollBehavior: 'contain' }}
         onClick={(event) => {
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered" style={{ overscrollBehavior: 'contain' }}>
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
               <div>

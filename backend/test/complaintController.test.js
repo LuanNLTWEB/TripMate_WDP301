@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Complaint from '../src/models/Complaint.js';
-import { createComplaint } from '../src/controllers/complaintController.js';
+import { createComplaint, updateComplaint } from '../src/controllers/complaintController.js';
 
 const originalBookingFindOne = Booking.findOne;
 const originalComplaintFindOne = Complaint.findOne;
@@ -200,3 +200,79 @@ test('returns a safe error when the database operation fails', async () => {
   assert.equal(result.body.message, 'Không thể gửi khiếu nại');
   assert.equal(result.body.message.includes('MongoServerError'), false);
 });
+
+// START STT 68 Update Booking Complaint Tests
+test('STT 68: updateComplaint allows customer to update an open complaint', async () => {
+  let saved = false;
+  let populated = false;
+  const complaintDoc = {
+    _id: 'complaint-1',
+    customerId: 'customer-1',
+    status: 'open',
+    category: 'other',
+    description: 'Nội dung ban đầu của khiếu nại hơn 20 ký tự',
+    evidenceImages: [],
+    save: async () => { saved = true; },
+    populate: async () => { populated = true; }
+  };
+
+  Complaint.findOne = async () => complaintDoc;
+
+  const res = createResponse();
+  await updateComplaint({
+    params: { id: 'complaint-1' },
+    user: { _id: 'customer-1' },
+    body: {
+      category: 'quality_mismatch',
+      description: 'Nội dung mới đã được cập nhật chi tiết hơn rất nhiều',
+      evidenceImages: ['https://example.com/evidence1.jpg']
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(complaintDoc.category, 'quality_mismatch');
+  assert.equal(complaintDoc.description, 'Nội dung mới đã được cập nhật chi tiết hơn rất nhiều');
+  assert.equal(saved, true);
+  assert.equal(populated, true);
+});
+
+test('STT 68: updateComplaint rejects updating when status is not open (409)', async () => {
+  const complaintDoc = {
+    _id: 'complaint-1',
+    customerId: 'customer-1',
+    status: 'in_review',
+    category: 'other',
+    description: 'Nội dung ban đầu khiếu nại'
+  };
+
+  Complaint.findOne = async () => complaintDoc;
+
+  const res = createResponse();
+  await updateComplaint({
+    params: { id: 'complaint-1' },
+    user: { _id: 'customer-1' },
+    body: {
+      description: 'Cố gắng sửa khiếu nại đang được xử lý'
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.success, false);
+  assert.match(res.body.message, /Chỉ có thể chỉnh sửa khiếu nại khi đang ở trạng thái mới gửi/);
+});
+
+test('STT 68: updateComplaint returns 404 when complaint not found', async () => {
+  Complaint.findOne = async () => null;
+
+  const res = createResponse();
+  await updateComplaint({
+    params: { id: 'non-existent' },
+    user: { _id: 'customer-1' },
+    body: {}
+  }, res.response);
+
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body.success, false);
+});
+// END STT 68 Update Booking Complaint Tests

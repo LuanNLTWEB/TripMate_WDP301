@@ -39,6 +39,67 @@ const tourFields = 'title price images departureLocation destinationLocation loc
  *  - Chỉ trả về cặp id/tên/khung giờ, không trả cả document, để response nhẹ và
  *    không lộ dữ liệu chi phí của hoạt động.
  */
+const timeToMinutes = (hhmm) => {
+  const [h, m] = String(hhmm || '00:00').split(':').map(Number);
+  return h * 60 + m;
+};
+
+const minutesToTime = (totalMin) => {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMin));
+  const h = String(Math.floor(clamped / 60)).padStart(2, '0');
+  const m = String(clamped % 60).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) => {
+  const duration = Math.max(15, timeToMinutes(requestedEnd) - timeToMinutes(requestedStart));
+  const sorted = [...sameDayActivities]
+    .map((act) => ({ start: timeToMinutes(act.startTime), end: timeToMinutes(act.endTime) }))
+    .sort((a, b) => a.start - b.start);
+
+  const merged = [];
+  for (const interval of sorted) {
+    if (!merged.length || merged[merged.length - 1].end < interval.start) {
+      merged.push({ ...interval });
+    } else {
+      merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, interval.end);
+    }
+  }
+
+  const reqStartMin = timeToMinutes(requestedStart);
+  let candidateStart = reqStartMin;
+  for (const block of merged) {
+    if (candidateStart + duration <= block.start) {
+      break;
+    }
+    if (candidateStart < block.end) {
+      candidateStart = block.end;
+    }
+  }
+
+  if (candidateStart + duration <= 23 * 60 + 59) {
+    return {
+      startTime: minutesToTime(candidateStart),
+      endTime: minutesToTime(candidateStart + duration)
+    };
+  }
+
+  let earlyCandidate = 6 * 60;
+  for (const block of merged) {
+    if (earlyCandidate + duration <= block.start) {
+      return {
+        startTime: minutesToTime(earlyCandidate),
+        endTime: minutesToTime(earlyCandidate + duration)
+      };
+    }
+    if (earlyCandidate < block.end) {
+      earlyCandidate = block.end;
+    }
+  }
+
+  return null;
+};
+
 const detectScheduleConflicts = (itinerary) => {
   const conflicts = [];
   const activities = itinerary.activities || [];
@@ -48,9 +109,16 @@ const detectScheduleConflicts = (itinerary) => {
       const b = activities[j];
       const sameDate = new Date(a.date).toDateString() === new Date(b.date).toDateString();
       if (sameDate && a.startTime < b.endTime && b.startTime < a.endTime) {
+        const overlapStart = a.startTime > b.startTime ? a.startTime : b.startTime;
+        const overlapEnd = a.endTime < b.endTime ? a.endTime : b.endTime;
+        const overlapMinutes = Math.max(0, timeToMinutes(overlapEnd) - timeToMinutes(overlapStart));
         conflicts.push({
-          first: { _id: a._id, title: a.title, startTime: a.startTime, endTime: a.endTime },
-          second: { _id: b._id, title: b.title, startTime: b.startTime, endTime: b.endTime }
+          date: a.date,
+          overlapStart,
+          overlapEnd,
+          overlapMinutes,
+          first: { _id: a._id, title: a.title, startTime: a.startTime, endTime: a.endTime, location: a.location || '' },
+          second: { _id: b._id, title: b.title, startTime: b.startTime, endTime: b.endTime, location: b.location || '' }
         });
       }
     }
@@ -359,7 +427,13 @@ export const getActivityConflicts = async (req, res) => {
     if (!itinerary || !canView(itinerary, req.user._id)) {
       return res.status(404).json({ success: false, message: 'Itinerary not found' });
     }
-    return res.json({ success: true, conflicts: detectScheduleConflicts(itinerary) });
+    const conflicts = detectScheduleConflicts(itinerary);
+    return res.json({
+      success: true,
+      hasConflict: conflicts.length > 0,
+      conflictCount: conflicts.length,
+      conflicts
+    });
   } catch (error) {
     console.error('Get itinerary conflicts error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itinerary conflicts' });
@@ -367,6 +441,77 @@ export const getActivityConflicts = async (req, res) => {
 };
 
 // END UC-53 Add Activity to Itinerary
+
+// START UC-58 Check Time Conflict
+/**
+ * UC-58 – Check Time Conflict (kiểm tra trùng giờ cho một khung thời gian dự kiến
+ * và gợi ý khung giờ trống tiếp theo trong ngày – BR-62).
+ *
+ * @route POST /api/itineraries/:id/conflicts/check
+ * @access Customer (owner hoặc collaborator)
+ */
+export const checkTimeConflict = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canView(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    const { date, startTime, endTime, excludeActivityId } = req.body;
+    if (endTime <= startTime) {
+      return res.status(400).json({ success: false, message: 'Giờ kết thúc phải sau giờ bắt đầu' });
+    }
+
+    const targetDateStr = new Date(date).toDateString();
+    const sameDayActivities = (itinerary.activities || []).filter((act) => {
+      if (excludeActivityId && String(act._id) === String(excludeActivityId)) {
+        return false;
+      }
+      return new Date(act.date).toDateString() === targetDateStr;
+    });
+
+    const conflictingActivities = sameDayActivities
+      .filter((act) => startTime < act.endTime && act.startTime < endTime)
+      .map((act) => {
+        const overlapStart = startTime > act.startTime ? startTime : act.startTime;
+        const overlapEnd = endTime < act.endTime ? endTime : act.endTime;
+        const overlapMinutes = Math.max(0, timeToMinutes(overlapEnd) - timeToMinutes(overlapStart));
+        return {
+          _id: act._id,
+          title: act.title,
+          location: act.location || '',
+          date: act.date,
+          startTime: act.startTime,
+          endTime: act.endTime,
+          overlapStart,
+          overlapEnd,
+          overlapMinutes
+        };
+      });
+
+    const hasConflict = conflictingActivities.length > 0;
+    const suggestedSlot = hasConflict
+      ? findSuggestedTimeSlot(sameDayActivities, startTime, endTime)
+      : null;
+
+    return res.json({
+      success: true,
+      hasConflict,
+      conflictCount: conflictingActivities.length,
+      conflictingActivities,
+      suggestedSlot
+    });
+  } catch (error) {
+    console.error('Check time conflict error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể kiểm tra trùng giờ' });
+  }
+};
+// END UC-58 Check Time Conflict
 
 /**
  * Add an activity to an owned or edit-enabled shared itinerary.

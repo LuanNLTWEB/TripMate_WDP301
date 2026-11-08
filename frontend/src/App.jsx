@@ -99,6 +99,8 @@ function App() {
               )}
             />
             <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
+            <Route path="/bookings/history" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
+            <Route path="/my-bookings/history" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -288,6 +290,7 @@ function App() {
               </Route>
             </Route>
 
+            <Route path="/provider/booking-requests" element={<RoleRedirect to="/management/booking-requests" allowedRoles={ACCESS_ROLES.PROVIDER_ONLY} />} />
             <Route path="/admin/accounts" element={<RoleRedirect to="/management/accounts" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
             <Route path="/admin/roles" element={<RoleRedirect to="/management/roles" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
             <Route path="/admin/activity-logs" element={<RoleRedirect to="/management/activity-logs" allowedRoles={ACCESS_ROLES.ADMIN_ONLY} />} />
