@@ -587,33 +587,20 @@ export const bookingApi = {
   // END UC-74 Cancel Booking
 };
 
+// START UC-66 Submit Booking Complaint
+// Ảnh được upload trước qua /complaints/evidence (FormData, field `image`),
+// sau đó gửi khiếu nại bằng JSON kèm mảng URL `evidenceImages`.
 export const complaintApi = {
-  // START UC-66 Submit Booking Complaint
   uploadEvidence: (formData) => apiRequest('/complaints/evidence', {
     method: 'POST',
     body: formData
   }),
-  // END UC-66 Submit Booking Complaint
   create: (payload) => apiRequest('/complaints', {
     method: 'POST',
     body: JSON.stringify(payload)
-  }),
-  getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
-  getManaged: (params = {}) => {
-    const query = new URLSearchParams();
-    if (params.search) query.append('search', params.search);
-    if (params.status && params.status !== 'all') query.append('status', params.status);
-    if (params.page) query.append('page', params.page);
-    if (params.limit) query.append('limit', params.limit);
-    const queryString = query.toString() ? `?${query.toString()}` : '';
-    return apiRequest(`/complaints/management${queryString}`, { method: 'GET' });
-  },
-  getById: (id) => apiRequest(`/complaints/management/${id}`, { method: 'GET' }),
-  resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload)
   })
 };
+// END UC-66 Submit Booking Complaint
 
 export const notificationApi = {
   getAll: (params = {}) => {

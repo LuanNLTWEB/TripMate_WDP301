@@ -4,19 +4,23 @@ import { useToast } from '../hooks/useToast';
 
 // UC-66 – Submit Booking Complaint
 // Danh mục loại khiếu nại. Value phải khớp enum trong
-// backend/src/models/Complaint.js (COMPLAINT_CATEGORY_VALUES).
+// backend/src/models/Complaint.js (COMPLAINT_TYPE_VALUES).
 const COMPLAINT_TYPES = Object.freeze([
-  { value: 'quality_mismatch', label: 'Chất lượng tour không giống mô tả' },
-  { value: 'incorrect_cash_charge', label: 'Provider thu sai tiền mặt' },
-  { value: 'wrongful_no_show', label: 'Bị đánh dấu No-Show oan' },
+  { value: 'tour_service', label: 'Dịch vụ tour' },
+  { value: 'tour_guide', label: 'Hướng dẫn viên' },
+  { value: 'accommodation', label: 'Lưu trú' },
+  { value: 'transportation', label: 'Di chuyển' },
+  { value: 'payment', label: 'Thanh toán' },
+  { value: 'booking_information', label: 'Thông tin đặt tour' },
   { value: 'other', label: 'Khác' }
 ]);
 
 const COMPLAINT_STATUS_LABELS = Object.freeze({
-  open: 'Chờ xử lý',
+  pending: 'Chờ xử lý',
   in_review: 'Đang xử lý',
   resolved: 'Đã giải quyết',
-  rejected: 'Bị từ chối'
+  rejected: 'Bị từ chối',
+  cancelled: 'Đã hủy'
 });
 
 const getComplaintTypeLabel = (value) =>
@@ -51,19 +55,14 @@ const complaintCode = (id) => (id ? `CP-${String(id).slice(-6).toUpperCase()}` :
 
 const getStatusLabel = (status) =>
   COMPLAINT_STATUS_LABELS[status] ||
-  ({ confirmed: 'Đã xác nhận', cancelled: 'Đã hủy' }[status]) ||
+  ({ pending: 'Chờ xử lý', confirmed: 'Đã xác nhận', cancelled: 'Đã hủy' }[status]) ||
   status ||
   '—';
 
 const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, onSubmitted }) => {
   const toast = useToast();
   const objectUrls = useRef([]);
-  // Chỉ khiếu nại được đơn đã xác nhận (backend cũng kiểm tra lại).
-  const complaintBookings = useMemo(
-    () => bookings.filter((booking) => booking.status === 'confirmed'),
-    [bookings]
-  );
-  const [bookingId, setBookingId] = useState(initialBooking?._id || complaintBookings[0]?._id || '');
+  const [bookingId, setBookingId] = useState(initialBooking?._id || bookings[0]?._id || '');
   const [complaintType, setComplaintType] = useState('');
   const [description, setDescription] = useState('');
   const [images, setImages] = useState([]);
@@ -73,8 +72,8 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
   const [createdComplaint, setCreatedComplaint] = useState(null);
 
   const selectedBooking = useMemo(
-    () => complaintBookings.find((booking) => booking._id === bookingId) || null,
-    [complaintBookings, bookingId]
+    () => bookings.find((booking) => booking._id === bookingId) || null,
+    [bookings, bookingId]
   );
 
   useEffect(() => () => {
@@ -169,7 +168,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
       setUploadStatus('Đang gửi khiếu nại...');
       const response = await complaintApi.create({
         bookingId,
-        category: complaintType,
+        complaintType,
         description: normalizedDescription,
         evidenceImages
       });
@@ -258,7 +257,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                     <div className="col-12 col-sm-6">
                       <div className="text-muted small mb-1">Đơn đặt tour</div>
                       <div className="fw-semibold text-dark">
-                        {bookingCode(createdComplaint.bookingId?._id || bookingId)}
+                        {bookingCode(createdComplaint.booking?._id || bookingId)}
                       </div>
                     </div>
                     <div className="col-12 col-sm-6">
@@ -270,7 +269,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                     <div className="col-12">
                       <div className="text-muted small mb-1">Loại khiếu nại</div>
                       <div className="fw-semibold text-dark">
-                        {getComplaintTypeLabel(createdComplaint.category)}
+                        {getComplaintTypeLabel(createdComplaint.complaintType)}
                       </div>
                     </div>
                     {createdComplaint.evidenceImages?.length > 0 && (
@@ -329,16 +328,16 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                       id="complaintBookingId"
                       className="form-select"
                       value={bookingId}
-                      disabled={isSubmitting || complaintBookings.length === 0}
+                      disabled={isSubmitting || bookings.length === 0}
                       onChange={(event) => {
                         setBookingId(event.target.value);
                         setError('');
                       }}
                     >
-                      {complaintBookings.length === 0 && (
-                        <option value="">Bạn chưa có đơn đặt tour nào đã xác nhận</option>
+                      {bookings.length === 0 && (
+                        <option value="">Bạn chưa có đơn đặt tour nào</option>
                       )}
-                      {complaintBookings.map((booking) => (
+                      {bookings.map((booking) => (
                         <option key={booking._id} value={booking._id}>
                           {bookingCode(booking._id)} · {booking.tourId?.title || 'Tour'} · Khởi hành{' '}
                           {formatDate(booking.departureDate)} · {getStatusLabel(booking.status)}
@@ -479,7 +478,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                   <button
                     type="submit"
                     className="btn btn-warning rounded-pill px-4 fw-semibold"
-                    disabled={isSubmitting || complaintBookings.length === 0}
+                    disabled={isSubmitting || bookings.length === 0}
                   >
                     {isSubmitting ? (
                       <>

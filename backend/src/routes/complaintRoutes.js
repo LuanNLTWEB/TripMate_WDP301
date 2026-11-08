@@ -1,29 +1,17 @@
 import express from 'express';
-import { upload, cloudinary } from '../config/cloudinary.js';
-import {
-  createComplaint,
-  getMyComplaints,
-  getComplaints,
-  getComplaintById,
-  resolveComplaint
-} from '../controllers/complaintController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
-import {
-  createComplaintValidation,
-  complaintListValidation,
-  resolveComplaintValidation,
-  complaintIdValidation
-} from '../middleware/validate.js';
+import { upload, cloudinary } from '../config/cloudinary.js';
+import { createComplaintValidation } from '../middleware/validate.js';
+import { createComplaint } from '../controllers/complaintController.js';
 
 const router = express.Router();
 
-// START UC-66 Submit Booking Complaint – ảnh minh chứng khiếu nại.
+// UC-66 – ảnh minh chứng khiếu nại.
 // Dùng lại đúng `upload` (CloudinaryStorage) đang dùng cho các UC khác;
 // Cloudinary đã giới hạn định dạng JPG/JPEG/PNG/WEBP, còn dung lượng 10MB
 // được kiểm tra thêm sau khi upload.
 const MAX_EVIDENCE_SIZE = 10 * 1024 * 1024; // 10 MB mỗi ảnh
-const ALLOWED_EVIDENCE_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
 
 // Bọc multer để trả lỗi upload bằng JSON tiếng Việt theo đúng convention API,
 // thay vì để lỗi rơi vào global handler và trả 500 chung chung.
@@ -44,7 +32,7 @@ const uploadEvidence = (req, res, next) => {
       });
     }
 
-    // `upload` không cấu hình limits nên ta kiểm tra sau khi upload.
+    // `upload` không cấu hình limits nên ta kiểm tra sau khi lên Cloudinary.
     // Nếu không hợp lệ thì xóa ảnh vừa tạo để tránh file mồ côi.
     const format = String(req.file.format || '').toLowerCase();
     const isOversize = Number(req.file.size) > MAX_EVIDENCE_SIZE;
@@ -81,12 +69,16 @@ router.post(
     });
   }
 );
-// END UC-66 Submit Booking Complaint
 
-router.post('/', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createComplaintValidation, createComplaint);
-router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyComplaints);
-router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintListValidation, getComplaints);
-router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintIdValidation, getComplaintById);
-router.patch('/:id/resolve', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), resolveComplaintValidation, resolveComplaint);
+// START UC-66 Submit Booking Complaint
+// Tạo khiếu nại bằng JSON (ảnh đã được upload trước qua /evidence).
+router.post(
+  '/',
+  protect,
+  authorize(...ACCESS_ROLES.CUSTOMER_ONLY),
+  createComplaintValidation,
+  createComplaint
+);
+// END UC-66 Submit Booking Complaint
 
 export default router;
