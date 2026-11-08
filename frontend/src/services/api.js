@@ -522,6 +522,26 @@ export const departureApi = {
   }),
   // END UC-40 Create Tour Departure
   listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' }),
+  exportManifest: async (id) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/departures/${id}/manifest`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!response.ok) {
+      let message = 'Không thể xuất danh sách đoàn khách.';
+      try {
+        const data = await response.json();
+        message = data.message || message;
+      } catch {
+        // Giữ thông báo mặc định khi server không trả về JSON.
+      }
+      throw new Error(message);
+    }
+
+    return response.blob();
+  },
   update: (id, payload) => apiRequest(`/departures/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)

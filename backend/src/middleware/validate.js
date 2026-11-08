@@ -873,6 +873,10 @@ export const listDeparturesValidation = [
     .isMongoId().withMessage('Mã tour không hợp lệ')
 ];
 
+export const departureIdValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ')
+];
+
 export const announcementIdValidation = [
   param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
 ];
