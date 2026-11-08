@@ -336,6 +336,12 @@ export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
 ];
 
+export const duplicateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title').optional().trim().isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+  body('startDate').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Ngày bắt đầu không hợp lệ')
+];
+
 export const shareItineraryValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   body('email').isEmail().withMessage('Email người nhận không hợp lệ').normalizeEmail(),
