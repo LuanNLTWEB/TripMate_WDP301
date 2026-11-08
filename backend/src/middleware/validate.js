@@ -118,6 +118,10 @@ export const checkInBookingValidation = [
 ];
 // END UC-85 Confirm Payment & Check-in
 
+export const completeBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -751,7 +755,7 @@ export const providerBookingListValidation = [
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
   query('status')
     .optional()
-    .isIn(['all', 'pending', 'confirmed', 'paid', 'checked_in', 'cancelled'])
+    .isIn(['all', 'pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled'])
     .withMessage('Trạng thái booking không hợp lệ'),
   query('page')
     .optional()

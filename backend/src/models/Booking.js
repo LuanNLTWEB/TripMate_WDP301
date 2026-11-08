@@ -60,7 +60,7 @@ const bookingSchema = new mongoose.Schema({
   status: {
     type: String,
     // pending -> confirmed (provider duyệt) -> paid (đã thu tiền) -> checked_in (đã điểm danh)
-    enum: ['pending', 'confirmed', 'paid', 'checked_in', 'cancelled'],
+    enum: ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled'],
     default: 'pending'
   },
   // START UC-85 Confirm Payment & Check-in
@@ -79,6 +79,10 @@ const bookingSchema = new mongoose.Schema({
     default: null
   },
   // END UC-85 Confirm Payment & Check-in
+  completedAt: {
+    type: Date,
+    default: null
+  },
   // UC-74 - lý do hủy và thời điểm hủy, giữ lại để tra cứu về sau
   cancelReason: {
     type: String,

@@ -585,6 +585,7 @@ export const bookingApi = {
   }),
   checkIn: (id) => apiRequest(`/bookings/provider/${id}/check-in`, { method: 'PATCH' }),
   // END UC-85 Confirm Payment & Check-in
+  completeBooking: (id) => apiRequest(`/bookings/provider/${id}/complete`, { method: 'PATCH' }),
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
