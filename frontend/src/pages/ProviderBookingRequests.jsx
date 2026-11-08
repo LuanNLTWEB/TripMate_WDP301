@@ -186,6 +186,9 @@ export default function ProviderBookingRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [reportFrom, setReportFrom] = useState('');
+  const [reportTo, setReportTo] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -234,6 +237,26 @@ export default function ProviderBookingRequests() {
     setCurrentPage(1);
   };
 
+  const handleExportReport = async () => {
+    setIsExporting(true);
+    setError('');
+    try {
+      const blob = await bookingApi.exportProviderReport({ from: reportFrom, to: reportTo });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'tripmate-provider-booking-report.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể xuất báo cáo đặt tour.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
@@ -269,6 +292,25 @@ export default function ProviderBookingRequests() {
           <i className="bi bi-cash-coin text-success me-2"></i>
           Giá trị booking đã xác nhận: <strong>{formatCurrency(summary.confirmedRevenue)}</strong>
         </span>
+      </div>
+
+      <div className="card border-0 shadow-sm rounded-3 mb-4">
+        <div className="card-body d-flex flex-wrap align-items-end gap-3">
+          <div>
+            <label className="form-label small fw-semibold mb-1" htmlFor="report-from">Từ ngày</label>
+            <input id="report-from" type="date" className="form-control" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
+          </div>
+          <div>
+            <label className="form-label small fw-semibold mb-1" htmlFor="report-to">Đến ngày</label>
+            <input id="report-to" type="date" className="form-control" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
+          </div>
+          <button type="button" className="btn btn-outline-primary" onClick={handleExportReport} disabled={isExporting}>
+            {isExporting
+              ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang xuất...</>
+              : <><i className="bi bi-file-earmark-spreadsheet me-2"></i>Xuất báo cáo CSV</>}
+          </button>
+          <span className="small text-muted">Lọc theo thời điểm tạo đơn đặt tour.</span>
+        </div>
       </div>
 
       {error && (

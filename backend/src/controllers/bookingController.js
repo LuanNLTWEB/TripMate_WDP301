@@ -9,6 +9,13 @@ import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const escapeCsvValue = (value) => {
+  const text = value === null || value === undefined ? '' : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const formatCsvDate = (value) => (value ? new Date(value).toISOString() : '');
+
 // Nhận thông tin đặt tour từ customer, kiểm tra tour còn chỗ, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
   const errors = validationResult(req);
@@ -237,6 +244,81 @@ export const getProviderBookingRequests = async (req, res) => {
     });
   }
 };
+
+// START UC-123 Export Provider Booking Report
+/**
+ * UC-123 - Export Provider Booking Report.
+ *
+ * Exports all bookings for the authenticated provider's tours. Date filters use
+ * booking creation time so the report describes orders received in the period.
+ */
+export const exportProviderBookingReport = async (req, res) => {
+  const { from, to } = req.query;
+  const query = {};
+
+  if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    return res.status(400).json({ success: false, message: 'Ngày bắt đầu không hợp lệ' });
+  }
+  if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ success: false, message: 'Ngày kết thúc không hợp lệ' });
+  }
+  if (from && to && from > to) {
+    return res.status(400).json({ success: false, message: 'Ngày bắt đầu phải trước ngày kết thúc' });
+  }
+
+  if (from || to) {
+    query.createdAt = {};
+    if (from) query.createdAt.$gte = new Date(`${from}T00:00:00.000Z`);
+    if (to) query.createdAt.$lt = new Date(`${to}T00:00:00.000Z`);
+    if (to) query.createdAt.$lt.setUTCDate(query.createdAt.$lt.getUTCDate() + 1);
+  }
+
+  try {
+    const providerTours = await Tour.find({ providerId: req.user._id })
+      .select('_id')
+      .lean();
+    query.tourId = { $in: providerTours.map((tour) => tour._id) };
+
+    const bookings = await Booking.find(query)
+      .populate('tourId', 'title departureLocation destinationLocation')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const header = [
+      'Booking ID', 'Tour', 'Customer', 'Phone', 'Email', 'Departure Date',
+      'Guests', 'Total Price', 'Status', 'Created At', 'Note'
+    ];
+    const rows = bookings.map((booking) => [
+      booking._id,
+      booking.tourId?.title || 'Tour không còn khả dụng',
+      booking.fullName,
+      booking.phone,
+      booking.email,
+      formatCsvDate(booking.departureDate),
+      booking.numberOfPeople,
+      booking.totalPrice,
+      booking.status,
+      formatCsvDate(booking.createdAt),
+      booking.note
+    ]);
+    const csv = `\uFEFF${[header, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(','))
+      .join('\r\n')}\r\n`;
+
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="tripmate-provider-booking-report.csv"'
+    });
+    return res.send(csv);
+  } catch (error) {
+    console.error('Error exporting provider booking report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xuất báo cáo đặt tour'
+    });
+  }
+};
+// END UC-123 Export Provider Booking Report
 
 // Lấy thông tin chi tiết một đơn đặt tour cụ thể của customer (chỉ view của chính mình)
 export const getBookingById = async (req, res) => {
