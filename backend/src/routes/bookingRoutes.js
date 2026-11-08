@@ -9,7 +9,8 @@ import {
   checkInBooking,
   completeBooking,
   exportProviderBookingReport,
-  cancelBooking
+  cancelBooking,
+  updateBookingPassengerInfo
 } from '../controllers/bookingController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -19,7 +20,8 @@ import {
   cancelBookingValidation,
   confirmBookingPaymentValidation,
   checkInBookingValidation,
-  completeBookingValidation
+  completeBookingValidation,
+  updateBookingPassengerInfoValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -43,6 +45,11 @@ router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY)
 // PATCH /api/bookings/:id/cancel - tự hủy đơn: chỉ customer, validate lý do rồi mới vào controller.
 router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), cancelBookingValidation, cancelBooking);
 // END UC-74 Cancel Booking
+
+// START UC-152 Update Booking Passenger Info
+router.patch('/:id/passenger-info', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateBookingPassengerInfoValidation, updateBookingPassengerInfo);
+// END UC-152 Update Booking Passenger Info
+
 router.get('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingById);
 
 export default router;

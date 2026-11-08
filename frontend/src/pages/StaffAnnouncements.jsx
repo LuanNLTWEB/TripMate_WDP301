@@ -23,6 +23,7 @@ const AUDIENCE_FILTER_OPTIONS = [
   ...ANNOUNCEMENT_AUDIENCE_OPTIONS.filter((option) => option.value !== 'all')
 ];
 
+// START UC-83 Search & Filter Platform Announcements
 export default function StaffAnnouncements() {
   const toast = useToast();
   const [announcements, setAnnouncements] = useState([]);
@@ -95,6 +96,7 @@ export default function StaffAnnouncements() {
     setter(selectedValue ?? event.target.value);
     setCurrentPage(1);
   };
+// END UC-83 Search & Filter Platform Announcements
 
   const openCreateModal = () => {
     setFormError('');

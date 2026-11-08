@@ -82,13 +82,29 @@ export const createAnnouncement = async (req, res) => {
   }
 };
 
+// START UC-83 Search & Filter Platform Announcements
+/**
+ * Search & Filter public announcements.
+ * Accessible by Customer, Provider, Staff (and all active users).
+ * Scopes announcements by role and applies search & audience filter.
+ * @route GET /api/announcements
+ * @access Customer, Provider, Staff
+ */
 export const getAnnouncements = async (req, res) => {
   if (sendValidationError(req, res)) return;
 
   try {
     const filter = { isActive: true };
     const audienceScope = getAudienceScope(req.user.role);
-    if (audienceScope) filter.audience = { $in: audienceScope };
+    if (audienceScope) {
+      if (req.query.audience && req.query.audience !== 'all' && audienceScope.includes(req.query.audience)) {
+        filter.audience = req.query.audience;
+      } else {
+        filter.audience = { $in: audienceScope };
+      }
+    } else if (req.query.audience && req.query.audience !== 'all') {
+      filter.audience = req.query.audience;
+    }
     appendSearch(filter, req.query.search);
 
     const result = await findPaginated(filter, req.query);
@@ -107,6 +123,11 @@ export const getAnnouncements = async (req, res) => {
   }
 };
 
+/**
+ * Staff search & filter managed announcements (including drafts).
+ * @route GET /api/announcements/management
+ * @access Staff
+ */
 export const getManagedAnnouncements = async (req, res) => {
   if (sendValidationError(req, res)) return;
 
@@ -132,6 +153,7 @@ export const getManagedAnnouncements = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải danh sách thông báo quản lý' });
   }
 };
+// END UC-83 Search & Filter Platform Announcements
 
 export const getAnnouncementById = async (req, res) => {
   if (sendValidationError(req, res)) return;

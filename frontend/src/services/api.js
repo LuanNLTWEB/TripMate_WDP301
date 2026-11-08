@@ -309,6 +309,12 @@ export const itineraryApi = {
   deleteComment: (id, commentId) => apiRequest(`/itineraries/${id}/comments/${commentId}`, {
     method: 'DELETE'
   }),
+  // START UC-147 Add Packing Item
+  addPackingItem: (id, payload) => apiRequest(`/itineraries/${id}/packing-items`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-147 Add Packing Item
   updatePackingItem: (id, itemId, payload) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
@@ -348,10 +354,12 @@ export const statsApi = {
   // END UC-70 View Provider Revenue Statistics
 };
 
+// START UC-83 Search & Filter Platform Announcements
 export const announcementApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
+    if (params.audience && params.audience !== 'all') query.append('audience', params.audience);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
@@ -368,6 +376,7 @@ export const announcementApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/announcements/management${queryString}`, { method: 'GET' });
   },
+// END UC-83 Search & Filter Platform Announcements
   create: (announcement) => apiRequest('/announcements', {
     method: 'POST',
     body: JSON.stringify(announcement)
@@ -645,8 +654,14 @@ export const bookingApi = {
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
-  })
+  }),
   // END UC-74 Cancel Booking
+  // START UC-152 Update Booking Passenger Info
+  updatePassengerInfo: (id, payload) => apiRequest(`/bookings/${id}/passenger-info`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
+  // END UC-152 Update Booking Passenger Info
 };
 
 // START UC-66 Submit Booking Complaint
