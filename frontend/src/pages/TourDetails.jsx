@@ -8,6 +8,9 @@ import EditReviewModal from '../components/EditReviewModal';
 import { tourApi, reviewApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { useTourCompare } from '../hooks/useTourCompare';
+import FloatingCompareBar from '../components/FloatingCompareBar';
+import CustomDatePicker from '../components/CustomDatePicker';
 // Management layout handles sidebar and navbar via parent route
 
 const formatPrice = (price) => new Intl.NumberFormat('vi-VN', {
@@ -21,6 +24,7 @@ const TourDetails = () => {
   const isManagementRoute = location.pathname.startsWith('/management');
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
+  const { isSelected, toggleTour } = useTourCompare();
   const [tour, setTour] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -661,21 +665,28 @@ const TourDetails = () => {
                       <i className="bi bi-calendar2-week text-primary"></i>
                       <span>Kiểm tra chỗ trống theo ngày</span>
                     </label>
-                    <div className="d-flex gap-2 mb-2">
-                      <input
-                        type="date"
-                        className="form-control form-control-sm"
-                        min={todayDateStr}
-                        value={selectedDate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSelectedDate(val);
-                          if (!val) setDateAvailability(null);
-                        }}
-                      />
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                      <div className="flex-grow-1">
+                        <CustomDatePicker
+                          id="tour-availability-date"
+                          min={todayDateStr}
+                          value={selectedDate}
+                          onChange={(e, val) => {
+                            const dateVal = val || e?.target?.value || '';
+                            setSelectedDate(dateVal);
+                            if (!dateVal) {
+                              setDateAvailability(null);
+                            } else {
+                              handleCheckAvailability(dateVal);
+                            }
+                          }}
+                          placeholder="Chọn ngày khởi hành"
+                        />
+                      </div>
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-primary flex-shrink-0 fw-semibold"
+                        className="btn btn-sm btn-outline-primary flex-shrink-0 fw-semibold px-3"
+                        style={{ height: '38px' }}
                         disabled={checkingAvailability || !selectedDate}
                         onClick={() => handleCheckAvailability(selectedDate)}
                       >
@@ -789,6 +800,21 @@ const TourDetails = () => {
                       </Link>
                     </div>
                   )}
+
+                  {/* START UC-64 Compare Tours Button */}
+                  <div className="mb-3">
+                    <button
+                      type="button"
+                      className={`btn w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm ${
+                        isSelected(tour._id) ? 'btn-primary text-white' : 'btn-outline-secondary'
+                      }`}
+                      onClick={() => toggleTour(tour._id)}
+                    >
+                      <i className="bi bi-arrow-left-right"></i>
+                      <span>{isSelected(tour._id) ? 'Đã thêm vào so sánh (Bỏ chọn)' : 'Thêm vào so sánh tour'}</span>
+                    </button>
+                  </div>
+                  {/* END UC-64 Compare Tours Button */}
 
                   {isTourOwner && (
                     <div className="mb-3">
@@ -1109,6 +1135,7 @@ const TourDetails = () => {
           {tourContent}
         </div>
       </main>
+      <FloatingCompareBar />
       <Footer />
     </>
   );

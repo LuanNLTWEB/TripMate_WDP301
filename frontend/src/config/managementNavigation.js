@@ -146,7 +146,17 @@ const managementNavigation = [
     icon: 'bi-journal-check',
     path: '/management/booking-requests',
     roles: ACCESS_ROLES.PROVIDER_ONLY
+  },
+  // START UC-70 View Provider Revenue Statistics
+  {
+    key: 'revenue-statistics',
+    label: 'Thống kê doanh thu',
+    description: 'Báo cáo doanh thu, dòng tiền và hiệu quả kinh doanh của nhà cung cấp',
+    icon: 'bi-cash-coin',
+    path: '/management/revenue-statistics',
+    roles: ACCESS_ROLES.PROVIDER_ONLY
   }
+  // END UC-70 View Provider Revenue Statistics
 ];
 
 export const canAccessManagement = (role) => MANAGEMENT_ROLES.includes(role);

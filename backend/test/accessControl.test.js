@@ -147,6 +147,7 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [reviewRoutes, 'delete', '/:id', ACCESS_ROLES.CUSTOMER_ONLY],
     [statsRoutes, 'get', '/platform', ACCESS_ROLES.STAFF_ONLY],
     [statsRoutes, 'get', '/admin', ACCESS_ROLES.ADMIN_ONLY],
+    [statsRoutes, 'get', '/provider-revenue', ACCESS_ROLES.PROVIDER_ONLY],
     [announcementRoutes, 'get', '/', ACCESS_ROLES.ANNOUNCEMENT_VIEW],
     [announcementRoutes, 'get', '/management', ACCESS_ROLES.STAFF_ONLY],
     [announcementRoutes, 'post', '/', ACCESS_ROLES.STAFF_ONLY],

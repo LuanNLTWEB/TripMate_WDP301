@@ -21,6 +21,7 @@ import Destinations from './pages/Destinations';
 import DestinationDetails from './pages/DestinationDetails';
 import StaffDestinations from './pages/StaffDestinations';
 import Tours from './pages/Tours';
+import TourCompare from './pages/TourCompare';
 import TourDetails from './pages/TourDetails';
 import StaffDestinationCategories from './pages/StaffDestinationCategories';
 import StaffTourCategories from './pages/StaffTourCategories';
@@ -37,6 +38,7 @@ import ProviderTours from './pages/ProviderTours';
 import TourSubmissions from './pages/TourSubmissions';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
+import ProviderRevenueStats from './pages/ProviderRevenueStats';
 import BookingHistory from './pages/BookingHistory';
 import MyComplaints from './pages/MyComplaints';
 import Announcements from './pages/Announcements';
@@ -73,6 +75,7 @@ function App() {
             <Route path="/destinations" element={<Destinations />} />
             <Route path="/destinations/:id" element={<DestinationDetails />} />
             <Route path="/tours" element={<Tours />} />
+            <Route path="/tours/compare" element={<TourCompare />} />
             <Route path="/tours/:id" element={<TourDetails />} />
             <Route
               path="/tours/:tourId/booking"
@@ -285,6 +288,16 @@ function App() {
                     </ProtectedRoute>
                   )}
                 />
+                {/* START UC-70 View Provider Revenue Statistics */}
+                <Route
+                  path="revenue-statistics"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                      <ProviderRevenueStats />
+                    </ProtectedRoute>
+                  )}
+                />
+                {/* END UC-70 View Provider Revenue Statistics */}
               </Route>
             </Route>
 

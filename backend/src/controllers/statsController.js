@@ -8,6 +8,7 @@ import DestinationCategory from '../models/DestinationCategory.js';
 import Tour from '../models/Tour.js';
 import Itinerary from '../models/Itinerary.js';
 import Role from '../models/Role.js';
+import Booking from '../models/Booking.js';
 
 /**
  * Build aggregate platform statistics for staff.
@@ -268,5 +269,214 @@ const getAdminDashboardStats = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải thống kê quản trị' });
   }
 };
+
+// START UC-70 View Provider Revenue Statistics
+/**
+ * Thống kê doanh thu và báo cáo hoạt động kinh doanh của nhà cung cấp.
+ * @route GET /api/stats/provider-revenue
+ * @access Provider (tourProvider)
+ */
+export const getProviderRevenueStats = async (req, res) => {
+  try {
+    const providerId = req.user._id;
+
+    // 1. Lấy tất cả tour đang hoạt động hoặc đã tạo của provider này
+    const providerTours = await Tour.find({
+      providerId,
+      isDeleted: { $ne: true }
+    }).select('_id title price duration availableSeats');
+
+    const providerTourIds = providerTours.map((t) => t._id);
+
+    if (providerTourIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          tours: [],
+          summary: {
+            totalCollectedRevenue: 0,
+            totalConfirmedRevenue: 0,
+            totalCancelledRevenue: 0,
+            totalCompletedBookings: 0,
+            totalConfirmedBookings: 0,
+            totalCancelledBookings: 0,
+            totalPassengersServed: 0
+          },
+          timeSeries: [],
+          revenueByTour: [],
+          recentTransactions: []
+        }
+      });
+    }
+
+    // 2. Xử lý bộ lọc thời gian
+    const { timeRange = '30_days', tourId, startDate, endDate } = req.query;
+    const now = new Date();
+    let dateFilter = null;
+
+    if (timeRange === '7_days') {
+      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateFilter = { $gte: past };
+    } else if (timeRange === '30_days') {
+      const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateFilter = { $gte: past };
+    } else if (timeRange === 'this_month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateFilter = { $gte: startOfMonth };
+    } else if (timeRange === 'this_year') {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      dateFilter = { $gte: startOfYear };
+    } else if (timeRange === 'custom' && (startDate || endDate)) {
+      dateFilter = {};
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.$lte = end;
+      }
+    }
+
+    // 3. Xây dựng query cho bookings
+    let targetTourIds = providerTourIds;
+    if (tourId && tourId !== 'all') {
+      const matched = providerTourIds.some((id) => String(id) === String(tourId));
+      if (!matched) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn không có quyền xem thống kê của tour này'
+        });
+      }
+      targetTourIds = [tourId];
+    }
+
+    const bookingQuery = {
+      tourId: { $in: targetTourIds }
+    };
+
+    if (dateFilter) {
+      bookingQuery.createdAt = dateFilter;
+    }
+
+    // 4. Truy vấn các đơn đặt tour phù hợp
+    const bookings = await Booking.find(bookingQuery)
+      .populate('tourId', 'title price')
+      .populate('customerId', 'username email')
+      .sort({ createdAt: -1 });
+
+    // 5. Tính toán các chỉ số KPI
+    let totalCollectedRevenue = 0;
+    let totalConfirmedRevenue = 0;
+    let totalCancelledRevenue = 0;
+    let totalCompletedBookings = 0;
+    let totalConfirmedBookings = 0;
+    let totalCancelledBookings = 0;
+    let totalPassengersServed = 0;
+
+    const tourStatsMap = new Map();
+    providerTours.forEach((t) => {
+      tourStatsMap.set(String(t._id), {
+        tourId: t._id,
+        title: t.title,
+        price: t.price,
+        collectedRevenue: 0,
+        confirmedRevenue: 0,
+        completedBookings: 0,
+        passengers: 0
+      });
+    });
+
+    const timeSeriesMap = new Map();
+
+    bookings.forEach((b) => {
+      const price = b.totalPrice || 0;
+      const people = b.numberOfPeople || 1;
+      const tid = String(b.tourId?._id || b.tourId);
+      const isCollected = ['paid', 'checked_in', 'completed'].includes(b.status) || Boolean(b.paidAt);
+      const isConfirmed = b.status === 'confirmed';
+      const isCancelled = b.status === 'cancelled';
+
+      if (isCollected) {
+        totalCollectedRevenue += price;
+        totalCompletedBookings += 1;
+        totalPassengersServed += people;
+      } else if (isConfirmed) {
+        totalConfirmedRevenue += price;
+        totalConfirmedBookings += 1;
+      } else if (isCancelled) {
+        totalCancelledRevenue += price;
+        totalCancelledBookings += 1;
+      }
+
+      if (tourStatsMap.has(tid)) {
+        const item = tourStatsMap.get(tid);
+        if (isCollected) {
+          item.collectedRevenue += price;
+          item.completedBookings += 1;
+          item.passengers += people;
+        } else if (isConfirmed) {
+          item.confirmedRevenue += price;
+        }
+      }
+
+      const dateKey = new Date(b.createdAt).toISOString().split('T')[0];
+      if (!timeSeriesMap.has(dateKey)) {
+        timeSeriesMap.set(dateKey, { date: dateKey, revenue: 0, bookings: 0 });
+      }
+      if (isCollected) {
+        const point = timeSeriesMap.get(dateKey);
+        point.revenue += price;
+        point.bookings += 1;
+      }
+    });
+
+    const timeSeries = Array.from(timeSeriesMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const revenueByTour = Array.from(tourStatsMap.values())
+      .filter((item) => item.collectedRevenue > 0 || item.confirmedRevenue > 0 || !tourId || tourId === 'all')
+      .sort((a, b) => b.collectedRevenue - a.collectedRevenue);
+
+    const recentTransactions = bookings.slice(0, 20).map((b) => ({
+      _id: b._id,
+      tourTitle: b.tourId?.title || 'Tour du lịch',
+      customerName: b.fullName || b.customerId?.username || 'Khách hàng',
+      customerEmail: b.email || b.customerId?.email || '',
+      phone: b.phone || '',
+      numberOfPeople: b.numberOfPeople,
+      totalPrice: b.totalPrice,
+      paymentMethod: b.paymentMethod || 'cash',
+      status: b.status,
+      departureDate: b.departureDate,
+      paidAt: b.paidAt,
+      createdAt: b.createdAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        tours: providerTours.map((t) => ({ _id: t._id, title: t.title })),
+        summary: {
+          totalCollectedRevenue,
+          totalConfirmedRevenue,
+          totalCancelledRevenue,
+          totalCompletedBookings,
+          totalConfirmedBookings,
+          totalCancelledBookings,
+          totalPassengersServed
+        },
+        timeSeries,
+        revenueByTour,
+        recentTransactions
+      }
+    });
+  } catch (error) {
+    console.error('Get provider revenue stats error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tải thống kê doanh thu nhà cung cấp'
+    });
+  }
+};
+// END UC-70 View Provider Revenue Statistics
 
 export { getPlatformStats, getAdminDashboardStats };

@@ -1176,3 +1176,14 @@ export const tourSubmissionIdValidation = [
   param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
 ];
 // END UC-131 Delete Tour Submission
+
+// START UC-64 Compare Tours
+export const compareToursValidation = [
+  body('tourIds')
+    .isArray({ min: 2, max: 4 })
+    .withMessage('Vui lòng chọn từ 2 đến 4 tour để so sánh'),
+  body('tourIds.*')
+    .isMongoId()
+    .withMessage('Mã tour không hợp lệ')
+];
+// END UC-64 Compare Tours

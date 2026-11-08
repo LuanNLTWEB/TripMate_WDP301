@@ -334,7 +334,18 @@ export const statsApi = {
     if (params.months) query.append('months', params.months);
     const queryString = query.toString() ? '?' + query.toString() : '';
     return apiRequest('/stats/admin' + queryString, { method: 'GET' });
+  },
+  // START UC-70 View Provider Revenue Statistics
+  getProviderRevenue: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.timeRange) query.append('timeRange', params.timeRange);
+    if (params.tourId) query.append('tourId', params.tourId);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    const queryString = query.toString() ? '?' + query.toString() : '';
+    return apiRequest('/stats/provider-revenue' + queryString, { method: 'GET' });
   }
+  // END UC-70 View Provider Revenue Statistics
 };
 
 export const announcementApi = {
@@ -437,6 +448,12 @@ export const tourApi = {
   // START UC-25 View Tour Details
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
+  // START UC-64 Compare Tours
+  compare: (tourIds) => apiRequest('/tours/compare', {
+    method: 'POST',
+    body: JSON.stringify({ tourIds })
+  }),
+  // END UC-64 Compare Tours
   checkAvailability: (id, date = '') => {
     const queryString = date ? `?date=${encodeURIComponent(date)}` : '';
     return apiRequest(`/tours/${id}/availability${queryString}`, { method: 'GET' });

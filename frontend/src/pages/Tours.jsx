@@ -6,6 +6,8 @@ import CustomSelect from '../components/CustomSelect';
 import { tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { useTourCompare } from '../hooks/useTourCompare';
+import FloatingCompareBar from '../components/FloatingCompareBar';
 import { DEPARTURE_LOCATIONS } from '../constants/provinces';
 const toursBanner = 'https://res.cloudinary.com/fkjcxcyn/image/upload/v1789823910/tripmate_assets/xsta5gss7727bf5g22wv.jpg';
 
@@ -46,6 +48,7 @@ const Tours = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
+  const { isSelected, toggleTour } = useTourCompare();
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -481,10 +484,25 @@ const Tours = () => {
                         </span>
                       </div>
 
+                      {/* Button So Sánh Tour (UC-64) - Góc trên */}
                       <button
                         type="button"
-                        className="btn btn-light rounded-circle position-absolute top-0 end-0 m-3 shadow-sm d-flex align-items-center justify-content-center"
-                        style={{ width: '38px', height: '38px', zIndex: 3 }}
+                        className={`btn rounded-circle shadow-sm d-flex align-items-center justify-content-center ${isSelected(tour._id) ? 'btn-primary text-white border-primary' : 'btn-light text-secondary border'}`}
+                        style={{ position: 'absolute', top: '12px', right: '58px', width: '38px', height: '38px', zIndex: 10 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleTour(tour._id);
+                        }}
+                        aria-label={isSelected(tour._id) ? `Bỏ so sánh tour ${tour.title}` : `Thêm so sánh tour ${tour.title}`}
+                        title={isSelected(tour._id) ? 'Bỏ so sánh' : 'Thêm vào so sánh'}
+                      >
+                        <i className={`bi bi-arrow-left-right ${isSelected(tour._id) ? 'text-white' : 'text-primary'} fs-6`}></i>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center border"
+                        style={{ position: 'absolute', top: '12px', right: '12px', width: '38px', height: '38px', zIndex: 10 }}
                         onClick={(event) => {
                           event.stopPropagation();
                           handleToggleFavorite(tour._id);
@@ -529,11 +547,30 @@ const Tours = () => {
                       >
                         {tour.description}
                       </p>
-                      <div className="pt-3 border-top border-light-subtle mt-auto d-flex justify-content-between align-items-center">
+                      <div className="pt-3 border-top border-light-subtle mt-auto d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <span className="small text-muted d-inline-flex align-items-center">
                           <i className="bi bi-check-circle-fill text-success me-2"></i>Còn {tour.availableSeats ?? 0} chỗ
                         </span>
                         <div className="d-flex align-items-center gap-2">
+                          {/* Nút so sánh trong Footer card (UC-64) */}
+                          <button
+                            type="button"
+                            className={`btn btn-sm rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 ${
+                              isSelected(tour._id)
+                                ? 'btn-primary text-white shadow-sm'
+                                : 'btn-outline-secondary'
+                            }`}
+                            style={{ fontSize: '0.78rem' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTour(tour._id);
+                            }}
+                            title={isSelected(tour._id) ? 'Bỏ so sánh tour này' : 'Thêm tour này vào danh sách so sánh'}
+                          >
+                            <i className="bi bi-arrow-left-right"></i>
+                            <span>{isSelected(tour._id) ? 'Đã chọn' : 'So sánh'}</span>
+                          </button>
+
                           {user?.role === 'tourProvider' && (tour.providerId === user._id || tour.providerId?._id === user._id) && (
                             <Link
                               to={`/provider/tours/${tour._id}/details`}
@@ -622,6 +659,7 @@ const Tours = () => {
         </div>
 
       </div>
+      <FloatingCompareBar />
       <Footer />
     </>
   );
