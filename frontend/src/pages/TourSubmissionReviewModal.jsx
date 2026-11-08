@@ -95,7 +95,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
         }}
       >
         <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-          <div className="modal-content border-0 shadow-lg rounded-4">
+          <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div className="modal-header bg-light px-4 py-3">
               <div>
                 <span className="badge text-bg-primary rounded-pill small mb-1">Tour Submission Review</span>
@@ -110,8 +110,8 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
               <button type="button" className="btn-close" onClick={onClose} disabled={isSubmitting} aria-label="Đóng"></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body px-4 py-3">
+            <form className="d-flex flex-column flex-grow-1 overflow-hidden" onSubmit={handleSubmit}>
+              <div className="modal-body px-4 py-3 pb-5 flex-grow-1 overflow-y-auto" style={{ minHeight: 0 }}>
                 {!tour ? (
                   <div className="alert alert-warning small">
                     <i className="bi bi-exclamation-triangle me-2"></i>
@@ -264,7 +264,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
                 )}
               </div>
 
-              <div className="modal-footer bg-light px-4 py-3">
+              <div className="modal-footer bg-light px-4 py-3 flex-shrink-0">
                 <button type="button" className="btn btn-outline-secondary rounded-pill px-4" onClick={onClose} disabled={isSubmitting}>
                   Đóng
                 </button>

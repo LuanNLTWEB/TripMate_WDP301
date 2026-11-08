@@ -10,6 +10,7 @@ import TourCategory from '../models/TourCategory.js';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Departure from '../models/Departure.js';
+import TourSubmission from '../models/TourSubmission.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -397,7 +398,11 @@ export const getManagedTours = async (req, res) => {
     } else if (status === 'active') {
       filters.push({ status: 'active' });
     } else if (status === 'pending') {
-      filters.push({ status: 'pending' });
+      const pendingSubmissionTourIds = await TourSubmission.distinct('tourId', {
+        status: 'pending',
+        isDeleted: { $ne: true }
+      });
+      filters.push({ _id: { $in: pendingSubmissionTourIds } });
     } else if (status === 'needs_revision') {
       filters.push({ status: 'needs_revision' });
     } else if (status === 'rejected') {
@@ -520,6 +525,21 @@ export const updateTourStatus = async (req, res) => {
     }
 
     const previousStatus = tour.status;
+    if (status === 'active' && previousStatus === 'pending') {
+      const pendingSubmission = await TourSubmission.exists({
+        tourId: tour._id,
+        status: 'pending',
+        isDeleted: { $ne: true }
+      });
+
+      if (!pendingSubmission) {
+        return res.status(409).json({
+          success: false,
+          message: 'Tour này chưa có bài gửi duyệt đang chờ xử lý. Hãy gửi bài duyệt tour trước.'
+        });
+      }
+    }
+
     tour.status = status;
     if (status === 'suspended') {
       tour.suspensionReason = reason.trim();

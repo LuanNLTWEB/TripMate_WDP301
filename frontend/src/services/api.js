@@ -551,6 +551,31 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
+  // START UC-123 Export Provider Booking Report
+  exportProviderReport: async ({ from, to } = {}) => {
+    const query = new URLSearchParams();
+    if (from) query.append('from', from);
+    if (to) query.append('to', to);
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/bookings/provider/report?${query.toString()}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!response.ok) {
+      let message = 'Không thể xuất báo cáo đặt tour.';
+      try {
+        const data = await response.json();
+        message = data.message || message;
+      } catch {
+        // Keep the user-facing fallback when the server does not return JSON.
+      }
+      throw new Error(message);
+    }
+
+    return response.blob();
+  },
+  // END UC-123 Export Provider Booking Report
   getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' }),
   // START UC-74 Cancel Booking
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
