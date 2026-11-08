@@ -50,11 +50,40 @@ const notificationSchema = new mongoose.Schema({
   status: {
     type: String,
     default: 'sent'
+  },
+  targetType: {
+    type: String,
+    enum: ['all', 'customer', 'tourProvider', 'staff', 'specific_user'],
+    default: 'all'
+  },
+  targetEmail: {
+    type: String,
+    trim: true
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    index: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, { timestamps: true });
 
 notificationSchema.index({ recipient: 1, notificationType: 1, status: 1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
+notificationSchema.index({ notificationType: 1, createdAt: -1 });
+notificationSchema.index({ isDeleted: 1, createdAt: -1 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
 

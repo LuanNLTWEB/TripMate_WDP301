@@ -1,12 +1,18 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { notificationApi } from '../services/api';
-import CreateNotificationModal from '../components/CreateNotificationModal';
+import {
+  formatNotificationDateTime,
+  getInboxTypeFilterOptions,
+  getNotificationTypeMeta
+} from '../utils/notificationFormatters';
 
 export default function Notifications() {
   const { user } = useAuth();
+  const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,71 +22,72 @@ export default function Notifications() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const fetchNotifications = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await notificationApi.getAll({
-        page: currentPage,
-        limit: 10,
-        status: statusFilter,
-        type: typeFilter
-      });
-      setNotifications(response.notifications || []);
-      setTotal(response.total || 0);
-      setTotalPages(response.totalPages || 1);
-      setUnreadCount(response.unreadCount || 0);
-    } catch (err) {
-      setError(err.message || 'Không thể tải danh sách thông báo');
-      setNotifications([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, statusFilter, typeFilter]);
+  // Read action states
+  const [actionLoadingId, setActionLoadingId] = useState('');
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+
+  const typeFilterOptions = getInboxTypeFilterOptions(user?.role);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    let active = true;
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
+    const loadNotifications = async () => {
+      setIsLoading(true);
+      setError('');
+      try {
+        const response = await notificationApi.getAll({
+          page: currentPage,
+          limit: 10,
+          status: statusFilter,
+          type: typeFilter
+        });
+        if (!active) return;
+        setNotifications(response.notifications || []);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
+        setUnreadCount(response.unreadCount || 0);
+      } catch (err) {
+        if (!active) return;
+        setError(err.message || 'Không thể tải danh sách thông báo');
+        setNotifications([]);
+        setTotal(0);
+        setTotalPages(1);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'itinerary_invite':
-        return <i className="bi bi-envelope-paper-fill fs-5 text-info"></i>;
-      case 'itinerary_leave':
-        return <i className="bi bi-box-arrow-right fs-5 text-warning"></i>;
-      case 'itinerary_transfer':
-        return <i className="bi bi-arrow-left-right fs-5 text-success"></i>;
-      case 'system':
-      default:
-        return <i className="bi bi-bell-fill fs-5 text-primary"></i>;
+    loadNotifications();
+    return () => {
+      active = false;
+    };
+  }, [currentPage, statusFilter, typeFilter, reloadKey]);
+
+  const handleMarkAsRead = async (id) => {
+    setActionLoadingId(id);
+    try {
+      const response = await notificationApi.markAsRead(id);
+      toast.success(response.message || 'Đã đánh dấu thông báo là đã đọc');
+      setReloadKey((value) => value + 1);
+    } catch (err) {
+      toast.error(err.message || 'Không thể đánh dấu thông báo là đã đọc');
+    } finally {
+      setActionLoadingId('');
     }
   };
 
-  const getTypeBadge = (type) => {
-    switch (type) {
-      case 'itinerary_invite':
-        return <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">Lời mời lịch trình</span>;
-      case 'itinerary_leave':
-        return <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">Cộng tác</span>;
-      case 'itinerary_transfer':
-        return <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Chuyển quyền</span>;
-      case 'system':
-      default:
-        return <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Hệ thống</span>;
+  const handleMarkAllAsRead = async () => {
+    setIsMarkingAll(true);
+    try {
+      const response = await notificationApi.markAllAsRead();
+      toast.success(response.message || 'Đã đánh dấu tất cả thông báo là đã đọc');
+      setReloadKey((value) => value + 1);
+    } catch (err) {
+      toast.error(err.message || 'Không thể đánh dấu tất cả thông báo là đã đọc');
+    } finally {
+      setIsMarkingAll(false);
     }
   };
 
@@ -92,29 +99,30 @@ export default function Notifications() {
           {/* Header */}
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-              <div className="d-flex align-items-center gap-2 mb-1">
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
                 <h1 className="h3 fw-bold mb-0">Hộp thư thông báo</h1>
                 {unreadCount > 0 && (
-                  <span className="badge bg-danger rounded-pill px-2 py-1">
-                    {unreadCount} chưa đọc
-                  </span>
+                  <>
+                    <span className="badge bg-danger rounded-pill px-2 py-1">
+                      {unreadCount} chưa đọc
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 ms-2"
+                      onClick={handleMarkAllAsRead}
+                      disabled={isMarkingAll}
+                      title="Đánh dấu tất cả thông báo là đã đọc"
+                    >
+                      <i className="bi bi-check2-all"></i>
+                      <span>Đánh dấu tất cả đã đọc</span>
+                    </button>
+                  </>
                 )}
               </div>
               <p className="text-muted small mb-0">
                 Xem toàn bộ thông báo hệ thống và tương tác gửi tới tài khoản của bạn
               </p>
             </div>
-
-            {user?.role === 'staff' && (
-              <button
-                type="button"
-                className="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start align-self-md-auto"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                <i className="bi bi-plus-lg"></i>
-                <span>Tạo thông báo mới</span>
-              </button>
-            )}
           </div>
 
           {/* Filter Bar */}
@@ -156,9 +164,11 @@ export default function Notifications() {
                       value={typeFilter}
                       onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
                     >
-                      <option value="all">Tất cả loại thông báo</option>
-                      <option value="system">Thông báo hệ thống</option>
-                      <option value="itinerary_invite">Lời mời lịch trình</option>
+                      {typeFilterOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -198,71 +208,94 @@ export default function Notifications() {
             </div>
           ) : (
             <div className="d-flex flex-column gap-3 mb-4">
-              {notifications.map((item) => (
-                <div
-                  key={item._id}
-                  className={`card shadow-sm border-0 rounded-4 transition-all ${
-                    !item.isRead ? 'border-start border-4 border-primary' : ''
-                  }`}
-                  style={{
-                    backgroundColor: !item.isRead ? '#f8faff' : '#ffffff'
-                  }}
-                >
-                  <div className="card-body p-3 p-md-4">
-                    <div className="d-flex align-items-start gap-3">
-                      <div className="p-2 bg-white shadow-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px' }}>
-                        {getNotificationIcon(item.notificationType)}
-                      </div>
-
-                      <div className="flex-grow-1">
-                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                          <h6 className={`mb-0 ${!item.isRead ? 'fw-bold text-dark' : 'fw-semibold text-secondary'}`}>
-                            {item.title}
-                          </h6>
-                          <div className="d-flex align-items-center gap-2">
-                            {getTypeBadge(item.notificationType)}
-                            {!item.isRead && (
-                              <span className="badge bg-primary rounded-pill small" style={{ fontSize: '10px' }}>
-                                Mới
-                              </span>
-                            )}
-                          </div>
+              {notifications.map((item) => {
+                const typeMeta = getNotificationTypeMeta(item.notificationType);
+                return (
+                  <div
+                    key={item._id}
+                    className={`card shadow-sm border-0 rounded-4 transition-all ${
+                      !item.isRead ? 'border-start border-4 border-primary' : ''
+                    }`}
+                    style={{
+                      backgroundColor: !item.isRead ? '#f8faff' : '#ffffff'
+                    }}
+                  >
+                    <div className="card-body p-3 p-md-4">
+                      <div className="d-flex align-items-start gap-3">
+                        <div className="p-2 bg-white shadow-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px' }}>
+                          <i className={`bi ${typeMeta.iconClass} fs-5`}></i>
                         </div>
 
-                        <p className="text-secondary small mb-2" style={{ whiteSpace: 'pre-wrap' }}>
-                          {item.message}
-                        </p>
+                        <div className="flex-grow-1">
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                            <h6 className={`mb-0 ${!item.isRead ? 'fw-bold text-dark' : 'fw-semibold text-secondary'}`}>
+                              {item.title}
+                            </h6>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className={`badge ${typeMeta.badgeClass}`}>
+                                {typeMeta.label}
+                              </span>
+                              {!item.isRead && (
+                                <span className="badge bg-primary rounded-pill small" style={{ fontSize: '10px' }}>
+                                  Mới
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-                        <div className="d-flex flex-wrap align-items-center justify-content-between text-muted small pt-2 border-top border-light">
-                          <span>
-                            {item.sender?.username ? (
-                              <>
-                                <i className="bi bi-person-fill me-1"></i>
-                                Gửi bởi: <strong>{item.sender.username}</strong>
-                                {item.sender.role === 'staff' && ' (Nhân viên TripMate)'}
-                              </>
-                            ) : item.invitedBy?.username ? (
-                              <>
-                                <i className="bi bi-person-fill me-1"></i>
-                                Lời mời từ: <strong>{item.invitedBy.username}</strong>
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-shield-check me-1"></i>
-                                Hệ thống TripMate
-                              </>
+                          <p className="text-secondary small mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+                            {item.message}
+                          </p>
+
+                          <div className="d-flex flex-wrap align-items-center justify-content-between text-muted small pt-2 border-top border-light gap-2">
+                            <div className="d-flex flex-wrap align-items-center gap-3">
+                              <span>
+                                {item.sender?.username ? (
+                                  <>
+                                    <i className="bi bi-person-fill me-1"></i>
+                                    Gửi bởi: <strong>{item.sender.username}</strong>
+                                    {item.sender.role === 'staff' && ' (Nhân viên TripMate)'}
+                                  </>
+                                ) : item.invitedBy?.username ? (
+                                  <>
+                                    <i className="bi bi-person-fill me-1"></i>
+                                    Lời mời từ: <strong>{item.invitedBy.username}</strong>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-shield-check me-1"></i>
+                                    Hệ thống TripMate
+                                  </>
+                                )}
+                              </span>
+                              <span>
+                                <i className="bi bi-clock me-1"></i>
+                                {formatNotificationDateTime(item.createdAt)}
+                              </span>
+                            </div>
+
+                            {!item.isRead && (
+                              <div className="d-flex align-items-center gap-2 ms-auto">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: '0.78rem', height: '26px' }}
+                                  onClick={() => handleMarkAsRead(item._id)}
+                                  disabled={actionLoadingId === item._id || isMarkingAll}
+                                  title="Đánh dấu đã đọc"
+                                >
+                                  <i className="bi bi-check2"></i>
+                                  <span>Đánh dấu đã đọc</span>
+                                </button>
+                              </div>
                             )}
-                          </span>
-                          <span>
-                            <i className="bi bi-clock me-1"></i>
-                            {formatDate(item.createdAt)}
-                          </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -298,15 +331,6 @@ export default function Notifications() {
         </div>
       </main>
       <Footer />
-
-      {/* Staff Create Notification Modal */}
-      {user?.role === 'staff' && (
-        <CreateNotificationModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={() => fetchNotifications()}
-        />
-      )}
     </>
   );
 }
