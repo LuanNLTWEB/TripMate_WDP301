@@ -54,7 +54,7 @@ function Itinerary() {
   const [pendingLeaveItinerary, setPendingLeaveItinerary] = useState(false);
   const [pendingTransferOwnerId, setPendingTransferOwnerId] = useState(null);
   const [leavingItinerary, setLeavingItinerary] = useState(false);
-  const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
+  const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '', startDate: '', isShared: false });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
   const [reorderMode, setReorderMode] = useState(false);
@@ -477,14 +477,15 @@ function Itinerary() {
     setError('');
     try {
       const response = await itineraryApi.duplicate(duplicateModal.itinerary._id, {
-        title: duplicateModal.title.trim() || undefined
+        title: duplicateModal.title.trim() || undefined,
+        startDate: duplicateModal.startDate || undefined
       });
       const newItinerary = response.itinerary;
       setItineraries((current) => [newItinerary, ...current]);
       setSelected(newItinerary);
       setActiveTab('mine');
-      setDuplicateModal({ open: false, itinerary: null, title: '' });
-      toast.success(response.message || 'Đã nhân bản lịch trình thành công.');
+      setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false });
+      toast.success(response.message || (duplicateModal.isShared ? 'Đã lưu lịch trình vào tài khoản thành công.' : 'Đã nhân bản lịch trình thành công.'));
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể sao chép lịch trình.');
     } finally {
@@ -811,17 +812,19 @@ function Itinerary() {
                             <button
                               type="button"
                               className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
-                              title="Nhân bản lịch trình"
+                              title={activeTab === 'shared' ? 'Lưu lịch trình này về tài khoản của tôi' : 'Nhân bản lịch trình'}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setDuplicateModal({
                                   open: true,
                                   itinerary,
-                                  title: `${itinerary.title} (Bản sao)`
+                                  title: `${itinerary.title} (Bản sao)`,
+                                  startDate: itinerary.startDate ? new Date(itinerary.startDate).toISOString().slice(0, 10) : '',
+                                  isShared: activeTab === 'shared'
                                 });
                               }}
                             >
-                              <i className="bi bi-copy"></i>
+                              <i className={`bi ${activeTab === 'shared' ? 'bi-bookmark-plus' : 'bi-copy'}`}></i>
                             </button>
                             {activeTab === 'mine' && (
                               <button
@@ -925,19 +928,39 @@ function Itinerary() {
                                   </>
                                 )}
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center"
-                                onClick={() => setDuplicateModal({
-                                  open: true,
-                                  itinerary: selected,
-                                  title: `${selected.title} (Bản sao)`
-                                })}
-                                title="Tạo bản sao lịch trình"
-                              >
-                                <i className="bi bi-copy me-1"></i>
-                                <span>Nhân bản</span>
-                              </button>
+                              {!isOwner ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm text-nowrap d-inline-flex align-items-center shadow-sm"
+                                  onClick={() => setDuplicateModal({
+                                    open: true,
+                                    itinerary: selected,
+                                    title: `${selected.title} (Bản sao)`,
+                                    startDate: selected.startDate ? new Date(selected.startDate).toISOString().slice(0, 10) : '',
+                                    isShared: true
+                                  })}
+                                  title="Lưu lịch trình này về tài khoản của bạn để toàn quyền chỉnh sửa"
+                                >
+                                  <i className="bi bi-bookmark-plus me-1"></i>
+                                  <span>Lưu vào tài khoản</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center"
+                                  onClick={() => setDuplicateModal({
+                                    open: true,
+                                    itinerary: selected,
+                                    title: `${selected.title} (Bản sao)`,
+                                    startDate: selected.startDate ? new Date(selected.startDate).toISOString().slice(0, 10) : '',
+                                    isShared: false
+                                  })}
+                                  title="Tạo bản sao lịch trình"
+                                >
+                                  <i className="bi bi-copy me-1"></i>
+                                  <span>Nhân bản</span>
+                                </button>
+                              )}
                               {isOwner && (
                                 <button
                                   type="button"
@@ -1955,35 +1978,69 @@ function Itinerary() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bold">Nhân bản lịch trình</h5>
+                  <h5 className="modal-title fw-bold d-flex align-items-center">
+                    <i className={`bi ${duplicateModal.isShared ? 'bi-bookmark-plus text-primary' : 'bi-copy text-primary'} me-2`}></i>
+                    {duplicateModal.isShared ? 'Lưu lịch trình vào tài khoản' : 'Nhân bản lịch trình'}
+                  </h5>
                   <button
                     type="button"
                     className="btn-close"
-                    onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '' })}
+                    onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false })}
                     disabled={saving}
                     aria-label="Đóng"
                   ></button>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); duplicateItinerary(); }}>
                   <div className="modal-body">
-                    <p className="text-muted small mb-3">
-                      Tạo bản sao mới từ lịch trình <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao sẽ thuộc sở hữu của bạn và có thể tùy ý chỉnh sửa.
-                    </p>
-                    <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-title">Tên lịch trình mới</label>
-                    <input
-                      id="duplicate-itinerary-title"
-                      className="form-control"
-                      value={duplicateModal.title}
-                      onChange={(e) => setDuplicateModal((prev) => ({ ...prev, title: e.target.value }))}
-                      maxLength={120}
-                      required
-                    />
+                    <div className="alert alert-info py-2 px-3 small mb-3 d-flex align-items-start gap-2">
+                      <i className="bi bi-info-circle-fill text-info mt-1"></i>
+                      <div>
+                        {duplicateModal.isShared ? (
+                          <>
+                            Lưu bản sao từ lịch trình chia sẻ <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao này sẽ thuộc toàn quyền sở hữu của bạn, tách biệt độc lập và không chứa danh sách cộng tác viên hay bình luận cũ (theo chuẩn <strong>BR-73</strong>).
+                          </>
+                        ) : (
+                          <>
+                            Tạo bản sao mới từ lịch trình <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao sẽ thuộc sở hữu của bạn và có thể tùy ý chỉnh sửa.
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-title">Tên lịch trình mới</label>
+                      <input
+                        id="duplicate-itinerary-title"
+                        className="form-control"
+                        value={duplicateModal.title}
+                        onChange={(e) => setDuplicateModal((prev) => ({ ...prev, title: e.target.value }))}
+                        maxLength={120}
+                        placeholder="Nhập tên lịch trình..."
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-start-date">
+                        Ngày bắt đầu mới <span className="text-muted fw-normal small">(Tùy chọn)</span>
+                      </label>
+                      <input
+                        id="duplicate-itinerary-start-date"
+                        type="date"
+                        className="form-control"
+                        value={duplicateModal.startDate}
+                        onChange={(e) => setDuplicateModal((prev) => ({ ...prev, startDate: e.target.value }))}
+                      />
+                      <div className="form-text small">
+                        Nếu bạn chọn ngày bắt đầu mới, toàn bộ các hoạt động theo ngày của lịch trình sẽ tự động được tịnh tiến tương ứng.
+                      </div>
+                    </div>
                   </div>
                   <div className="modal-footer">
                     <button
                       type="button"
                       className="btn btn-outline-secondary"
-                      onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '' })}
+                      onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false })}
                       disabled={saving}
                     >
                       Hủy
@@ -1992,12 +2049,12 @@ function Itinerary() {
                       {saving ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                          Đang nhân bản...
+                          Đang lưu...
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-copy me-1"></i>
-                          Xác nhận nhân bản
+                          <i className={`bi ${duplicateModal.isShared ? 'bi-bookmark-check' : 'bi-copy'} me-1`}></i>
+                          {duplicateModal.isShared ? 'Lưu vào tài khoản của tôi' : 'Xác nhận nhân bản'}
                         </>
                       )}
                     </button>

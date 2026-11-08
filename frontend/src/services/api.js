@@ -316,6 +316,12 @@ export const itineraryApi = {
   removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'DELETE'
   }),
+  // START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
+  duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }),
+  // END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
