@@ -1,5 +1,14 @@
 import mongoose from 'mongoose';
 
+// Danh mục loại khiếu nại dùng chung cho schema và validation.
+// Value giữ cố định (snake_case) để frontend/backend không lệch nhau.
+export const COMPLAINT_CATEGORY_VALUES = Object.freeze([
+  'quality_mismatch',
+  'incorrect_cash_charge',
+  'wrongful_no_show',
+  'other'
+]);
+
 const complaintSchema = new mongoose.Schema({
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +36,10 @@ const complaintSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['quality_mismatch', 'incorrect_cash_charge', 'wrongful_no_show', 'other'],
+    enum: {
+      values: COMPLAINT_CATEGORY_VALUES,
+      message: 'Loại khiếu nại không hợp lệ'
+    },
     required: true
   },
   description: {
@@ -35,6 +47,15 @@ const complaintSchema = new mongoose.Schema({
     required: true,
     trim: true,
     maxlength: 2000
+  },
+  // UC-66 – ảnh minh chứng (URL Cloudinary) đính kèm khiếu nại, tối đa 5 ảnh.
+  evidenceImages: {
+    type: [String],
+    validate: {
+      validator: (images) => Array.isArray(images) && images.length <= 5,
+      message: 'Chỉ được gửi tối đa 5 ảnh minh chứng'
+    },
+    default: []
   },
   status: {
     type: String,
@@ -63,6 +84,17 @@ const complaintSchema = new mongoose.Schema({
 
 complaintSchema.index({ customerId: 1, createdAt: -1 });
 complaintSchema.index({ status: 1, createdAt: -1 });
+
+// Chặn bấm gửi nhiều lần tạo ra hai khiếu nại đang xử lý cho cùng một booking
+// của cùng một khách hàng. Khi khiếu nại cũ đã resolved/rejected, khách vẫn có
+// thể gửi khiếu nại mới.
+complaintSchema.index(
+  { bookingId: 1, customerId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ['open', 'in_review'] } }
+  }
+);
 
 const Complaint = mongoose.model('Complaint', complaintSchema);
 

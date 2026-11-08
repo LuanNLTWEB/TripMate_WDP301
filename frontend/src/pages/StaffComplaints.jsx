@@ -97,6 +97,18 @@ export default function StaffComplaints() {
                   <p><strong>Tour:</strong> {selected.tourId?.title}</p>
                   <p><strong>Loại:</strong> {CATEGORY_LABELS[selected.category]}</p>
                   <div className="border rounded p-3 mb-3">{selected.description}</div>
+                  {selected.evidenceImages?.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-muted small mb-1">Ảnh minh chứng ({selected.evidenceImages.length})</div>
+                      <div className="d-flex flex-wrap gap-2">
+                        {selected.evidenceImages.map((url, index) => (
+                          <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="d-inline-block rounded-3 overflow-hidden border" style={{ width: 96, height: 72 }}>
+                            <img src={url} alt={`Minh chứng ${index + 1}`} className="w-100 h-100 object-fit-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {['open', 'in_review'].includes(selected.status) && <textarea className="form-control" rows="4" minLength="5" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập kết quả xử lý..."></textarea>}
                   {selected.resolutionNote && <div className="alert alert-info">{selected.resolutionNote}</div>}
                 </div>

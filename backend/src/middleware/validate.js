@@ -81,7 +81,9 @@ export const registerValidation = [
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
 ];
 
-// Complaint workflows: customer submits a booking-linked complaint; staff resolves it.
+// START UC-66 Submit Booking Complaint
+// Customer submits a booking-linked complaint with optional evidence images;
+// staff resolves it (UC-81/153/154).
 export const createComplaintValidation = [
   body('bookingId').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
   body('category')
@@ -89,9 +91,17 @@ export const createComplaintValidation = [
     .withMessage('Loại khiếu nại không hợp lệ'),
   body('description')
     .trim()
-    .isLength({ min: 10, max: 2000 })
-    .withMessage('Nội dung khiếu nại phải từ 10 đến 2000 ký tự')
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Nội dung khiếu nại phải từ 20 đến 2000 ký tự'),
+  body('evidenceImages')
+    .optional()
+    .isArray({ max: 5 }).withMessage('Chỉ được gửi tối đa 5 ảnh minh chứng'),
+  body('evidenceImages.*')
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Mỗi ảnh minh chứng phải là một URL hợp lệ')
 ];
+// END UC-66 Submit Booking Complaint
 
 export const complaintListValidation = [
   query('status')

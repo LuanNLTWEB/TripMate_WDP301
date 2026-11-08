@@ -588,6 +588,12 @@ export const bookingApi = {
 };
 
 export const complaintApi = {
+  // START UC-66 Submit Booking Complaint
+  uploadEvidence: (formData) => apiRequest('/complaints/evidence', {
+    method: 'POST',
+    body: formData
+  }),
+  // END UC-66 Submit Booking Complaint
   create: (payload) => apiRequest('/complaints', {
     method: 'POST',
     body: JSON.stringify(payload)

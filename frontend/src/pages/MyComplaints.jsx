@@ -92,7 +92,8 @@ export default function MyComplaints() {
                 </div>
                 <div className="col-12">
                   <label className="form-label">Nội dung</label>
-                  <textarea className="form-control" rows="4" minLength="10" maxLength="2000" required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}></textarea>
+                  <textarea className="form-control" rows="4" minLength="20" maxLength="2000" required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}></textarea>
+                  <div className="form-text">Tối thiểu 20 ký tự. Muốn đính kèm ảnh minh chứng, hãy bấm “Gửi khiếu nại” ngay tại lịch sử đặt tour.</div>
                 </div>
               </div>
               <button className="btn btn-primary mt-3" disabled={submitting}>{submitting ? 'Đang gửi...' : 'Gửi khiếu nại'}</button>
@@ -111,6 +112,15 @@ export default function MyComplaints() {
                       <span className="badge text-bg-secondary">{STATUS_LABELS[complaint.status]}</span>
                     </div>
                     <div className="small text-muted mt-1">{complaint.description}</div>
+                    {complaint.evidenceImages?.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        {complaint.evidenceImages.map((url, index) => (
+                          <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="d-inline-block rounded-3 overflow-hidden border" style={{ width: 72, height: 56 }}>
+                            <img src={url} alt={`Minh chứng ${index + 1}`} className="w-100 h-100 object-fit-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     {complaint.resolutionNote && <div className="alert alert-info py-2 mt-2 mb-0 small">{complaint.resolutionNote}</div>}
                   </div>
                 ))}

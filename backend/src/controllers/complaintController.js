@@ -50,13 +50,26 @@ export const createComplaint = async (req, res) => {
       });
     }
 
+    const tour = booking.tourId;
+    if (!tour?._id || !tour.providerId) {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể gửi khiếu nại vì đơn đặt tour thiếu thông tin nhà cung cấp'
+      });
+    }
+
+    // UC-66 – ảnh minh chứng đã được upload trước qua POST /evidence,
+    // controller chỉ nhận mảng URL trong body (validate đã kiểm tra URL).
+    const evidenceImages = Array.isArray(req.body.evidenceImages) ? req.body.evidenceImages : [];
+
     const complaint = await Complaint.create({
       customerId: req.user._id,
       bookingId: booking._id,
-      tourId: booking.tourId._id,
-      providerId: booking.tourId.providerId,
+      tourId: tour._id,
+      providerId: tour.providerId,
       category: req.body.category,
-      description: req.body.description.trim()
+      description: req.body.description.trim(),
+      evidenceImages
     });
     await complaint.populate(complaintPopulate);
 
@@ -67,6 +80,13 @@ export const createComplaint = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating complaint:', error);
+    // Unique partial index bắt được trường hợp hai request đồng thời.
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã có khiếu nại đang được xử lý'
+      });
+    }
     return res.status(500).json({ success: false, message: 'Không thể gửi khiếu nại' });
   }
 };
