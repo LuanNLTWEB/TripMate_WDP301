@@ -87,7 +87,7 @@ export const getMyBookings = async (req, res) => {
     const { status } = req.query;
     const filter = { customerId: req.user._id };
 
-    if (status && ['pending', 'confirmed', 'paid', 'checked_in', 'cancelled'].includes(status)) {
+    if (status && ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled'].includes(status)) {
       filter.status = status;
     }
 
@@ -156,6 +156,7 @@ export const getProviderBookingRequests = async (req, res) => {
           confirmed: 0,
           paid: 0,
           checked_in: 0,
+          completed: 0,
           cancelled: 0,
           confirmedRevenue: 0,
           collectedRevenue: 0,
@@ -221,7 +222,7 @@ export const getProviderBookingRequests = async (req, res) => {
         result.confirmedRevenue = item.totalAmount;
       }
       // Tiền đã thực thu nằm ở các đơn đã thanh toán / đã điểm danh.
-      if (item._id === 'paid' || item._id === 'checked_in') {
+      if (item._id === 'paid' || item._id === 'checked_in' || item._id === 'completed') {
         result.collectedRevenue += item.totalAmount;
       }
       return result;
@@ -231,6 +232,7 @@ export const getProviderBookingRequests = async (req, res) => {
       confirmed: 0,
       paid: 0,
       checked_in: 0,
+      completed: 0,
       cancelled: 0,
       confirmedRevenue: 0,
       collectedRevenue: 0,
@@ -490,6 +492,61 @@ export const checkInBooking = async (req, res) => {
   }
 };
 // END UC-85 Confirm Payment & Check-in
+
+export const completeBooking = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã đơn đặt tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { booking, statusCode, message } = await loadProviderBooking(req.params.id, req.user._id);
+    if (!booking) {
+      return res.status(statusCode).json({ success: false, message });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được đánh dấu hoàn thành trước đó'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể đánh dấu hoàn thành'
+      });
+    }
+
+    if (!['paid', 'checked_in'].includes(booking.status)) {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đã thanh toán hoặc đã điểm danh mới được đánh dấu hoàn thành'
+      });
+    }
+
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+
+    return respondWithBooking(
+      res,
+      booking,
+      'Đã đánh dấu hoàn thành chuyến đi thành công'
+    );
+  } catch (error) {
+    console.error('Error completing booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể đánh dấu hoàn thành chuyến đi'
+    });
+  }
+};
 
 // START UC-123 Export Provider Booking Report
 /**

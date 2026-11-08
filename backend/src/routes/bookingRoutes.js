@@ -7,6 +7,7 @@ import {
   confirmProviderBooking,
   confirmBookingPayment,
   checkInBooking,
+  completeBooking,
   exportProviderBookingReport,
   cancelBooking
 } from '../controllers/bookingController.js';
@@ -17,7 +18,8 @@ import {
   providerBookingListValidation,
   cancelBookingValidation,
   confirmBookingPaymentValidation,
-  checkInBookingValidation
+  checkInBookingValidation,
+  completeBookingValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -33,6 +35,7 @@ router.patch('/provider/:id/payment', protect, authorize(...ACCESS_ROLES.PROVIDE
 // PATCH /api/bookings/provider/:id/check-in - provider điểm danh khách lên xe (paid -> checked_in)
 router.patch('/provider/:id/check-in', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), checkInBookingValidation, checkInBooking);
 // END UC-85 Confirm Payment & Check-in
+router.patch('/provider/:id/complete', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), completeBookingValidation, completeBooking);
 // START UC-123 Export Provider Booking Report
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report

@@ -5,7 +5,8 @@ import Tour from '../src/models/Tour.js';
 import {
   getProviderBookingRequests,
   confirmBookingPayment,
-  checkInBooking
+  checkInBooking,
+  completeBooking
 } from '../src/controllers/bookingController.js';
 
 const originalTourFind = Tour.find;
@@ -88,6 +89,7 @@ test('returns an empty result without querying bookings when provider owns no to
     confirmed: 0,
     paid: 0,
     checked_in: 0,
+    completed: 0,
     cancelled: 0,
     confirmedRevenue: 0,
     collectedRevenue: 0,
@@ -146,6 +148,7 @@ test('scopes results and summary to tours owned by the authenticated provider', 
     confirmed: 2,
     paid: 1,
     checked_in: 0,
+    completed: 0,
     cancelled: 0,
     confirmedRevenue: 10000000,
     collectedRevenue: 6000000,
@@ -359,3 +362,77 @@ test('rejects checking in the same booking twice', async () => {
   assert.equal(doc.status, 'checked_in');
 });
 // END UC-85 Confirm Payment & Check-in
+
+test('provider marks paid booking as completed', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'paid',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await completeBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(doc.status, 'completed');
+  assert.ok(doc.completedAt instanceof Date);
+});
+
+test('provider marks checked_in booking as completed', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'checked_in',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await completeBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(doc.status, 'completed');
+  assert.ok(doc.completedAt instanceof Date);
+});
+
+test('rejects completing a booking that is not paid or checked in', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'confirmed',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await completeBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'confirmed');
+});
+
+test('rejects completing a booking that is already completed', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'completed',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await completeBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'completed');
+});

@@ -597,6 +597,7 @@ export const bookingApi = {
   }),
   checkIn: (id) => apiRequest(`/bookings/provider/${id}/check-in`, { method: 'PATCH' }),
   // END UC-85 Confirm Payment & Check-in
+  completeBooking: (id) => apiRequest(`/bookings/provider/${id}/complete`, { method: 'PATCH' }),
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
@@ -673,9 +674,31 @@ export const notificationApi = {
     const qs = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/notifications${qs}`, { method: 'GET' });
   },
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.targetType) query.append('targetType', params.targetType);
+    if (params.search) query.append('search', params.search);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/notifications/management${qs}`, { method: 'GET' });
+  },
   create: (payload) => apiRequest('/notifications', {
     method: 'POST',
     body: JSON.stringify(payload)
+  }),
+  markAsRead: (id) => apiRequest(`/notifications/${id}/read`, {
+    method: 'PATCH'
+  }),
+  markAllAsRead: () => apiRequest('/notifications/read-all', {
+    method: 'PATCH'
+  }),
+  update: (id, payload) => apiRequest(`/notifications/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  delete: (id) => apiRequest(`/notifications/${id}`, {
+    method: 'DELETE'
   })
 };
 

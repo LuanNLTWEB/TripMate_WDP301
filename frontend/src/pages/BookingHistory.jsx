@@ -63,6 +63,13 @@ const getStatusBadge = (status) => {
         className: 'bg-primary-subtle text-primary border border-primary-subtle',
         desc: 'Bạn đã được điểm danh và lên xe khởi hành.'
       };
+    case 'completed':
+      return {
+        label: 'Đã hoàn thành',
+        icon: 'bi-flag-fill',
+        className: 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        desc: 'Chuyến đi đã hoàn thành thành công.'
+      };
     case 'cancelled':
       return {
         label: 'Đã hủy',
@@ -152,7 +159,7 @@ const BookingHistory = () => {
 
   // Status counts
   const counts = useMemo(() => {
-    const res = { all: bookings.length, pending: 0, confirmed: 0, paid: 0, checked_in: 0, cancelled: 0 };
+    const res = { all: bookings.length, pending: 0, confirmed: 0, paid: 0, checked_in: 0, completed: 0, cancelled: 0 };
     bookings.forEach((b) => {
       if (res[b.status] !== undefined) res[b.status]++;
     });
@@ -433,6 +440,19 @@ const BookingHistory = () => {
                         onClick={() => setStatusFilter('checked_in')}
                       >
                         Đã điểm danh <span className="badge rounded-pill bg-primary-subtle text-primary ms-1">{counts.checked_in}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="tab-completed-bookings"
+                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                          statusFilter === 'completed'
+                            ? 'btn-secondary text-white'
+                            : 'btn-outline-secondary border-0 bg-light text-muted'
+                        }`}
+                        onClick={() => setStatusFilter('completed')}
+                      >
+                        Đã hoàn thành <span className="badge rounded-pill bg-secondary-subtle text-secondary ms-1">{counts.completed}</span>
                       </button>
 
                       <button
