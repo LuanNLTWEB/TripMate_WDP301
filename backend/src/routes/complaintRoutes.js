@@ -13,7 +13,8 @@ import {
   getMyComplaints,
   getComplaints,
   getComplaintById,
-  resolveComplaint
+  resolveComplaint,
+  cancelComplaint
 } from '../controllers/complaintController.js';
 
 const router = express.Router();
@@ -89,6 +90,7 @@ router.post('/', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createCompla
 
 // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
 router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyComplaints);
+router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), complaintIdValidation, cancelComplaint);
 router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintListValidation, getComplaints);
 router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintIdValidation, getComplaintById);
 router.patch('/:id/resolve', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), resolveComplaintValidation, resolveComplaint);

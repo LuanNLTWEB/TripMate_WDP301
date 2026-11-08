@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { complaintApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
-const STATUS_LABELS = { open: 'Mới', in_review: 'Đang xử lý', resolved: 'Đã giải quyết', rejected: 'Đã từ chối' };
+const STATUS_LABELS = { open: 'Mới', in_review: 'Đang xử lý', resolved: 'Đã giải quyết', rejected: 'Đã từ chối', cancelled: 'Đã hủy' };
 const CATEGORY_LABELS = {
   quality_mismatch: 'Chất lượng tour',
   incorrect_cash_charge: 'Thu sai tiền',

@@ -56,7 +56,7 @@ const complaintSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['open', 'in_review', 'resolved', 'rejected'],
+    enum: ['open', 'in_review', 'resolved', 'rejected', 'cancelled'],
     default: 'open',
     index: true
   },
@@ -72,6 +72,10 @@ const complaintSchema = new mongoose.Schema({
     default: null
   },
   resolvedAt: {
+    type: Date,
+    default: null
+  },
+  cancelledAt: {
     type: Date,
     default: null
   }

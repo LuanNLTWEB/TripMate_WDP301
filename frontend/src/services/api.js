@@ -605,6 +605,7 @@ export const complaintApi = {
   }),
   // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
   getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
