@@ -2,17 +2,25 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
-import { getProviderBookingRequests } from '../src/controllers/bookingController.js';
+import {
+  getProviderBookingRequests,
+  confirmBookingPayment,
+  checkInBooking
+} from '../src/controllers/bookingController.js';
 
 const originalTourFind = Tour.find;
+const originalTourFindById = Tour.findById;
 const originalBookingCount = Booking.countDocuments;
 const originalBookingFind = Booking.find;
+const originalBookingFindById = Booking.findById;
 const originalBookingAggregate = Booking.aggregate;
 
 afterEach(() => {
   Tour.find = originalTourFind;
+  Tour.findById = originalTourFindById;
   Booking.countDocuments = originalBookingCount;
   Booking.find = originalBookingFind;
+  Booking.findById = originalBookingFindById;
   Booking.aggregate = originalBookingAggregate;
 });
 
@@ -78,8 +86,11 @@ test('returns an empty result without querying bookings when provider owns no to
     total: 0,
     pending: 0,
     confirmed: 0,
+    paid: 0,
+    checked_in: 0,
     cancelled: 0,
     confirmedRevenue: 0,
+    collectedRevenue: 0,
     totalGuests: 0
   });
 });
@@ -105,7 +116,8 @@ test('scopes results and summary to tours owned by the authenticated provider', 
     aggregatePipeline = pipeline;
     return [
       { _id: 'pending', count: 1, guests: 2, totalAmount: 4000000 },
-      { _id: 'confirmed', count: 2, guests: 5, totalAmount: 10000000 }
+      { _id: 'confirmed', count: 2, guests: 5, totalAmount: 10000000 },
+      { _id: 'paid', count: 1, guests: 3, totalAmount: 6000000 }
     ];
   };
   Booking.find = (query) => {
@@ -129,12 +141,15 @@ test('scopes results and summary to tours owned by the authenticated provider', 
   assert.equal(result.statusCode, 200);
   assert.equal(result.body.total, 1);
   assert.deepEqual(result.body.summary, {
-    total: 3,
+    total: 4,
     pending: 1,
     confirmed: 2,
+    paid: 1,
+    checked_in: 0,
     cancelled: 0,
     confirmedRevenue: 10000000,
-    totalGuests: 7
+    collectedRevenue: 6000000,
+    totalGuests: 10
   });
 });
 
@@ -167,3 +182,180 @@ test('escapes search input and includes matching owned tours in the booking quer
   assert.equal(capturedQuery.$or[0].fullName.test('Đà Nẵng (3N2Đ)'), true);
   assert.equal(capturedQuery.$or[0].fullName.test('Đà Nẵng 3N2Đ'), false);
 });
+
+// START UC-85 Confirm Payment & Check-in
+
+// Booking.findById vừa dùng để lấy document (await), vừa dùng để đọc lại kèm populate (chainable).
+const mockBookingDocument = (booking) => {
+  const doc = {
+    ...booking,
+    save: async () => doc
+  };
+  // Vừa await được (thenable) vừa populate chainable như query của Mongoose.
+  const chain = {
+    then: (resolve, reject) => Promise.resolve(doc).then(resolve, reject),
+    populate: () => chain
+  };
+  Booking.findById = () => chain;
+  return doc;
+};
+
+const mockOwnedTour = (providerId = 'provider-1') => {
+  Tour.findById = async () => ({ _id: 'tour-1', providerId });
+};
+
+const providerRequest = (overrides = {}) => ({
+  params: { id: 'booking-1' },
+  user: { _id: 'provider-1' },
+  body: {},
+  ...overrides
+});
+
+test('provider confirms collected cash and the booking becomes paid', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'confirmed',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await confirmBookingPayment(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(doc.status, 'paid');
+  assert.equal(doc.paymentMethod, 'cash');
+  assert.ok(doc.paidAt instanceof Date);
+  assert.equal(result.body.paymentMethod, 'cash');
+});
+
+test('provider records a direct bank transfer when requested', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'confirmed',
+    totalPrice: 3200000,
+    numberOfPeople: 1
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await confirmBookingPayment(providerRequest({ body: { paymentMethod: 'bank_transfer' } }), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(doc.status, 'paid');
+  assert.equal(doc.paymentMethod, 'bank_transfer');
+});
+
+test('rejects payment confirmation for a booking of another provider', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'confirmed',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour('provider-2');
+
+  const result = createResponse();
+  await confirmBookingPayment(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 403);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'confirmed');
+});
+
+test('rejects payment confirmation for a booking that is not confirmed yet', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'pending',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await confirmBookingPayment(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'pending');
+});
+
+test('rejects a second payment confirmation for the same booking', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'paid',
+    totalPrice: 5000000,
+    numberOfPeople: 2
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await confirmBookingPayment(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'paid');
+});
+
+test('provider checks in guests of a paid booking', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'paid',
+    totalPrice: 5000000,
+    numberOfPeople: 3
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await checkInBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(doc.status, 'checked_in');
+  assert.ok(doc.checkedInAt instanceof Date);
+});
+
+test('check-in requires the payment to be recorded first', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'confirmed',
+    totalPrice: 5000000,
+    numberOfPeople: 3
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await checkInBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'confirmed');
+});
+
+test('rejects checking in the same booking twice', async () => {
+  const doc = mockBookingDocument({
+    _id: 'booking-1',
+    tourId: 'tour-1',
+    status: 'checked_in',
+    totalPrice: 5000000,
+    numberOfPeople: 3
+  });
+  mockOwnedTour();
+
+  const result = createResponse();
+  await checkInBooking(providerRequest(), result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'checked_in');
+});
+// END UC-85 Confirm Payment & Check-in
