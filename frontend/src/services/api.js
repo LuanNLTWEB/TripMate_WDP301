@@ -598,6 +598,22 @@ export const complaintApi = {
   create: (payload) => apiRequest('/complaints', {
     method: 'POST',
     body: JSON.stringify(payload)
+  }),
+  // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
+  getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/complaints/management${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/complaints/management/${id}`, { method: 'GET' }),
+  resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   })
 };
 // END UC-66 Submit Booking Complaint

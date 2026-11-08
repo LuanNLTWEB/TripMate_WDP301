@@ -746,16 +746,6 @@ const BookingHistory = () => {
         />
       )}
 
-      {/* START UC-66 Submit Booking Complaint */}
-      {bookingToComplain && (
-        <SubmitComplaintModal
-          bookings={bookings}
-          initialBooking={bookingToComplain}
-          onClose={() => setBookingToComplain(null)}
-        />
-      )}
-      {/* END UC-66 Submit Booking Complaint */}
-
       {/* ================= MODAL XEM CHI TIẾT ĐƠN ĐẶT TOUR (CHỈ VIEW) ================= */}
       {selectedBooking && (
         <div

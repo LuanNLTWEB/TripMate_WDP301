@@ -2,8 +2,19 @@ import express from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
 import { upload, cloudinary } from '../config/cloudinary.js';
-import { createComplaintValidation } from '../middleware/validate.js';
-import { createComplaint } from '../controllers/complaintController.js';
+import {
+  createComplaintValidation,
+  complaintListValidation,
+  complaintIdValidation,
+  resolveComplaintValidation
+} from '../middleware/validate.js';
+import {
+  createComplaint,
+  getMyComplaints,
+  getComplaints,
+  getComplaintById,
+  resolveComplaint
+} from '../controllers/complaintController.js';
 
 const router = express.Router();
 
@@ -12,6 +23,7 @@ const router = express.Router();
 // Cloudinary đã giới hạn định dạng JPG/JPEG/PNG/WEBP, còn dung lượng 10MB
 // được kiểm tra thêm sau khi upload.
 const MAX_EVIDENCE_SIZE = 10 * 1024 * 1024; // 10 MB mỗi ảnh
+const ALLOWED_EVIDENCE_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
 
 // Bọc multer để trả lỗi upload bằng JSON tiếng Việt theo đúng convention API,
 // thay vì để lỗi rơi vào global handler và trả 500 chung chung.
@@ -72,13 +84,13 @@ router.post(
 
 // START UC-66 Submit Booking Complaint
 // Tạo khiếu nại bằng JSON (ảnh đã được upload trước qua /evidence).
-router.post(
-  '/',
-  protect,
-  authorize(...ACCESS_ROLES.CUSTOMER_ONLY),
-  createComplaintValidation,
-  createComplaint
-);
+router.post('/', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createComplaintValidation, createComplaint);
 // END UC-66 Submit Booking Complaint
+
+// UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
+router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyComplaints);
+router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintListValidation, getComplaints);
+router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), complaintIdValidation, getComplaintById);
+router.patch('/:id/resolve', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), resolveComplaintValidation, resolveComplaint);
 
 export default router;
