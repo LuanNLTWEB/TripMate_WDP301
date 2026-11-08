@@ -63,7 +63,7 @@ const getStatusBadge = (status) => {
   }
 };
 
-function BookingDetailModal({ booking, onClose }) {
+function BookingDetailModal({ booking, onClose, onApprove, isApproving }) {
   if (!booking) return null;
 
   const status = getStatusBadge(booking.status);
@@ -165,6 +165,11 @@ function BookingDetailModal({ booking, onClose }) {
                   <i className="bi bi-box-arrow-up-right me-2"></i>Xem tour
                 </Link>
               )}
+              {booking.status === 'pending' && onApprove && (
+                <button type="button" className="btn btn-success" onClick={() => onApprove(booking)} disabled={isApproving}>
+                  {isApproving ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang duyệt...</> : <><i className="bi bi-check-circle me-2"></i>Duyệt đặt tour</>}
+                </button>
+              )}
               <button type="button" className="btn btn-secondary" onClick={onClose}>Đóng</button>
             </div>
           </div>
@@ -186,6 +191,11 @@ export default function ProviderBookingRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [reportFrom, setReportFrom] = useState('');
+  const [reportTo, setReportTo] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -234,6 +244,53 @@ export default function ProviderBookingRequests() {
     setCurrentPage(1);
   };
 
+  const handleApprove = async (booking) => {
+    if (!booking || booking.status !== 'pending') return;
+    const confirmed = window.confirm(`Xác nhận đặt tour cho ${booking.fullName} (${booking.numberOfPeople} người) vào tour "${booking.tourId?.title || 'này'}"?`);
+    if (!confirmed) return;
+
+    setApprovingId(booking._id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await bookingApi.approveBooking(booking._id);
+      const updated = response.data;
+      setBookings((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+      setSelectedBooking((prev) => (prev && prev._id === updated._id ? updated : prev));
+      setSummary((prev) => ({
+        ...prev,
+        pending: Math.max(0, (prev.pending || 0) - 1),
+        confirmed: (prev.confirmed || 0) + 1,
+        confirmedRevenue: (prev.confirmedRevenue || 0) + (updated.totalPrice || booking.totalPrice || 0)
+      }));
+      setSuccessMessage(response.message || 'Đã xác nhận đặt tour thành công.');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể xác nhận đặt tour.');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleExportReport = async () => {
+    setIsExporting(true);
+    setError('');
+    try {
+      const blob = await bookingApi.exportProviderReport({ from: reportFrom, to: reportTo });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'tripmate-provider-booking-report.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể xuất báo cáo đặt tour.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
@@ -270,6 +327,31 @@ export default function ProviderBookingRequests() {
           Giá trị booking đã xác nhận: <strong>{formatCurrency(summary.confirmedRevenue)}</strong>
         </span>
       </div>
+
+      <div className="card border-0 shadow-sm rounded-3 mb-4">
+        <div className="card-body d-flex flex-wrap align-items-end gap-3">
+          <div>
+            <label className="form-label small fw-semibold mb-1" htmlFor="report-from">Từ ngày</label>
+            <input id="report-from" type="date" className="form-control" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
+          </div>
+          <div>
+            <label className="form-label small fw-semibold mb-1" htmlFor="report-to">Đến ngày</label>
+            <input id="report-to" type="date" className="form-control" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
+          </div>
+          <button type="button" className="btn btn-outline-primary" onClick={handleExportReport} disabled={isExporting}>
+            {isExporting
+              ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang xuất...</>
+              : <><i className="bi bi-file-earmark-spreadsheet me-2"></i>Xuất báo cáo CSV</>}
+          </button>
+          <span className="small text-muted">Lọc theo thời điểm tạo đơn đặt tour.</span>
+        </div>
+      </div>
+
+      {successMessage && (
+        <div className="alert alert-success d-flex align-items-center" role="status">
+          <i className="bi bi-check-circle-fill me-2"></i>{successMessage}
+        </div>
+      )}
 
       {error && (
         <div className="alert alert-danger d-flex align-items-center" role="alert">
@@ -314,7 +396,7 @@ export default function ProviderBookingRequests() {
                 <th style={{ width: '16%' }}>Khởi hành</th>
                 <th style={{ width: '15%' }}>Số khách & tổng tiền</th>
                 <th style={{ width: '12%' }}>Trạng thái</th>
-                <th className="text-center" style={{ width: '10%' }}>Chi tiết</th>
+                <th className="text-center" style={{ width: '10%' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -376,15 +458,29 @@ export default function ProviderBookingRequests() {
                       </span>
                     </td>
                     <td className="text-center">
-                      <button
-                        type="button"
-                        className="management-action-btn btn-view"
-                        title="Xem chi tiết yêu cầu"
-                        aria-label={`Xem booking của ${booking.fullName}`}
-                        onClick={() => setSelectedBooking(booking)}
-                      >
-                        <i className="bi bi-eye"></i>
-                      </button>
+                      <div className="management-actions justify-content-center">
+                        <button
+                          type="button"
+                          className="management-action-btn btn-view"
+                          title="Xem chi tiết yêu cầu"
+                          aria-label={`Xem booking của ${booking.fullName}`}
+                          onClick={() => setSelectedBooking(booking)}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                        {booking.status === 'pending' && (
+                          <button
+                            type="button"
+                            className="management-action-btn btn-approve"
+                            title="Duyệt đặt tour"
+                            aria-label={`Duyệt booking của ${booking.fullName}`}
+                            disabled={approvingId === booking._id}
+                            onClick={() => handleApprove(booking)}
+                          >
+                            {approvingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-check-lg"></i>}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -429,7 +525,7 @@ export default function ProviderBookingRequests() {
         )}
       </div>
 
-      <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
+      <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} onApprove={handleApprove} isApproving={approvingId === selectedBooking?._id} />
     </section>
   );
 }

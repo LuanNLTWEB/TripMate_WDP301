@@ -1,3 +1,8 @@
+/**
+ * Reviews & Moderation — các use case do Toan phụ trách
+ *  - UC-89 Update Tour Review
+ *  - UC-95 Restore Review
+ */
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
@@ -43,7 +48,7 @@ const buildEligibility = (eligible, reason, extra = {}) => ({
 
 const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
   const tour = await Tour.findById(tourId);
-  if (!tour) return { tour: null };
+  if (!tour || tour.isDeleted) return { tour: null };
 
   const existingReview = await Review.findOne({ tourId, userId });
   if (existingReview) {
@@ -236,7 +241,7 @@ export const getReviewsByTour = async (req, res) => {
     const { tourId } = req.params;
 
     const tour = await Tour.findById(tourId);
-    if (!tour) {
+    if (!tour || tour.isDeleted) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tour' });
     }
 
@@ -468,18 +473,16 @@ export const deleteReview = async (req, res) => {
       });
     }
 
-    const isOwner = review.userId.toString() === req.user._id.toString();
-    const isStaff = req.user.role === 'staff';
-    if (!isOwner && !isStaff) {
+    if (review.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không có quyền xóa đánh giá này'
+        message: 'Bạn chỉ có thể xóa đánh giá của chính mình'
       });
     }
 
     const tourId = review.tourId;
 
-    // Xóa mềm để Staff có thể khôi phục, đồng thời ẩn khỏi danh sách công khai.
+    // Customer xóa mềm đánh giá của chính mình.
     review.isDeleted = true;
     review.deletedAt = new Date();
     review.deletedBy = req.user._id;
@@ -504,9 +507,81 @@ export const deleteReview = async (req, res) => {
 };
 
 /**
+ * Ẩn đánh giá bởi Staff (UC Review Moderation - Hide Review).
+ * @route PATCH /api/reviews/:id/hide
+ * @access Private (staff)
+ */
+export const hideReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu ẩn đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const moderationReason = req.body.moderationReason.trim();
+    const review = await Review.findById(id);
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá'
+      });
+    }
+
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị ẩn trước đó'
+      });
+    }
+
+    const tourId = review.tourId;
+    review.isDeleted = true;
+    review.deletedAt = new Date();
+    review.deletedBy = req.user._id;
+    review.moderatedBy = req.user._id;
+    review.moderationReason = moderationReason;
+    await review.save();
+
+    const { averageRating, totalReviews } = await recalculateTourRating(tourId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã ẩn đánh giá thành công',
+      reviewId: id,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    console.error('Error hiding review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể ẩn đánh giá'
+    });
+  }
+};
+
+/**
  * Khôi phục một đánh giá đã bị xóa mềm (UC-95 - Restore Review)
  * @route PATCH /api/reviews/:id/restore
  * @access Private (staff)
+ */
+// START UC-95 Restore Review
+/**
+ * UC-95 – Restore Review (staff khôi phục đánh giá đã bị xóa mềm).
+ *
+ * Phần phức tạp:
+ *  - Chỉ xử lý đánh giá đang isDeleted = true; đánh giá còn sống trả 409 để
+ *    tránh thao tác vô nghĩa.
+ *  - Khi khôi phục, đánh giá được đưa về status 'pending' (không phải 'approved')
+ *    để staff kiểm duyệt lại trước khi nội dung xuất hiện công khai (BR-105/BR-108).
+ *  - Gọi recalculateTourRating để điểm trung bình của tour (BR-106) được tính lại
+ *    ngay, tránh lệch cho tới lần đánh giá kế tiếp.
  */
 export const restoreReview = async (req, res) => {
   try {
@@ -557,10 +632,22 @@ export const restoreReview = async (req, res) => {
   }
 };
 
+// END UC-95 Restore Review
+
+// START UC-89 Update Tour Review
 /**
- * Sửa đánh giá của chính khách hàng (UC-89 - Update Tour Review)
+ * UC-89 – Update Tour Review (khách sửa đánh giá của chính mình).
  * @route PUT /api/reviews/:id
  * @access Private (customer)
+ *
+ * Phần phức tạp:
+ *  - BR-109: chỉ tác giả được sửa; kiểm duyệt/ẩn là luồng riêng của staff.
+ *  - Đánh giá đã bị xóa mềm (isDeleted) không được sửa — trả 409.
+ *  - Đánh giá đang bị báo cáo (status 'flagged') bị khóa sửa cho tới khi staff
+ *    kiểm duyệt xong, tránh việc tác giả sửa nội dung để né báo cáo (BR-107).
+ *  - rating được ép Number và comment được trim để dữ liệu sạch trước khi lưu.
+ *  - recalculateTourRating chạy lại sau khi lưu vì điểm trung bình tour (BR-106)
+ *    phụ thuộc vào rating mới.
  */
 export const updateReview = async (req, res) => {
   const errors = validationResult(req);
@@ -631,3 +718,4 @@ export const updateReview = async (req, res) => {
     });
   }
 };
+// END UC-89 Update Tour Review

@@ -6,7 +6,16 @@ function byKey(entries, key, fallback = 0) {
   return entry ? entry.count : fallback;
 }
 
-function Stats() {
+// START UC-102 View Platform Statistics
+/**
+ * UC-102 – View Platform Statistics (màn hình thống kê nền tảng cho staff).
+ *
+ * Phần phức tạp:
+ *  - byKey() tra nhanh số lượng theo _id trong mảng aggregate (users.byRole,
+ *    destinations.byStatus) vì backend trả mảng group chứ không phải object.
+ *  - Chỉ gọi API một lần khi mount; loading/error tách riêng để không render
+ *    số liệu rỗng khi request còn đang chạy.
+ */function Stats() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -186,3 +195,4 @@ function Stats() {
 }
 
 export default Stats;
+// END UC-102 View Platform Statistics

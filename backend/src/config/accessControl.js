@@ -7,6 +7,8 @@ export const ACCESS_ROLES = Object.freeze({
   CUSTOMER_ONLY: freezeRoles('customer'),
   REVIEW_REMOVE: freezeRoles('customer', 'staff'),
   ANNOUNCEMENT_VIEW: freezeRoles('staff', 'customer', 'tourProvider'),
+  NOTIFICATION_VIEW: freezeRoles('staff', 'customer', 'tourProvider'),
   TOUR_SCHEDULE_VIEW: freezeRoles('customer', 'tourProvider'),
+  SUBMISSION_VIEW: freezeRoles('staff', 'tourProvider'),
   CONTENT_UPLOAD: freezeRoles('staff', 'tourProvider')
 });

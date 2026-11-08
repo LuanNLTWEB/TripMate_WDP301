@@ -30,10 +30,12 @@ const REPORTED_STATUS_OPTIONS = [
   { value: 'rejected', label: 'Đã từ chối' }
 ];
 
-// UC-95 - các đánh giá đã xóa mềm, danh sách không lọc theo trạng thái kiểm duyệt
+// START UC-95 Restore Review
+// Các đánh giá đã xóa mềm: danh sách không lọc theo trạng thái kiểm duyệt.
 const DELETED_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả đã xóa' }
 ];
+// END UC-95 Restore Review
 
 function ReportSummary({ summary }) {
   const cards = [
@@ -148,7 +150,8 @@ export default function ManagementReviews() {
   const [reloadKey, setReloadKey] = useState(0);
   const [selectedReview, setSelectedReview] = useState(null);
   const [rejectModal, setRejectModal] = useState({ open: false, review: null, reason: '' });
-  const [deleteReview, setDeleteReview] = useState(null);
+  const [hideReview, setHideReview] = useState(null);
+  const [hideReason, setHideReason] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -266,29 +269,41 @@ export default function ManagementReviews() {
 
   const openDeleteModal = (review) => {
     setSelectedReview(null);
-    setDeleteReview(review);
+    setHideReview(review);
+    setHideReason('');
   };
 
   const confirmDelete = async () => {
-    if (!deleteReview) return;
+    if (!hideReview) return;
+    const reason = hideReason.trim();
+    if (reason.length < 5) {
+      toast.warning('Vui lòng nhập lý do ẩn đánh giá có ít nhất 5 ký tự.');
+      return;
+    }
     setActionLoading(true);
     try {
-      await reviewApi.delete(deleteReview._id);
+      await reviewApi.hide(hideReview._id, reason);
       toast.success('Đã ẩn đánh giá. Bạn vẫn có thể khôi phục lại trong tab "Đã xóa".');
-      setDeleteReview(null);
+      setHideReview(null);
+      setHideReason('');
       if (reviews.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1);
       } else {
         refreshReviews();
       }
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể xóa đánh giá.');
+      toast.error(requestError.message || 'Không thể ẩn đánh giá.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // UC-95 - khôi phục một đánh giá đã bị xóa
+  // START UC-95 Restore Review
+  /**
+   * Khôi phục một đánh giá đã bị xóa mềm.
+   * Phức tạp: nếu bản ghi vừa khôi phục là bản cuối của trang hiện tại thì lùi
+   * một trang, còn không thì refresh tại chỗ để danh sách "đã xóa" và số đếm khớp.
+   */
   const handleRestore = async (review) => {
     setActionLoading(true);
     try {
@@ -305,6 +320,7 @@ export default function ManagementReviews() {
       setActionLoading(false);
     }
   };
+  // END UC-95 Restore Review
 
   return (
     <section className="management-page-section">
@@ -443,7 +459,7 @@ export default function ManagementReviews() {
       />
 
       <ConfirmDeleteModal
-        isOpen={Boolean(deleteReview)}
+        isOpen={Boolean(hideReview)}
         title="Ẩn đánh giá"
         message={(
           <p className="mb-0">
@@ -453,8 +469,15 @@ export default function ManagementReviews() {
         )}
         confirmText="Xác nhận ẩn"
         loading={actionLoading}
+        reason={hideReason}
+        reasonLabel="Lý do ẩn đánh giá"
+        reasonPlaceholder="Nhập lý do vi phạm quy chuẩn cộng đồng..."
+        onReasonChange={setHideReason}
         onConfirm={confirmDelete}
-        onClose={() => setDeleteReview(null)}
+        onClose={() => {
+          setHideReview(null);
+          setHideReason('');
+        }}
       />
 
     </section>

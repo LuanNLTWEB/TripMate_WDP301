@@ -25,6 +25,7 @@ export default function useCollaboration({
   const toast = useToast();
 
   const [removingCollaboratorId, setRemovingCollaboratorId] = useState(null);
+  const [deletingInvitationId, setDeletingInvitationId] = useState(null);
   const [changingRoleId, setChangingRoleId] = useState(null);
   const [inviteForm, setInviteForm] = useState({
     email: '',
@@ -74,6 +75,30 @@ export default function useCollaboration({
         await reloadMembers();
       }
       setChangingRoleId(null);
+    }
+  };
+
+  const handleDeleteSentInvitation = async (invitation) => {
+    if (!selected || deletingInvitationId === invitation._id) return;
+
+    const invitee = invitation.recipient?.username || invitation.recipient?.email || 'người dùng này';
+    const isPending = invitation.status === 'pending';
+    const confirmed = window.confirm(
+      isPending
+        ? `Hủy lời mời cộng tác gửi cho ${invitee}?`
+        : `Xóa lịch sử lời mời của ${invitee}?`
+    );
+    if (!confirmed) return;
+
+    setDeletingInvitationId(invitation._id);
+    try {
+      const response = await itineraryApi.deleteSentInvitation(selected._id, invitation._id);
+      toast.success(response.message || (isPending ? 'Đã hủy lời mời.' : 'Đã xóa lịch sử lời mời.'));
+      await reloadMembers();
+    } catch (err) {
+      toast.error(err.message || 'Không thể xóa lời mời.');
+    } finally {
+      setDeletingInvitationId(null);
     }
   };
 
@@ -181,8 +206,10 @@ export default function useCollaboration({
     inviteForm,
     setInviteForm,
     removingCollaboratorId,
+    deletingInvitationId,
     changingRoleId,
     handleRemoveCollaborator,
+    handleDeleteSentInvitation,
     handleChangeRole,
     handleRespondInvitation,
     handleInviteCollaborator,
@@ -273,9 +300,11 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
     setInviteForm,
     handleInviteCollaborator,
     handleRemoveCollaborator,
+    handleDeleteSentInvitation,
     handleChangeRole,
     closeMembersModal,
     removingCollaboratorId,
+    deletingInvitationId,
     changingRoleId
   } = collab;
 
@@ -285,8 +314,8 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
     <>
           <div className="modal-backdrop fade show"></div>
           <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
+            <div className="modal-dialog modal-dialog-centered modal-lg tm-collaborator-modal-dialog">
+              <div className="modal-content border-0 shadow tm-collaborator-modal">
                 <div className="modal-header">
                   <h5 className="modal-title fw-bold">
                     <i className="bi bi-people me-2 text-primary"></i>
@@ -405,7 +434,7 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
                           Chưa có cộng tác viên nào tham gia lịch trình này.
                         </div>
                       ) : (
-                        <div className="tm-collaborator-list mb-3" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                        <div className="tm-collaborator-list mb-3" style={{ maxHeight: '260px', overflowY: 'auto', overflowX: 'hidden' }}>
                           {membersModal.collaborators.map((c) => {
                             const collabUserId = c.user?._id || c.user;
                             const displayName = c.user?.username || 'Người dùng';
@@ -484,7 +513,7 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
                               Chưa có lời mời nào được gửi cho lịch trình này.
                             </div>
                           ) : (
-                            <div className="tm-collaborator-list" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                            <div className="tm-collaborator-list" style={{ maxHeight: '260px', overflowY: 'auto', overflowX: 'hidden' }}>
                               {membersModal.invitations.map((invitation) => {
                                 const invitee = invitation.recipient || {};
                                 const displayName = invitee.username || invitee.email || 'Người dùng';
@@ -522,6 +551,19 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
                                       <span className={`badge ${statusClass}`} style={{ fontSize: '0.65rem' }}>
                                         {statusLabel}
                                       </span>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm py-1 px-2 border-0"
+                                        title={invitation.status === 'pending' ? 'Hủy lời mời' : 'Xóa lịch sử lời mời'}
+                                        disabled={deletingInvitationId === invitation._id || inviteForm.submitting}
+                                        onClick={() => handleDeleteSentInvitation(invitation)}
+                                      >
+                                        {deletingInvitationId === invitation._id ? (
+                                          <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                        ) : (
+                                          <i className="bi bi-trash3 text-danger"></i>
+                                        )}
+                                      </button>
                                     </div>
                                   </div>
                                 );
@@ -549,5 +591,3 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
     </>
   );
 }
-
-

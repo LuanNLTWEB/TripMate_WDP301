@@ -8,7 +8,17 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(Number(value) || 0);
 
-export default function CreateTourDepartureModal({ open, onClose, tour, onCreated }) {
+// START UC-40 Create Tour Departure
+/**
+ * UC-40 – Create Tour Departure (modal tạo lịch khởi hành cho tour của provider).
+ *
+ * Phần phức tạp:
+ *  - validate() lặp lại kiểm tra lead time 24 giờ (BR-47) và số chỗ/giá giống
+ *    createDepartureValidation để báo lỗi ngay tại ô nhập.
+ *  - availableSeats mặc định lấy theo sức chứa hiện tại của tour; useEffect nạp
+ *    lại toàn bộ form mỗi lần mở modal để không dính dữ liệu của tour trước.
+ *  - price để trống nghĩa là dùng giá tour: payload gửi null thay vì chuỗi rỗng.
+ */export default function CreateTourDepartureModal({ open, onClose, tour, onCreated }) {
   const toast = useToast();
   const [departureDate, setDepartureDate] = useState('');
   const [availableSeats, setAvailableSeats] = useState('');
@@ -227,3 +237,4 @@ export default function CreateTourDepartureModal({ open, onClose, tour, onCreate
     </>
   );
 }
+// END UC-40 Create Tour Departure

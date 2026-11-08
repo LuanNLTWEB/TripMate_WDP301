@@ -1,9 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { bookingApi } from '../services/api';
 import CancelBookingModal from '../components/CancelBookingModal';
+// START UC-66 Submit Booking Complaint
+import SubmitComplaintModal from '../components/SubmitComplaintModal';
+// END UC-66 Submit Booking Complaint
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -67,6 +70,7 @@ const getStatusBadge = (status) => {
 const BookingHistory = () => {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +80,9 @@ const BookingHistory = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bookingToCancel, setBookingToCancel] = useState(null);
+  // START UC-66 Submit Booking Complaint
+  const [bookingToComplain, setBookingToComplain] = useState(null);
+  // END UC-66 Submit Booking Complaint
   const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
@@ -107,6 +114,20 @@ const BookingHistory = () => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.role, user?._id]);
+
+  // UC-66 – MyComplaints gửi user tới đây với ?complain=1 để chống trùng chức năng:
+  // mở modal khiếu nại ngay trên đơn đã xác nhận đầu tiên.
+  useEffect(() => {
+    if (searchParams.get('complain') !== '1' || loading) return;
+    const firstConfirmed = bookings.find((booking) => booking.status === 'confirmed');
+    if (firstConfirmed) {
+      setBookingToComplain(firstConfirmed);
+    } else if (!loading) {
+      toast.error('Bạn cần có đơn đặt tour đã xác nhận để gửi khiếu nại.');
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, bookings, loading]);
 
   const copyBookingCode = (code, fullId) => {
     navigator.clipboard.writeText(fullId || code);
@@ -667,6 +688,19 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết đơn</span>
                                   </button>
 
+                                  {/* START UC-66 Submit Booking Complaint */}
+                                  <button
+                                    type="button"
+                                    id={`btn-submit-complaint-${booking._id}`}
+                                    className="btn btn-outline-warning btn-sm rounded-pill px-3 py-2 fw-semibold text-dark d-inline-flex align-items-center justify-content-center gap-1"
+                                    onClick={() => setBookingToComplain(booking)}
+                                  >
+                                    <i className="bi bi-flag"></i>
+                                    <span>Gửi khiếu nại</span>
+                                  </button>
+                                  {/* END UC-66 Submit Booking Complaint */}
+
+                                  {/* START UC-74 Cancel Booking */}
                                   {booking.status !== 'cancelled' && (
                                     <button
                                       type="button"
@@ -678,6 +712,7 @@ const BookingHistory = () => {
                                       <span>Hủy đặt tour</span>
                                     </button>
                                   )}
+                                  {/* END UC-74 Cancel Booking */}
 
                                   {tour._id && (
                                     <Link
@@ -702,6 +737,16 @@ const BookingHistory = () => {
           )}
         </div>
       </main>
+
+      {/* START UC-66 Submit Booking Complaint */}
+      {bookingToComplain && (
+        <SubmitComplaintModal
+          bookings={bookings}
+          initialBooking={bookingToComplain}
+          onClose={() => setBookingToComplain(null)}
+        />
+      )}
+      {/* END UC-66 Submit Booking Complaint */}
 
       {/* UC-74 - hủy đặt tour */}
       {bookingToCancel && (

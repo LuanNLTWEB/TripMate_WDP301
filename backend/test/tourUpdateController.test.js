@@ -3,7 +3,7 @@ import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
 import TourCategory from '../src/models/TourCategory.js';
-import { updateProviderTour } from '../src/controllers/tourController.js';
+import { restoreTour, updateProviderTour } from '../src/controllers/tourController.js';
 
 const originalTourFindById = Tour.findById;
 const originalBookingAggregate = Booking.aggregate;
@@ -179,5 +179,38 @@ test('rejects a category that no longer exists', async () => {
   }, result.response);
 
   assert.equal(result.statusCode, 400);
+  assert.equal(tour.saved, false);
+});
+
+test('restores only a suspended tour and clears suspension audit fields', async () => {
+  const tour = Object.assign(makeTour('suspended'), {
+    suspensionReason: 'Cần kiểm tra thông tin tour',
+    suspendedAt: new Date(),
+    suspendedBy: 'staff-1'
+  });
+  Tour.findById = async () => tour;
+  const result = createResponse();
+
+  await restoreTour({ params: { id: 'tour-1' } }, result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.message, 'Đã kích hoạt lại tour');
+  assert.equal(tour.status, 'active');
+  assert.equal(tour.suspensionReason, '');
+  assert.equal(tour.suspendedAt, null);
+  assert.equal(tour.suspendedBy, null);
+  assert.equal(tour.saved, true);
+});
+
+test('rejects restoring a tour that is not suspended', async () => {
+  const tour = makeTour('rejected');
+  Tour.findById = async () => tour;
+  const result = createResponse();
+
+  await restoreTour({ params: { id: 'tour-1' } }, result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.message, 'Chỉ có thể khôi phục tour đang tạm ngưng');
+  assert.equal(tour.status, 'rejected');
   assert.equal(tour.saved, false);
 });

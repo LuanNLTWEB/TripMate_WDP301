@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { tourApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import CreateTourScheduleModal from './CreateTourScheduleModal';
@@ -11,12 +11,15 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
   const [scheduleForm, setScheduleForm] = useState({ open: false, schedule: null });
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
+  // UC39 - tour đang hoạt động phải tạm ngưng trước khi xóa lịch trình.
+  const isTourActive = tour?.status === 'active';
 
   useEffect(() => {
     if (open && tour?._id) {
       tourApi.getSchedule(tour._id)
         .then((res) => {
-          setSchedules(res.data || []);
+          setSchedules((res.data || []).filter((item) => !item.isDeleted));
         })
         .catch((err) => {
           toast.error(err.message || 'Không thể tải lịch trình tour.');
@@ -48,20 +51,25 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
   };
 
   const handleDelete = async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete || deleteInFlight.current || isTourActive) return;
+    deleteInFlight.current = true;
 
     setDeleting(true);
     try {
       const response = await tourApi.deleteSchedule(tour._id, pendingDelete._id);
-      setSchedules(Array.isArray(response.itinerary)
+      const nextSchedules = Array.isArray(response.itinerary)
         ? response.itinerary
-        : (current) => current.filter((item) => item._id !== pendingDelete._id));
+        : schedules.filter((item) => item._id !== pendingDelete._id);
+      // Lịch trình đã xóa mềm không hiển thị trong danh sách đang hoạt động.
+      setSchedules(nextSchedules.filter((item) => !item.isDeleted));
       toast.success(response.message || 'Đã xóa ngày lịch trình.');
       setPendingDelete(null);
       if (onUpdated) onUpdated();
     } catch (error) {
       toast.error(error.message || 'Không thể xóa ngày lịch trình.');
+      setPendingDelete(null);
     } finally {
+      deleteInFlight.current = false;
       setDeleting(false);
     }
   };
@@ -160,6 +168,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                             title={`Xóa lịch trình Ngày ${item.day}`}
                             aria-label={`Xóa lịch trình Ngày ${item.day}`}
                             onClick={() => setPendingDelete(item)}
+                            disabled={deleting}
                           >
                             <i className="bi bi-trash"></i>
                           </button>
@@ -212,12 +221,25 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
         isOpen={Boolean(pendingDelete)}
         title="Xóa ngày lịch trình"
         message={(
-          <p className="mb-0">
-            Bạn có chắc muốn xóa <strong>Ngày {pendingDelete?.day}: {pendingDelete?.title}</strong> khỏi lịch trình tour không?
-          </p>
+          <div className="mb-0">
+            <p className="mb-0">
+              Bạn có chắc muốn xóa <strong>Ngày {pendingDelete?.day}: {pendingDelete?.title}</strong> khỏi lịch trình tour không?
+              <br />
+              <small className="text-muted">
+                Tour, lịch khởi hành và đặt tour liên quan vẫn được giữ nguyên.
+              </small>
+            </p>
+            {isTourActive && (
+              <div className="alert alert-warning small mb-0 mt-3" role="alert">
+                <i className="bi bi-exclamation-triangle me-1"></i>
+                Tour đang hoạt động nên không thể xóa lịch trình. Vui lòng tạm ngưng tour trước khi xóa.
+              </div>
+            )}
+          </div>
         )}
         confirmText="Xóa ngày"
         loading={deleting}
+        confirmDisabled={isTourActive}
         onConfirm={handleDelete}
         onClose={() => setPendingDelete(null)}
       />

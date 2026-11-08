@@ -210,7 +210,7 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
                 <p className="small text-muted mb-0 mt-0.5">
                   {isUpdate
                     ? `Điều chỉnh thông tin công khai của ${tour.title}.`
-                    : 'Điền thông tin chi tiết để gửi nhân viên kiểm duyệt trước khi mở bán tour.'}
+                    : 'Điền thông tin chi tiết để lưu tour nháp; gửi duyệt khi sẵn sàng mở bán.'}
                 </p>
               </div>
               <button

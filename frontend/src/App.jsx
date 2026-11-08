@@ -9,7 +9,11 @@ import { MANAGEMENT_ROLES } from './config/managementNavigation';
 import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp from './pages/VerifyOtp';
+import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminAccounts from './pages/AdminAccounts';
 import AdminRoles from './pages/AdminRoles';
 import AdminActivityLogs from './pages/AdminActivityLogs';
@@ -30,14 +34,19 @@ import StaffPendingTours from './pages/StaffPendingTours';
 import ManagementReviews from './pages/ManagementReviews';
 import ProviderTourDetails from './pages/ProviderTourDetails';
 import ProviderTours from './pages/ProviderTours';
+import TourSubmissions from './pages/TourSubmissions';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
+import MyComplaints from './pages/MyComplaints';
 import Announcements from './pages/Announcements';
 import AnnouncementDetails from './pages/AnnouncementDetails';
 import StaffAnnouncements from './pages/StaffAnnouncements';
 import StaffDestinationDetails from './pages/StaffDestinationDetails';
 import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
+import Notifications from './pages/Notifications';
+import StaffNotifications from './pages/StaffNotifications';
+import StaffComplaints from './pages/StaffComplaints';
 
 const AboutExperience = lazy(() => import('./pages/AboutExperience'));
 
@@ -81,9 +90,20 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/my-complaints"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                  <MyComplaints />
+                </ProtectedRoute>
+              )}
+            />
             <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/profile"
               element={(
@@ -133,6 +153,14 @@ function App() {
               )}
             />
             <Route
+              path="/notifications"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.NOTIFICATION_VIEW}>
+                  <Notifications />
+                </ProtectedRoute>
+              )}
+            />
+            <Route
               path="/provider/create-tour"
               element={(
                 <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
@@ -152,6 +180,14 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={MANAGEMENT_ROLES} />}>
               <Route path="/management" element={<ManagementLayout />}>
                 <Route index element={<ManagementOverview />} />
+                <Route
+                  path="dashboard"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.ADMIN_ONLY}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  )}
+                />
                 <Route
                   path="accounts"
                   element={(
@@ -184,6 +220,7 @@ function App() {
                     </ProtectedRoute>
                   )}
                 />
+                <Route path="complaints" element={<StaffComplaints />} />
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="destinations" element={<StaffDestinations />} />
                   <Route path="destinations/:id" element={<StaffDestinationDetails />} />
@@ -192,11 +229,15 @@ function App() {
                   <Route path="tours" element={<StaffTours />} />
                   <Route path="tours/:id" element={<ReviewTourSubmission />} />
                   <Route path="pending-tours" element={<StaffPendingTours />} />
+                  {/* START UC-130 View Tour Submission List */}
+                  <Route path="tour-submissions" element={<TourSubmissions />} />
+                  {/* END UC-130 View Tour Submission List */}
                   <Route path="statistics" element={<Stats />} />
                 </Route>
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="announcements" element={<StaffAnnouncements />} />
                   <Route path="announcements/:id" element={<StaffAnnouncementDetails />} />
+                  <Route path="notifications" element={<StaffNotifications />} />
                 </Route>
                 <Route
                   path="my-tours"
@@ -226,6 +267,16 @@ function App() {
                   path="reported-reviews"
                   element={<RoleRedirect to="/management/reviews?view=reported" allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}
                 />
+                {/* START UC-130 View Tour Submission List */}
+                <Route
+                  path="my-submissions"
+                  element={(
+                    <ProtectedRoute allowedRoles={ACCESS_ROLES.PROVIDER_ONLY}>
+                      <TourSubmissions />
+                    </ProtectedRoute>
+                  )}
+                />
+                {/* END UC-130 View Tour Submission List */}
                 <Route
                   path="booking-requests"
                   element={(

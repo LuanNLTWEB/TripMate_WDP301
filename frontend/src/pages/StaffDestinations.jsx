@@ -80,9 +80,13 @@ function StaffDestinations() {
         const response = await destinationApi.update(modalState.destination._id, payload);
         toast.success(response.message || 'Đã cập nhật điểm đến thành công.');
       } else {
+        // START UC-17 Create Destination
+        // Nhánh tạo mới: gọi POST /api/destinations rồi quay về trang 1 để thấy
+        // bản ghi vừa tạo (danh sách sắp xếp mới nhất trước).
         const response = await destinationApi.create(payload);
         toast.success(response.message || 'Đã tạo điểm đến thành công.');
         setCurrentPage(1);
+        // END UC-17 Create Destination
       }
       setModalState({ open: false, destination: null });
       await loadDestinations(isEditing ? search : '', isEditing ? currentPage : 1);
@@ -93,6 +97,13 @@ function StaffDestinations() {
     }
   };
 
+  // START UC-121 Update Destination Status
+  /**
+   * Đảo trạng thái active/inactive của một điểm đến.
+   * Phần phức tạp: trạng thái gửi đi được suy ra từ trạng thái hiện tại (toggle),
+   * nên UI không cần biết trước giá trị đích; sau khi server trả về thì tải lại
+   * danh sách để badge và bộ lọc luôn khớp dữ liệu mới.
+   */
   const handleStatusChange = async (destination) => {
     try {
       const response = await destinationApi.updateStatus(
@@ -105,6 +116,7 @@ function StaffDestinations() {
       toast.error(requestError.message || 'Không thể cập nhật trạng thái.');
     }
   };
+  // END UC-121 Update Destination Status
 
   const handleDelete = async () => {
     if (!destinationToDelete || isDeleting) return;

@@ -7,6 +7,11 @@ export default function ConfirmDeleteModal({
   confirmText = 'Xóa',
   cancelText = 'Hủy',
   loading = false,
+  confirmDisabled = false,
+  reason = '',
+  reasonLabel,
+  reasonPlaceholder,
+  onReasonChange,
   onConfirm,
   onClose
 }) {
@@ -59,6 +64,24 @@ export default function ConfirmDeleteModal({
               ) : (
                 message
               )}
+              {onReasonChange && (
+                <div className="mt-3">
+                  <label className="form-label small fw-semibold" htmlFor="confirmation-reason">
+                    {reasonLabel || 'Lý do'}
+                  </label>
+                  <textarea
+                    id="confirmation-reason"
+                    className="form-control"
+                    rows="3"
+                    maxLength={500}
+                    value={reason}
+                    onChange={(event) => onReasonChange(event.target.value)}
+                    placeholder={reasonPlaceholder}
+                    disabled={loading}
+                  ></textarea>
+                  <div className="form-text text-end">{reason.length}/500</div>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button
@@ -73,7 +96,7 @@ export default function ConfirmDeleteModal({
                 type="button"
                 className="btn btn-danger btn-sm"
                 onClick={onConfirm}
-                disabled={loading}
+                disabled={loading || confirmDisabled}
               >
                 {loading ? (
                   <>

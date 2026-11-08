@@ -1,8 +1,20 @@
+/**
+ * Booking (Đặt tour) — các use case do Toan phụ trách
+ *  - UC-74 Cancel Booking: cancelBooking (BR-88 khung hủy 48 giờ, BR-91 chỉ hủy đơn
+ *    của chính mình, BR-57 trả lại số chỗ trống ngay trong cùng thao tác).
+ */
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const escapeCsvValue = (value) => {
+  const text = value === null || value === undefined ? '' : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const formatCsvDate = (value) => (value ? new Date(value).toISOString() : '');
 
 // Nhận thông tin đặt tour từ customer, kiểm tra tour còn chỗ, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
@@ -19,7 +31,7 @@ export const createBooking = async (req, res) => {
     const { fullName, phone, email, address, numberOfPeople, departureDate, note } = req.body;
     const tourId = req.params.tourId;
 
-    const tour = await Tour.findOne({ _id: tourId, status: 'active' });
+    const tour = await Tour.findOne({ _id: tourId, status: 'active', isDeleted: { $ne: true } });
     if (!tour) {
       return res.status(404).json({
         success: false,
@@ -233,6 +245,161 @@ export const getProviderBookingRequests = async (req, res) => {
   }
 };
 
+// Provider duyệt request đặt tour do chính mình sở hữu: pending -> confirmed.
+// Chỉ tourProvider sở hữu tour mới được duyệt; trừ chỗ trống của tour ngay khi duyệt
+// (BR-57: sức chứa đồng bộ với danh sách đơn), chỗ được cộng lại khi hủy booking đã duyệt.
+export const confirmProviderBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn đặt tour'
+      });
+    }
+
+    const tour = await Tour.findById(booking.tourId);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour của đơn đặt này'
+      });
+    }
+
+    if (!tour.providerId || tour.providerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xác nhận đơn đặt tour này'
+      });
+    }
+
+    if (booking.status === 'confirmed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được xác nhận trước đó'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể xác nhận'
+      });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đang chờ xử lý mới được xác nhận'
+      });
+    }
+
+    if (tour.availableSeats < booking.numberOfPeople) {
+      return res.status(400).json({
+        success: false,
+        message: `Tour chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${booking.numberOfPeople} người`
+      });
+    }
+
+    booking.status = 'confirmed';
+    await booking.save();
+
+    tour.availableSeats = Math.max(0, tour.availableSeats - booking.numberOfPeople);
+    await tour.save();
+
+    const populated = await Booking.findById(booking._id)
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+      .populate('customerId', 'username email phone');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xác nhận đặt tour thành công',
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error confirming booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xác nhận đặt tour'
+    });
+  }
+};
+
+// START UC-123 Export Provider Booking Report
+/**
+ * UC-123 - Export Provider Booking Report.
+ *
+ * Exports all bookings for the authenticated provider's tours. Date filters use
+ * booking creation time so the report describes orders received in the period.
+ */
+export const exportProviderBookingReport = async (req, res) => {
+  const { from, to } = req.query;
+  const query = {};
+
+  if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    return res.status(400).json({ success: false, message: 'Ngày bắt đầu không hợp lệ' });
+  }
+  if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ success: false, message: 'Ngày kết thúc không hợp lệ' });
+  }
+  if (from && to && from > to) {
+    return res.status(400).json({ success: false, message: 'Ngày bắt đầu phải trước ngày kết thúc' });
+  }
+
+  if (from || to) {
+    query.createdAt = {};
+    if (from) query.createdAt.$gte = new Date(`${from}T00:00:00.000Z`);
+    if (to) query.createdAt.$lt = new Date(`${to}T00:00:00.000Z`);
+    if (to) query.createdAt.$lt.setUTCDate(query.createdAt.$lt.getUTCDate() + 1);
+  }
+
+  try {
+    const providerTours = await Tour.find({ providerId: req.user._id })
+      .select('_id')
+      .lean();
+    query.tourId = { $in: providerTours.map((tour) => tour._id) };
+
+    const bookings = await Booking.find(query)
+      .populate('tourId', 'title departureLocation destinationLocation')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const header = [
+      'Booking ID', 'Tour', 'Customer', 'Phone', 'Email', 'Departure Date',
+      'Guests', 'Total Price', 'Status', 'Created At', 'Note'
+    ];
+    const rows = bookings.map((booking) => [
+      booking._id,
+      booking.tourId?.title || 'Tour không còn khả dụng',
+      booking.fullName,
+      booking.phone,
+      booking.email,
+      formatCsvDate(booking.departureDate),
+      booking.numberOfPeople,
+      booking.totalPrice,
+      booking.status,
+      formatCsvDate(booking.createdAt),
+      booking.note
+    ]);
+    const csv = `\uFEFF${[header, ...rows]
+      .map((row) => row.map(escapeCsvValue).join(','))
+      .join('\r\n')}\r\n`;
+
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="tripmate-provider-booking-report.csv"'
+    });
+    return res.send(csv);
+  } catch (error) {
+    console.error('Error exporting provider booking report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xuất báo cáo đặt tour'
+    });
+  }
+};
+// END UC-123 Export Provider Booking Report
+
 // Lấy thông tin chi tiết một đơn đặt tour cụ thể của customer (chỉ view của chính mình)
 export const getBookingById = async (req, res) => {
   try {
@@ -273,10 +440,21 @@ export const getBookingById = async (req, res) => {
 // thanh toán; thao tác này chỉ trả lại chỗ trống và ghi nhận lý do.
 const FREE_CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+// START UC-74 Cancel Booking
 /**
- * Hủy đặt tour của chính khách hàng (UC-74 - Cancel Booking)
- * @route PATCH /api/bookings/:id/cancel
- * @access Private (customer)
+ * UC-74 – Cancel Booking (khách hàng tự hủy đơn đặt tour của mình).
+ *
+ * Luồng: kiểm tra dữ liệu đầu vào -> tìm booking -> chặn hủy đơn của người khác
+ * -> chặn hủy lần hai -> kiểm tra còn đủ 48 giờ trước ngày khởi hành -> đánh dấu
+ * cancelled, lưu lý do/thời điểm hủy -> trả lại số chỗ cho tour.
+ *
+ * Phần phức tạp:
+ *  - FREE_CANCEL_WINDOW_MS (BR-88): so sánh hiệu số giữa departureDate và hiện tại
+ *    theo mili-giây thay vì theo ngày, để mốc 48 giờ chính xác đến giờ/phút.
+ *  - Trả lại chỗ (BR-57): cộng numberOfPeople vào availableSeats của tour ngay sau
+ *    khi lưu booking, nhờ vậy sức chứa của tour không bị lệch với danh sách đơn.
+ *  - Không tính hoàn tiền ở đây: hệ thống chưa có module thanh toán tách riêng,
+ *    totalPrice chỉ được đọc lại từ booking để đối soát sau này.
  */
 export const cancelBooking = async (req, res) => {
   const errors = validationResult(req);
@@ -356,3 +534,4 @@ export const cancelBooking = async (req, res) => {
     });
   }
 };
+// END UC-74 Cancel Booking

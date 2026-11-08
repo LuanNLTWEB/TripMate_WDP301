@@ -55,6 +55,37 @@ const collaboratorSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const commentSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  content: {
+    type: String,
+    required: [true, 'Nội dung bình luận không được để trống'],
+    trim: true,
+    maxlength: [500, 'Nội dung bình luận không được vượt quá 500 ký tự']
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: true });
+
+const packingItemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Packing item name is required'],
+    trim: true,
+    maxlength: [160, 'Packing item name cannot exceed 160 characters']
+  },
+  isPacked: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: true });
+
 const itinerarySchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
@@ -83,8 +114,18 @@ const itinerarySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tour'
   }],
+  // START UC-53 Add Activity to Itinerary
+  // Mảng hoạt động của lịch trình; mỗi phần tử có date + startTime/endTime dạng
+  // "HH:mm" để detectScheduleConflicts so trùng giờ trong cùng một ngày (BR-62).
   activities: [activitySchema],
-  collaborators: [collaboratorSchema]
+  // END UC-53 Add Activity to Itinerary
+  packingItems: [packingItemSchema],
+  // START UC-120 Transfer Itinerary Ownership
+  // Danh sách cộng tác viên (user + permission view/edit). Chuyển quyền sở hữu
+  // hoán đổi owner cũ thành collaborator 'edit' và bỏ người nhận khỏi mảng này (BR-72).
+  collaborators: [collaboratorSchema],
+  // END UC-120 Transfer Itinerary Ownership
+  comments: [commentSchema]
 }, { timestamps: true });
 
 const Itinerary = mongoose.model('Itinerary', itinerarySchema);

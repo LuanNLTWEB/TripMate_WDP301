@@ -68,6 +68,9 @@ function Itinerary() {
     submitting: false,
     error: ''
   });
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
 
   const applyItinerary = (updated) => {
     setSelected(updated);
@@ -88,6 +91,14 @@ function Itinerary() {
   });
   const { setReceivedInvites, openMembersModal, removingCollaboratorId, handleRemoveCollaborator } = collab;
 
+  // START UC-48 View Personal Itinerary
+  /**
+   * Tải song song lịch trình của mình, lịch trình được chia sẻ, danh mục điểm đến,
+   * tour đang active và lời mời đang chờ.
+   * Phức tạp: chọn sẵn lịch trình đầu tiên của chính mình làm mặc định; điểm đến
+   * inactive và tour bị tạm ngưng bị loại khỏi danh sách chọn để không thêm vào
+   * lịch trình được (BR-32).
+   */
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
       setLoading(false);
@@ -114,6 +125,7 @@ function Itinerary() {
       setLoading(false);
     }
   };
+  // END UC-48 View Personal Itinerary
 
   useEffect(() => {
     loadItineraries();
@@ -184,10 +196,14 @@ function Itinerary() {
         setActivityForm(initialActivity);
         toast.success(response.message || 'Đã cập nhật hoạt động thành công.');
       } else {
+        // START UC-53 Add Activity to Itinerary
+        // Gọi POST /itineraries/:id/activities; response trả về cả itinerary đã
+        // hydrate (kèm conflicts) nên chỉ cần applyItinerary thay vì tải lại trang.
         const response = await itineraryApi.addActivity(selected._id, payload);
         applyItinerary(response.itinerary);
         setActivityForm(initialActivity);
         toast.success('Đã thêm hoạt động vào lịch trình.');
+        // END UC-53 Add Activity to Itinerary
       }
     } catch (requestError) {
       toast.error(requestError.message || (editingActivityId ? 'Không thể cập nhật hoạt động.' : 'Không thể thêm hoạt động.'));
@@ -525,6 +541,41 @@ function Itinerary() {
     }
   };
 
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    const text = commentText.trim();
+    if (!selected || !text) return;
+    if (text.length > 500) {
+      toast.error('Nội dung bình luận không được vượt quá 500 ký tự');
+      return;
+    }
+
+    setSubmittingComment(true);
+    try {
+      const response = await itineraryApi.addComment(selected._id, text);
+      applyItinerary(response.itinerary);
+      setCommentText('');
+      toast.success(response.message || 'Đã gửi bình luận thành công');
+    } catch (err) {
+      toast.error(err.message || 'Không thể gửi bình luận');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!selected || !commentId || deletingCommentId) return;
+    setDeletingCommentId(commentId);
+    try {
+      const response = await itineraryApi.deleteComment(selected._id, commentId);
+      applyItinerary(response.itinerary);
+      toast.success(response.message || 'Đã xóa bình luận thành công');
+    } catch (err) {
+      toast.error(err.message || 'Không thể xóa bình luận');
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
 
   const currentUserId = String(user?._id || user?.id || '');
   const isOwner = selected && String(selected.owner?._id || selected.owner) === currentUserId;
@@ -534,6 +585,13 @@ function Itinerary() {
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
   const isCollaborator = Boolean(!isOwner && myPermission);
 
+  // START UC-137 Leave Itinerary
+  /**
+   * Collaborator tự rời lịch trình được chia sẻ.
+   * Phức tạp: phải xóa lịch trình khỏi cả hai danh sách (của tôi / được chia sẻ)
+   * rồi bỏ chọn, vì sau khi rời người dùng không còn quyền xem lịch trình đó nữa;
+   * nút chỉ hiện với collaborator, owner bị backend chặn (BR-72).
+   */
   const handleLeaveItinerary = async () => {
     if (!selected) return;
 
@@ -553,9 +611,15 @@ function Itinerary() {
       setPendingLeaveItinerary(false);
     }
   };
+  // END UC-137 Leave Itinerary
 
-  // UC-120 (BR-72) - standalone ownership transfer: owner picks a collaborator
-  // to become the new owner. The old owner becomes a collaborator (edit).
+  // START UC-120 Transfer Itinerary Ownership
+  /**
+   * UC-120 (BR-72) - owner chọn một collaborator làm chủ sở hữu mới; chủ cũ trở
+   * thành collaborator quyền 'edit'.
+   * Phức tạp: sau khi chuyển phải loadItineraries() để vai trò của cả hai người
+   * được tính lại từ dữ liệu server (nút chuyển quyền biến mất với chủ cũ).
+   */
   const handleTransferOwnership = async () => {
     if (!selected || !pendingTransferOwnerId) return;
     try {
@@ -569,12 +633,17 @@ function Itinerary() {
       setLeavingItinerary(false);
     }
   };
+  // END UC-120 Transfer Itinerary Ownership
 
+  // START UC-53 Add Activity to Itinerary
+  // Gom id của các hoạt động nằm trong một cặp trùng giờ do backend trả về
+  // (conflicts) để tô cảnh báo trên từng thẻ hoạt động.
   const conflictedActivityIds = new Set();
   (selected?.conflicts || []).forEach((conflict) => {
     conflictedActivityIds.add(String(conflict.first._id));
     conflictedActivityIds.add(String(conflict.second._id));
   });
+  // END UC-53 Add Activity to Itinerary
 
   const addedDestinationIds = new Set(
     (selected?.destinations || []).map((destination) => String(destination._id || destination))
@@ -597,6 +666,61 @@ function Itinerary() {
   };
 
   const visibleItineraries = activeTab === 'shared' ? sharedItineraries : itineraries;
+  const displayedPackingItems = selected?.packingItems || [];
+  const [editingPackingItemId, setEditingPackingItemId] = useState(null);
+  const [editingPackingItemName, setEditingPackingItemName] = useState('');
+  const [pendingDeletePackingItem, setPendingDeletePackingItem] = useState(null);
+
+  const startEditPackingItem = (item) => {
+    setEditingPackingItemId(item._id);
+    setEditingPackingItemName(item.name || '');
+  };
+
+  const cancelEditPackingItem = () => {
+    setEditingPackingItemId(null);
+    setEditingPackingItemName('');
+  };
+
+  const handleUpdatePackingItem = async (event, itemId) => {
+    event.preventDefault();
+    if (!selected || !itemId) return;
+
+    const trimmedName = editingPackingItemName.trim();
+    if (!trimmedName) {
+      toast.error('Vui lòng nhập tên vật dụng');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.updatePackingItem(selected._id, itemId, { name: trimmedName });
+      applyItinerary(response.itinerary);
+      cancelEditPackingItem();
+      toast.success(response.message || 'Đã cập nhật vật dụng thành công');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể cập nhật vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePackingItem = async (itemId) => {
+    if (!selected || !itemId) return;
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.removePackingItem(selected._id, itemId);
+      applyItinerary(response.itinerary);
+      if (editingPackingItemId === itemId) {
+        cancelEditPackingItem();
+      }
+      toast.success(response.message || 'Đã xóa vật dụng khỏi danh sách hành lý');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể xóa vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -1059,6 +1183,92 @@ function Itinerary() {
                         </div>
                       </section>
 
+                      <section className="card border-0 shadow-sm mb-4">
+                        <div className="card-body p-4">
+                          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                            <div>
+                              <h2 className="h5 fw-bold mb-1">Danh sách hành lý</h2>
+                              <p className="small text-muted mb-0">Kiểm tra những vật dụng cần chuẩn bị cho chuyến đi.</p>
+                            </div>
+                            <span className="badge text-bg-light border text-secondary">
+                              {displayedPackingItems.filter((item) => item.isPacked).length}/{displayedPackingItems.length}
+                            </span>
+                          </div>
+                          {displayedPackingItems.length === 0 ? (
+                            <div className="text-center text-muted border rounded p-4 bg-light">
+                              <i className="bi bi-backpack2 fs-2 d-block mb-2 text-primary"></i>
+                              <p className="mb-0">Chưa có vật dụng nào trong checklist.</p>
+                            </div>
+                          ) : (
+                            <div className="list-group list-group-flush border rounded">
+                              {displayedPackingItems.map((item) => (
+                                <div className="list-group-item d-flex align-items-center gap-3 px-3 py-3" key={item._id || item.name}>
+                                  <i className={`bi ${item.isPacked ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} fs-5`} aria-hidden="true"></i>
+                                  {editingPackingItemId === item._id ? (
+                                    <form
+                                      onSubmit={(e) => handleUpdatePackingItem(e, item._id)}
+                                      className="d-flex align-items-center gap-2 flex-grow-1"
+                                    >
+                                      <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        value={editingPackingItemName}
+                                        onChange={(e) => setEditingPackingItemName(e.target.value)}
+                                        maxLength={160}
+                                        placeholder="Nhập tên vật dụng..."
+                                        disabled={saving}
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="submit"
+                                        className="btn btn-sm btn-primary text-nowrap"
+                                        disabled={saving}
+                                      >
+                                        Lưu
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary text-nowrap"
+                                        onClick={cancelEditPackingItem}
+                                        disabled={saving}
+                                      >
+                                        Hủy
+                                      </button>
+                                    </form>
+                                  ) : (
+                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-grow-1">
+                                      <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
+                                      {canEditSelected && item._id && (
+                                        <div className="d-flex align-items-center gap-1 ms-2">
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-primary border-0 p-1"
+                                            onClick={() => startEditPackingItem(item)}
+                                            disabled={saving}
+                                            title="Chỉnh sửa vật dụng"
+                                          >
+                                            <i className="bi bi-pencil-square"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-danger border-0 p-1"
+                                            onClick={() => setPendingDeletePackingItem(item)}
+                                            disabled={saving}
+                                            title="Xóa vật dụng"
+                                          >
+                                            <i className="bi bi-trash"></i>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </section>
+
 
 
                       <section className="card border-0 shadow-sm mb-4">
@@ -1373,6 +1583,144 @@ function Itinerary() {
                   )}
                 </div>
               </div>
+
+              {/* UC-61: Thảo luận & Bình luận lịch trình */}
+              {selected && (
+              <section className="itinerary-discussion card border-0 mt-4">
+                <div className="card-body p-4 p-lg-4">
+                  <div className="itinerary-discussion-heading d-flex align-items-center justify-content-between">
+                    <h2 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-chat-dots-fill text-primary"></i>
+                      <span>Thảo luận lịch trình</span>
+                    </h2>
+                    <span className="itinerary-comment-count">
+                      {(selected.comments || []).length} bình luận
+                    </span>
+                  </div>
+
+                  {/* Form gửi bình luận */}
+                  <form onSubmit={handleAddComment} className="mb-4">
+                    <div className="itinerary-comment-composer">
+                      <label htmlFor="itinerary-comment-input" className="form-label small fw-semibold mb-2">
+                        <i className="bi bi-pencil me-1"></i>Ý kiến, đóng góp cho chuyến đi:
+                      </label>
+                      <textarea
+                        id="itinerary-comment-input"
+                        className="form-control itinerary-comment-input"
+                        rows="2"
+                        maxLength={500}
+                        placeholder="Nhập ý kiến, thảo luận hoặc đóng góp của bạn..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        disabled={submittingComment}
+                      />
+                      <div className="itinerary-comment-actions">
+                        <span className={`small ${commentText.length >= 480 ? 'text-danger fw-bold' : 'text-muted'}`}>
+                          {commentText.length}/500 ký tự
+                        </span>
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-sm itinerary-comment-submit"
+                          disabled={submittingComment || !commentText.trim()}
+                        >
+                          {submittingComment ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                              <span>Đang gửi...</span>
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-send-fill"></i>
+                              <span>Gửi bình luận</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Danh sách bình luận */}
+                  {(!selected.comments || selected.comments.length === 0) ? (
+                    <div className="text-center py-4 text-muted bg-light-subtle rounded-3 border border-dashed">
+                      <i className="bi bi-chat-square-text fs-3 text-secondary d-block mb-2 opacity-50"></i>
+                      <p className="small mb-0">Chưa có bình luận nào cho lịch trình này.</p>
+                      <small className="text-secondary">Hãy để lại ý kiến đầu tiên để cùng lên kế hoạch nhé!</small>
+                    </div>
+                  ) : (
+                    <div className="itinerary-comment-list">
+                      {selected.comments.map((c) => {
+                        const commentUserId = String(c.user?._id || c.user || '');
+                        const isAuthor = currentUserId === commentUserId;
+                        const canDelete = isAuthor || isOwner;
+                        const displayName = c.user?.username || c.user?.email || 'Người dùng';
+                        const initial = displayName.charAt(0).toUpperCase();
+                        const isCommentOwner = String(c.user?._id || c.user || '') === String(selected.owner?._id || selected.owner || '');
+                        const commentDate = c.createdAt
+                          ? new Date(c.createdAt).toLocaleString('vi-VN', {
+                              hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+                            })
+                          : '';
+
+                        return (
+                          <div
+                            key={c._id}
+                            className="itinerary-comment-item"
+                          >
+                            <div className="d-flex justify-content-between align-items-start gap-2">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="itinerary-comment-avatar"
+                                >
+                                  {initial}
+                                </div>
+                                <div>
+                                  <div className="d-flex align-items-center gap-1 flex-wrap">
+                                    <span className="fw-semibold text-dark small">{displayName}</span>
+                                    {isCommentOwner ? (
+                                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
+                                        Chủ sở hữu
+                                      </span>
+                                    ) : (
+                                      <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
+                                        Cộng tác viên
+                                      </span>
+                                    )}
+                                  </div>
+                                  {commentDate && (
+                                    <small className="text-muted" style={{ fontSize: '0.72rem' }}>
+                                      {commentDate}
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="btn itinerary-comment-delete"
+                                  title="Xóa bình luận này"
+                                  disabled={deletingCommentId === c._id}
+                                  onClick={() => handleDeleteComment(c._id)}
+                                >
+                                  {deletingCommentId === c._id ? (
+                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                  ) : (
+                                    <i className="bi bi-trash3"></i>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                            <p className="itinerary-comment-content" style={{ whiteSpace: 'pre-line' }}>
+                              {c.content}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+              )}
             </>
           )}
         </div>
@@ -1428,6 +1776,25 @@ function Itinerary() {
           }
         }}
         onClose={() => setPendingDeleteActivity(null)}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(pendingDeletePackingItem)}
+        title="Xác nhận xóa vật dụng"
+        message={
+          <>
+            Bạn có chắc muốn xóa vật dụng <strong>{pendingDeletePackingItem?.name || 'này'}</strong> khỏi danh sách hành lý? Hành động này không thể hoàn tác.
+          </>
+        }
+        loading={saving}
+        onConfirm={async () => {
+          if (pendingDeletePackingItem) {
+            const id = pendingDeletePackingItem._id;
+            setPendingDeletePackingItem(null);
+            await handleDeletePackingItem(id);
+          }
+        }}
+        onClose={() => setPendingDeletePackingItem(null)}
       />
 
 <ConfirmDeleteModal

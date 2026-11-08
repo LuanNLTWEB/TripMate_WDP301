@@ -6,7 +6,8 @@ export const ACCESS_ROLES = Object.freeze({
   PROVIDER_ONLY: freezeRoles('tourProvider'),
   CUSTOMER_ONLY: freezeRoles('customer'),
   MANAGEMENT: freezeRoles('admin', 'staff', 'tourProvider'),
-  ANNOUNCEMENT_VIEW: freezeRoles('staff', 'customer', 'tourProvider')
+  ANNOUNCEMENT_VIEW: freezeRoles('staff', 'customer', 'tourProvider'),
+  NOTIFICATION_VIEW: freezeRoles('staff', 'customer', 'tourProvider')
 });
 
 export const canAccessRoleGroup = (role, allowedRoles) => (

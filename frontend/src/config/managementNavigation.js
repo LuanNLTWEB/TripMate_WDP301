@@ -76,6 +76,14 @@ const managementNavigation = [
     roles: ACCESS_ROLES.STAFF_ONLY
   },
   {
+    key: 'tour-submissions',
+    label: 'Duyệt bài gửi tour',
+    description: 'Kiểm duyệt bài gửi tour từ nhà cung cấp',
+    icon: 'bi-clipboard-check',
+    path: '/management/tour-submissions',
+    roles: ACCESS_ROLES.STAFF_ONLY
+  },
+  {
     key: 'reviews',
     label: 'Quản lý đánh giá',
     description: 'Kiểm duyệt đánh giá và xử lý báo cáo vi phạm',
@@ -84,11 +92,27 @@ const managementNavigation = [
     roles: ACCESS_ROLES.STAFF_ONLY
   },
   {
+    key: 'complaints',
+    label: 'Khiếu nại khách hàng',
+    description: 'Tra cứu và giải quyết khiếu nại của khách hàng',
+    icon: 'bi-exclamation-diamond',
+    path: '/management/complaints',
+    roles: ACCESS_ROLES.STAFF_ONLY
+  },
+  {
     key: 'announcements',
     label: 'Thông báo hệ thống',
     description: 'Quản lý thông báo dành cho người dùng TripMate',
     icon: 'bi-megaphone',
     path: '/management/announcements',
+    roles: ACCESS_ROLES.STAFF_ONLY
+  },
+  {
+    key: 'notifications',
+    label: 'Quản lý thông báo',
+    description: 'Tạo và xem danh sách thông báo người dùng',
+    icon: 'bi-bell',
+    path: '/management/notifications',
     roles: ACCESS_ROLES.STAFF_ONLY
   },
   {
@@ -105,6 +129,14 @@ const managementNavigation = [
     description: 'Tạo mới, theo dõi và quản lý các tour do bạn cung cấp',
     icon: 'bi-map',
     path: '/management/my-tours',
+    roles: ACCESS_ROLES.PROVIDER_ONLY
+  },
+  {
+    key: 'my-submissions',
+    label: 'Bài gửi duyệt tour',
+    description: 'Gửi tour mới cho nhân viên kiểm duyệt và theo dõi phản hồi',
+    icon: 'bi-send-check',
+    path: '/management/my-submissions',
     roles: ACCESS_ROLES.PROVIDER_ONLY
   },
   {
