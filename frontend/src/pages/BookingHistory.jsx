@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { bookingApi } from '../services/api';
@@ -70,6 +70,7 @@ const getStatusBadge = (status) => {
 const BookingHistory = () => {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,20 @@ const BookingHistory = () => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user?.role, user?._id]);
+
+  // UC-66 – MyComplaints gửi user tới đây với ?complain=1 để chống trùng chức năng:
+  // mở modal khiếu nại ngay trên đơn đã xác nhận đầu tiên.
+  useEffect(() => {
+    if (searchParams.get('complain') !== '1' || loading) return;
+    const firstConfirmed = bookings.find((booking) => booking.status === 'confirmed');
+    if (firstConfirmed) {
+      setBookingToComplain(firstConfirmed);
+    } else if (!loading) {
+      toast.error('Bạn cần có đơn đặt tour đã xác nhận để gửi khiếu nại.');
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, bookings, loading]);
 
   const copyBookingCode = (code, fullId) => {
     navigator.clipboard.writeText(fullId || code);
