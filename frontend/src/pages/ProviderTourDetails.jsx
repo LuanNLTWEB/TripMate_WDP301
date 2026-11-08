@@ -7,6 +7,7 @@ import EditTourPriceModal from './EditTourPriceModal';
 import TourFormModal from './TourFormModal';
 import CreateTourDepartureModal from './CreateTourDepartureModal';
 import EditDepartureSlotModal from './EditDepartureSlotModal';
+import CancelDepartureModal from './CancelDepartureModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -44,6 +45,7 @@ export default function ProviderTourDetails() {
   const [showDepartureModal, setShowDepartureModal] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [editingDeparture, setEditingDeparture] = useState(null);
+  const [cancellingDeparture, setCancellingDeparture] = useState(null);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -854,14 +856,30 @@ export default function ProviderTourDetails() {
                           </td>
                           <td className="text-muted small">{d.note || '—'}</td>
                           <td className="text-end">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary py-0 px-2"
-                              title="Chỉnh sửa lịch khởi hành"
-                              onClick={() => setEditingDeparture(d)}
-                            >
-                              <i className="bi bi-pencil me-1"></i>Sửa
-                            </button>
+                            {d.status === 'scheduled' ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary py-0 px-2"
+                                  title="Chỉnh sửa lịch khởi hành"
+                                  onClick={() => setEditingDeparture(d)}
+                                >
+                                  <i className="bi bi-pencil me-1"></i>Sửa
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger py-0 px-2 ms-2"
+                                  title="Hủy đợt khởi hành này"
+                                  onClick={() => setCancellingDeparture(d)}
+                                >
+                                  <i className="bi bi-x-circle me-1"></i>Hủy lịch
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-danger small fst-italic me-2">
+                                {d.cancelReason ? `Đã hủy: ${d.cancelReason}` : 'Đã hủy'}
+                              </span>
+                            )}
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-success py-0 px-2 ms-2"
@@ -943,6 +961,15 @@ export default function ProviderTourDetails() {
         departure={editingDeparture}
         tourPrice={tour?.price}
         onUpdated={() => loadDepartures()}
+      />
+
+      {/* Cancel Tour Departure Modal (UC-43) */}
+      <CancelDepartureModal
+        open={!!cancellingDeparture}
+        onClose={() => setCancellingDeparture(null)}
+        departure={cancellingDeparture}
+        tourTitle={tour?.title}
+        onCancelled={() => loadDepartures()}
       />
 
       {showEditModal && (

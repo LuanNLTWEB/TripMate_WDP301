@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import Tour from '../models/Tour.js';
 import Departure from '../models/Departure.js';
 import Booking from '../models/Booking.js';
+import Notification from '../models/Notification.js';
 
 const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
 
@@ -308,3 +309,135 @@ export const exportPassengerManifest = async (req, res) => {
     });
   }
 };
+
+// START UC-43 Cancel Tour Departure
+/**
+ * Hủy đợt khởi hành (Tour Departure) và xử lý hoàn tiền 100% tự động cho khách (BR-54).
+ * Nghiệp vụ & Ràng buộc:
+ *  - Quyền hạn: Chỉ provider sở hữu tour mới được hủy.
+ *  - Trạng thái: Lịch khởi hành không được ở trạng thái 'cancelled' từ trước.
+ *  - Không được hủy lịch khởi hành đã diễn ra trong quá khứ.
+ *  - SLA (BR-54): Chỉ được phép hủy trước thời điểm khởi hành ít nhất 72 giờ (72h).
+ *  - Cascade: Tự động chuyển toàn bộ đơn đặt tour liên quan sang trạng thái 'cancelled',
+ *    ghi nhận lý do hủy và gửi thông báo hoàn tiền 100% tới các khách hàng bị ảnh hưởng.
+ * @route PATCH /api/departures/:id/cancel
+ * @access Private (tourProvider)
+ */
+const CANCELLATION_DEADLINE_MS = 72 * 60 * 60 * 1000;
+
+export const cancelDeparture = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu hủy lịch khởi hành không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const departure = await Departure.findById(req.params.id);
+    if (!departure) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch khởi hành'
+      });
+    }
+
+    const isOwner = departure.providerId && departure.providerId.equals(req.user._id);
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền hủy lịch khởi hành này'
+      });
+    }
+
+    if (departure.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Lịch khởi hành này đã bị hủy trước đó'
+      });
+    }
+
+    const now = Date.now();
+    const departureTime = new Date(departure.departureDate).getTime();
+
+    if (departureTime < now) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể hủy lịch khởi hành đã diễn ra trong quá khứ'
+      });
+    }
+
+    const diffMs = departureTime - now;
+    if (diffMs < CANCELLATION_DEADLINE_MS) {
+      const hoursRemaining = Math.max(0, Math.floor(diffMs / (60 * 60 * 1000)));
+      return res.status(409).json({
+        success: false,
+        message: 'Theo quy định của hệ thống, chỉ có thể hủy lịch khởi hành trước ít nhất 72 giờ. Vui lòng liên hệ ban quản trị để được hỗ trợ.',
+        hoursRemaining
+      });
+    }
+
+    const reason = req.body.reason ? req.body.reason.trim() : '';
+    departure.status = 'cancelled';
+    departure.cancelReason = reason || 'Nhà cung cấp hủy đợt khởi hành';
+    departure.cancelledAt = new Date();
+    await departure.save();
+
+    const tour = await Tour.findById(departure.tourId).select('title');
+
+    const startOfDay = new Date(departure.departureDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const activeBookings = await Booking.find({
+      tourId: departure.tourId,
+      status: { $in: ['pending', 'confirmed', 'paid'] },
+      departureDate: { $gte: startOfDay, $lt: endOfDay }
+    });
+
+    const departureDateText = startOfDay.toLocaleDateString('vi-VN');
+    const bookingCancelReason = reason
+      ? `Đợt khởi hành bị hủy bởi nhà cung cấp. Lý do: ${reason} (Được hoàn tiền 100%)`
+      : 'Đợt khởi hành bị hủy bởi nhà cung cấp (Được hoàn tiền 100%)';
+
+    for (const booking of activeBookings) {
+      booking.status = 'cancelled';
+      booking.cancelReason = bookingCancelReason;
+      booking.cancelledAt = new Date();
+      await booking.save();
+
+      try {
+        await Notification.create({
+          recipient: booking.customerId,
+          title: 'Thông báo hủy đợt khởi hành tour',
+          message: `Đợt khởi hành ngày ${departureDateText} của tour "${tour?.title || 'Tour'}" đã bị hủy. Đơn đặt tour của bạn đã được hủy và bạn đủ điều kiện nhận hoàn lại 100% chi phí.${reason ? ` Lý do: ${reason}` : ''}`,
+          notificationType: 'departure_cancellation',
+          sender: req.user._id,
+          status: 'sent',
+          isRead: false
+        });
+      } catch (notifErr) {
+        console.error('Lỗi khi tạo thông báo cho khách hàng khi hủy lịch khởi hành:', notifErr);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Hủy lịch khởi hành thành công. Toàn bộ đơn đặt liên quan đã được hủy và khách hàng đã được thông báo hoàn tiền 100%.',
+      data: {
+        departure,
+        affectedBookingsCount: activeBookings.length
+      }
+    });
+  } catch (error) {
+    console.error('Error cancelling departure:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể hủy lịch khởi hành'
+    });
+  }
+};
+// END UC-43 Cancel Tour Departure
