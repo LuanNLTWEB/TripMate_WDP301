@@ -1,30 +1,11 @@
 import { validationResult } from 'express-validator';
+import ExcelJS from 'exceljs';
 import Tour from '../models/Tour.js';
 import Departure from '../models/Departure.js';
+import Booking from '../models/Booking.js';
 
 const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Tạo lịch khởi hành mới cho một tour (UC-40)
- * @route POST /api/departures
- * @access Private (tourProvider)
- */
-// START UC-40 Create Tour Departure
-/**
- * UC-40 – Create Tour Departure (provider tạo lịch khởi hành cho tour của mình).
- *
- * Luồng: validate input -> tìm tour -> kiểm tra quyền sở hữu -> chặn lead time
- * -> chặn trùng ngày -> tạo Departure.
- *
- * Phần phức tạp:
- *  - BR-47: ngày khởi hành phải cách hiện tại ít nhất 24 giờ (LEAD_TIME_MS), so sánh
- *    bằng mili-giây để không phụ thuộc múi giờ của server.
- *  - BR-49: chỉ cho một lịch 'scheduled' mỗi ngày; kiểm tra theo khoảng
- *    [00:00, 24:00) của ngày được chọn thay vì so sánh bằng đúng timestamp.
- *  - price là tùy chọn: chuỗi rỗng/null được quy về null (dùng giá của tour),
- *    còn lại ép Number để model không lưu string.
- *  - providerId lấy từ tour (không lấy từ body) để provider không tạo lịch hộ tour khác.
- */
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -105,13 +86,7 @@ export const createDeparture = async (req, res) => {
     });
   }
 };
-// END UC-40 Create Tour Departure
 
-/**
- * Lấy danh sách lịch khởi hành của một tour
- * @route GET /api/departures?tourId=:tourId
- * @access Private (tourProvider)
- */
 export const getDeparturesByTour = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -155,11 +130,7 @@ export const getDeparturesByTour = async (req, res) => {
     });
   }
 };
-/**
- * Cập nhật lịch khởi hành của tour (UC-42)
- * @route PUT/PATCH /api/departures/:id
- * @access Private (tourProvider)
- */
+
 export const updateDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -246,6 +217,94 @@ export const updateDeparture = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Không thể cập nhật lịch khởi hành'
+    });
+  }
+};
+
+/**
+ * Xuất danh sách đoàn khách của một lịch khởi hành ra file Excel (.xlsx)
+ * để hướng dẫn viên điểm danh. Chỉ lấy các đơn đã xác nhận trong đúng ngày khởi hành.
+ * @route GET /api/departures/:id/manifest
+ * @access Private (tourProvider)
+ */
+export const exportPassengerManifest = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã lịch khởi hành không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const departure = await Departure.findById(req.params.id);
+    if (!departure) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy lịch khởi hành'
+      });
+    }
+
+    const isOwner = departure.providerId && departure.providerId.equals(req.user._id);
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xuất danh sách đoàn của lịch khởi hành này'
+      });
+    }
+
+    const tour = await Tour.findById(departure.tourId).select('title');
+
+    const startOfDay = new Date(departure.departureDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const bookings = await Booking.find({
+      tourId: departure.tourId,
+      status: 'confirmed',
+      departureDate: { $gte: startOfDay, $lt: endOfDay }
+    }).sort({ fullName: 1 });
+
+    const totalPassengers = bookings.reduce((sum, booking) => sum + booking.numberOfPeople, 0);
+    const departureDateText = startOfDay.toLocaleDateString('vi-VN');
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Danh sách đoàn');
+
+    worksheet.addRow(['Tour:', tour?.title || '']);
+    worksheet.addRow(['Ngày khởi hành:', departureDateText]);
+    worksheet.addRow([]);
+    worksheet.addRow(['STT', 'Họ tên', 'Số điện thoại', 'Email', 'Số vé', 'Ghi chú']);
+
+    bookings.forEach((booking, index) => {
+      worksheet.addRow([
+        index + 1,
+        booking.fullName,
+        booking.phone,
+        booking.email,
+        booking.numberOfPeople,
+        booking.note || ''
+      ]);
+    });
+
+    worksheet.addRow([]);
+    worksheet.addRow(['Tổng số khách:', totalPassengers]);
+
+    const fileDate = startOfDay.toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="danh-sach-doan-${fileDate}.xlsx"`
+    });
+
+    await workbook.xlsx.write(res);
+    return res.end();
+  } catch (error) {
+    console.error('Error exporting passenger manifest:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xuất danh sách đoàn khách'
     });
   }
 };
