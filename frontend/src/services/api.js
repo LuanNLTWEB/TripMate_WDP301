@@ -329,6 +329,12 @@ export const itineraryApi = {
   removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'DELETE'
   }),
+  // START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
+  duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }),
+  // END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
@@ -389,6 +395,9 @@ export const reviewApi = {
     method: 'PATCH',
     body: JSON.stringify({ moderationReason })
   }),
+  // START Vote Helpful on Tour Review
+  voteHelpful: (id) => apiRequest(`/reviews/${id}/vote-helpful`, { method: 'POST' }),
+  // END Vote Helpful on Tour Review
   // START UC-89 Update Tour Review
   update: (id, payload) => apiRequest(`/reviews/${id}`, {
     method: 'PUT',
@@ -444,6 +453,10 @@ export const tourApi = {
   // START UC-25 View Tour Details
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
+  checkAvailability: (id, date = '') => {
+    const queryString = date ? `?date=${encodeURIComponent(date)}` : '';
+    return apiRequest(`/tours/${id}/availability${queryString}`, { method: 'GET' });
+  },
   create: (tour) => apiRequest('/tours', {
     method: 'POST',
     body: JSON.stringify(tour)
@@ -531,10 +544,36 @@ export const departureApi = {
   }),
   // END UC-40 Create Tour Departure
   listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' }),
+  exportManifest: async (id) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/departures/${id}/manifest`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!response.ok) {
+      let message = 'Không thể xuất danh sách đoàn khách.';
+      try {
+        const data = await response.json();
+        message = data.message || message;
+      } catch {
+        // Giữ thông báo mặc định khi server không trả về JSON.
+      }
+      throw new Error(message);
+    }
+
+    return response.blob();
+  },
   update: (id, payload) => apiRequest(`/departures/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
+  }),
+  // START UC-43 Cancel Tour Departure
+  cancel: (id, payload) => apiRequest(`/departures/${id}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload || {})
   })
+  // END UC-43 Cancel Tour Departure
 };
 
 export const uploadApi = {
@@ -581,6 +620,17 @@ export const bookingApi = {
   // START UC-82 Download Booking Voucher (Customer)
   getVoucher: (id) => apiRequest(`/bookings/${id}/voucher`, { method: 'GET' }),
   // END UC-82 Download Booking Voucher (Customer)
+
+  // START UC-85 Confirm Payment & Check-in
+  // Provider xác nhận đã thu tiền tại điểm đón rồi điểm danh khách lên xe.
+  confirmPayment: (id, payload = {}) => apiRequest(`/bookings/provider/${id}/payment`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  }),
+  checkIn: (id) => apiRequest(`/bookings/provider/${id}/check-in`, { method: 'PATCH' }),
+  // END UC-85 Confirm Payment & Check-in
+  completeBooking: (id) => apiRequest(`/bookings/provider/${id}/complete`, { method: 'PATCH' }),
+
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
@@ -635,6 +685,7 @@ export const complaintApi = {
   }),
   // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
   getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -668,9 +719,31 @@ export const notificationApi = {
     const qs = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/notifications${qs}`, { method: 'GET' });
   },
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.targetType) query.append('targetType', params.targetType);
+    if (params.search) query.append('search', params.search);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/notifications/management${qs}`, { method: 'GET' });
+  },
   create: (payload) => apiRequest('/notifications', {
     method: 'POST',
     body: JSON.stringify(payload)
+  }),
+  markAsRead: (id) => apiRequest(`/notifications/${id}/read`, {
+    method: 'PATCH'
+  }),
+  markAllAsRead: () => apiRequest('/notifications/read-all', {
+    method: 'PATCH'
+  }),
+  update: (id, payload) => apiRequest(`/notifications/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  delete: (id) => apiRequest(`/notifications/${id}`, {
+    method: 'DELETE'
   })
 };
 

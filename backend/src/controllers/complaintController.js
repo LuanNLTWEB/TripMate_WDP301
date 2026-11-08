@@ -240,3 +240,55 @@ export const updateComplaint = async (req, res) => {
   }
 };
 // END STT 68 / UC-68 Update Booking Complaint (Customer)
+
+// START UC-69 Cancel Booking Complaint (Customer)
+export const cancelComplaint = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return badRequest(res, errors);
+
+  try {
+    const complaint = await Complaint.findOne({
+      _id: req.params.id,
+      customerId: req.user._id
+    });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy khiếu nại của bạn'
+      });
+    }
+
+    if (complaint.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Khiếu nại này đã được hủy trước đó'
+      });
+    }
+
+    if (!['open', 'in_review'].includes(complaint.status)) {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ có thể hủy khiếu nại khi chưa được giải quyết'
+      });
+    }
+
+    complaint.status = 'cancelled';
+    complaint.cancelledAt = new Date();
+    await complaint.save();
+    await complaint.populate(complaintPopulate);
+
+    return res.json({
+      success: true,
+      message: 'Đã hủy khiếu nại thành công',
+      data: complaint
+    });
+  } catch (error) {
+    console.error('Error cancelling complaint:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể hủy khiếu nại'
+    });
+  }
+};
+// END UC-69 Cancel Booking Complaint (Customer)

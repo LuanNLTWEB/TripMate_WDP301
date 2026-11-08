@@ -62,6 +62,16 @@ const reviewSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Bình chọn đánh giá hữu ích (Vote Helpful on Tour Review)
+  helpfulCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  helpfulVotes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   // Xóa mềm (UC-95 Restore Review): giữ lại bản ghi để nhân viên có thể
   // khôi phục lại và để việc xóa luôn có dấu vết kiểm toán.
   isDeleted: {

@@ -54,7 +54,7 @@ function Itinerary() {
   const [pendingLeaveItinerary, setPendingLeaveItinerary] = useState(false);
   const [pendingTransferOwnerId, setPendingTransferOwnerId] = useState(null);
   const [leavingItinerary, setLeavingItinerary] = useState(false);
-  const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '' });
+  const [duplicateModal, setDuplicateModal] = useState({ open: false, itinerary: null, title: '', startDate: '', isShared: false });
   const [confirmModal, setConfirmModal] = useState({ open: false, destination: null });
   const [confirmTourModal, setConfirmTourModal] = useState({ open: false, tour: null });
   const [reorderMode, setReorderMode] = useState(false);
@@ -68,6 +68,7 @@ function Itinerary() {
     submitting: false,
     error: ''
   });
+  const [copiedLink, setCopiedLink] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState(null);
@@ -127,10 +128,29 @@ function Itinerary() {
         tourApi.getAll({ limit: 100, status: 'active' }),
         itineraryApi.listReceivedInvitations('pending')
       ]);
-      setItineraries(itineraryResponse.itineraries || []);
-      setSharedItineraries(sharedResponse.itineraries || []);
+      const allMine = itineraryResponse.itineraries || [];
+      const allShared = sharedResponse.itineraries || [];
+      setItineraries(allMine);
+      setSharedItineraries(allShared);
       setReceivedInvites(inviteResponse.invitations || []);
-      setSelected(itineraryResponse.itineraries?.[0] || null);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlId = urlParams.get('id');
+      if (urlId) {
+        const foundMine = allMine.find((it) => it._id === urlId);
+        const foundShared = allShared.find((it) => it._id === urlId);
+        if (foundMine) {
+          setSelected(foundMine);
+          setActiveTab('mine');
+        } else if (foundShared) {
+          setSelected(foundShared);
+          setActiveTab('shared');
+        } else {
+          setSelected(allMine[0] || null);
+        }
+      } else {
+        setSelected(allMine[0] || null);
+      }
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
       setTours((tourResponse.data || []).filter((tour) => tour.status !== 'suspended'));
     } catch (requestError) {
@@ -549,14 +569,15 @@ function Itinerary() {
     setError('');
     try {
       const response = await itineraryApi.duplicate(duplicateModal.itinerary._id, {
-        title: duplicateModal.title.trim() || undefined
+        title: duplicateModal.title.trim() || undefined,
+        startDate: duplicateModal.startDate || undefined
       });
       const newItinerary = response.itinerary;
       setItineraries((current) => [newItinerary, ...current]);
       setSelected(newItinerary);
       setActiveTab('mine');
-      setDuplicateModal({ open: false, itinerary: null, title: '' });
-      toast.success(response.message || 'Đã nhân bản lịch trình thành công.');
+      setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false });
+      toast.success(response.message || (duplicateModal.isShared ? 'Đã lưu lịch trình vào tài khoản thành công.' : 'Đã nhân bản lịch trình thành công.'));
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể sao chép lịch trình.');
     } finally {
@@ -565,6 +586,7 @@ function Itinerary() {
   };
 
   const openShareModal = () => {
+    setCopiedLink(false);
     setShareModal({
       open: true,
       email: '',
@@ -576,6 +598,7 @@ function Itinerary() {
 
   const closeShareModal = () => {
     if (shareModal.submitting) return;
+    setCopiedLink(false);
     setShareModal({
       open: false,
       email: '',
@@ -583,6 +606,28 @@ function Itinerary() {
       submitting: false,
       error: ''
     });
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!selected) return;
+    const shareUrl = `${window.location.origin}/itinerary?id=${selected._id}`;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+      }
+      setCopiedLink(true);
+      toast.success('Đã sao chép liên kết lịch trình vào bộ nhớ tạm');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      toast.error('Không thể sao chép liên kết');
+    }
   };
 
   const handleShareItinerary = async (e) => {
@@ -883,17 +928,19 @@ function Itinerary() {
                             <button
                               type="button"
                               className={`btn btn-sm ${isItemActive ? 'btn-outline-light' : 'btn-outline-secondary'} border-0 me-1`}
-                              title="Nhân bản lịch trình"
+                              title={activeTab === 'shared' ? 'Lưu lịch trình này về tài khoản của tôi' : 'Nhân bản lịch trình'}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setDuplicateModal({
                                   open: true,
                                   itinerary,
-                                  title: `${itinerary.title} (Bản sao)`
+                                  title: `${itinerary.title} (Bản sao)`,
+                                  startDate: itinerary.startDate ? new Date(itinerary.startDate).toISOString().slice(0, 10) : '',
+                                  isShared: activeTab === 'shared'
                                 });
                               }}
                             >
-                              <i className="bi bi-copy"></i>
+                              <i className={`bi ${activeTab === 'shared' ? 'bi-bookmark-plus' : 'bi-copy'}`}></i>
                             </button>
                             {activeTab === 'mine' && (
                               <button
@@ -1021,19 +1068,39 @@ function Itinerary() {
                                   </>
                                 )}
                               </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center"
-                                onClick={() => setDuplicateModal({
-                                  open: true,
-                                  itinerary: selected,
-                                  title: `${selected.title} (Bản sao)`
-                                })}
-                                title="Tạo bản sao lịch trình"
-                              >
-                                <i className="bi bi-copy me-1"></i>
-                                <span>Nhân bản</span>
-                              </button>
+                              {!isOwner ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm text-nowrap d-inline-flex align-items-center shadow-sm"
+                                  onClick={() => setDuplicateModal({
+                                    open: true,
+                                    itinerary: selected,
+                                    title: `${selected.title} (Bản sao)`,
+                                    startDate: selected.startDate ? new Date(selected.startDate).toISOString().slice(0, 10) : '',
+                                    isShared: true
+                                  })}
+                                  title="Lưu lịch trình này về tài khoản của bạn để toàn quyền chỉnh sửa"
+                                >
+                                  <i className="bi bi-bookmark-plus me-1"></i>
+                                  <span>Lưu vào tài khoản</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center"
+                                  onClick={() => setDuplicateModal({
+                                    open: true,
+                                    itinerary: selected,
+                                    title: `${selected.title} (Bản sao)`,
+                                    startDate: selected.startDate ? new Date(selected.startDate).toISOString().slice(0, 10) : '',
+                                    isShared: false
+                                  })}
+                                  title="Tạo bản sao lịch trình"
+                                >
+                                  <i className="bi bi-copy me-1"></i>
+                                  <span>Nhân bản</span>
+                                </button>
+                              )}
                               {isOwner && (
                                 <button
                                   type="button"
@@ -2148,35 +2215,69 @@ function Itinerary() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bold">Nhân bản lịch trình</h5>
+                  <h5 className="modal-title fw-bold d-flex align-items-center">
+                    <i className={`bi ${duplicateModal.isShared ? 'bi-bookmark-plus text-primary' : 'bi-copy text-primary'} me-2`}></i>
+                    {duplicateModal.isShared ? 'Lưu lịch trình vào tài khoản' : 'Nhân bản lịch trình'}
+                  </h5>
                   <button
                     type="button"
                     className="btn-close"
-                    onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '' })}
+                    onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false })}
                     disabled={saving}
                     aria-label="Đóng"
                   ></button>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); duplicateItinerary(); }}>
                   <div className="modal-body">
-                    <p className="text-muted small mb-3">
-                      Tạo bản sao mới từ lịch trình <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao sẽ thuộc sở hữu của bạn và có thể tùy ý chỉnh sửa.
-                    </p>
-                    <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-title">Tên lịch trình mới</label>
-                    <input
-                      id="duplicate-itinerary-title"
-                      className="form-control"
-                      value={duplicateModal.title}
-                      onChange={(e) => setDuplicateModal((prev) => ({ ...prev, title: e.target.value }))}
-                      maxLength={120}
-                      required
-                    />
+                    <div className="alert alert-info py-2 px-3 small mb-3 d-flex align-items-start gap-2">
+                      <i className="bi bi-info-circle-fill text-info mt-1"></i>
+                      <div>
+                        {duplicateModal.isShared ? (
+                          <>
+                            Lưu bản sao từ lịch trình chia sẻ <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao này sẽ thuộc toàn quyền sở hữu của bạn, tách biệt độc lập và không chứa danh sách cộng tác viên hay bình luận cũ (theo chuẩn <strong>BR-73</strong>).
+                          </>
+                        ) : (
+                          <>
+                            Tạo bản sao mới từ lịch trình <strong>{duplicateModal.itinerary?.title}</strong>. Bản sao sẽ thuộc sở hữu của bạn và có thể tùy ý chỉnh sửa.
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-title">Tên lịch trình mới</label>
+                      <input
+                        id="duplicate-itinerary-title"
+                        className="form-control"
+                        value={duplicateModal.title}
+                        onChange={(e) => setDuplicateModal((prev) => ({ ...prev, title: e.target.value }))}
+                        maxLength={120}
+                        placeholder="Nhập tên lịch trình..."
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-start-date">
+                        Ngày bắt đầu mới <span className="text-muted fw-normal small">(Tùy chọn)</span>
+                      </label>
+                      <input
+                        id="duplicate-itinerary-start-date"
+                        type="date"
+                        className="form-control"
+                        value={duplicateModal.startDate}
+                        onChange={(e) => setDuplicateModal((prev) => ({ ...prev, startDate: e.target.value }))}
+                      />
+                      <div className="form-text small">
+                        Nếu bạn chọn ngày bắt đầu mới, toàn bộ các hoạt động theo ngày của lịch trình sẽ tự động được tịnh tiến tương ứng.
+                      </div>
+                    </div>
                   </div>
                   <div className="modal-footer">
                     <button
                       type="button"
                       className="btn btn-outline-secondary"
-                      onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '' })}
+                      onClick={() => setDuplicateModal({ open: false, itinerary: null, title: '', startDate: '', isShared: false })}
                       disabled={saving}
                     >
                       Hủy
@@ -2185,12 +2286,12 @@ function Itinerary() {
                       {saving ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                          Đang nhân bản...
+                          Đang lưu...
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-copy me-1"></i>
-                          Xác nhận nhân bản
+                          <i className={`bi ${duplicateModal.isShared ? 'bi-bookmark-check' : 'bi-copy'} me-1`}></i>
+                          {duplicateModal.isShared ? 'Lưu vào tài khoản của tôi' : 'Xác nhận nhân bản'}
                         </>
                       )}
                     </button>
@@ -2226,6 +2327,45 @@ function Itinerary() {
                     <p className="text-muted small mb-3">
                       Chia sẻ lịch trình <strong>{selected?.title}</strong> với người dùng khác qua địa chỉ email đã đăng ký trên hệ thống.
                     </p>
+
+                    {/* START UC-60 Share Personal Itinerary - Shareable Link */}
+                    <div className="card bg-light border-0 mb-3">
+                      <div className="card-body p-3">
+                        <label className="form-label fw-semibold small text-secondary text-uppercase mb-1 d-flex align-items-center justify-content-between">
+                          <span>
+                            <i className="bi bi-link-45deg me-1 text-primary"></i>Liên kết chia sẻ
+                          </span>
+                          {copiedLink && (
+                            <span className="text-success fw-semibold small">
+                              <i className="bi bi-check-circle-fill me-1"></i>Đã chép!
+                            </span>
+                          )}
+                        </label>
+                        <div className="input-group">
+                          <input
+                            type="text"
+                            readOnly
+                            className="form-control form-control-sm bg-white"
+                            value={selected ? `${window.location.origin}/itinerary?id=${selected._id}` : ''}
+                            onClick={(e) => e.target.select()}
+                            title="Bấm để chọn liên kết"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                            onClick={handleCopyShareLink}
+                            title="Sao chép liên kết vào bộ nhớ tạm"
+                          >
+                            <i className={`bi ${copiedLink ? 'bi-check2 text-success' : 'bi-clipboard'}`}></i>
+                            <span>{copiedLink ? 'Đã sao chép' : 'Sao chép'}</span>
+                          </button>
+                        </div>
+                        <div className="text-muted small mt-1" style={{ fontSize: '0.8rem' }}>
+                          Gửi liên kết này cho bạn bè để mở trực tiếp lịch trình sau khi đã được chia sẻ quyền.
+                        </div>
+                      </div>
+                    </div>
+                    {/* END UC-60 Share Personal Itinerary - Shareable Link */}
 
                     {shareModal.error && (
                       <div className="alert alert-danger py-2 small mb-3">

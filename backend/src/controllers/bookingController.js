@@ -96,7 +96,7 @@ export const getMyBookings = async (req, res) => {
     const { status } = req.query;
     const filter = { customerId: req.user._id };
 
-    if (status && ['pending', 'confirmed', 'cancelled', 'rejected', 'no_show'].includes(status)) {
+    if (status && ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled', 'rejected', 'no_show'].includes(status)) {
       filter.status = status;
     }
 
@@ -163,8 +163,12 @@ export const getProviderBookingRequests = async (req, res) => {
           total: 0,
           pending: 0,
           confirmed: 0,
+          paid: 0,
+          checked_in: 0,
+          completed: 0,
           cancelled: 0,
           confirmedRevenue: 0,
+          collectedRevenue: 0,
           totalGuests: 0
         }
       });
@@ -226,13 +230,21 @@ export const getProviderBookingRequests = async (req, res) => {
       if (item._id === 'confirmed') {
         result.confirmedRevenue = item.totalAmount;
       }
+      // Tiền đã thực thu nằm ở các đơn đã thanh toán / đã điểm danh.
+      if (item._id === 'paid' || item._id === 'checked_in' || item._id === 'completed') {
+        result.collectedRevenue += item.totalAmount;
+      }
       return result;
     }, {
       total: 0,
       pending: 0,
       confirmed: 0,
+      paid: 0,
+      checked_in: 0,
+      completed: 0,
       cancelled: 0,
       confirmedRevenue: 0,
+      collectedRevenue: 0,
       totalGuests: 0
     });
 
@@ -334,6 +346,217 @@ export const confirmProviderBooking = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error?.message || 'Không thể xác nhận đặt tour'
+    });
+  }
+};
+
+// START UC-85 Confirm Payment & Check-in
+/**
+ * UC-85 Confirm Payment & Check-in.
+ *
+ * Hệ thống không có cổng thanh toán: tại điểm đón, khách trả tiền mặt hoặc chuyển
+ * khoản trực tiếp cho nhà xe, provider chỉ ghi nhận lại kết quả.
+ *  - confirmed -> paid: xác nhận đã thu tiền (cash | bank_transfer).
+ *  - paid -> checked_in: điểm danh khách đã lên xe.
+ * Chỉ provider sở hữu tour của đơn mới được thao tác trên đơn đó.
+ */
+const loadProviderBooking = async (bookingId, providerId) => {
+  const booking = await Booking.findById(bookingId);
+  if (!booking) return { statusCode: 404, message: 'Không tìm thấy đơn đặt tour' };
+
+  const tour = await Tour.findById(booking.tourId);
+  if (!tour) return { statusCode: 404, message: 'Không tìm thấy tour của đơn đặt này' };
+
+  if (!tour.providerId || tour.providerId.toString() !== providerId.toString()) {
+    return { statusCode: 403, message: 'Bạn không có quyền cập nhật đơn đặt tour này' };
+  }
+
+  return { booking };
+};
+
+const respondWithBooking = async (res, booking, message, extra = {}) => {
+  const populated = await Booking.findById(booking._id)
+    .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+    .populate('customerId', 'username email phone');
+
+  return res.status(200).json({
+    success: true,
+    message,
+    data: populated,
+    ...extra
+  });
+};
+
+// Provider xác nhận đã thu tiền tại điểm đón: confirmed -> paid.
+export const confirmBookingPayment = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu xác nhận thanh toán không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { booking, statusCode, message } = await loadProviderBooking(req.params.id, req.user._id);
+    if (!booking) {
+      return res.status(statusCode).json({ success: false, message });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể xác nhận thanh toán'
+      });
+    }
+
+    if (booking.status === 'pending') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour chưa được xác nhận, không thể thu tiền'
+      });
+    }
+
+    if (booking.status === 'paid' || booking.status === 'checked_in') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được xác nhận thu tiền trước đó'
+      });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đã xác nhận mới được ghi nhận thanh toán'
+      });
+    }
+
+    booking.status = 'paid';
+    booking.paymentMethod = req.body?.paymentMethod || 'cash';
+    booking.paidAt = new Date();
+    await booking.save();
+
+    return respondWithBooking(res, booking, 'Đã xác nhận thu tiền cho đơn đặt tour', {
+      paymentMethod: booking.paymentMethod
+    });
+  } catch (error) {
+    console.error('Error confirming booking payment:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xác nhận thanh toán'
+    });
+  }
+};
+
+// Provider điểm danh khách đã lên xe: paid -> checked_in.
+export const checkInBooking = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã đơn đặt tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { booking, statusCode, message } = await loadProviderBooking(req.params.id, req.user._id);
+    if (!booking) {
+      return res.status(statusCode).json({ success: false, message });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể điểm danh'
+      });
+    }
+
+    if (booking.status === 'checked_in') {
+      return res.status(409).json({
+        success: false,
+        message: 'Khách của đơn này đã được điểm danh trước đó'
+      });
+    }
+
+    if (booking.status !== 'paid') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ điểm danh được đơn đặt tour đã xác nhận thu tiền'
+      });
+    }
+
+    booking.status = 'checked_in';
+    booking.checkedInAt = new Date();
+    await booking.save();
+
+    return respondWithBooking(
+      res,
+      booking,
+      `Đã điểm danh ${booking.numberOfPeople} khách lên xe`
+    );
+  } catch (error) {
+    console.error('Error checking in booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể điểm danh đơn đặt tour'
+    });
+  }
+};
+// END UC-85 Confirm Payment & Check-in
+
+export const completeBooking = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã đơn đặt tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { booking, statusCode, message } = await loadProviderBooking(req.params.id, req.user._id);
+    if (!booking) {
+      return res.status(statusCode).json({ success: false, message });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được đánh dấu hoàn thành trước đó'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể đánh dấu hoàn thành'
+      });
+    }
+
+    if (!['paid', 'checked_in'].includes(booking.status)) {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đã thanh toán hoặc đã điểm danh mới được đánh dấu hoàn thành'
+      });
+    }
+
+    booking.status = 'completed';
+    booking.completedAt = new Date();
+    await booking.save();
+
+    return respondWithBooking(
+      res,
+      booking,
+      'Đã đánh dấu hoàn thành chuyến đi thành công'
+    );
+  } catch (error) {
+    console.error('Error completing booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể đánh dấu hoàn thành chuyến đi'
     });
   }
 };

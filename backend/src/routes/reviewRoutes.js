@@ -10,7 +10,8 @@ import {
   hideReview,
   reportReview,
   restoreReview,
-  updateReview
+  updateReview,
+  voteHelpfulReview
 } from '../controllers/reviewController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -21,7 +22,8 @@ import {
   createReviewValidation,
   updateReviewValidation,
   restoreReviewValidation,
-  hideReviewValidation
+  hideReviewValidation,
+  voteHelpfulValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -32,6 +34,7 @@ router.get('/tours/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), 
 router.get('/moderation', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getAllReviewsForModeration);
 router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reportedReviewListValidation, getReportedReviews);
 router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);
+router.post('/:id/vote-helpful', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), voteHelpfulValidation, voteHelpfulReview);
 router.patch('/:id/moderate', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), moderateReviewValidation, moderateReview);
 router.patch('/:id/hide', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), hideReviewValidation, hideReview);
 // START UC-95 Restore Review

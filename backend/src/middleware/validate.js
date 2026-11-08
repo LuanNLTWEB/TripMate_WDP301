@@ -125,10 +125,30 @@ export const updateComplaintValidation = [
 ];
 // END STT 68 Update Booking Complaint Validation
 
+// START UC-85 Confirm Payment & Check-in
+// Provider ghi nhận đã thu tiền (tiền mặt hoặc chuyển khoản) rồi điểm danh khách.
+export const confirmBookingPaymentValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['cash', 'bank_transfer'])
+    .withMessage('Phương thức thanh toán phải là cash hoặc bank_transfer')
+];
+
+export const checkInBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+// END UC-85 Confirm Payment & Check-in
+
+export const completeBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+
+
 export const complaintListValidation = [
   query('status')
     .optional()
-    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected'])
+    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected', 'cancelled'])
     .withMessage('Trạng thái khiếu nại không hợp lệ'),
   query('page').optional().isInt({ min: 1 }).withMessage('Trang không hợp lệ'),
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Giới hạn không hợp lệ')
@@ -356,6 +376,12 @@ export const activityValidation = [
 
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
+];
+
+export const duplicateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title').optional().trim().isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+  body('startDate').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Ngày bắt đầu không hợp lệ')
 ];
 
 export const shareItineraryValidation = [
@@ -758,7 +784,7 @@ export const providerBookingListValidation = [
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
   query('status')
     .optional()
-    .isIn(['all', 'pending', 'confirmed', 'cancelled', 'rejected', 'no_show'])
+    .isIn(['all', 'pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled', 'rejected', 'no_show'])
     .withMessage('Trạng thái booking không hợp lệ'),
   query('page')
     .optional()
@@ -804,6 +830,10 @@ export const updateReviewValidation = [
 
 // START UC-95 Restore Review
 // Chỉ cần id đánh giá hợp lệ.
+export const voteHelpfulValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
+];
+
 export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
@@ -894,6 +924,20 @@ export const listDeparturesValidation = [
     .notEmpty().withMessage('Vui lòng chọn tour')
     .isMongoId().withMessage('Mã tour không hợp lệ')
 ];
+
+export const departureIdValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ')
+];
+
+// START UC-43 Cancel Tour Departure
+export const cancelDepartureValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
+  body('reason')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 500 }).withMessage('Lý do hủy không được vượt quá 500 ký tự')
+];
+// END UC-43 Cancel Tour Departure
 
 export const announcementIdValidation = [
   param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
@@ -1008,6 +1052,10 @@ export const transferOwnershipValidation = [
   ];
 
 
+
+
+// END UC-120 Transfer Itinerary Ownership
+
 export const createNotificationValidation = [
   body('title')
     .trim()
@@ -1026,7 +1074,7 @@ export const createNotificationValidation = [
     .isEmail().withMessage('Email người nhận không hợp lệ')
     .normalizeEmail()
 ];
-// END UC-120 Transfer Itinerary Ownership
+
 
 export const notificationListValidation = [
   query('page')
@@ -1046,6 +1094,44 @@ export const notificationListValidation = [
     .isLength({ max: 30 }).withMessage('Loại thông báo không hợp lệ')
 ];
 
+
+export const managedNotificationListValidation = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
+    .toInt(),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 }).withMessage('Số thông báo mỗi trang phải từ 1 đến 100')
+    .toInt(),
+  query('targetType')
+    .optional({ values: 'falsy' })
+    .isIn(['all', 'customer', 'tourProvider', 'staff', 'specific_user']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
+  query('search')
+    .optional()
+    .trim()
+    .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự')
+];
+
+export const markNotificationReadValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
+
+export const updateNotificationValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ'),
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tiêu đề thông báo')
+    .isLength({ max: 150 }).withMessage('Tiêu đề thông báo không được vượt quá 150 ký tự'),
+  body('message')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung thông báo')
+    .isLength({ max: 500 }).withMessage('Nội dung thông báo không được vượt quá 500 ký tự')
+];
+
+export const deleteNotificationValidation = [
+  param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
+];
 
 export const updatePackingItemValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),

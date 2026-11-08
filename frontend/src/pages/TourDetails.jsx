@@ -39,6 +39,12 @@ const TourDetails = () => {
   const [eligibilityRefreshKey, setEligibilityRefreshKey] = useState(0);
   const [showCreateReview, setShowCreateReview] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
+  const [departures, setDepartures] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dateAvailability, setDateAvailability] = useState(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [votingReviewId, setVotingReviewId] = useState(null);
+  const todayDateStr = new Date().toISOString().split('T')[0];
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'tourProvider' && (
@@ -49,6 +55,42 @@ const TourDetails = () => {
   const currentReviewEligibility = reviewEligibility?.tourId === id
     ? reviewEligibility
     : null;
+
+  const handleVoteHelpful = async (review) => {
+    if (votingReviewId) return;
+
+    const currentUserId = user?.id || user?._id;
+    const isMyReview = currentUserId && (
+      String(review.userId?._id || review.userId) === String(currentUserId)
+    );
+    if (isMyReview) {
+      toast.warning('Bạn không thể tự bình chọn đánh giá của chính mình.');
+      return;
+    }
+
+    setVotingReviewId(review._id);
+    try {
+      const response = await reviewApi.voteHelpful(review._id);
+      if (response.success && response.data) {
+        setReviews((prevReviews) =>
+          prevReviews.map((item) =>
+            item._id === review._id
+              ? {
+                  ...item,
+                  helpfulCount: response.data.helpfulCount,
+                  helpfulVotes: response.data.helpfulVotes
+                }
+              : item
+          )
+        );
+        toast.success(response.message);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Không thể bình chọn hữu ích.');
+    } finally {
+      setVotingReviewId(null);
+    }
+  };
 
   const handleDeleteReview = async () => {
     if (!reviewToDelete || isDeletingReview) return;
@@ -106,6 +148,44 @@ const TourDetails = () => {
     };
   }, [id]);
   // END UC-25 View Tour Details
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    tourApi.checkAvailability(id)
+      .then((response) => {
+        if (isMounted && response.data) {
+          setDepartures(response.data.departures || []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setDepartures([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const handleCheckAvailability = async (dateToCheck = selectedDate) => {
+    if (!dateToCheck) {
+      toast.error('Vui lòng chọn ngày khởi hành cần kiểm tra');
+      return;
+    }
+    setCheckingAvailability(true);
+    try {
+      const response = await tourApi.checkAvailability(id, dateToCheck);
+      if (response.data) {
+        setDepartures(response.data.departures || []);
+        setDateAvailability(response.data.selectedDateAvailability || null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Không thể kiểm tra chỗ trống');
+    } finally {
+      setCheckingAvailability(false);
+    }
+  };
 
   useEffect(() => {
     if (!id || !isAuthenticated || user?.role !== 'customer') return;
@@ -609,13 +689,120 @@ const TourDetails = () => {
               <div className="card border-0 shadow-sm rounded-4 sticky-sidebar">
                 <div className="card-body p-4">
                   <p className="text-muted mb-1">Giá tour trọn gói</p>
-                  <p className="fs-3 fw-bold text-primary mb-3">{formatPrice(tour.price)}</p>
+                  <p className="fs-3 fw-bold text-primary mb-3">
+                    {formatPrice(tour.price)}
+                  </p>
+
+                  <div className="p-3 rounded-3 bg-light border mb-3">
+                    <label className="form-label fw-semibold small text-dark d-flex align-items-center gap-1 mb-2">
+                      <i className="bi bi-calendar2-week text-primary"></i>
+                      <span>Kiểm tra chỗ trống theo ngày</span>
+                    </label>
+                    <div className="d-flex gap-2 mb-2">
+                      <input
+                        type="date"
+                        className="form-control form-control-sm"
+                        min={todayDateStr}
+                        value={selectedDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedDate(val);
+                          if (!val) setDateAvailability(null);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary flex-shrink-0 fw-semibold"
+                        disabled={checkingAvailability || !selectedDate}
+                        onClick={() => handleCheckAvailability(selectedDate)}
+                      >
+                        {checkingAvailability ? 'Đang kiểm tra...' : 'Kiểm tra'}
+                      </button>
+                    </div>
+
+                    {departures.length > 0 && (
+                      <div className="mt-2">
+                        <div className="small text-muted mb-1">Lịch khởi hành sắp tới:</div>
+                        <div className="d-flex flex-wrap gap-1">
+                          {departures.map((dep) => (
+                            <button
+                              key={dep._id || dep.dateKey}
+                              type="button"
+                              className={`btn btn-sm py-1 px-2 d-inline-flex align-items-center gap-1 ${
+                                selectedDate === dep.dateKey
+                                  ? 'btn-primary'
+                                  : 'btn-outline-secondary bg-white'
+                              }`}
+                              style={{ fontSize: '0.78rem' }}
+                              onClick={() => {
+                                setSelectedDate(dep.dateKey);
+                                setDateAvailability(dep);
+                              }}
+                            >
+                              <span>{new Date(dep.departureDate).toLocaleDateString('vi-VN')}</span>
+                              <span
+                                className={`badge ${
+                                  dep.isAvailable ? 'bg-success' : 'bg-danger'
+                                }`}
+                              >
+                                {dep.isAvailable ? `Còn ${dep.remainingSeats} chỗ` : 'Hết chỗ'}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {departures.length === 0 && !dateAvailability && (
+                      <div className="small text-muted mt-1">
+                        Hiện tại chưa có lịch khởi hành cố định mới cho tour này. Bạn có thể chọn ngày ở trên để kiểm tra chỗ trống.
+                      </div>
+                    )}
+
+                    {dateAvailability && (
+                      <div
+                        className={`alert py-2 px-3 small mb-0 mt-2 ${
+                          dateAvailability.isAvailable ? 'alert-success' : 'alert-danger'
+                        }`}
+                      >
+                        <div className="fw-semibold">
+                          Ngày {new Date(dateAvailability.departureDate).toLocaleDateString('vi-VN')}:{' '}
+                          {dateAvailability.isAvailable ? (
+                            <span>Còn {dateAvailability.remainingSeats} chỗ trống</span>
+                          ) : (
+                            <span>Hết chỗ</span>
+                          )}
+                        </div>
+                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          Đã đặt: {dateAvailability.bookedSeats} chỗ • Giá: {formatPrice(dateAvailability.price)}
+                        </div>
+                        {!dateAvailability.isAvailable && departures.some((d) => d.isAvailable) && (
+                          <div className="mt-1 pt-1 border-top border-danger-subtle" style={{ fontSize: '0.8rem' }}>
+                            Gợi ý ngày còn chỗ:{' '}
+                            {departures
+                              .filter((d) => d.isAvailable)
+                              .slice(0, 3)
+                              .map((d) => new Date(d.departureDate).toLocaleDateString('vi-VN'))
+                              .join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {isAuthenticated && user?.role === 'customer' && tour.availableSeats > 0 && (
                     <div className="mb-3">
                       <Link
                         to={`/tours/${tour._id}/booking`}
-                        className="btn btn-primary w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                        className={`btn w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm ${
+                          dateAvailability && !dateAvailability.isAvailable ? 'btn-secondary disabled' : 'btn-primary'
+                        }`}
+                        aria-disabled={Boolean(dateAvailability && !dateAvailability.isAvailable)}
+                        onClick={(e) => {
+                          if (dateAvailability && !dateAvailability.isAvailable) {
+                            e.preventDefault();
+                          }
+                        }}
                       >
                         <i className="bi bi-calendar-check"></i>
                         <span>Đặt tour ngay</span>
@@ -760,68 +947,117 @@ const TourDetails = () => {
                       String(review.userId?._id || review.userId) === String(currentUserId)
                     );
 
+                    const votes = Array.isArray(review.helpfulVotes) ? review.helpfulVotes : [];
+                    const isHelpfulVoted = currentUserId && votes.some(
+                      (voterId) => String(voterId?._id || voterId) === String(currentUserId)
+                    );
+                    const helpfulCount = typeof review.helpfulCount === 'number'
+                      ? review.helpfulCount
+                      : votes.length;
+
                     return (
                       <div key={review._id} className="col-md-6">
-                        <div className="border rounded-3 p-3 h-100">
-                          <div className="d-flex align-items-center gap-2 mb-2">
-                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
-                              {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                            <div className="min-width-0">
-                              <div className="fw-semibold text-truncate">
-                                {review.userId?.username || 'Ẩn danh'}
-                                {isMyReview && <span className="badge text-bg-light border text-muted ms-2 small">Bạn</span>}
+                        <div className="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
+                          <div>
+                            <div className="d-flex align-items-center gap-2 mb-2">
+                              <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+                                {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
                               </div>
-                              <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
-                            </div>
-                            <div className="text-warning ms-auto flex-shrink-0 d-flex align-items-center gap-2">
-                              <div>
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
-                                ))}
+                              <div className="min-width-0">
+                                <div className="fw-semibold text-truncate">
+                                  {review.userId?.username || 'Ẩn danh'}
+                                  {isMyReview && <span className="badge text-bg-light border text-muted ms-2 small">Bạn</span>}
+                                </div>
+                                <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
                               </div>
-                              {isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
-                                  title="Sửa đánh giá"
-                                  aria-label="Sửa đánh giá"
-                                  onClick={() => setReviewToEdit(review)}
-                                >
-                                  <i className="bi bi-pencil"></i>
-                                </button>
-                              )}
-                              {isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
-                                  title="Xóa đánh giá"
-                                  aria-label="Xóa đánh giá"
-                                  onClick={() => setReviewToDelete(review)}
-                                >
-                                  <i className="bi bi-trash"></i>
-                                </button>
-                              )}
-                              {isAuthenticated && user?.role === 'customer' && !isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-warning border-0 p-1 px-2 rounded-2"
-                                  title="Báo cáo vi phạm"
-                                  aria-label="Báo cáo vi phạm"
-                                  disabled={reportedReviewIds.includes(review._id)}
-                                  onClick={() => setReviewToReport(review)}
-                                >
-                                  {reportedReviewIds.includes(review._id)
-                                    ? <i className="bi bi-flag-fill text-warning"></i>
-                                    : <i className="bi bi-flag"></i>
-                                  }
-                                </button>
-                              )}
+                              <div className="text-warning ms-auto flex-shrink-0 d-flex align-items-center gap-2">
+                                <div>
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
+                                  ))}
+                                </div>
+                                {isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
+                                    title="Sửa đánh giá"
+                                    aria-label="Sửa đánh giá"
+                                    onClick={() => setReviewToEdit(review)}
+                                  >
+                                    <i className="bi bi-pencil"></i>
+                                  </button>
+                                )}
+                                {isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
+                                    title="Xóa đánh giá"
+                                    aria-label="Xóa đánh giá"
+                                    onClick={() => setReviewToDelete(review)}
+                                  >
+                                    <i className="bi bi-trash"></i>
+                                  </button>
+                                )}
+                                {isAuthenticated && user?.role === 'customer' && !isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-warning border-0 p-1 px-2 rounded-2"
+                                    title="Báo cáo vi phạm"
+                                    aria-label="Báo cáo vi phạm"
+                                    disabled={reportedReviewIds.includes(review._id)}
+                                    onClick={() => setReviewToReport(review)}
+                                  >
+                                    {reportedReviewIds.includes(review._id)
+                                      ? <i className="bi bi-flag-fill text-warning"></i>
+                                      : <i className="bi bi-flag"></i>
+                                    }
+                                  </button>
+                                )}
+                              </div>
                             </div>
+                            {review.comment && (
+                              <p className="text-secondary mb-0 small">{review.comment}</p>
+                            )}
                           </div>
-                          {review.comment && (
-                            <p className="text-secondary mb-0 small">{review.comment}</p>
-                          )}
+
+                          <div className="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                            <span className="small text-muted">
+                              {helpfulCount > 0 ? (
+                                <>
+                                  <i className="bi bi-hand-thumbs-up-fill text-primary me-1"></i>
+                                  <span>{helpfulCount} người thấy hữu ích</span>
+                                </>
+                              ) : (
+                                <span>Chưa có lượt hữu ích</span>
+                              )}
+                            </span>
+
+                            {!isMyReview ? (
+                              <button
+                                type="button"
+                                className={`btn btn-sm ${
+                                  isHelpfulVoted
+                                    ? 'btn-primary text-white'
+                                    : 'btn-outline-secondary'
+                                } rounded-pill px-2 py-0 d-inline-flex align-items-center gap-1`}
+                                style={{ fontSize: '0.78rem' }}
+                                disabled={votingReviewId === review._id}
+                                onClick={() => handleVoteHelpful(review)}
+                                title={isHelpfulVoted ? 'Bỏ thích đánh giá này' : 'Đánh giá này hữu ích với bạn'}
+                              >
+                                {votingReviewId === review._id ? (
+                                  <span className="spinner-border spinner-border-sm" style={{ width: '0.7rem', height: '0.7rem' }} aria-hidden="true"></span>
+                                ) : (
+                                  <i className={`bi ${isHelpfulVoted ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up'}`}></i>
+                                )}
+                                <span>{isHelpfulVoted ? 'Bỏ hữu ích' : 'Hữu ích'}</span>
+                              </button>
+                            ) : (
+                              <span className="badge bg-light text-muted border small">
+                                Đánh giá của bạn
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

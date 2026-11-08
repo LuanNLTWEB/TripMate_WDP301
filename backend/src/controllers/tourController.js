@@ -1794,3 +1794,134 @@ export const updateTourDeparture = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * Kiểm tra chỗ trống và giá theo lịch khởi hành của tour (UC-27)
+ * @route GET /api/tours/:id/availability
+ * @access Public / Customer
+ */
+export const checkTourAvailability = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const tour = await Tour.findById(req.params.id);
+    if (!tour || tour.isDeleted || tour.status !== 'active') {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour hoặc tour hiện không hoạt động'
+      });
+    }
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const departures = await Departure.find({
+      tourId: tour._id,
+      status: 'scheduled',
+      departureDate: { $gte: startOfToday }
+    }).sort({ departureDate: 1 });
+
+    const confirmedBookings = await Booking.find({
+      tourId: tour._id,
+      status: 'confirmed'
+    }).select('departureDate numberOfPeople status');
+
+    const toDateKey = (value) => {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const bookedByDate = {};
+    confirmedBookings.forEach((booking) => {
+      const key = toDateKey(booking.departureDate);
+      if (key) {
+        bookedByDate[key] = (bookedByDate[key] || 0) + Number(booking.numberOfPeople || 0);
+      }
+    });
+
+    const tourSeats = Number(tour.availableSeats || 0);
+
+    const departureList = departures.map((dep) => {
+      const dateKey = toDateKey(dep.departureDate);
+      const bookedSeats = bookedByDate[dateKey] || 0;
+      const capacity = Math.min(Number(dep.availableSeats || 0), tourSeats + bookedSeats);
+      const remainingSeats = Math.min(Math.max(0, capacity - bookedSeats), tourSeats);
+      const price = tour.price;
+
+      return {
+        _id: dep._id,
+        dateKey,
+        departureDate: dep.departureDate,
+        capacity,
+        bookedSeats,
+        remainingSeats,
+        isAvailable: remainingSeats > 0,
+        price,
+        note: dep.note || ''
+      };
+    });
+
+    let selectedDateAvailability = null;
+    const requestedDate = req.query.date ? String(req.query.date).trim() : '';
+    if (requestedDate) {
+      const reqDateKey = toDateKey(requestedDate);
+      if (!reqDateKey) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ngày khởi hành cần kiểm tra không hợp lệ'
+        });
+      }
+
+      const matchedDeparture = departureList.find((item) => item.dateKey === reqDateKey);
+      if (matchedDeparture) {
+        selectedDateAvailability = matchedDeparture;
+      } else {
+        const bookedSeats = bookedByDate[reqDateKey] || 0;
+        const remainingSeats = tourSeats;
+        const capacity = remainingSeats + bookedSeats;
+        selectedDateAvailability = {
+          _id: null,
+          dateKey: reqDateKey,
+          departureDate: new Date(requestedDate),
+          capacity,
+          bookedSeats,
+          remainingSeats,
+          isAvailable: remainingSeats > 0,
+          price: tour.price,
+          note: ''
+        };
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Kiểm tra tình trạng chỗ trống thành công',
+      data: {
+        tourId: tour._id,
+        defaultPrice: tour.price,
+        tourAvailableSeats: tour.availableSeats,
+        departures: departureList,
+        selectedDateAvailability
+      }
+    });
+  } catch (error) {
+    console.error('Error checking tour availability:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể kiểm tra tình trạng chỗ trống của tour'
+    });
+  }
+};
+

@@ -7,6 +7,7 @@ import EditTourPriceModal from './EditTourPriceModal';
 import TourFormModal from './TourFormModal';
 import CreateTourDepartureModal from './CreateTourDepartureModal';
 import EditDepartureSlotModal from './EditDepartureSlotModal';
+import CancelDepartureModal from './CancelDepartureModal';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -44,6 +45,7 @@ export default function ProviderTourDetails() {
   const [showDepartureModal, setShowDepartureModal] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [editingDeparture, setEditingDeparture] = useState(null);
+  const [cancellingDeparture, setCancellingDeparture] = useState(null);
 
   // Form states (STT 45 - Set Tour Details)
   const [includedServices, setIncludedServices] = useState([]);
@@ -63,6 +65,26 @@ export default function ProviderTourDetails() {
   // Departures (UC-40 - Create Tour Departure)
   const [departures, setDepartures] = useState([]);
   const [loadingDepartures, setLoadingDepartures] = useState(false);
+  const [exportingId, setExportingId] = useState(null);
+
+  const handleExportManifest = async (departure) => {
+    setExportingId(departure._id);
+    try {
+      const blob = await departureApi.exportManifest(departure._id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `danh-sach-doan-${new Date(departure.departureDate).toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err.message || 'Không thể xuất danh sách đoàn khách.');
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   const loadTourDetails = () => {
     setLoading(true);
@@ -834,13 +856,39 @@ export default function ProviderTourDetails() {
                           </td>
                           <td className="text-muted small">{d.note || '—'}</td>
                           <td className="text-end">
+                            {d.status === 'scheduled' ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary py-0 px-2"
+                                  title="Chỉnh sửa lịch khởi hành"
+                                  onClick={() => setEditingDeparture(d)}
+                                >
+                                  <i className="bi bi-pencil me-1"></i>Sửa
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger py-0 px-2 ms-2"
+                                  title="Hủy đợt khởi hành này"
+                                  onClick={() => setCancellingDeparture(d)}
+                                >
+                                  <i className="bi bi-x-circle me-1"></i>Hủy lịch
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-danger small fst-italic me-2">
+                                {d.cancelReason ? `Đã hủy: ${d.cancelReason}` : 'Đã hủy'}
+                              </span>
+                            )}
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-primary py-0 px-2"
-                              title="Chỉnh sửa lịch khởi hành"
-                              onClick={() => setEditingDeparture(d)}
+                              className="btn btn-sm btn-outline-success py-0 px-2 ms-2"
+                              title="Xuất danh sách đoàn khách ra file Excel"
+                              onClick={() => handleExportManifest(d)}
+                              disabled={exportingId === d._id}
                             >
-                              <i className="bi bi-pencil me-1"></i>Sửa
+                              <i className="bi bi-file-earmark-spreadsheet me-1"></i>
+                              {exportingId === d._id ? 'Đang xuất...' : 'Xuất danh sách đoàn'}
                             </button>
                           </td>
                         </tr>
@@ -913,6 +961,15 @@ export default function ProviderTourDetails() {
         departure={editingDeparture}
         tourPrice={tour?.price}
         onUpdated={() => loadDepartures()}
+      />
+
+      {/* Cancel Tour Departure Modal (UC-43) */}
+      <CancelDepartureModal
+        open={!!cancellingDeparture}
+        onClose={() => setCancellingDeparture(null)}
+        departure={cancellingDeparture}
+        tourTitle={tour?.title}
+        onCancelled={() => loadDepartures()}
       />
 
       {showEditModal && (

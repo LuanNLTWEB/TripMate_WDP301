@@ -8,6 +8,11 @@ import {
   respondProviderBooking,
   getBookingVoucher,
   markBookingAsNoShow,
+
+  confirmBookingPayment,
+  checkInBooking,
+  completeBooking,
+
   exportProviderBookingReport,
   cancelBooking,
   resetNoShowCount
@@ -20,6 +25,11 @@ import {
   cancelBookingValidation,
   respondBookingValidation,
   markNoShowValidation
+,
+  confirmBookingPaymentValidation,
+  checkInBookingValidation,
+  completeBookingValidation
+
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -37,6 +47,15 @@ router.patch('/provider/:id/respond', protect, authorize(...ACCESS_ROLES.PROVIDE
 // PATCH /api/bookings/provider/:id/no-show - đánh dấu khách vắng mặt không báo trước
 router.patch('/provider/:id/no-show', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), markNoShowValidation, markBookingAsNoShow);
 // END UC-86 Mark Booking as No-Show (Provider)
+
+// START UC-85 Confirm Payment & Check-in
+// PATCH /api/bookings/provider/:id/payment - provider xác nhận đã thu tiền (confirmed -> paid)
+router.patch('/provider/:id/payment', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), confirmBookingPaymentValidation, confirmBookingPayment);
+// PATCH /api/bookings/provider/:id/check-in - provider điểm danh khách lên xe (paid -> checked_in)
+router.patch('/provider/:id/check-in', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), checkInBookingValidation, checkInBooking);
+// END UC-85 Confirm Payment & Check-in
+router.patch('/provider/:id/complete', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), completeBookingValidation, completeBooking);
+
 // START UC-123 Export Provider Booking Report
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report

@@ -7,18 +7,37 @@ const EMPTY_SUMMARY = {
   total: 0,
   pending: 0,
   confirmed: 0,
+  paid: 0,
+  checked_in: 0,
+  completed: 0,
   cancelled: 0,
   confirmedRevenue: 0,
+  collectedRevenue: 0,
   totalGuests: 0
 };
 
 const STATUS_FILTER_OPTIONS = [
-  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'all', label: 'Tất cả trạng thái', icon: 'bi bi-collection' },
   { value: 'pending', label: 'Chờ xác nhận', icon: 'bi bi-hourglass-split text-warning' },
   { value: 'confirmed', label: 'Đã xác nhận', icon: 'bi bi-check-circle text-success' },
+  { value: 'paid', label: 'Đã thu tiền', icon: 'bi bi-cash-coin text-info' },
+  { value: 'checked_in', label: 'Đã điểm danh', icon: 'bi bi-person-check text-primary' },
+  { value: 'completed', label: 'Đã hoàn thành', icon: 'bi bi-flag-fill text-secondary' },
   { value: 'rejected', label: 'Đã từ chối', icon: 'bi bi-slash-circle text-danger' },
   { value: 'no_show', label: 'Vắng mặt', icon: 'bi bi-person-x text-danger' },
   { value: 'cancelled', label: 'Đã hủy', icon: 'bi bi-x-circle text-secondary' }
+];
+
+const STATUS_OPTIONS = STATUS_FILTER_OPTIONS;
+
+const SUMMARY_CARDS = [
+  { key: 'total', label: 'Tổng yêu cầu', icon: 'bi-receipt', color: 'primary' },
+  { key: 'pending', label: 'Chờ xử lý', icon: 'bi-hourglass-split', color: 'warning' },
+  { key: 'confirmed', label: 'Đã xác nhận', icon: 'bi-check-circle', color: 'success' },
+  { key: 'paid', label: 'Đã thu tiền', icon: 'bi-cash-coin', color: 'info' },
+  { key: 'checked_in', label: 'Đã điểm danh', icon: 'bi-person-check', color: 'primary' },
+  { key: 'completed', label: 'Đã hoàn thành', icon: 'bi-flag-fill', color: 'secondary' },
+  { key: 'cancelled', label: 'Đã hủy', icon: 'bi-x-circle', color: 'danger' }
 ];
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
@@ -69,6 +88,12 @@ const getStatusBadge = (status) => {
   switch (status) {
     case 'confirmed':
       return { label: 'Đã xác nhận', className: 'badge-success' };
+    case 'paid':
+      return { label: 'Đã thu tiền', className: 'badge-info' };
+    case 'checked_in':
+      return { label: 'Đã điểm danh', className: 'badge-primary' };
+    case 'completed':
+      return { label: 'Đã hoàn thành', className: 'badge-secondary' };
     case 'cancelled':
       return { label: 'Đã hủy', className: 'badge-danger' };
     case 'rejected':
@@ -86,7 +111,19 @@ const isDeparturePassed = (d) => {
   return new Date() >= new Date(d).setHours(0, 0, 0, 0);
 };
 
-function BookingDetailModal({ booking, onClose, onApprove, onReject, onNoShow, isApproving }) {
+function BookingDetailModal({
+  booking,
+  onClose,
+  onApprove,
+  onReject,
+  onNoShow,
+  onConfirmPayment,
+  onCheckIn,
+  onComplete,
+  isApproving,
+  isProcessing,
+  isCompleting
+}) {
   if (!booking) return null;
 
   const status = getStatusBadge(booking.status);
@@ -219,9 +256,30 @@ function BookingDetailModal({ booking, onClose, onApprove, onReject, onNoShow, i
                   <i className="bi bi-x-circle me-2"></i>Từ chối
                 </button>
               )}
+              {/* UC-85 Confirm Payment & Check-in */}
+              {booking.status === 'confirmed' && onConfirmPayment && (
+                <>
+                  <button type="button" className="btn btn-outline-success" onClick={() => onConfirmPayment(booking, 'cash')} disabled={isProcessing}>
+                    <i className="bi bi-cash-coin me-2"></i>Đã thu tiền mặt
+                  </button>
+                  <button type="button" className="btn btn-success" onClick={() => onConfirmPayment(booking, 'bank_transfer')} disabled={isProcessing}>
+                    <i className="bi bi-bank me-2"></i>Đã nhận chuyển khoản
+                  </button>
+                </>
+              )}
               {booking.status === 'confirmed' && isDeparturePassed(booking.departureDate) && onNoShow && (
                 <button type="button" className="btn btn-outline-warning text-dark fw-semibold" onClick={() => onNoShow(booking)}>
                   <i className="bi bi-person-x me-2"></i>Báo vắng mặt
+                </button>
+              )}
+              {booking.status === 'paid' && onCheckIn && (
+                <button type="button" className="btn btn-primary" onClick={() => onCheckIn(booking)} disabled={isProcessing}>
+                  <i className="bi bi-person-check me-2"></i>Điểm danh khách lên xe
+                </button>
+              )}
+              {['paid', 'checked_in'].includes(booking.status) && onComplete && (
+                <button type="button" className="btn btn-secondary" onClick={() => onComplete(booking)} disabled={isCompleting}>
+                  {isCompleting ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang hoàn thành...</> : <><i className="bi bi-flag-fill me-2"></i>Đánh dấu hoàn thành</>}
                 </button>
               )}
               <button type="button" className="btn btn-secondary" onClick={onClose}>Đóng</button>
@@ -249,6 +307,9 @@ export default function ProviderBookingRequests() {
   const [reportTo, setReportTo] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [showExportBar, setShowExportBar] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
+  const [completingId, setCompletingId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   // START UC-78 Respond to Booking (Provider)
   const [approveModal, setApproveModal] = useState({ open: false, booking: null, submitting: false, error: '' });
@@ -423,6 +484,91 @@ export default function ProviderBookingRequests() {
   };
   // END UC-86 Mark Booking as No-Show (Provider)
 
+  // START UC-85 Confirm Payment & Check-in
+  // Ghi nhận đã thu tiền tại điểm đón: confirmed -> paid.
+  const handleConfirmPayment = async (booking, paymentMethod = 'cash') => {
+    if (!booking || booking.status !== 'confirmed') return;
+    const methodLabel = paymentMethod === 'bank_transfer' ? 'chuyển khoản' : 'tiền mặt';
+    const confirmed = window.confirm(`Xác nhận đã thu ${formatCurrency(booking.totalPrice)} bằng ${methodLabel} từ ${booking.fullName}?`);
+    if (!confirmed) return;
+
+    setProcessingId(booking._id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await bookingApi.confirmPayment(booking._id, { paymentMethod });
+      const updated = response.data;
+      setBookings((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+      setSelectedBooking((prev) => (prev && prev._id === updated._id ? updated : prev));
+      setSummary((prev) => ({
+        ...prev,
+        confirmed: Math.max(0, (prev.confirmed || 0) - 1),
+        paid: (prev.paid || 0) + 1,
+        confirmedRevenue: Math.max(0, (prev.confirmedRevenue || 0) - (updated.totalPrice || 0)),
+        collectedRevenue: (prev.collectedRevenue || 0) + (updated.totalPrice || 0)
+      }));
+      setSuccessMessage(response.message || 'Đã xác nhận thu tiền.');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể xác nhận thanh toán.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Điểm danh khách đã lên xe: paid -> checked_in.
+  const handleCheckIn = async (booking) => {
+    if (!booking || booking.status !== 'paid') return;
+    const confirmed = window.confirm(`Điểm danh ${booking.numberOfPeople} khách của ${booking.fullName} đã lên xe?`);
+    if (!confirmed) return;
+
+    setProcessingId(booking._id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await bookingApi.checkIn(booking._id);
+      const updated = response.data;
+      setBookings((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+      setSelectedBooking((prev) => (prev && prev._id === updated._id ? updated : prev));
+      setSummary((prev) => ({
+        ...prev,
+        paid: Math.max(0, (prev.paid || 0) - 1),
+        checked_in: (prev.checked_in || 0) + 1
+      }));
+      setSuccessMessage(response.message || 'Đã điểm danh khách.');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể điểm danh khách.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+  // END UC-85 Confirm Payment & Check-in
+
+  const handleCompleteBooking = async (booking) => {
+    if (!booking || !['paid', 'checked_in'].includes(booking.status)) return;
+    const confirmed = window.confirm(`Đánh dấu hoàn thành chuyến đi cho đơn đặt của ${booking.fullName}?`);
+    if (!confirmed) return;
+
+    setCompletingId(booking._id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await bookingApi.completeBooking(booking._id);
+      const updated = response.data;
+      setBookings((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+      setSelectedBooking((prev) => (prev && prev._id === updated._id ? updated : prev));
+      setSummary((prev) => ({
+        ...prev,
+        [booking.status]: Math.max(0, (prev[booking.status] || 0) - 1),
+        completed: (prev.completed || 0) + 1
+      }));
+      setSuccessMessage(response.message || 'Đã đánh dấu hoàn thành chuyến đi thành công.');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể đánh dấu hoàn thành chuyến đi.');
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
   const handleExportReport = async () => {
     setIsExporting(true);
     setError('');
@@ -484,27 +630,40 @@ export default function ProviderBookingRequests() {
         </div>
       )}
 
-      {/* Summary KPI Badges */}
+      <div className="row g-3 mb-4">
+        {SUMMARY_CARDS.map((card) => (
+          <div className="col-6 col-md-4 col-xl-2" key={card.key}>
+            <div className="card border-0 shadow-sm h-100 rounded-3">
+              <div className="card-body d-flex align-items-center gap-3">
+                <div className={`rounded-circle bg-${card.color}-subtle text-${card.color} d-flex align-items-center justify-content-center flex-shrink-0`} style={{ width: 46, height: 46 }}>
+                  <i className={`bi ${card.icon} fs-5`}></i>
+                </div>
+                <div>
+                  <div className="small text-muted">{card.label}</div>
+                  <div className="h4 fw-bold mb-0 text-dark">{summary[card.key] || 0}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="d-flex flex-wrap gap-3 mb-4">
-        <span className="badge bg-white text-dark border py-2 px-3 fw-normal shadow-sm rounded-3">
-          <i className="bi bi-receipt text-primary me-2"></i>
-          Tổng đơn: <strong>{summary.total || 0}</strong>
+        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
+          <i className="bi bi-people text-primary me-2"></i>
+          Tổng lượt khách: <strong>{summary.totalGuests || 0}</strong>
         </span>
-        <span className="badge bg-white text-dark border py-2 px-3 fw-normal shadow-sm rounded-3">
-          <i className="bi bi-hourglass-split text-warning me-2"></i>
-          Chờ xác nhận: <strong className="text-warning">{summary.pending || 0}</strong>
-        </span>
-        <span className="badge bg-white text-dark border py-2 px-3 fw-normal shadow-sm rounded-3">
-          <i className="bi bi-people text-info me-2"></i>
-          Lượt khách: <strong>{summary.totalGuests || 0}</strong>
-        </span>
-        <span className="badge bg-white text-dark border py-2 px-3 fw-normal shadow-sm rounded-3">
+        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
           <i className="bi bi-cash-coin text-success me-2"></i>
-          Doanh thu đã xác nhận: <strong>{formatCurrency(summary.confirmedRevenue)}</strong>
+          Giá trị booking đã xác nhận: <strong>{formatCurrency(summary.confirmedRevenue)}</strong>
+        </span>
+        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
+          <i className="bi bi-wallet2 text-info me-2"></i>
+          Tiền đã thu tại điểm đón: <strong>{formatCurrency(summary.collectedRevenue)}</strong>
         </span>
       </div>
 
-      {successMessage && (
+{successMessage && (
         <div className="alert alert-success d-flex align-items-center alert-dismissible fade show" role="status">
           <i className="bi bi-check-circle-fill me-2"></i>
           <div>{successMessage}</div>
@@ -697,6 +856,43 @@ export default function ProviderBookingRequests() {
                             <i className="bi bi-person-x"></i>
                           </button>
                         )}
+                        {/* UC-85 Confirm Payment & Check-in */}
+                        {booking.status === 'confirmed' && (
+                          <button
+                            type="button"
+                            className="management-action-btn btn-approve"
+                            title="Xác nhận đã thu tiền mặt"
+                            aria-label={`Xác nhận thu tiền booking của ${booking.fullName}`}
+                            disabled={processingId === booking._id}
+                            onClick={() => handleConfirmPayment(booking, 'cash')}
+                          >
+                            {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-cash-coin"></i>}
+                          </button>
+                        )}
+                        {booking.status === 'paid' && (
+                          <button
+                            type="button"
+                            className="management-action-btn btn-approve"
+                            title="Điểm danh khách lên xe"
+                            aria-label={`Điểm danh booking của ${booking.fullName}`}
+                            disabled={processingId === booking._id}
+                            onClick={() => handleCheckIn(booking)}
+                          >
+                            {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-person-check"></i>}
+                          </button>
+                        )}
+                        {['paid', 'checked_in'].includes(booking.status) && (
+                          <button
+                            type="button"
+                            className="management-action-btn btn-approve"
+                            title="Đánh dấu hoàn thành chuyến đi"
+                            aria-label={`Đánh dấu hoàn thành booking của ${booking.fullName}`}
+                            disabled={completingId === booking._id}
+                            onClick={() => handleCompleteBooking(booking)}
+                          >
+                            {completingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-flag-fill"></i>}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -758,7 +954,12 @@ export default function ProviderBookingRequests() {
             setSelectedBooking(null);
             setNoShowModal({ open: true, booking: b, reason: '', submitting: false, error: '' });
           }}
-          isApproving={approveModal.open && approveModal.submitting}
+          onConfirmPayment={handleConfirmPayment}
+          onCheckIn={handleCheckIn}
+          onComplete={handleCompleteBooking}
+          isApproving={approvingId === selectedBooking?._id || (approveModal.open && approveModal.submitting)}
+          isProcessing={processingId === selectedBooking?._id}
+          isCompleting={completingId === selectedBooking?._id}
         />
       )}
 

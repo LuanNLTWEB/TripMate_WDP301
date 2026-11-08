@@ -872,8 +872,11 @@ export const removeTour = async (req, res) => {
   }
 };
 
+// START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
 /**
  * Duplicate an owned or shared itinerary into a new personal itinerary.
+ * Creates an independent record owned by the current user, stripping collaborators and comments.
+ * Supports customizable title and optional proportional date shift based on new startDate.
  * @route POST /api/itineraries/:id/duplicate
  * @access Customer
  */
@@ -895,34 +898,61 @@ export const duplicateItinerary = async (req, res) => {
     const customTitle = typeof req.body.title === 'string' ? req.body.title.trim() : '';
     const newTitle = customTitle || `${source.title} (Bản sao)`;
 
+    let newStartDate = source.startDate;
+    let newEndDate = source.endDate;
+    let dateShiftMs = 0;
+
+    if (req.body.startDate) {
+      const parsedStart = new Date(req.body.startDate);
+      if (!isNaN(parsedStart.getTime())) {
+        if (source.startDate) {
+          const originalStart = new Date(source.startDate);
+          dateShiftMs = parsedStart.getTime() - originalStart.getTime();
+          newStartDate = parsedStart;
+          if (source.endDate) {
+            newEndDate = new Date(new Date(source.endDate).getTime() + dateShiftMs);
+          }
+        } else {
+          newStartDate = parsedStart;
+        }
+      }
+    }
+
     const duplicated = await Itinerary.create({
       owner: req.user._id,
       title: newTitle.slice(0, 120),
-      startDate: source.startDate,
-      endDate: source.endDate,
+      startDate: newStartDate,
+      endDate: newEndDate,
       budget: source.budget || 0,
       destinations: [...(source.destinations || [])],
       tours: [...(source.tours || [])],
-      activities: (source.activities || []).map((activity) => ({
-        title: activity.title,
-        date: activity.date,
-        startTime: activity.startTime,
-        endTime: activity.endTime,
-        location: activity.location || '',
-        estimatedCost: activity.estimatedCost || 0,
-        notes: activity.notes || ''
-      })),
+      activities: (source.activities || []).map((activity) => {
+        let activityDate = activity.date;
+        if (dateShiftMs !== 0 && activity.date) {
+          activityDate = new Date(new Date(activity.date).getTime() + dateShiftMs);
+        }
+        return {
+          title: activity.title,
+          date: activityDate,
+          startTime: activity.startTime,
+          endTime: activity.endTime,
+          location: activity.location || '',
+          estimatedCost: activity.estimatedCost || 0,
+          notes: activity.notes || ''
+        };
+      }),
       packingItems: (source.packingItems || []).map((item) => ({
         name: item.name,
-        isPacked: item.isPacked
+        isPacked: false
       })),
-      collaborators: []
+      collaborators: [],
+      comments: []
     });
 
     const populated = await findByIdPopulated(duplicated._id);
     return res.status(201).json({
       success: true,
-      message: 'Đã nhân bản lịch trình thành công',
+      message: 'Đã lưu lịch trình vào tài khoản thành công',
       itinerary: hydrateItinerary(populated)
     });
   } catch (error) {
@@ -930,6 +960,7 @@ export const duplicateItinerary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể sao chép lịch trình' });
   }
 };
+// END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
 
 /**
  * Share a personal itinerary with another user via email (owner only).
@@ -984,6 +1015,22 @@ export const shareItinerary = async (req, res) => {
 
     await itinerary.save();
     const populated = await findByIdPopulated(itinerary._id);
+
+    try {
+      const ownerName = req.user.username || req.user.email || 'Một người dùng';
+      const permText = permission === 'edit' ? 'chỉnh sửa' : 'chỉ xem';
+      await Notification.create({
+        recipient: targetUser._id,
+        sender: req.user._id,
+        itinerary: itinerary._id,
+        permission,
+        title: 'Bạn được chia sẻ một lịch trình',
+        message: `${ownerName} đã chia sẻ lịch trình "${itinerary.title}" với bạn với quyền ${permText}.`,
+        notificationType: 'itinerary_share'
+      });
+    } catch (notifErr) {
+      console.warn('Could not dispatch share notification:', notifErr.message);
+    }
 
     return res.status(200).json({
       success: true,
