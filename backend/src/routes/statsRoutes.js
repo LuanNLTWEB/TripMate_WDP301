@@ -1,9 +1,27 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
-import { getPlatformStats, getAdminDashboardStats } from '../controllers/statsController.js';
+import {
+  getPlatformStats,
+  getAdminDashboardStats,
+  getProviderRevenueStats
+} from '../controllers/statsController.js';
 
 const router = Router();
+
+// START UC-70 View Provider Revenue Statistics
+/**
+ * Provider revenue and booking performance statistics.
+ * @route GET /api/stats/provider-revenue
+ * @access Provider (tourProvider)
+ */
+router.get(
+  '/provider-revenue',
+  protect,
+  authorize(...ACCESS_ROLES.PROVIDER_ONLY),
+  getProviderRevenueStats
+);
+// END UC-70 View Provider Revenue Statistics
 
 // START UC-102 View Platform Statistics
 /**

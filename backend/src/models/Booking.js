@@ -93,7 +93,14 @@ const bookingSchema = new mongoose.Schema({
   cancelledAt: {
     type: Date,
     default: null
+  },
+  // START UC-152 Update Booking Passenger Info
+  passengerUpdateCount: {
+    type: Number,
+    default: 0,
+    min: 0
   }
+  // END UC-152 Update Booking Passenger Info
 }, {
   timestamps: true
 });

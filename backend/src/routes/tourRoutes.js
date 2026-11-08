@@ -24,7 +24,8 @@ import {
   updateTourPrice,
   updateTourDeparture,
   deleteTour,
-  checkTourAvailability
+  checkTourAvailability,
+  compareTours
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -40,12 +41,16 @@ import {
   deleteTourScheduleValidation,
   updateTourCapacityValidation,
   updateTourPriceValidation,
-  updateTourDepartureValidation
+  updateTourDepartureValidation,
+  compareToursValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
 
 router.get('/', getAllTours);
+// START UC-64 Compare Tours
+router.post('/compare', compareToursValidation, compareTours);
+// END UC-64 Compare Tours
 router.post('/', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), createTourValidation, createTour);
 router.get('/management', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getManagedTours);
 router.get('/management/:id', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), tourIdValidation, getManagedTourById);

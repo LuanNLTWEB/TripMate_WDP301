@@ -7,6 +7,9 @@ import CancelBookingModal from '../components/CancelBookingModal';
 // START UC-66 Submit Booking Complaint
 import SubmitComplaintModal from '../components/SubmitComplaintModal';
 // END UC-66 Submit Booking Complaint
+// START UC-152 Update Booking Passenger Info
+import UpdatePassengerModal from '../components/UpdatePassengerModal';
+// END UC-152 Update Booking Passenger Info
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 
@@ -104,7 +107,20 @@ const BookingHistory = () => {
   // START UC-66 Submit Booking Complaint
   const [bookingToComplain, setBookingToComplain] = useState(null);
   // END UC-66 Submit Booking Complaint
+  // START UC-152 Update Booking Passenger Info
+  const [bookingToUpdatePassenger, setBookingToUpdatePassenger] = useState(null);
+  // END UC-152 Update Booking Passenger Info
   const [copiedId, setCopiedId] = useState('');
+
+  const handleBookingUpdated = (updatedBooking) => {
+    if (!updatedBooking?._id) return;
+    setBookings((prev) =>
+      prev.map((b) => (b._id === updatedBooking._id ? { ...b, ...updatedBooking } : b))
+    );
+    if (selectedBooking?._id === updatedBooking._id) {
+      setSelectedBooking((prev) => ({ ...prev, ...updatedBooking }));
+    }
+  };
 
   useEffect(() => {
     document.title = 'Lịch sử đặt tour | TripMate';
@@ -735,52 +751,71 @@ const BookingHistory = () => {
                                   <div className="h4 fw-bold text-primary mb-0">{formatPrice(booking.totalPrice)}</div>
                                 </div>
 
-                                <div className="d-flex flex-row flex-md-column gap-2 justify-content-end">
+                                <div className="d-flex flex-column gap-2 justify-content-end align-items-stretch">
+                                  {/* Primary CTA */}
                                   <button
                                     type="button"
                                     id={`btn-view-booking-${booking._id}`}
-                                    className="btn btn-outline-primary btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                                    className="btn btn-primary btn-sm rounded-pill py-2 fw-semibold w-100 shadow-xs d-inline-flex align-items-center justify-content-center gap-1.5"
                                     onClick={() => setSelectedBooking(booking)}
                                   >
                                     <i className="bi bi-eye"></i>
-                                    <span>Xem chi tiết đơn</span>
+                                    <span>Xem chi tiết</span>
                                   </button>
 
-                                  {/* START UC-66 Submit Booking Complaint */}
-                                  <button
-                                    type="button"
-                                    id={`btn-submit-complaint-${booking._id}`}
-                                    className="btn btn-outline-warning btn-sm rounded-pill px-3 py-2 fw-semibold text-dark d-inline-flex align-items-center justify-content-center gap-1"
-                                    onClick={() => setBookingToComplain(booking)}
-                                  >
-                                    <i className="bi bi-flag"></i>
-                                    <span>Gửi khiếu nại</span>
-                                  </button>
-                                  {/* END UC-66 Submit Booking Complaint */}
+                                  {/* Active Booking Quick Action: Sửa thông tin hành khách */}
+                                  {booking.status !== 'cancelled' && booking.status !== 'completed' && booking.status !== 'checked_in' && (
+                                    <div className="w-100">
+                                      <button
+                                        type="button"
+                                        id={`btn-update-passenger-${booking._id}`}
+                                        className={`btn btn-sm rounded-pill py-1.5 px-2 w-100 small fw-medium d-inline-flex align-items-center justify-content-center gap-1 ${
+                                          (booking.passengerUpdateCount || 0) >= 3
+                                            ? 'btn-light text-muted border'
+                                            : 'btn-outline-secondary'
+                                        }`}
+                                        onClick={() => setBookingToUpdatePassenger(booking)}
+                                        disabled={(booking.passengerUpdateCount || 0) >= 3}
+                                        title={(booking.passengerUpdateCount || 0) >= 3 ? 'Đã đạt giới hạn 3 lần chỉnh sửa' : 'Cập nhật thông tin hành khách'}
+                                      >
+                                        <i className="bi bi-pencil-square"></i>
+                                        <span>
+                                          {(booking.passengerUpdateCount || 0) >= 3
+                                            ? 'Đã sửa (3/3 lần)'
+                                            : (booking.passengerUpdateCount || 0) > 0
+                                              ? `Sửa thông tin (${booking.passengerUpdateCount}/3)`
+                                              : 'Sửa thông tin'}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
 
-                                  {/* START UC-74 Cancel Booking */}
-                                  {booking.status !== 'cancelled' && (
+                                  {/* Auxiliary Actions: Khiếu nại & Hủy tour */}
+                                  <div className="d-flex gap-1.5 w-100">
                                     <button
                                       type="button"
-                                      id={`btn-cancel-booking-${booking._id}`}
-                                      className="btn btn-outline-danger btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
-                                      onClick={() => setBookingToCancel(booking)}
+                                      id={`btn-submit-complaint-${booking._id}`}
+                                      className="btn btn-light text-muted border-0 btn-sm rounded-pill py-1 px-2 flex-grow-1 small d-inline-flex align-items-center justify-content-center gap-1"
+                                      onClick={() => setBookingToComplain(booking)}
+                                      title="Gửi khiếu nại"
                                     >
-                                      <i className="bi bi-x-circle"></i>
-                                      <span>Hủy đặt tour</span>
+                                      <i className="bi bi-flag"></i>
+                                      <span>Khiếu nại</span>
                                     </button>
-                                  )}
-                                  {/* END UC-74 Cancel Booking */}
 
-                                  {tour._id && (
-                                    <Link
-                                      to={`/tours/${tour._id}`}
-                                      className="btn btn-light btn-sm rounded-pill px-3 py-2 text-muted d-inline-flex align-items-center justify-content-center gap-1"
-                                    >
-                                      <span>Trang tour</span>
-                                      <i className="bi bi-arrow-up-right small"></i>
-                                    </Link>
-                                  )}
+                                    {booking.status !== 'cancelled' && (
+                                      <button
+                                        type="button"
+                                        id={`btn-cancel-booking-${booking._id}`}
+                                        className="btn btn-light text-danger border-0 btn-sm rounded-pill py-1 px-2 flex-grow-1 small d-inline-flex align-items-center justify-content-center gap-1"
+                                        onClick={() => setBookingToCancel(booking)}
+                                        title="Hủy đặt tour"
+                                      >
+                                        <i className="bi bi-x-circle"></i>
+                                        <span>Hủy tour</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -818,6 +853,20 @@ const BookingHistory = () => {
           }}
         />
       )}
+
+      {/* START UC-152 Update Booking Passenger Info */}
+      {bookingToUpdatePassenger && (
+        <UpdatePassengerModal
+          booking={bookingToUpdatePassenger}
+          tourTitle={bookingToUpdatePassenger.tourId?.title || 'Tour'}
+          onClose={() => setBookingToUpdatePassenger(null)}
+          onUpdated={(updated) => {
+            setBookingToUpdatePassenger(null);
+            handleBookingUpdated(updated);
+          }}
+        />
+      )}
+      {/* END UC-152 Update Booking Passenger Info */}
 
       {/* ================= MODAL XEM CHI TIẾT ĐƠN ĐẶT TOUR (CHỈ VIEW) ================= */}
       {selectedBooking && (
@@ -917,9 +966,35 @@ const BookingHistory = () => {
 
                 {/* Section 2: Passenger & Booking Details */}
                 <div className="mb-4">
-                  <h6 className="fw-bold text-uppercase text-muted small tracking-wide mb-3">
-                    <i className="bi bi-person-lines-fill me-2 text-primary"></i>Thông tin khách hàng & Chuyến đi
-                  </h6>
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <h6 className="fw-bold text-uppercase text-muted small tracking-wide mb-0">
+                      <i className="bi bi-person-lines-fill me-2 text-primary"></i>Thông tin khách hàng & Chuyến đi
+                    </h6>
+                    {selectedBooking.status !== 'cancelled' && selectedBooking.status !== 'completed' && selectedBooking.status !== 'checked_in' && (
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${
+                            (selectedBooking.passengerUpdateCount || 0) >= 3
+                              ? 'btn-light text-muted border'
+                              : 'btn-outline-secondary'
+                          }`}
+                          onClick={() => setBookingToUpdatePassenger(selectedBooking)}
+                          disabled={(selectedBooking.passengerUpdateCount || 0) >= 3}
+                          title={(selectedBooking.passengerUpdateCount || 0) >= 3 ? 'Đã đạt giới hạn 3 lần chỉnh sửa' : 'Cập nhật thông tin'}
+                        >
+                          <i className="bi bi-person-gear me-1"></i>
+                          <span>
+                            {(selectedBooking.passengerUpdateCount || 0) >= 3
+                              ? 'Đã sửa (3/3 lần)'
+                              : (selectedBooking.passengerUpdateCount || 0) > 0
+                                ? `Sửa thông tin (${selectedBooking.passengerUpdateCount}/3)`
+                                : 'Sửa thông tin'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="row g-3">
                     <div className="col-12 col-sm-6">

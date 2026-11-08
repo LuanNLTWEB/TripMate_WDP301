@@ -11,6 +11,7 @@ import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Departure from '../models/Departure.js';
 import TourSubmission from '../models/TourSubmission.js';
+import Review from '../models/Review.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1924,4 +1925,136 @@ export const checkTourAvailability = async (req, res) => {
     });
   }
 };
+
+// START UC-64 Compare Tours
+/**
+ * So sánh các tour du lịch (từ 2 đến 4 tour).
+ * @route POST /api/tours/compare
+ * @access Public (Guest, Customer, Provider, Staff)
+ */
+export const compareTours = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu so sánh tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const rawIds = req.body.tourIds || [];
+    // Loại bỏ id trùng lặp
+    const uniqueIds = Array.from(new Set(rawIds.map((id) => String(id))));
+
+    if (uniqueIds.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn ít nhất 2 tour khác nhau để so sánh'
+      });
+    }
+
+    if (uniqueIds.length > 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể so sánh tối đa 4 tour cùng lúc'
+      });
+    }
+
+    // Tìm các tour hợp lệ (status: 'active', isDeleted != true)
+    const tours = await Tour.find({
+      _id: { $in: uniqueIds },
+      status: 'active',
+      isDeleted: { $ne: true }
+    })
+      .populate('categoryId', 'name description')
+      .populate('providerId', 'username email businessName');
+
+    if (!tours || tours.length < 2) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đủ ít nhất 2 tour đang hoạt động để thực hiện so sánh'
+      });
+    }
+
+    const tourIdsFound = tours.map((t) => t._id);
+    const [departures, reviewCounts] = await Promise.all([
+      Departure.find({
+        tourId: { $in: tourIdsFound },
+        status: 'scheduled',
+        departureDate: { $gte: new Date() }
+      }).sort({ departureDate: 1 }),
+      Review.aggregate([
+        { $match: { tourId: { $in: tourIdsFound }, status: 'approved' } },
+        { $group: { _id: '$tourId', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const reviewMap = new Map();
+    (reviewCounts || []).forEach((r) => reviewMap.set(String(r._id), r.count));
+
+    const departuresMap = new Map();
+    (departures || []).forEach((dep) => {
+      const tid = String(dep.tourId);
+      if (!departuresMap.has(tid)) departuresMap.set(tid, []);
+      departuresMap.get(tid).push({
+        _id: dep._id,
+        departureDate: dep.departureDate,
+        availableSeats: dep.availableSeats,
+        price: dep.price || null
+      });
+    });
+
+    // Giữ nguyên thứ tự theo uniqueIds mà client yêu cầu
+    const orderedTours = uniqueIds
+      .map((id) => tours.find((t) => String(t._id) === id))
+      .filter(Boolean)
+      .map((tour) => {
+        const tid = String(tour._id);
+        const tourObj = tour.toObject ? tour.toObject() : tour;
+        const upcomingDeps = departuresMap.get(tid) || [];
+        const activeItinerary = (tourObj.itinerary || []).filter((item) => !item.isDeleted);
+
+        return {
+          _id: tourObj._id,
+          title: tourObj.title,
+          description: tourObj.description,
+          location: tourObj.location,
+          departureLocation: tourObj.departureLocation,
+          destinationLocation: tourObj.destinationLocation,
+          price: tourObj.price,
+          duration: tourObj.duration,
+          images: tourObj.images || [],
+          availableSeats: tourObj.availableSeats,
+          includedServices: tourObj.includedServices || [],
+          excludedServices: tourObj.excludedServices || [],
+          cancellationPolicy: tourObj.cancellationPolicy || '',
+          notes: tourObj.notes || '',
+          averageRating: tourObj.averageRating || 0,
+          reviewCount: reviewMap.get(tid) || 0,
+          category: tourObj.categoryId,
+          provider: tourObj.providerId ? {
+            _id: tourObj.providerId._id,
+            username: tourObj.providerId.username,
+            businessName: tourObj.providerId.businessName || tourObj.providerId.username
+          } : null,
+          itinerary: activeItinerary,
+          upcomingDepartures: upcomingDeps.slice(0, 5)
+        };
+      });
+
+    return res.status(200).json({
+      success: true,
+      count: orderedTours.length,
+      data: orderedTours
+    });
+  } catch (error) {
+    console.error('Compare tours error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể so sánh tour lúc này'
+    });
+  }
+};
+// END UC-64 Compare Tours
 
