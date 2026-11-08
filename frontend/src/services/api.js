@@ -431,6 +431,10 @@ export const tourApi = {
   // START UC-25 View Tour Details
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
+  checkAvailability: (id, date = '') => {
+    const queryString = date ? `?date=${encodeURIComponent(date)}` : '';
+    return apiRequest(`/tours/${id}/availability${queryString}`, { method: 'GET' });
+  },
   create: (tour) => apiRequest('/tours', {
     method: 'POST',
     body: JSON.stringify(tour)

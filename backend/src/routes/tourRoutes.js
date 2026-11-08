@@ -23,7 +23,8 @@ import {
   updateTourCapacity,
   updateTourPrice,
   updateTourDeparture,
-  deleteTour
+  deleteTour,
+  checkTourAvailability
 } from '../controllers/tourController.js';
 import { protect, authorize, optionalAuth } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -80,6 +81,7 @@ router.delete('/:id/favorite', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY)
 router.patch('/:id/status', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), updateTourStatusValidation, updateTourStatus);
 router.patch('/:id/restore', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), tourIdValidation, restoreTour);
 router.patch('/:id/revision', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), requestRevisionValidation, requestTourRevision);
+router.get('/:id/availability', optionalAuth, tourIdValidation, checkTourAvailability);
 // START UC-25 View Tour Details
 // GET /api/tours/:id - optionalAuth để guest vẫn xem được tour đang active.
 router.get('/:id', optionalAuth, tourIdValidation, getTourById);
