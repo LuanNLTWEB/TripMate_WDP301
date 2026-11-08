@@ -245,6 +245,86 @@ export const getProviderBookingRequests = async (req, res) => {
   }
 };
 
+// Provider duyệt request đặt tour do chính mình sở hữu: pending -> confirmed.
+// Chỉ tourProvider sở hữu tour mới được duyệt; trừ chỗ trống của tour ngay khi duyệt
+// (BR-57: sức chứa đồng bộ với danh sách đơn), chỗ được cộng lại khi hủy booking đã duyệt.
+export const confirmProviderBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn đặt tour'
+      });
+    }
+
+    const tour = await Tour.findById(booking.tourId);
+    if (!tour) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour của đơn đặt này'
+      });
+    }
+
+    if (!tour.providerId || tour.providerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xác nhận đơn đặt tour này'
+      });
+    }
+
+    if (booking.status === 'confirmed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã được xác nhận trước đó'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị hủy, không thể xác nhận'
+      });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(409).json({
+        success: false,
+        message: 'Chỉ đơn đặt tour đang chờ xử lý mới được xác nhận'
+      });
+    }
+
+    if (tour.availableSeats < booking.numberOfPeople) {
+      return res.status(400).json({
+        success: false,
+        message: `Tour chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${booking.numberOfPeople} người`
+      });
+    }
+
+    booking.status = 'confirmed';
+    await booking.save();
+
+    tour.availableSeats = Math.max(0, tour.availableSeats - booking.numberOfPeople);
+    await tour.save();
+
+    const populated = await Booking.findById(booking._id)
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+      .populate('customerId', 'username email phone');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xác nhận đặt tour thành công',
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error confirming booking:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xác nhận đặt tour'
+    });
+  }
+};
+
 // START UC-123 Export Provider Booking Report
 /**
  * UC-123 - Export Provider Booking Report.

@@ -4,6 +4,7 @@ import {
   getBookingById,
   getMyBookings,
   getProviderBookingRequests,
+  confirmProviderBooking,
   exportProviderBookingReport,
   cancelBooking
 } from '../controllers/bookingController.js';
@@ -20,6 +21,8 @@ const router = express.Router();
 router.post('/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createBookingValidation, createBooking);
 router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyBookings);
 router.get('/provider', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), providerBookingListValidation, getProviderBookingRequests);
+// PATCH /api/bookings/provider/:id/confirm - provider duyệt request đang pending -> confirmed
+router.patch('/provider/:id/confirm', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), confirmProviderBooking);
 // START UC-123 Export Provider Booking Report
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report

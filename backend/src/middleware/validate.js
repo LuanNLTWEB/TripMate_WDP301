@@ -82,6 +82,50 @@ export const registerValidation = [
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
 ];
 
+// START UC-66 Submit Booking Complaint
+// Customer submits a booking-linked complaint with optional evidence images;
+// staff resolves it (UC-81/153/154).
+export const createComplaintValidation = [
+  body('bookingId').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('category')
+    .isIn(['quality_mismatch', 'incorrect_cash_charge', 'wrongful_no_show', 'other'])
+    .withMessage('Loại khiếu nại không hợp lệ'),
+  body('description')
+    .trim()
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Nội dung khiếu nại phải từ 20 đến 2000 ký tự'),
+  body('evidenceImages')
+    .optional()
+    .isArray({ max: 5 }).withMessage('Chỉ được gửi tối đa 5 ảnh minh chứng'),
+  body('evidenceImages.*')
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Mỗi ảnh minh chứng phải là một URL hợp lệ')
+];
+// END UC-66 Submit Booking Complaint
+
+export const complaintListValidation = [
+  query('status')
+    .optional()
+    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected'])
+    .withMessage('Trạng thái khiếu nại không hợp lệ'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Trang không hợp lệ'),
+  query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Giới hạn không hợp lệ')
+];
+
+export const complaintIdValidation = [
+  param('id').isMongoId().withMessage('Mã khiếu nại không hợp lệ')
+];
+
+export const resolveComplaintValidation = [
+  ...complaintIdValidation,
+  body('status').isIn(['resolved', 'rejected']).withMessage('Kết quả xử lý không hợp lệ'),
+  body('resolutionNote')
+    .trim()
+    .isLength({ min: 5, max: 2000 })
+    .withMessage('Nội dung xử lý phải từ 5 đến 2000 ký tự')
+];
+
 export const loginValidation = [
   body('email')
     .trim()

@@ -723,6 +723,16 @@ const BookingHistory = () => {
         </div>
       </main>
 
+      {/* START UC-66 Submit Booking Complaint */}
+      {bookingToComplain && (
+        <SubmitComplaintModal
+          bookings={bookings}
+          initialBooking={bookingToComplain}
+          onClose={() => setBookingToComplain(null)}
+        />
+      )}
+      {/* END UC-66 Submit Booking Complaint */}
+
       {/* UC-74 - hủy đặt tour */}
       {bookingToCancel && (
         <CancelBookingModal

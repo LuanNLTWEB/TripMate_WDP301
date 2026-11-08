@@ -551,6 +551,8 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
+  approveBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
+  confirmBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
