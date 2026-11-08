@@ -49,6 +49,27 @@ const getStatusBadge = (status) => {
         className: 'bg-success-subtle text-success border border-success-subtle',
         desc: 'Đơn đặt tour đã được xác nhận và giữ chỗ thành công.'
       };
+    case 'paid':
+      return {
+        label: 'Đã thanh toán',
+        icon: 'bi-cash-coin',
+        className: 'bg-info-subtle text-info-emphasis border border-info-subtle',
+        desc: 'Nhà cung cấp đã xác nhận thu tiền tại điểm đón.'
+      };
+    case 'checked_in':
+      return {
+        label: 'Đã điểm danh',
+        icon: 'bi-person-check-fill',
+        className: 'bg-primary-subtle text-primary border border-primary-subtle',
+        desc: 'Bạn đã được điểm danh và lên xe khởi hành.'
+      };
+    case 'completed':
+      return {
+        label: 'Đã hoàn thành',
+        icon: 'bi-flag-fill',
+        className: 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        desc: 'Chuyến đi đã hoàn thành thành công.'
+      };
     case 'cancelled':
       return {
         label: 'Đã hủy',
@@ -138,11 +159,9 @@ const BookingHistory = () => {
 
   // Status counts
   const counts = useMemo(() => {
-    const res = { all: bookings.length, pending: 0, confirmed: 0, cancelled: 0 };
+    const res = { all: bookings.length, pending: 0, confirmed: 0, paid: 0, checked_in: 0, completed: 0, cancelled: 0 };
     bookings.forEach((b) => {
-      if (b.status === 'confirmed') res.confirmed++;
-      else if (b.status === 'cancelled') res.cancelled++;
-      else res.pending++;
+      if (res[b.status] !== undefined) res[b.status]++;
     });
     return res;
   }, [bookings]);
@@ -395,6 +414,45 @@ const BookingHistory = () => {
                         onClick={() => setStatusFilter('confirmed')}
                       >
                         Đã xác nhận <span className="badge rounded-pill bg-success-subtle text-success ms-1">{counts.confirmed}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="tab-paid-bookings"
+                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                          statusFilter === 'paid'
+                            ? 'btn-info text-dark'
+                            : 'btn-outline-secondary border-0 bg-light text-muted'
+                        }`}
+                        onClick={() => setStatusFilter('paid')}
+                      >
+                        Đã thanh toán <span className="badge rounded-pill bg-info-subtle text-info-emphasis ms-1">{counts.paid}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="tab-checked-in-bookings"
+                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                          statusFilter === 'checked_in'
+                            ? 'btn-primary text-white'
+                            : 'btn-outline-secondary border-0 bg-light text-muted'
+                        }`}
+                        onClick={() => setStatusFilter('checked_in')}
+                      >
+                        Đã điểm danh <span className="badge rounded-pill bg-primary-subtle text-primary ms-1">{counts.checked_in}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="tab-completed-bookings"
+                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                          statusFilter === 'completed'
+                            ? 'btn-secondary text-white'
+                            : 'btn-outline-secondary border-0 bg-light text-muted'
+                        }`}
+                        onClick={() => setStatusFilter('completed')}
+                      >
+                        Đã hoàn thành <span className="badge rounded-pill bg-secondary-subtle text-secondary ms-1">{counts.completed}</span>
                       </button>
 
                       <button

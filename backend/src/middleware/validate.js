@@ -103,6 +103,25 @@ export const createComplaintValidation = [
 ];
 // END UC-66 Submit Booking Complaint
 
+// START UC-85 Confirm Payment & Check-in
+// Provider ghi nhận đã thu tiền (tiền mặt hoặc chuyển khoản) rồi điểm danh khách.
+export const confirmBookingPaymentValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('paymentMethod')
+    .optional()
+    .isIn(['cash', 'bank_transfer'])
+    .withMessage('Phương thức thanh toán phải là cash hoặc bank_transfer')
+];
+
+export const checkInBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+// END UC-85 Confirm Payment & Check-in
+
+export const completeBookingValidation = [
+  param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
+];
+
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -334,6 +353,12 @@ export const activityValidation = [
 
 export const itineraryIdValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ')
+];
+
+export const duplicateItineraryValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('title').optional().trim().isLength({ max: 120 }).withMessage('Tên lịch trình không được vượt quá 120 ký tự'),
+  body('startDate').optional({ nullable: true, checkFalsy: true }).isISO8601().withMessage('Ngày bắt đầu không hợp lệ')
 ];
 
 export const shareItineraryValidation = [
@@ -736,7 +761,7 @@ export const providerBookingListValidation = [
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
   query('status')
     .optional()
-    .isIn(['all', 'pending', 'confirmed', 'cancelled'])
+    .isIn(['all', 'pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled'])
     .withMessage('Trạng thái booking không hợp lệ'),
   query('page')
     .optional()
@@ -871,6 +896,10 @@ export const listDeparturesValidation = [
   query('tourId')
     .notEmpty().withMessage('Vui lòng chọn tour')
     .isMongoId().withMessage('Mã tour không hợp lệ')
+];
+
+export const departureIdValidation = [
+  param('id').isMongoId().withMessage('Mã lịch khởi hành không hợp lệ')
 ];
 
 export const announcementIdValidation = [

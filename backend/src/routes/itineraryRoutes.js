@@ -38,6 +38,7 @@ import {
 } from '../controllers/invitationController.js';
 import {
   activityValidation,
+  duplicateItineraryValidation,
   itineraryDestinationValidation,
   itineraryIdValidation,
   itineraryTourValidation,
@@ -82,7 +83,9 @@ router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTri
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 // END UC-48 View Personal Itinerary
 router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);
-router.post('/:id/duplicate', ...customerAccess, itineraryIdValidation, duplicateItinerary);
+// START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
+router.post('/:id/duplicate', ...customerAccess, duplicateItineraryValidation, duplicateItinerary);
+// END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
 // START UC-120 Transfer Itinerary Ownership

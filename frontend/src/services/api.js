@@ -316,6 +316,12 @@ export const itineraryApi = {
   removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'DELETE'
   }),
+  // START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
+  duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {})
+  }),
+  // END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
   delete: (id) => apiRequest(`/itineraries/${id}`, { method: 'DELETE' })
 };
 
@@ -522,6 +528,26 @@ export const departureApi = {
   }),
   // END UC-40 Create Tour Departure
   listByTour: (tourId) => apiRequest(`/departures?tourId=${tourId}`, { method: 'GET' }),
+  exportManifest: async (id) => {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/departures/${id}/manifest`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+
+    if (!response.ok) {
+      let message = 'Không thể xuất danh sách đoàn khách.';
+      try {
+        const data = await response.json();
+        message = data.message || message;
+      } catch {
+        // Giữ thông báo mặc định khi server không trả về JSON.
+      }
+      throw new Error(message);
+    }
+
+    return response.blob();
+  },
   update: (id, payload) => apiRequest(`/departures/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
@@ -557,6 +583,15 @@ export const bookingApi = {
   },
   approveBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   confirmBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
+  // START UC-85 Confirm Payment & Check-in
+  // Provider xác nhận đã thu tiền tại điểm đón rồi điểm danh khách lên xe.
+  confirmPayment: (id, payload = {}) => apiRequest(`/bookings/provider/${id}/payment`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  }),
+  checkIn: (id) => apiRequest(`/bookings/provider/${id}/check-in`, { method: 'PATCH' }),
+  // END UC-85 Confirm Payment & Check-in
+  completeBooking: (id) => apiRequest(`/bookings/provider/${id}/complete`, { method: 'PATCH' }),
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();

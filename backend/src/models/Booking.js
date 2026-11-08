@@ -59,8 +59,29 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'cancelled'],
+    // pending -> confirmed (provider duyệt) -> paid (đã thu tiền) -> checked_in (đã điểm danh)
+    enum: ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'cancelled'],
     default: 'pending'
+  },
+  // START UC-85 Confirm Payment & Check-in
+  // Không có cổng thanh toán: provider thu tiền trực tiếp tại điểm đón rồi ghi nhận.
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'bank_transfer'],
+    default: 'cash'
+  },
+  paidAt: {
+    type: Date,
+    default: null
+  },
+  checkedInAt: {
+    type: Date,
+    default: null
+  },
+  // END UC-85 Confirm Payment & Check-in
+  completedAt: {
+    type: Date,
+    default: null
   },
   // UC-74 - lý do hủy và thời điểm hủy, giữ lại để tra cứu về sau
   cancelReason: {
