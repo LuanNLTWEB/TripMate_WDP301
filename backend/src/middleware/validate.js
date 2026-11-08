@@ -807,6 +807,10 @@ export const updateReviewValidation = [
 
 // START UC-95 Restore Review
 // Chỉ cần id đánh giá hợp lệ.
+export const voteHelpfulValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
+];
+
 export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];

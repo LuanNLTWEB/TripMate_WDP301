@@ -719,3 +719,85 @@ export const updateReview = async (req, res) => {
   }
 };
 // END UC-89 Update Tour Review
+
+
+// START Vote Helpful on Tour Review
+/**
+ * @desc    Vote or unvote helpful on a tour review
+ * @route   POST /api/reviews/:id/vote-helpful
+ * @access  Private (customer)
+ */
+export const voteHelpfulReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const review = await Review.findById(id);
+
+    if (!review || review.isDeleted || review.status !== 'approved') {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá hoặc đánh giá không khả dụng'
+      });
+    }
+
+    // Tác giả không thể tự vote cho chính mình
+    if (String(review.userId?._id || review.userId) === String(req.user._id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự bình chọn hữu ích cho đánh giá của chính mình'
+      });
+    }
+
+    if (!Array.isArray(review.helpfulVotes)) {
+      review.helpfulVotes = [];
+    }
+
+    const currentUserId = req.user._id;
+    const existingIndex = review.helpfulVotes.findIndex(
+      (voterId) => String(voterId?._id || voterId) === String(currentUserId)
+    );
+
+    let isHelpful = false;
+    if (existingIndex > -1) {
+      // Toggle OFF: Hủy vote
+      review.helpfulVotes.splice(existingIndex, 1);
+      review.helpfulCount = Math.max(0, review.helpfulVotes.length);
+      isHelpful = false;
+    } else {
+      // Toggle ON: Ghi nhận vote
+      review.helpfulVotes.push(currentUserId);
+      review.helpfulCount = review.helpfulVotes.length;
+      isHelpful = true;
+    }
+
+    await review.save();
+
+    return res.status(200).json({
+      success: true,
+      message: isHelpful
+        ? 'Cảm ơn bạn đã bình chọn đánh giá này hữu ích'
+        : 'Đã hủy bình chọn hữu ích',
+      data: {
+        reviewId: review._id,
+        isHelpful,
+        helpfulCount: review.helpfulCount,
+        helpfulVotes: review.helpfulVotes
+      }
+    });
+  } catch (error) {
+    console.error('Error voting helpful on review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể thực hiện bình chọn hữu ích'
+    });
+  }
+};
+// END Vote Helpful on Tour Review
