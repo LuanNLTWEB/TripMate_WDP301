@@ -8,6 +8,7 @@ const EMPTY_SUMMARY = {
   confirmed: 0,
   paid: 0,
   checked_in: 0,
+  completed: 0,
   cancelled: 0,
   confirmedRevenue: 0,
   collectedRevenue: 0,
@@ -20,6 +21,7 @@ const STATUS_OPTIONS = [
   { value: 'confirmed', label: 'Đã xác nhận', icon: 'bi-check-circle' },
   { value: 'paid', label: 'Đã thu tiền', icon: 'bi-cash-coin' },
   { value: 'checked_in', label: 'Đã điểm danh', icon: 'bi-person-check' },
+  { value: 'completed', label: 'Đã hoàn thành', icon: 'bi-flag-fill' },
   { value: 'cancelled', label: 'Đã hủy', icon: 'bi-x-circle' }
 ];
 
@@ -29,6 +31,7 @@ const SUMMARY_CARDS = [
   { key: 'confirmed', label: 'Đã xác nhận', icon: 'bi-check-circle', color: 'success' },
   { key: 'paid', label: 'Đã thu tiền', icon: 'bi-cash-coin', color: 'info' },
   { key: 'checked_in', label: 'Đã điểm danh', icon: 'bi-person-check', color: 'primary' },
+  { key: 'completed', label: 'Đã hoàn thành', icon: 'bi-flag-fill', color: 'secondary' },
   { key: 'cancelled', label: 'Đã hủy', icon: 'bi-x-circle', color: 'danger' }
 ];
 
@@ -66,6 +69,8 @@ const getStatusBadge = (status) => {
       return { label: 'Đã thu tiền', className: 'badge-info' };
     case 'checked_in':
       return { label: 'Đã điểm danh', className: 'badge-primary' };
+    case 'completed':
+      return { label: 'Đã hoàn thành', className: 'badge-secondary' };
     case 'cancelled':
       return { label: 'Đã hủy', className: 'badge-danger' };
     case 'pending':
@@ -74,7 +79,7 @@ const getStatusBadge = (status) => {
   }
 };
 
-function BookingDetailModal({ booking, onClose, onApprove, onConfirmPayment, onCheckIn, isApproving, isProcessing }) {
+function BookingDetailModal({ booking, onClose, onApprove, onConfirmPayment, onCheckIn, onComplete, isApproving, isProcessing, isCompleting }) {
   if (!booking) return null;
 
   const status = getStatusBadge(booking.status);
@@ -197,7 +202,12 @@ function BookingDetailModal({ booking, onClose, onApprove, onConfirmPayment, onC
                   <i className="bi bi-person-check me-2"></i>Điểm danh khách lên xe
                 </button>
               )}
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Đóng</button>
+              {['paid', 'checked_in'].includes(booking.status) && onComplete && (
+                <button type="button" className="btn btn-secondary" onClick={() => onComplete(booking)} disabled={isCompleting}>
+                  {isCompleting ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang hoàn thành...</> : <><i className="bi bi-flag-fill me-2"></i>Đánh dấu hoàn thành</>}
+                </button>
+              )}
+              <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Đóng</button>
             </div>
           </div>
         </div>
@@ -223,6 +233,7 @@ export default function ProviderBookingRequests() {
   const [isExporting, setIsExporting] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [completingId, setCompletingId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
@@ -357,6 +368,32 @@ export default function ProviderBookingRequests() {
     }
   };
   // END UC-85 Confirm Payment & Check-in
+
+  const handleCompleteBooking = async (booking) => {
+    if (!booking || !['paid', 'checked_in'].includes(booking.status)) return;
+    const confirmed = window.confirm(`Đánh dấu hoàn thành chuyến đi cho đơn đặt của ${booking.fullName}?`);
+    if (!confirmed) return;
+
+    setCompletingId(booking._id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await bookingApi.completeBooking(booking._id);
+      const updated = response.data;
+      setBookings((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
+      setSelectedBooking((prev) => (prev && prev._id === updated._id ? updated : prev));
+      setSummary((prev) => ({
+        ...prev,
+        [booking.status]: Math.max(0, (prev[booking.status] || 0) - 1),
+        completed: (prev.completed || 0) + 1
+      }));
+      setSuccessMessage(response.message || 'Đã đánh dấu hoàn thành chuyến đi thành công.');
+    } catch (requestError) {
+      setError(requestError.message || 'Không thể đánh dấu hoàn thành chuyến đi.');
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   const handleExportReport = async () => {
     setIsExporting(true);
@@ -595,6 +632,18 @@ export default function ProviderBookingRequests() {
                             {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-person-check"></i>}
                           </button>
                         )}
+                        {['paid', 'checked_in'].includes(booking.status) && (
+                          <button
+                            type="button"
+                            className="management-action-btn btn-approve"
+                            title="Đánh dấu hoàn thành chuyến đi"
+                            aria-label={`Đánh dấu hoàn thành booking của ${booking.fullName}`}
+                            disabled={completingId === booking._id}
+                            onClick={() => handleCompleteBooking(booking)}
+                          >
+                            {completingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-flag-fill"></i>}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -646,8 +695,10 @@ export default function ProviderBookingRequests() {
         onApprove={handleApprove}
         onConfirmPayment={handleConfirmPayment}
         onCheckIn={handleCheckIn}
+        onComplete={handleCompleteBooking}
         isApproving={approvingId === selectedBooking?._id}
         isProcessing={processingId === selectedBooking?._id}
+        isCompleting={completingId === selectedBooking?._id}
       />
     </section>
   );
