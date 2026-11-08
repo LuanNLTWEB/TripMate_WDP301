@@ -871,6 +871,22 @@ export const shareItinerary = async (req, res) => {
     await itinerary.save();
     const populated = await findByIdPopulated(itinerary._id);
 
+    try {
+      const ownerName = req.user.username || req.user.email || 'Một người dùng';
+      const permText = permission === 'edit' ? 'chỉnh sửa' : 'chỉ xem';
+      await Notification.create({
+        recipient: targetUser._id,
+        sender: req.user._id,
+        itinerary: itinerary._id,
+        permission,
+        title: 'Bạn được chia sẻ một lịch trình',
+        message: `${ownerName} đã chia sẻ lịch trình "${itinerary.title}" với bạn với quyền ${permText}.`,
+        notificationType: 'itinerary_share'
+      });
+    } catch (notifErr) {
+      console.warn('Could not dispatch share notification:', notifErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: `Đã chia sẻ lịch trình với ${targetUser.username || targetUser.email}`,
