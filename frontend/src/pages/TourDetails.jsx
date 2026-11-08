@@ -43,6 +43,7 @@ const TourDetails = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [dateAvailability, setDateAvailability] = useState(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [votingReviewId, setVotingReviewId] = useState(null);
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   const isTourOwner = Boolean(user && tour && (
@@ -54,6 +55,42 @@ const TourDetails = () => {
   const currentReviewEligibility = reviewEligibility?.tourId === id
     ? reviewEligibility
     : null;
+
+  const handleVoteHelpful = async (review) => {
+    if (votingReviewId) return;
+
+    const currentUserId = user?.id || user?._id;
+    const isMyReview = currentUserId && (
+      String(review.userId?._id || review.userId) === String(currentUserId)
+    );
+    if (isMyReview) {
+      toast.warning('Bạn không thể tự bình chọn đánh giá của chính mình.');
+      return;
+    }
+
+    setVotingReviewId(review._id);
+    try {
+      const response = await reviewApi.voteHelpful(review._id);
+      if (response.success && response.data) {
+        setReviews((prevReviews) =>
+          prevReviews.map((item) =>
+            item._id === review._id
+              ? {
+                  ...item,
+                  helpfulCount: response.data.helpfulCount,
+                  helpfulVotes: response.data.helpfulVotes
+                }
+              : item
+          )
+        );
+        toast.success(response.message);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Không thể bình chọn hữu ích.');
+    } finally {
+      setVotingReviewId(null);
+    }
+  };
 
   const handleDeleteReview = async () => {
     if (!reviewToDelete || isDeletingReview) return;
@@ -910,68 +947,117 @@ const TourDetails = () => {
                       String(review.userId?._id || review.userId) === String(currentUserId)
                     );
 
+                    const votes = Array.isArray(review.helpfulVotes) ? review.helpfulVotes : [];
+                    const isHelpfulVoted = currentUserId && votes.some(
+                      (voterId) => String(voterId?._id || voterId) === String(currentUserId)
+                    );
+                    const helpfulCount = typeof review.helpfulCount === 'number'
+                      ? review.helpfulCount
+                      : votes.length;
+
                     return (
                       <div key={review._id} className="col-md-6">
-                        <div className="border rounded-3 p-3 h-100">
-                          <div className="d-flex align-items-center gap-2 mb-2">
-                            <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
-                              {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
-                            </div>
-                            <div className="min-width-0">
-                              <div className="fw-semibold text-truncate">
-                                {review.userId?.username || 'Ẩn danh'}
-                                {isMyReview && <span className="badge text-bg-light border text-muted ms-2 small">Bạn</span>}
+                        <div className="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
+                          <div>
+                            <div className="d-flex align-items-center gap-2 mb-2">
+                              <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+                                {review.userId?.username?.charAt(0)?.toUpperCase() || '?'}
                               </div>
-                              <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
-                            </div>
-                            <div className="text-warning ms-auto flex-shrink-0 d-flex align-items-center gap-2">
-                              <div>
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
-                                ))}
+                              <div className="min-width-0">
+                                <div className="fw-semibold text-truncate">
+                                  {review.userId?.username || 'Ẩn danh'}
+                                  {isMyReview && <span className="badge text-bg-light border text-muted ms-2 small">Bạn</span>}
+                                </div>
+                                <div className="small text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
                               </div>
-                              {isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
-                                  title="Sửa đánh giá"
-                                  aria-label="Sửa đánh giá"
-                                  onClick={() => setReviewToEdit(review)}
-                                >
-                                  <i className="bi bi-pencil"></i>
-                                </button>
-                              )}
-                              {isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
-                                  title="Xóa đánh giá"
-                                  aria-label="Xóa đánh giá"
-                                  onClick={() => setReviewToDelete(review)}
-                                >
-                                  <i className="bi bi-trash"></i>
-                                </button>
-                              )}
-                              {isAuthenticated && user?.role === 'customer' && !isMyReview && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-warning border-0 p-1 px-2 rounded-2"
-                                  title="Báo cáo vi phạm"
-                                  aria-label="Báo cáo vi phạm"
-                                  disabled={reportedReviewIds.includes(review._id)}
-                                  onClick={() => setReviewToReport(review)}
-                                >
-                                  {reportedReviewIds.includes(review._id)
-                                    ? <i className="bi bi-flag-fill text-warning"></i>
-                                    : <i className="bi bi-flag"></i>
-                                  }
-                                </button>
-                              )}
+                              <div className="text-warning ms-auto flex-shrink-0 d-flex align-items-center gap-2">
+                                <div>
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <i key={star} className={`bi ${star <= review.rating ? 'bi-star-fill' : 'bi-star'}`}></i>
+                                  ))}
+                                </div>
+                                {isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
+                                    title="Sửa đánh giá"
+                                    aria-label="Sửa đánh giá"
+                                    onClick={() => setReviewToEdit(review)}
+                                  >
+                                    <i className="bi bi-pencil"></i>
+                                  </button>
+                                )}
+                                {isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
+                                    title="Xóa đánh giá"
+                                    aria-label="Xóa đánh giá"
+                                    onClick={() => setReviewToDelete(review)}
+                                  >
+                                    <i className="bi bi-trash"></i>
+                                  </button>
+                                )}
+                                {isAuthenticated && user?.role === 'customer' && !isMyReview && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-warning border-0 p-1 px-2 rounded-2"
+                                    title="Báo cáo vi phạm"
+                                    aria-label="Báo cáo vi phạm"
+                                    disabled={reportedReviewIds.includes(review._id)}
+                                    onClick={() => setReviewToReport(review)}
+                                  >
+                                    {reportedReviewIds.includes(review._id)
+                                      ? <i className="bi bi-flag-fill text-warning"></i>
+                                      : <i className="bi bi-flag"></i>
+                                    }
+                                  </button>
+                                )}
+                              </div>
                             </div>
+                            {review.comment && (
+                              <p className="text-secondary mb-0 small">{review.comment}</p>
+                            )}
                           </div>
-                          {review.comment && (
-                            <p className="text-secondary mb-0 small">{review.comment}</p>
-                          )}
+
+                          <div className="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                            <span className="small text-muted">
+                              {helpfulCount > 0 ? (
+                                <>
+                                  <i className="bi bi-hand-thumbs-up-fill text-primary me-1"></i>
+                                  <span>{helpfulCount} người thấy hữu ích</span>
+                                </>
+                              ) : (
+                                <span>Chưa có lượt hữu ích</span>
+                              )}
+                            </span>
+
+                            {!isMyReview ? (
+                              <button
+                                type="button"
+                                className={`btn btn-sm ${
+                                  isHelpfulVoted
+                                    ? 'btn-primary text-white'
+                                    : 'btn-outline-secondary'
+                                } rounded-pill px-2 py-0 d-inline-flex align-items-center gap-1`}
+                                style={{ fontSize: '0.78rem' }}
+                                disabled={votingReviewId === review._id}
+                                onClick={() => handleVoteHelpful(review)}
+                                title={isHelpfulVoted ? 'Bỏ thích đánh giá này' : 'Đánh giá này hữu ích với bạn'}
+                              >
+                                {votingReviewId === review._id ? (
+                                  <span className="spinner-border spinner-border-sm" style={{ width: '0.7rem', height: '0.7rem' }} aria-hidden="true"></span>
+                                ) : (
+                                  <i className={`bi ${isHelpfulVoted ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up'}`}></i>
+                                )}
+                                <span>{isHelpfulVoted ? 'Bỏ hữu ích' : 'Hữu ích'}</span>
+                              </button>
+                            ) : (
+                              <span className="badge bg-light text-muted border small">
+                                Đánh giá của bạn
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

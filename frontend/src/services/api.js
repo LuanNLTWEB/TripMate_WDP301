@@ -382,6 +382,9 @@ export const reviewApi = {
     method: 'PATCH',
     body: JSON.stringify({ moderationReason })
   }),
+  // START Vote Helpful on Tour Review
+  voteHelpful: (id) => apiRequest(`/reviews/${id}/vote-helpful`, { method: 'POST' }),
+  // END Vote Helpful on Tour Review
   // START UC-89 Update Tour Review
   update: (id, payload) => apiRequest(`/reviews/${id}`, {
     method: 'PUT',
