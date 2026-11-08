@@ -92,6 +92,14 @@ const managementNavigation = [
     roles: ACCESS_ROLES.STAFF_ONLY
   },
   {
+    key: 'complaints',
+    label: 'Khiếu nại khách hàng',
+    description: 'Tra cứu và giải quyết khiếu nại của khách hàng',
+    icon: 'bi-exclamation-diamond',
+    path: '/management/complaints',
+    roles: ACCESS_ROLES.STAFF_ONLY
+  },
+  {
     key: 'announcements',
     label: 'Thông báo hệ thống',
     description: 'Quản lý thông báo dành cho người dùng TripMate',

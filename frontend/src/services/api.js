@@ -551,6 +551,8 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
+  approveBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
+  confirmBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   // START UC-123 Export Provider Booking Report
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
@@ -583,6 +585,28 @@ export const bookingApi = {
     body: JSON.stringify({ reason })
   })
   // END UC-74 Cancel Booking
+};
+
+export const complaintApi = {
+  create: (payload) => apiRequest('/complaints', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  getManaged: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest(`/complaints/management${queryString}`, { method: 'GET' });
+  },
+  getById: (id) => apiRequest(`/complaints/management/${id}`, { method: 'GET' }),
+  resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
 };
 
 export const notificationApi = {

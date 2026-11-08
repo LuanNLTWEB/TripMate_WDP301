@@ -152,6 +152,17 @@ function Navbar() {
             </Link>
           )}
 
+          {user?.role === 'customer' && (
+            <Link
+              to="/my-complaints"
+              className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded text-white-50"
+              onClick={() => setIsDropdownOpen(false)}
+            >
+              <i className="bi bi-exclamation-diamond fs-6"></i>
+              <span>Khiếu nại của tôi</span>
+            </Link>
+          )}
+
           {canUseProfile && (
             <Link
               to="/profile"

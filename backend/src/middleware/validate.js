@@ -81,6 +81,40 @@ export const registerValidation = [
     .isIn(['male', 'female', 'other']).withMessage('Giới tính phải là male, female hoặc other')
 ];
 
+// Complaint workflows: customer submits a booking-linked complaint; staff resolves it.
+export const createComplaintValidation = [
+  body('bookingId').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('category')
+    .isIn(['quality_mismatch', 'incorrect_cash_charge', 'wrongful_no_show', 'other'])
+    .withMessage('Loại khiếu nại không hợp lệ'),
+  body('description')
+    .trim()
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Nội dung khiếu nại phải từ 10 đến 2000 ký tự')
+];
+
+export const complaintListValidation = [
+  query('status')
+    .optional()
+    .isIn(['all', 'open', 'in_review', 'resolved', 'rejected'])
+    .withMessage('Trạng thái khiếu nại không hợp lệ'),
+  query('page').optional().isInt({ min: 1 }).withMessage('Trang không hợp lệ'),
+  query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Giới hạn không hợp lệ')
+];
+
+export const complaintIdValidation = [
+  param('id').isMongoId().withMessage('Mã khiếu nại không hợp lệ')
+];
+
+export const resolveComplaintValidation = [
+  ...complaintIdValidation,
+  body('status').isIn(['resolved', 'rejected']).withMessage('Kết quả xử lý không hợp lệ'),
+  body('resolutionNote')
+    .trim()
+    .isLength({ min: 5, max: 2000 })
+    .withMessage('Nội dung xử lý phải từ 5 đến 2000 ký tự')
+];
+
 export const loginValidation = [
   body('email')
     .trim()

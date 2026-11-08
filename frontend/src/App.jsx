@@ -38,6 +38,7 @@ import TourSubmissions from './pages/TourSubmissions';
 import BookingPage from './pages/BookingPage';
 import ProviderBookingRequests from './pages/ProviderBookingRequests';
 import BookingHistory from './pages/BookingHistory';
+import MyComplaints from './pages/MyComplaints';
 import Announcements from './pages/Announcements';
 import AnnouncementDetails from './pages/AnnouncementDetails';
 import StaffAnnouncements from './pages/StaffAnnouncements';
@@ -45,6 +46,7 @@ import StaffDestinationDetails from './pages/StaffDestinationDetails';
 import StaffAnnouncementDetails from './pages/StaffAnnouncementDetails';
 import Notifications from './pages/Notifications';
 import StaffNotifications from './pages/StaffNotifications';
+import StaffComplaints from './pages/StaffComplaints';
 
 const AboutExperience = lazy(() => import('./pages/AboutExperience'));
 
@@ -87,6 +89,14 @@ function App() {
                   <BookingHistory />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/my-complaints"
+              element={(
+                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                  <MyComplaints />
+                </ProtectedRoute>
+              )}
             />
             <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/register" element={<Register />} />
@@ -210,6 +220,7 @@ function App() {
                     </ProtectedRoute>
                   )}
                 />
+                <Route path="complaints" element={<StaffComplaints />} />
                 <Route element={<ProtectedRoute allowedRoles={ACCESS_ROLES.STAFF_ONLY} />}>
                   <Route path="destinations" element={<StaffDestinations />} />
                   <Route path="destinations/:id" element={<StaffDestinationDetails />} />
