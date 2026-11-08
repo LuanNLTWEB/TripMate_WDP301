@@ -18,6 +18,7 @@ import statsRoutes from '../src/routes/statsRoutes.js';
 import tourCategoryRoutes from '../src/routes/tourCategoryRoutes.js';
 import tourRoutes from '../src/routes/tourRoutes.js';
 import tourSubmissionRoutes from '../src/routes/tourSubmissionRoutes.js';
+import complaintRoutes from '../src/routes/complaintRoutes.js';
 
 const APPLICATION_ROLES = ['admin', 'staff', 'tourProvider', 'customer'];
 
@@ -129,6 +130,8 @@ test('sensitive API routes use the exact backlog actor matrix', () => {
     [bookingRoutes, 'get', '/my', ACCESS_ROLES.CUSTOMER_ONLY],
     [bookingRoutes, 'get', '/provider', ACCESS_ROLES.PROVIDER_ONLY],
     [bookingRoutes, 'patch', '/:id/cancel', ACCESS_ROLES.CUSTOMER_ONLY],
+    [complaintRoutes, 'post', '/', ACCESS_ROLES.CUSTOMER_ONLY],
+    [complaintRoutes, 'post', '/evidence', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'get', '/tours/:tourId', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'post', '/tours/:tourId', ACCESS_ROLES.CUSTOMER_ONLY],
     [reviewRoutes, 'get', '/moderation', ACCESS_ROLES.STAFF_ONLY],

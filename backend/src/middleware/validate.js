@@ -1,5 +1,6 @@
 import { body, param, query } from 'express-validator';
 import Role from '../models/Role.js';
+import { COMPLAINT_TYPE_VALUES } from '../models/Complaint.js';
 
 // START UC-17 Create Destination
 // Điều kiện đầu vào khi staff tạo điểm đến: tên/mô tả/vị trí bắt buộc, 1-10 ảnh là URL hợp lệ.
@@ -1051,3 +1052,30 @@ export const tourSubmissionIdValidation = [
   param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
 ];
 // END UC-131 Delete Tour Submission
+
+// START UC-66 Submit Booking Complaint
+// Chỉ nhận booking thuộc khách hàng đang đăng nhập; loại khiếu nại nằm trong
+// danh mục dùng chung với model, nội dung 20-2000 ký tự.
+export const createComplaintValidation = [
+  body('bookingId')
+    .trim()
+    .notEmpty().withMessage('Vui lòng chọn đơn đặt tour cần khiếu nại')
+    .isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
+  body('complaintType')
+    .trim()
+    .notEmpty().withMessage('Vui lòng chọn loại khiếu nại')
+    .isIn(COMPLAINT_TYPE_VALUES).withMessage('Loại khiếu nại không hợp lệ'),
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung khiếu nại')
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Nội dung khiếu nại phải từ 20 đến 2000 ký tự'),
+  body('evidenceImages')
+    .optional()
+    .isArray({ max: 5 }).withMessage('Chỉ được gửi tối đa 5 ảnh minh chứng'),
+  body('evidenceImages.*')
+    .optional()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Mỗi ảnh minh chứng phải là một URL hợp lệ')
+];
+// END UC-66 Submit Booking Complaint

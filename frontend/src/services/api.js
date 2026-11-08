@@ -560,6 +560,21 @@ export const bookingApi = {
   // END UC-74 Cancel Booking
 };
 
+// START UC-66 Submit Booking Complaint
+// Ảnh được upload trước qua /complaints/evidence (FormData, field `image`),
+// sau đó gửi khiếu nại bằng JSON kèm mảng URL `evidenceImages`.
+export const complaintApi = {
+  uploadEvidence: (formData) => apiRequest('/complaints/evidence', {
+    method: 'POST',
+    body: formData
+  }),
+  create: (payload) => apiRequest('/complaints', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+};
+// END UC-66 Submit Booking Complaint
+
 export const notificationApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();
