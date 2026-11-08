@@ -39,6 +39,11 @@ const TourDetails = () => {
   const [eligibilityRefreshKey, setEligibilityRefreshKey] = useState(0);
   const [showCreateReview, setShowCreateReview] = useState(false);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
+  const [departures, setDepartures] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [dateAvailability, setDateAvailability] = useState(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const todayDateStr = new Date().toISOString().split('T')[0];
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'tourProvider' && (
@@ -106,6 +111,44 @@ const TourDetails = () => {
     };
   }, [id]);
   // END UC-25 View Tour Details
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    tourApi.checkAvailability(id)
+      .then((response) => {
+        if (isMounted && response.data) {
+          setDepartures(response.data.departures || []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setDepartures([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  const handleCheckAvailability = async (dateToCheck = selectedDate) => {
+    if (!dateToCheck) {
+      toast.error('Vui lòng chọn ngày khởi hành cần kiểm tra');
+      return;
+    }
+    setCheckingAvailability(true);
+    try {
+      const response = await tourApi.checkAvailability(id, dateToCheck);
+      if (response.data) {
+        setDepartures(response.data.departures || []);
+        setDateAvailability(response.data.selectedDateAvailability || null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Không thể kiểm tra chỗ trống');
+    } finally {
+      setCheckingAvailability(false);
+    }
+  };
 
   useEffect(() => {
     if (!id || !isAuthenticated || user?.role !== 'customer') return;
@@ -609,13 +652,120 @@ const TourDetails = () => {
               <div className="card border-0 shadow-sm rounded-4 sticky-sidebar">
                 <div className="card-body p-4">
                   <p className="text-muted mb-1">Giá tour trọn gói</p>
-                  <p className="fs-3 fw-bold text-primary mb-3">{formatPrice(tour.price)}</p>
+                  <p className="fs-3 fw-bold text-primary mb-3">
+                    {formatPrice(tour.price)}
+                  </p>
+
+                  <div className="p-3 rounded-3 bg-light border mb-3">
+                    <label className="form-label fw-semibold small text-dark d-flex align-items-center gap-1 mb-2">
+                      <i className="bi bi-calendar2-week text-primary"></i>
+                      <span>Kiểm tra chỗ trống theo ngày</span>
+                    </label>
+                    <div className="d-flex gap-2 mb-2">
+                      <input
+                        type="date"
+                        className="form-control form-control-sm"
+                        min={todayDateStr}
+                        value={selectedDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedDate(val);
+                          if (!val) setDateAvailability(null);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary flex-shrink-0 fw-semibold"
+                        disabled={checkingAvailability || !selectedDate}
+                        onClick={() => handleCheckAvailability(selectedDate)}
+                      >
+                        {checkingAvailability ? 'Đang kiểm tra...' : 'Kiểm tra'}
+                      </button>
+                    </div>
+
+                    {departures.length > 0 && (
+                      <div className="mt-2">
+                        <div className="small text-muted mb-1">Lịch khởi hành sắp tới:</div>
+                        <div className="d-flex flex-wrap gap-1">
+                          {departures.map((dep) => (
+                            <button
+                              key={dep._id || dep.dateKey}
+                              type="button"
+                              className={`btn btn-sm py-1 px-2 d-inline-flex align-items-center gap-1 ${
+                                selectedDate === dep.dateKey
+                                  ? 'btn-primary'
+                                  : 'btn-outline-secondary bg-white'
+                              }`}
+                              style={{ fontSize: '0.78rem' }}
+                              onClick={() => {
+                                setSelectedDate(dep.dateKey);
+                                setDateAvailability(dep);
+                              }}
+                            >
+                              <span>{new Date(dep.departureDate).toLocaleDateString('vi-VN')}</span>
+                              <span
+                                className={`badge ${
+                                  dep.isAvailable ? 'bg-success' : 'bg-danger'
+                                }`}
+                              >
+                                {dep.isAvailable ? `Còn ${dep.remainingSeats} chỗ` : 'Hết chỗ'}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {departures.length === 0 && !dateAvailability && (
+                      <div className="small text-muted mt-1">
+                        Hiện tại chưa có lịch khởi hành cố định mới cho tour này. Bạn có thể chọn ngày ở trên để kiểm tra chỗ trống.
+                      </div>
+                    )}
+
+                    {dateAvailability && (
+                      <div
+                        className={`alert py-2 px-3 small mb-0 mt-2 ${
+                          dateAvailability.isAvailable ? 'alert-success' : 'alert-danger'
+                        }`}
+                      >
+                        <div className="fw-semibold">
+                          Ngày {new Date(dateAvailability.departureDate).toLocaleDateString('vi-VN')}:{' '}
+                          {dateAvailability.isAvailable ? (
+                            <span>Còn {dateAvailability.remainingSeats} chỗ trống</span>
+                          ) : (
+                            <span>Hết chỗ</span>
+                          )}
+                        </div>
+                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          Đã đặt: {dateAvailability.bookedSeats} chỗ • Giá: {formatPrice(dateAvailability.price)}
+                        </div>
+                        {!dateAvailability.isAvailable && departures.some((d) => d.isAvailable) && (
+                          <div className="mt-1 pt-1 border-top border-danger-subtle" style={{ fontSize: '0.8rem' }}>
+                            Gợi ý ngày còn chỗ:{' '}
+                            {departures
+                              .filter((d) => d.isAvailable)
+                              .slice(0, 3)
+                              .map((d) => new Date(d.departureDate).toLocaleDateString('vi-VN'))
+                              .join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {isAuthenticated && user?.role === 'customer' && tour.availableSeats > 0 && (
                     <div className="mb-3">
                       <Link
                         to={`/tours/${tour._id}/booking`}
-                        className="btn btn-primary w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                        className={`btn w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm ${
+                          dateAvailability && !dateAvailability.isAvailable ? 'btn-secondary disabled' : 'btn-primary'
+                        }`}
+                        aria-disabled={Boolean(dateAvailability && !dateAvailability.isAvailable)}
+                        onClick={(e) => {
+                          if (dateAvailability && !dateAvailability.isAvailable) {
+                            e.preventDefault();
+                          }
+                        }}
                       >
                         <i className="bi bi-calendar-check"></i>
                         <span>Đặt tour ngay</span>
