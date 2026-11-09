@@ -74,11 +74,12 @@ export default function ProviderTourDetails() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `danh-sach-doan-${new Date(departure.departureDate).toISOString().slice(0, 10)}.xlsx`;
+      link.download = `quan-ly-khach-hang-tour-${new Date(departure.departureDate).toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+      toast.success('Đã xuất danh sách quản lý khách hàng thành công');
     } catch (err) {
       toast.error(err.message || 'Không thể xuất danh sách đoàn khách.');
     } finally {
