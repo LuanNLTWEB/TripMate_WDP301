@@ -1159,6 +1159,16 @@ export const removePackingItemValidation = [
   param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
 ];
 
+// START UC-151 Mark Item as Packed
+export const updatePackingItemStatusValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ'),
+  body('status')
+    .isIn(['incomplete', 'completed'])
+    .withMessage('Trạng thái vật dụng không hợp lệ')
+];
+// END UC-151 Mark Item as Packed
+
 // START UC-152 Update Booking Passenger Info
 export const updateBookingPassengerInfoValidation = [
   param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),

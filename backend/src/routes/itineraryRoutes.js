@@ -28,7 +28,8 @@ import {
   deleteComment,
   addPackingItem,
   updatePackingItem,
-  removePackingItem
+  removePackingItem,
+  updatePackingItemStatus
 } from '../controllers/itineraryController.js';
 import {
   changeCollaboratorRole,
@@ -63,6 +64,7 @@ import {
   addPackingItemValidation,
   updatePackingItemValidation,
   removePackingItemValidation,
+  updatePackingItemStatusValidation,
   checkTimeConflictValidation
 } from '../middleware/validate.js';
 
@@ -127,5 +129,9 @@ router.post('/:id/packing-items', ...customerAccess, addPackingItemValidation, a
 // END UC-147 Add Packing Item
 router.put('/:id/packing-items/:itemId', ...customerAccess, updatePackingItemValidation, updatePackingItem);
 router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItemValidation, removePackingItem);
+// START UC-151 Mark Item as Packed
+// PATCH /api/itineraries/:id/packing-items/:itemId/status - đánh dấu/bỏ đánh dấu vật dụng.
+router.patch('/:id/packing-items/:itemId/status', ...customerAccess, updatePackingItemStatusValidation, updatePackingItemStatus);
+// END UC-151 Mark Item as Packed
 
 export default router;

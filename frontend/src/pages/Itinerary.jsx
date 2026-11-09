@@ -788,6 +788,10 @@ function Itinerary() {
   const [editingPackingItemId, setEditingPackingItemId] = useState(null);
   const [editingPackingItemName, setEditingPackingItemName] = useState('');
   const [pendingDeletePackingItem, setPendingDeletePackingItem] = useState(null);
+  // START UC-151 Mark Item as Packed
+  const [updatingPackingItemIds, setUpdatingPackingItemIds] = useState([]);
+  const packingStatusLocksRef = useRef(new Set());
+  // END UC-151 Mark Item as Packed
 
   // START UC-147 Add Packing Item
   const handleAddPackingItem = async (event) => {
@@ -864,6 +868,77 @@ function Itinerary() {
       setSaving(false);
     }
   };
+
+  // START UC-151 Mark Item as Packed
+  const totalPackingItems = displayedPackingItems.length;
+  const packedPackingItems = displayedPackingItems.filter((item) => Boolean(item.isPacked)).length;
+  const isPackingItemUpdating = (itemId) => updatingPackingItemIds.includes(String(itemId));
+
+  // Cập nhật lạc quan đúng một vật dụng trên mọi bản sao lịch trình đang giữ
+  // trong state, nhờ vậy thanh tiến độ đổi ngay mà không cần tải lại trang.
+  const applyPackingItemStatusPatch = (itineraryId, itemId, isPacked) => {
+    const patchItinerary = (itinerary) => {
+      if (!itinerary || String(itinerary._id) !== String(itineraryId)) return itinerary;
+      return {
+        ...itinerary,
+        packingItems: (itinerary.packingItems || []).map((packingItem) => (
+          String(packingItem._id) === String(itemId)
+            ? { ...packingItem, isPacked }
+            : packingItem
+        ))
+      };
+    };
+
+    setSelected((current) => patchItinerary(current));
+    setItineraries((current) => current.map(patchItinerary));
+    setSharedItineraries((current) => current.map(patchItinerary));
+  };
+
+  const handleTogglePackingItemStatus = async (item) => {
+    if (!selected || !item?._id || !canEditSelected) return;
+
+    const itemId = String(item._id);
+    const locks = packingStatusLocksRef.current;
+    if (locks.has(itemId)) return;
+
+    const itineraryId = selected._id;
+    const previousPacked = Boolean(item.isPacked);
+    const nextPacked = !previousPacked;
+
+    locks.add(itemId);
+    setUpdatingPackingItemIds(Array.from(locks));
+    applyPackingItemStatusPatch(itineraryId, itemId, nextPacked);
+
+    try {
+      const response = await itineraryApi.updatePackingItemStatus(
+        itineraryId,
+        itemId,
+        nextPacked ? 'completed' : 'incomplete'
+      );
+      const savedPacked = response.packingItem?.isPacked;
+      applyPackingItemStatusPatch(
+        itineraryId,
+        itemId,
+        typeof savedPacked === 'boolean' ? savedPacked : nextPacked
+      );
+      toast.success(
+        response.message
+        || (nextPacked ? 'Đã đánh dấu vật dụng đã chuẩn bị' : 'Đã bỏ đánh dấu vật dụng')
+      );
+    } catch (requestError) {
+      // Khôi phục đúng trạng thái trước đó nếu API thất bại.
+      applyPackingItemStatusPatch(itineraryId, itemId, previousPacked);
+      toast.error(
+        requestError?.status
+          ? (requestError.message || 'Không thể cập nhật trạng thái vật dụng')
+          : 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
+      );
+    } finally {
+      locks.delete(itemId);
+      setUpdatingPackingItemIds(Array.from(locks));
+    }
+  };
+  // END UC-151 Mark Item as Packed
 
   return (
     <>
@@ -1432,7 +1507,7 @@ function Itinerary() {
 
                       <section className="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden">
                         <div className="card-body p-4">
-                          <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
+                          <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                             <div>
                               <h2 className="h5 fw-bold mb-1 d-flex align-items-center gap-2">
                                 <i className="bi bi-backpack2 text-primary"></i>
@@ -1440,8 +1515,21 @@ function Itinerary() {
                               </h2>
                               <p className="small text-muted mb-0">Các vật dụng cần chuẩn bị cho chuyến đi của bạn.</p>
                             </div>
-                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1.5 fw-semibold small">
-                              {displayedPackingItems.length} vật dụng
+                            <span
+                              className={`badge rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 ${
+                                totalPackingItems > 0 && packedPackingItems === totalPackingItems
+                                  ? 'text-bg-success'
+                                  : 'text-bg-primary'
+                              }`}
+                              style={{
+                                fontSize: '0.9rem',
+                                letterSpacing: '0.01em',
+                                boxShadow: '0 2px 8px rgba(13, 110, 253, 0.18)'
+                              }}
+                              title="Số vật dụng đã đánh dấu chuẩn bị xong"
+                            >
+                              <i className="bi bi-clipboard2-check-fill"></i>
+                              <span>{packedPackingItems}/{totalPackingItems} vật dụng đã chuẩn bị</span>
                             </span>
                           </div>
 
@@ -1484,8 +1572,13 @@ function Itinerary() {
                             <div className="d-flex flex-column gap-2">
                               {displayedPackingItems.map((item, index) => (
                                 <div
-                                  className="p-3 bg-white rounded-3 border d-flex align-items-center justify-content-between gap-3 shadow-xs"
-                                  style={{ borderColor: '#e8edf5', transition: 'all 0.2s ease' }}
+                                  className={`p-3 rounded-3 border d-flex align-items-center justify-content-between gap-3 shadow-xs ${
+                                    item.isPacked ? 'bg-success-subtle border-success-subtle' : 'bg-white'
+                                  }`}
+                                  style={{
+                                    borderColor: item.isPacked ? undefined : '#e8edf5',
+                                    transition: 'all 0.2s ease'
+                                  }}
                                   key={item._id || item.name}
                                 >
                                   {editingPackingItemId === item._id ? (
@@ -1522,14 +1615,56 @@ function Itinerary() {
                                   ) : (
                                     <>
                                       <div className="d-flex align-items-center gap-2.5 flex-grow-1 text-truncate">
+                                        {/* START UC-151 Mark Item as Packed - Checkbox */}
+                                        <button
+                                          type="button"
+                                          className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0 ${
+                                            item.isPacked ? 'btn-success border-0 text-white' : 'btn-light border'
+                                          }`}
+                                          style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                                          onClick={() => handleTogglePackingItemStatus(item)}
+                                          disabled={!canEditSelected || !item._id || isPackingItemUpdating(item._id)}
+                                          title={
+                                            !canEditSelected
+                                              ? 'Bạn chỉ có quyền xem danh sách hành lý'
+                                              : item.isPacked
+                                                ? 'Bỏ đánh dấu vật dụng'
+                                                : 'Đánh dấu vật dụng đã chuẩn bị'
+                                          }
+                                          aria-pressed={Boolean(item.isPacked)}
+                                          aria-label={item.isPacked ? `Bỏ đánh dấu ${item.name}` : `Đánh dấu ${item.name} đã chuẩn bị`}
+                                        >
+                                          {isPackingItemUpdating(item._id) ? (
+                                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                          ) : item.isPacked ? (
+                                            <i className="bi bi-check-lg"></i>
+                                          ) : (
+                                            <i className="bi bi-circle" style={{ fontSize: '0.6rem' }}></i>
+                                          )}
+                                        </button>
+                                        {/* END UC-151 Mark Item as Packed - Checkbox */}
                                         <span
                                           className="badge bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                                           style={{ width: 24, height: 24, fontSize: '0.75rem', fontWeight: 600 }}
                                         >
                                           {index + 1}
                                         </span>
-                                        <span className="fw-medium text-dark text-truncate" style={{ fontSize: '0.92rem' }}>
+                                        <span
+                                          className={`fw-medium text-truncate ${item.isPacked ? 'text-muted text-decoration-line-through' : 'text-dark'}`}
+                                          style={{ fontSize: '0.92rem' }}
+                                          title={item.name}
+                                        >
                                           {item.name}
+                                        </span>
+                                        <span
+                                          className={`badge rounded-pill d-none d-sm-inline-flex flex-shrink-0 ${
+                                            item.isPacked
+                                              ? 'text-bg-success'
+                                              : 'bg-secondary-subtle text-secondary'
+                                          }`}
+                                          style={{ fontSize: '0.68rem' }}
+                                        >
+                                          {item.isPacked ? 'Đã chuẩn bị' : 'Chưa chuẩn bị'}
                                         </span>
                                       </div>
 
@@ -1540,7 +1675,7 @@ function Itinerary() {
                                             className="btn btn-sm btn-light text-primary rounded-circle p-0 d-flex align-items-center justify-content-center"
                                             style={{ width: 32, height: 32 }}
                                             onClick={() => startEditPackingItem(item)}
-                                            disabled={saving}
+                                            disabled={saving || isPackingItemUpdating(item._id)}
                                             title="Chỉnh sửa vật dụng"
                                           >
                                             <i className="bi bi-pencil small"></i>
@@ -1550,7 +1685,7 @@ function Itinerary() {
                                             className="btn btn-sm btn-light text-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
                                             style={{ width: 32, height: 32 }}
                                             onClick={() => setPendingDeletePackingItem(item)}
-                                            disabled={saving}
+                                            disabled={saving || isPackingItemUpdating(item._id)}
                                             title="Xóa vật dụng"
                                           >
                                             <i className="bi bi-trash small"></i>

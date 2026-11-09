@@ -1515,3 +1515,73 @@ export const removePackingItem = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa vật dụng' });
   }
 };
+
+// START UC-151 Mark Item as Packed
+/**
+ * Mark a packing item as packed or not packed.
+ * Only the itinerary owner or a collaborator with edit permission may change status.
+ * @route PATCH /api/itineraries/:id/packing-items/:itemId/status
+ * @access Customer
+ */
+export const updatePackingItemStatus = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  const status = String(req.body?.status || '').trim();
+  if (!['incomplete', 'completed'].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Trạng thái vật dụng không hợp lệ'
+    });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
+    }
+
+    if (!canEdit(itinerary, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền cập nhật trạng thái vật dụng trong lịch trình này'
+      });
+    }
+
+    const item = itinerary.packingItems.id(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
+    }
+
+    const isPacked = status === 'completed';
+    item.isPacked = isPacked;
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    const updatedItem = itinerary.packingItems.find(
+      (packingItem) => String(packingItem._id) === String(req.params.itemId)
+    ) || item;
+
+    return res.json({
+      success: true,
+      message: isPacked ? 'Đã đánh dấu vật dụng đã chuẩn bị' : 'Đã bỏ đánh dấu vật dụng',
+      itinerary: hydrateItinerary(populated),
+      packingItem: {
+        _id: updatedItem._id,
+        name: updatedItem.name,
+        isPacked: updatedItem.isPacked,
+        status: updatedItem.isPacked ? 'completed' : 'incomplete'
+      }
+    });
+  } catch (error) {
+    console.error('Update packing item status error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể cập nhật trạng thái vật dụng' });
+  }
+};
+// END UC-151 Mark Item as Packed

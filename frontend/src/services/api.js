@@ -335,6 +335,12 @@ export const itineraryApi = {
   removePackingItem: (id, itemId) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'DELETE'
   }),
+  // START UC-151 Mark Item as Packed
+  updatePackingItemStatus: (id, itemId, status) => apiRequest(`/itineraries/${id}/packing-items/${itemId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  }),
+  // END UC-151 Mark Item as Packed
   // START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
   duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
     method: 'POST',
