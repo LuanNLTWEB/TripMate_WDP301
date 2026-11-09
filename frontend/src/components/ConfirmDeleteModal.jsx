@@ -1,5 +1,12 @@
 import { useEffect } from 'react';
 
+const CONFIRM_VARIANTS = {
+  danger: { headerClass: 'text-danger', icon: 'bi-exclamation-triangle', buttonClass: 'btn-danger' },
+  warning: { headerClass: 'text-warning', icon: 'bi-exclamation-triangle', buttonClass: 'btn-warning text-dark' },
+  success: { headerClass: 'text-success', icon: 'bi-check-circle', buttonClass: 'btn-success' },
+  primary: { headerClass: 'text-primary', icon: 'bi-info-circle', buttonClass: 'btn-primary' }
+};
+
 export default function ConfirmDeleteModal({
   isOpen,
   title = 'Xác nhận xóa',
@@ -8,6 +15,8 @@ export default function ConfirmDeleteModal({
   cancelText = 'Hủy',
   loading = false,
   confirmDisabled = false,
+  variant = 'danger',
+  error = '',
   reason = '',
   reasonLabel,
   reasonPlaceholder,
@@ -28,6 +37,8 @@ export default function ConfirmDeleteModal({
 
   if (!isOpen) return null;
 
+  const tone = CONFIRM_VARIANTS[variant] || CONFIRM_VARIANTS.danger;
+
   return (
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
@@ -46,8 +57,8 @@ export default function ConfirmDeleteModal({
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content border-0 shadow">
             <div className="modal-header">
-              <h5 className="modal-title fw-bold text-danger d-flex align-items-center mb-0">
-                <i className="bi bi-exclamation-triangle me-2"></i>
+              <h5 className={`modal-title fw-bold ${tone.headerClass} d-flex align-items-center mb-0`}>
+                <i className={`bi ${tone.icon} me-2`}></i>
                 {title}
               </h5>
               <button
@@ -63,6 +74,12 @@ export default function ConfirmDeleteModal({
                 <p className="mb-0 text-dark">{message}</p>
               ) : (
                 message
+              )}
+              {error && (
+                <div className="alert alert-danger py-2 small mt-3 mb-0" role="alert">
+                  <i className="bi bi-exclamation-circle me-2"></i>
+                  {error}
+                </div>
               )}
               {onReasonChange && (
                 <div className="mt-3">
@@ -94,7 +111,7 @@ export default function ConfirmDeleteModal({
               </button>
               <button
                 type="button"
-                className="btn btn-danger btn-sm"
+                className={`btn ${tone.buttonClass} btn-sm`}
                 onClick={onConfirm}
                 disabled={loading || confirmDisabled}
               >

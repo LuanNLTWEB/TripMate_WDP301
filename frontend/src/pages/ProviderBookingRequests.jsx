@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { bookingApi } from '../services/api';
+import { useToast } from '../hooks/useToast';
 import CustomSelect from '../components/CustomSelect';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const EMPTY_SUMMARY = {
   total: 0,
@@ -292,6 +294,7 @@ function BookingDetailModal({
 }
 
 export default function ProviderBookingRequests() {
+  const toast = useToast();
   const [bookings, setBookings] = useState([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -301,7 +304,6 @@ export default function ProviderBookingRequests() {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [reportFrom, setReportFrom] = useState('');
   const [reportTo, setReportTo] = useState('');
@@ -310,7 +312,6 @@ export default function ProviderBookingRequests() {
   const [approvingId, setApprovingId] = useState(null);
   const [processingId, setProcessingId] = useState(null);
   const [completingId, setCompletingId] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
   // START UC-78 Respond to Booking (Provider)
   const [approveModal, setApproveModal] = useState({ open: false, booking: null, submitting: false, error: '' });
   const [rejectModal, setRejectModal] = useState({ open: false, booking: null, reason: '', submitting: false, error: '' });
@@ -318,6 +319,9 @@ export default function ProviderBookingRequests() {
   // START UC-86 Mark Booking as No-Show (Provider)
   const [noShowModal, setNoShowModal] = useState({ open: false, booking: null, reason: '', submitting: false, error: '' });
   // END UC-86 Mark Booking as No-Show (Provider)
+  // START UC-85 Confirm Payment & Check-in actions (shared confirmation popup)
+  const [actionModal, setActionModal] = useState({ open: false, type: null, booking: null, error: '' });
+  // END UC-85 Confirm Payment & Check-in actions (shared confirmation popup)
 
   // Khóa cuộn trang nền an toàn và bắt phím Escape khi có bất kỳ modal nào mở
   useEffect(() => {
@@ -325,7 +329,8 @@ export default function ProviderBookingRequests() {
       selectedBooking ||
       approveModal.open ||
       rejectModal.open ||
-      noShowModal.open
+      noShowModal.open ||
+      actionModal.open
     );
     if (!isAnyModalOpen) return;
 
@@ -345,7 +350,7 @@ export default function ProviderBookingRequests() {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.classList.remove('modal-open');
     };
-  }, [selectedBooking, approveModal.open, approveModal.submitting, rejectModal.open, rejectModal.submitting, noShowModal.open, noShowModal.submitting]);
+  }, [selectedBooking, approveModal.open, approveModal.submitting, rejectModal.open, rejectModal.submitting, noShowModal.open, noShowModal.submitting, actionModal.open]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -372,14 +377,13 @@ export default function ProviderBookingRequests() {
         setSummary(response.summary || EMPTY_SUMMARY);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 0);
-        setError('');
       } catch (requestError) {
         if (!active) return;
         setBookings([]);
         setSummary(EMPTY_SUMMARY);
         setTotal(0);
         setTotalPages(0);
-        setError(requestError.message || 'Không thể tải yêu cầu đặt tour.');
+        toast.error(requestError.message || 'Không thể tải yêu cầu đặt tour.');
       } finally {
         if (active) setLoading(false);
       }
@@ -389,7 +393,7 @@ export default function ProviderBookingRequests() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, currentPage, statusFilter]);
+  }, [appliedSearch, currentPage, statusFilter, toast]);
 
   const handleStatusChange = (e) => {
     const val = typeof e === 'string' ? e : e?.target?.value;
@@ -407,8 +411,6 @@ export default function ProviderBookingRequests() {
     if (!booking) return;
 
     setApproveModal((prev) => ({ ...prev, submitting: true, error: '' }));
-    setError('');
-    setSuccessMessage('');
     try {
       const response = await bookingApi.approveBooking(booking._id);
       const updated = response.data;
@@ -420,7 +422,7 @@ export default function ProviderBookingRequests() {
         confirmed: (prev.confirmed || 0) + 1,
         confirmedRevenue: (prev.confirmedRevenue || 0) + (updated.totalPrice || booking.totalPrice || 0)
       }));
-      setSuccessMessage(response.message || 'Đã xác nhận đặt tour thành công.');
+      toast.success(response.message || 'Đã xác nhận đặt tour thành công.');
       setApproveModal({ open: false, booking: null, submitting: false, error: '' });
     } catch (requestError) {
       setApproveModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể xác nhận đặt tour.' }));
@@ -451,7 +453,7 @@ export default function ProviderBookingRequests() {
         pending: Math.max(0, (prev.pending || 0) - 1),
         rejected: (prev.rejected || 0) + 1
       }));
-      setSuccessMessage(response.message || 'Đã từ chối đơn đặt tour thành công.');
+      toast.success(response.message || 'Đã từ chối đơn đặt tour thành công.');
       setRejectModal({ open: false, booking: null, reason: '', submitting: false, error: '' });
     } catch (requestError) {
       setRejectModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể từ chối đơn đặt tour.' }));
@@ -476,7 +478,7 @@ export default function ProviderBookingRequests() {
         confirmed: Math.max(0, (prev.confirmed || 0) - 1),
         no_show: (prev.no_show || 0) + 1
       }));
-      setSuccessMessage(response.message || 'Đã ghi nhận khách vắng mặt thành công.');
+      toast.success(response.message || 'Đã ghi nhận khách vắng mặt thành công.');
       setNoShowModal({ open: false, booking: null, reason: '', submitting: false, error: '' });
     } catch (requestError) {
       setNoShowModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể ghi nhận khách vắng mặt.' }));
@@ -485,16 +487,21 @@ export default function ProviderBookingRequests() {
   // END UC-86 Mark Booking as No-Show (Provider)
 
   // START UC-85 Confirm Payment & Check-in
+  // Mở popup xác nhận dùng chung thay cho window.confirm mặc định của trình duyệt.
+  const openActionModal = (type, booking) => {
+    if (!booking) return;
+    setActionModal({ open: true, type, booking, error: '' });
+  };
+
+  const closeActionModal = () => {
+    setActionModal({ open: false, type: null, booking: null, error: '' });
+  };
+
   // Ghi nhận đã thu tiền tại điểm đón: confirmed -> paid.
   const handleConfirmPayment = async (booking, paymentMethod = 'cash') => {
-    if (!booking || booking.status !== 'confirmed') return;
-    const methodLabel = paymentMethod === 'bank_transfer' ? 'chuyển khoản' : 'tiền mặt';
-    const confirmed = window.confirm(`Xác nhận đã thu ${formatCurrency(booking.totalPrice)} bằng ${methodLabel} từ ${booking.fullName}?`);
-    if (!confirmed) return;
+    if (!booking || booking.status !== 'confirmed') return false;
 
     setProcessingId(booking._id);
-    setError('');
-    setSuccessMessage('');
     try {
       const response = await bookingApi.confirmPayment(booking._id, { paymentMethod });
       const updated = response.data;
@@ -507,9 +514,11 @@ export default function ProviderBookingRequests() {
         confirmedRevenue: Math.max(0, (prev.confirmedRevenue || 0) - (updated.totalPrice || 0)),
         collectedRevenue: (prev.collectedRevenue || 0) + (updated.totalPrice || 0)
       }));
-      setSuccessMessage(response.message || 'Đã xác nhận thu tiền.');
+      toast.success(response.message || 'Đã xác nhận thu tiền.');
+      return true;
     } catch (requestError) {
-      setError(requestError.message || 'Không thể xác nhận thanh toán.');
+      setActionModal((prev) => ({ ...prev, error: requestError.message || 'Không thể xác nhận thanh toán.' }));
+      return false;
     } finally {
       setProcessingId(null);
     }
@@ -517,13 +526,9 @@ export default function ProviderBookingRequests() {
 
   // Điểm danh khách đã lên xe: paid -> checked_in.
   const handleCheckIn = async (booking) => {
-    if (!booking || booking.status !== 'paid') return;
-    const confirmed = window.confirm(`Điểm danh ${booking.numberOfPeople} khách của ${booking.fullName} đã lên xe?`);
-    if (!confirmed) return;
+    if (!booking || booking.status !== 'paid') return false;
 
     setProcessingId(booking._id);
-    setError('');
-    setSuccessMessage('');
     try {
       const response = await bookingApi.checkIn(booking._id);
       const updated = response.data;
@@ -534,23 +539,20 @@ export default function ProviderBookingRequests() {
         paid: Math.max(0, (prev.paid || 0) - 1),
         checked_in: (prev.checked_in || 0) + 1
       }));
-      setSuccessMessage(response.message || 'Đã điểm danh khách.');
+      toast.success(response.message || 'Đã điểm danh khách.');
+      return true;
     } catch (requestError) {
-      setError(requestError.message || 'Không thể điểm danh khách.');
+      setActionModal((prev) => ({ ...prev, error: requestError.message || 'Không thể điểm danh khách.' }));
+      return false;
     } finally {
       setProcessingId(null);
     }
   };
-  // END UC-85 Confirm Payment & Check-in
 
   const handleCompleteBooking = async (booking) => {
-    if (!booking || !['paid', 'checked_in'].includes(booking.status)) return;
-    const confirmed = window.confirm(`Đánh dấu hoàn thành chuyến đi cho đơn đặt của ${booking.fullName}?`);
-    if (!confirmed) return;
+    if (!booking || !['paid', 'checked_in'].includes(booking.status)) return false;
 
     setCompletingId(booking._id);
-    setError('');
-    setSuccessMessage('');
     try {
       const response = await bookingApi.completeBooking(booking._id);
       const updated = response.data;
@@ -561,17 +563,32 @@ export default function ProviderBookingRequests() {
         [booking.status]: Math.max(0, (prev[booking.status] || 0) - 1),
         completed: (prev.completed || 0) + 1
       }));
-      setSuccessMessage(response.message || 'Đã đánh dấu hoàn thành chuyến đi thành công.');
+      toast.success(response.message || 'Đã đánh dấu hoàn thành chuyến đi thành công.');
+      return true;
     } catch (requestError) {
-      setError(requestError.message || 'Không thể đánh dấu hoàn thành chuyến đi.');
+      setActionModal((prev) => ({ ...prev, error: requestError.message || 'Không thể đánh dấu hoàn thành chuyến đi.' }));
+      return false;
     } finally {
       setCompletingId(null);
     }
   };
 
+  const handleActionConfirm = async () => {
+    const { type, booking } = actionModal;
+    if (!booking) return;
+
+    let succeeded = false;
+    if (type === 'payment_cash') succeeded = await handleConfirmPayment(booking, 'cash');
+    else if (type === 'payment_bank') succeeded = await handleConfirmPayment(booking, 'bank_transfer');
+    else if (type === 'checkin') succeeded = await handleCheckIn(booking);
+    else if (type === 'complete') succeeded = await handleCompleteBooking(booking);
+
+    if (succeeded) closeActionModal();
+  };
+  // END UC-85 Confirm Payment & Check-in
+
   const handleExportReport = async () => {
     setIsExporting(true);
-    setError('');
     try {
       const blob = await bookingApi.exportProviderReport({ from: reportFrom, to: reportTo });
       const url = URL.createObjectURL(blob);
@@ -582,12 +599,85 @@ export default function ProviderBookingRequests() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+      toast.success('Đã xuất báo cáo đặt tour thành công.');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể xuất báo cáo đặt tour.');
+      toast.error(requestError.message || 'Không thể xuất báo cáo đặt tour.');
     } finally {
       setIsExporting(false);
     }
   };
+
+  const actionModalContent = (() => {
+    const booking = actionModal.booking;
+    if (!booking) return null;
+
+    switch (actionModal.type) {
+      case 'payment_cash':
+        return {
+          title: 'Xác nhận thu tiền mặt',
+          variant: 'success',
+          confirmText: 'Xác nhận đã thu tiền',
+          message: (
+            <>
+              Xác nhận đã thu <strong>{formatCurrency(booking.totalPrice)}</strong> bằng tiền mặt từ{' '}
+              <strong>{booking.fullName}</strong>?
+              <br />
+              <small className="text-muted">
+                Đơn sẽ chuyển sang trạng thái <strong>Đã thu tiền</strong>.
+              </small>
+            </>
+          )
+        };
+      case 'payment_bank':
+        return {
+          title: 'Xác nhận nhận chuyển khoản',
+          variant: 'success',
+          confirmText: 'Xác nhận đã nhận tiền',
+          message: (
+            <>
+              Xác nhận đã nhận <strong>{formatCurrency(booking.totalPrice)}</strong> qua chuyển khoản từ{' '}
+              <strong>{booking.fullName}</strong>?
+              <br />
+              <small className="text-muted">
+                Đơn sẽ chuyển sang trạng thái <strong>Đã thu tiền</strong>.
+              </small>
+            </>
+          )
+        };
+      case 'checkin':
+        return {
+          title: 'Xác nhận điểm danh',
+          variant: 'primary',
+          confirmText: 'Xác nhận điểm danh',
+          message: (
+            <>
+              Điểm danh <strong>{booking.numberOfPeople} khách</strong> của <strong>{booking.fullName}</strong> đã lên xe?
+              <br />
+              <small className="text-muted">
+                Đơn sẽ chuyển sang trạng thái <strong>Đã điểm danh</strong>.
+              </small>
+            </>
+          )
+        };
+      case 'complete':
+        return {
+          title: 'Xác nhận hoàn thành chuyến đi',
+          variant: 'success',
+          confirmText: 'Đánh dấu hoàn thành',
+          message: (
+            <>
+              Đánh dấu hoàn thành chuyến đi cho đơn đặt của <strong>{booking.fullName}</strong>?
+              <br />
+              <small className="text-muted">
+                Đơn sẽ chuyển sang trạng thái <strong>Đã hoàn thành</strong> và không thể hoàn tác.
+              </small>
+            </>
+          )
+        };
+      default:
+        return null;
+    }
+  })();
 
   return (
     <section className="management-page-section">
@@ -662,22 +752,6 @@ export default function ProviderBookingRequests() {
           Tiền đã thu tại điểm đón: <strong>{formatCurrency(summary.collectedRevenue)}</strong>
         </span>
       </div>
-
-{successMessage && (
-        <div className="alert alert-success d-flex align-items-center alert-dismissible fade show" role="status">
-          <i className="bi bi-check-circle-fill me-2"></i>
-          <div>{successMessage}</div>
-          <button type="button" className="btn-close ms-auto" onClick={() => setSuccessMessage('')} aria-label="Đóng"></button>
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger d-flex align-items-center alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
-          <div>{error}</div>
-          <button type="button" className="btn-close ms-auto" onClick={() => setError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       {/* Bảng danh sách yêu cầu đặt tour đồng bộ 1:1 với UI Quản lý tour */}
       <div className="management-table-card">
@@ -864,7 +938,7 @@ export default function ProviderBookingRequests() {
                             title="Xác nhận đã thu tiền mặt"
                             aria-label={`Xác nhận thu tiền booking của ${booking.fullName}`}
                             disabled={processingId === booking._id}
-                            onClick={() => handleConfirmPayment(booking, 'cash')}
+                            onClick={() => openActionModal('payment_cash', booking)}
                           >
                             {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-cash-coin"></i>}
                           </button>
@@ -876,7 +950,7 @@ export default function ProviderBookingRequests() {
                             title="Điểm danh khách lên xe"
                             aria-label={`Điểm danh booking của ${booking.fullName}`}
                             disabled={processingId === booking._id}
-                            onClick={() => handleCheckIn(booking)}
+                            onClick={() => openActionModal('checkin', booking)}
                           >
                             {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-person-check"></i>}
                           </button>
@@ -888,7 +962,7 @@ export default function ProviderBookingRequests() {
                             title="Đánh dấu hoàn thành chuyến đi"
                             aria-label={`Đánh dấu hoàn thành booking của ${booking.fullName}`}
                             disabled={completingId === booking._id}
-                            onClick={() => handleCompleteBooking(booking)}
+                            onClick={() => openActionModal('complete', booking)}
                           >
                             {completingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-flag-fill"></i>}
                           </button>
@@ -954,9 +1028,18 @@ export default function ProviderBookingRequests() {
             setSelectedBooking(null);
             setNoShowModal({ open: true, booking: b, reason: '', submitting: false, error: '' });
           }}
-          onConfirmPayment={handleConfirmPayment}
-          onCheckIn={handleCheckIn}
-          onComplete={handleCompleteBooking}
+          onConfirmPayment={(b, method) => {
+            setSelectedBooking(null);
+            openActionModal(method === 'bank_transfer' ? 'payment_bank' : 'payment_cash', b);
+          }}
+          onCheckIn={(b) => {
+            setSelectedBooking(null);
+            openActionModal('checkin', b);
+          }}
+          onComplete={(b) => {
+            setSelectedBooking(null);
+            openActionModal('complete', b);
+          }}
           isApproving={approvingId === selectedBooking?._id || (approveModal.open && approveModal.submitting)}
           isProcessing={processingId === selectedBooking?._id}
           isCompleting={completingId === selectedBooking?._id}
@@ -1244,6 +1327,22 @@ export default function ProviderBookingRequests() {
         </>
       )}
       {/* END UC-86 Mark Booking as No-Show Modal */}
+
+      {/* START UC-85 Shared confirmation popup for payment, check-in and completion */}
+      <ConfirmDeleteModal
+        isOpen={actionModal.open && Boolean(actionModal.booking) && Boolean(actionModalContent)}
+        title={actionModalContent?.title}
+        variant={actionModalContent?.variant}
+        confirmText={actionModalContent?.confirmText}
+        message={actionModalContent?.message}
+        error={actionModal.error}
+        loading={actionModal.type === 'complete'
+          ? completingId === actionModal.booking?._id
+          : processingId === actionModal.booking?._id}
+        onConfirm={handleActionConfirm}
+        onClose={closeActionModal}
+      />
+      {/* END UC-85 Shared confirmation popup for payment, check-in and completion */}
     </section>
   );
 }
