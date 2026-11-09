@@ -255,6 +255,7 @@ export default function Notifications() {
                                     <i className="bi bi-person-fill me-1"></i>
                                     Gửi bởi: <strong>{item.sender.username}</strong>
                                     {item.sender.role === 'staff' && ' (Nhân viên TripMate)'}
+                                    {item.sender.role === 'tourProvider' && ' (Nhà cung cấp tour)'}
                                   </>
                                 ) : item.invitedBy?.username ? (
                                   <>

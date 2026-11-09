@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getReviewsByTour,
+  getProviderReviewsByTour,
   deleteReview,
   getAllReviewsForModeration,
   getReportedReviews,
@@ -11,7 +12,10 @@ import {
   reportReview,
   restoreReview,
   updateReview,
-  voteHelpfulReview
+  voteHelpfulReview,
+  replyReview,
+  updateReviewReply,
+  deleteReviewReply
 } from '../controllers/reviewController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -23,7 +27,9 @@ import {
   updateReviewValidation,
   restoreReviewValidation,
   hideReviewValidation,
-  voteHelpfulValidation
+  voteHelpfulValidation,
+  replyReviewValidation,
+  deleteReplyReviewValidation
 } from '../middleware/validate.js';
 
 const router = Router();
@@ -31,6 +37,12 @@ const router = Router();
 router.get('/tours/:tourId/eligibility', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reviewEligibilityValidation, getReviewEligibility);
 router.post('/tours/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createReviewValidation, createReview);
 router.get('/tours/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getReviewsByTour);
+// START Reply to Tour Review
+router.get('/provider/tours/:tourId', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), reviewEligibilityValidation, getProviderReviewsByTour);
+router.post('/:id/reply', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), replyReviewValidation, replyReview);
+router.put('/:id/reply', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), replyReviewValidation, updateReviewReply);
+router.delete('/:id/reply', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), deleteReplyReviewValidation, deleteReviewReply);
+// END Reply to Tour Review
 router.get('/moderation', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getAllReviewsForModeration);
 router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reportedReviewListValidation, getReportedReviews);
 router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);

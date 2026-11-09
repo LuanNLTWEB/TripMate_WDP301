@@ -411,6 +411,18 @@ export const announcementApi = {
 
 export const reviewApi = {
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  // START Reply to Tour Review
+  getProviderByTour: (tourId) => apiRequest(`/reviews/provider/tours/${tourId}`, { method: 'GET' }),
+  reply: (id, payload) => apiRequest(`/reviews/${id}/reply`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  updateReply: (id, payload) => apiRequest(`/reviews/${id}/reply`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  deleteReply: (id) => apiRequest(`/reviews/${id}/reply`, { method: 'DELETE' }),
+  // END Reply to Tour Review
   getEligibility: (tourId) => apiRequest(`/reviews/tours/${tourId}/eligibility`, { method: 'GET' }),
   create: (tourId, payload) => apiRequest(`/reviews/tours/${tourId}`, {
     method: 'POST',

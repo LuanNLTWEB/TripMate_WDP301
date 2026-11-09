@@ -1303,3 +1303,19 @@ export const compareToursValidation = [
     .withMessage('Mã tour không hợp lệ')
 ];
 // END UC-64 Compare Tours
+
+
+// START Reply to Tour Review
+export const replyReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ'),
+  body('comment')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập nội dung phản hồi')
+    .isLength({ min: 5, max: 1000 })
+    .withMessage('Nội dung phản hồi phải có từ 5 đến 1000 ký tự')
+];
+
+export const deleteReplyReviewValidation = [
+  param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
+];
+// END Reply to Tour Review
