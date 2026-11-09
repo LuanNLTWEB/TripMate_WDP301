@@ -2,6 +2,13 @@ import { validationResult } from 'express-validator';
 import Complaint from '../models/Complaint.js';
 import Booking from '../models/Booking.js';
 
+export const COMPLAINT_ELIGIBLE_BOOKING_STATUSES = Object.freeze([
+  'paid',
+  'checked_in',
+  'completed',
+  'no_show'
+]);
+
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const badRequest = (res, errors) => res.status(400).json({
@@ -52,10 +59,10 @@ export const createComplaint = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đơn đặt tour của bạn' });
     }
-    if (booking.status !== 'confirmed') {
+    if (!COMPLAINT_ELIGIBLE_BOOKING_STATUSES.includes(booking.status)) {
       return res.status(409).json({
         success: false,
-        message: 'Chỉ có thể khiếu nại đơn đặt tour đã được xác nhận'
+        message: 'Chỉ có thể khiếu nại đơn đã thanh toán, đã tham gia, đã hoàn thành hoặc bị ghi nhận vắng mặt'
       });
     }
 

@@ -181,14 +181,16 @@ const BookingHistory = () => {
   }, [isAuthenticated, user?.role, user?._id]);
 
   // UC-66 – MyComplaints gửi user tới đây với ?complain=1 để chống trùng chức năng:
-  // mở modal khiếu nại ngay trên đơn đã xác nhận đầu tiên.
+  // mở modal khiếu nại ngay trên đơn đủ điều kiện đầu tiên.
   useEffect(() => {
     if (searchParams.get('complain') !== '1' || loading) return;
-    const firstConfirmed = bookings.find((booking) => booking.status === 'confirmed');
-    if (firstConfirmed) {
-      setBookingToComplain(firstConfirmed);
+    const firstEligibleBooking = bookings.find((booking) =>
+      ['paid', 'checked_in', 'completed', 'no_show'].includes(booking.status)
+    );
+    if (firstEligibleBooking) {
+      setBookingToComplain(firstEligibleBooking);
     } else if (!loading) {
-      toast.error('Bạn cần có đơn đặt tour đã xác nhận để gửi khiếu nại.');
+      toast.error('Bạn chưa có đơn đủ điều kiện để gửi khiếu nại.');
     }
     setSearchParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -814,16 +816,18 @@ const BookingHistory = () => {
 
                                   {/* Auxiliary Actions: Khiếu nại & Hủy tour */}
                                   <div className="d-flex gap-1.5 w-100">
-                                    <button
-                                      type="button"
-                                      id={`btn-submit-complaint-${booking._id}`}
-                                      className="btn btn-light text-muted border-0 btn-sm rounded-pill py-1 px-2 flex-grow-1 small d-inline-flex align-items-center justify-content-center gap-1"
-                                      onClick={() => setBookingToComplain(booking)}
-                                      title="Gửi khiếu nại"
-                                    >
-                                      <i className="bi bi-flag"></i>
-                                      <span>Khiếu nại</span>
-                                    </button>
+                                    {['paid', 'checked_in', 'completed', 'no_show'].includes(booking.status) && (
+                                      <button
+                                        type="button"
+                                        id={`btn-submit-complaint-${booking._id}`}
+                                        className="btn btn-light text-muted border-0 btn-sm rounded-pill py-1 px-2 flex-grow-1 small d-inline-flex align-items-center justify-content-center gap-1"
+                                        onClick={() => setBookingToComplain(booking)}
+                                        title="Gửi khiếu nại"
+                                      >
+                                        <i className="bi bi-flag"></i>
+                                        <span>Khiếu nại</span>
+                                      </button>
+                                    )}
 
                                     {booking.status !== 'cancelled' && (
                                       <button

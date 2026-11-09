@@ -59,7 +59,7 @@ test('creates a complaint owned by the authenticated customer with evidence imag
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
-    status: 'confirmed',
+    status: 'paid',
     tourId: { _id: 'tour-1', title: 'Tour Đà Nẵng', providerId: 'provider-1' }
   });
   mockActiveComplaint(null);
@@ -90,7 +90,7 @@ test('defaults evidenceImages to an empty array when none are sent', async () =>
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
-    status: 'confirmed',
+    status: 'paid',
     tourId: { _id: 'tour-1', providerId: 'provider-1' }
   });
   mockActiveComplaint(null);
@@ -121,7 +121,7 @@ test('returns 404 when the booking does not belong to the customer', async () =>
   assert.equal(result.body.success, false);
 });
 
-test('rejects complaints for unconfirmed bookings', async () => {
+test('rejects complaints for bookings that are not eligible', async () => {
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
@@ -143,7 +143,7 @@ test('rejects a second open complaint for the same booking', async () => {
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
-    status: 'confirmed',
+    status: 'paid',
     tourId: { _id: 'tour-1', providerId: 'provider-1' }
   });
   mockActiveComplaint({ _id: 'complaint-existing' });
@@ -162,7 +162,7 @@ test('maps a duplicate-key race to a safe 409 error', async () => {
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
-    status: 'confirmed',
+    status: 'paid',
     tourId: { _id: 'tour-1', providerId: 'provider-1' }
   });
   mockActiveComplaint(null);
@@ -184,7 +184,7 @@ test('returns a safe error when the database operation fails', async () => {
   mockBooking({
     _id: 'booking-1',
     customerId: 'customer-1',
-    status: 'confirmed',
+    status: 'paid',
     tourId: { _id: 'tour-1', providerId: 'provider-1' }
   });
   mockActiveComplaint(null);
