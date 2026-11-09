@@ -59,11 +59,18 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
   const toast = useToast();
   const objectUrls = useRef([]);
   // Chỉ khiếu nại được đơn đã xác nhận (backend cũng kiểm tra lại).
+  const isInitialUnconfirmed = Boolean(initialBooking && initialBooking.status !== 'confirmed');
+
   const complaintBookings = useMemo(
     () => bookings.filter((booking) => booking.status === 'confirmed'),
     [bookings]
   );
-  const [bookingId, setBookingId] = useState(initialBooking?._id || complaintBookings[0]?._id || '');
+
+  const [bookingId, setBookingId] = useState(
+    isInitialUnconfirmed
+      ? ''
+      : (initialBooking?.status === 'confirmed' ? initialBooking._id : (complaintBookings[0]?._id || ''))
+  );
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [images, setImages] = useState([]);
@@ -322,42 +329,71 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                   </div>
 
                   <div className="mb-3">
-                    <label htmlFor="complaintBookingId" className="form-label fw-semibold">
+                    <label className="form-label fw-semibold">
                       Đơn đặt tour <span className="text-danger">*</span>
                     </label>
-                    <select
-                      id="complaintBookingId"
-                      className="form-select"
-                      value={bookingId}
-                      disabled={isSubmitting || complaintBookings.length === 0}
-                      onChange={(event) => {
-                        setBookingId(event.target.value);
-                        setError('');
-                      }}
-                    >
-                      {complaintBookings.length === 0 && (
-                        <option value="">Bạn chưa có đơn đặt tour nào đã xác nhận</option>
-                      )}
-                      {complaintBookings.map((booking) => (
-                        <option key={booking._id} value={booking._id}>
-                          {bookingCode(booking._id)} · {booking.tourId?.title || 'Tour'} · Khởi hành{' '}
-                          {formatDate(booking.departureDate)} · {getStatusLabel(booking.status)}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedBooking && (
-                      <div className="mt-2 p-2 rounded-3 bg-light small text-muted d-flex flex-wrap gap-3">
+
+                    {initialBooking ? (
+                      /* Khi mở từ đơn cụ thể: hiển thị dạng Card thông tin gọn gàng, không có dropdown và không lặp lại */
+                      <div className="p-3 rounded-3 bg-light border">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                          <span className="fw-semibold text-dark">
+                            {initialBooking.tourId?.title || 'Tour'}
+                          </span>
+                          <span
+                            className={`badge ${
+                              initialBooking.status === 'confirmed'
+                                ? 'bg-success-subtle text-success border border-success-subtle'
+                                : 'bg-warning-subtle text-warning border border-warning-subtle'
+                            }`}
+                          >
+                            {getStatusLabel(initialBooking.status)}
+                          </span>
+                        </div>
+                        <div className="d-flex align-items-center gap-3 text-muted small mt-2">
+                          <span>
+                            <i className="bi bi-receipt me-1"></i>
+                            {bookingCode(initialBooking._id)}
+                          </span>
+                          <span>
+                            <i className="bi bi-calendar-event me-1"></i>
+                            {formatDate(initialBooking.departureDate)}
+                          </span>
+                          <span>
+                            <i className="bi bi-people me-1"></i>
+                            {initialBooking.numberOfPeople} khách
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Nếu không có initialBooking: hiển thị dropdown chọn */
+                      <select
+                        id="complaintBookingId"
+                        className="form-select"
+                        value={bookingId}
+                        disabled={isSubmitting || complaintBookings.length === 0}
+                        onChange={(event) => {
+                          setBookingId(event.target.value);
+                          setError('');
+                        }}
+                      >
+                        {complaintBookings.length === 0 ? (
+                          <option value="">Bạn chưa có đơn đặt tour nào đã xác nhận</option>
+                        ) : (
+                          complaintBookings.map((booking) => (
+                            <option key={booking._id} value={booking._id}>
+                              {bookingCode(booking._id)} · {booking.tourId?.title || 'Tour'} · {formatDate(booking.departureDate)}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    )}
+
+                    {isInitialUnconfirmed && (
+                      <div className="alert alert-warning py-2 px-3 small mt-2 d-flex align-items-center gap-2 mb-0">
+                        <i className="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
                         <span>
-                          <i className="bi bi-receipt me-1"></i>
-                          {bookingCode(selectedBooking._id)}
-                        </span>
-                        <span>
-                          <i className="bi bi-calendar-event me-1"></i>
-                          {formatDate(selectedBooking.departureDate)}
-                        </span>
-                        <span>
-                          <i className="bi bi-people me-1"></i>
-                          {selectedBooking.numberOfPeople} khách
+                          Đơn này chưa được xác nhận ({getStatusLabel(initialBooking.status)}). Bạn chỉ có thể gửi khiếu nại sau khi đơn được Provider xác nhận (Confirmed).
                         </span>
                       </div>
                     )}
@@ -479,7 +515,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                   <button
                     type="submit"
                     className="btn btn-warning rounded-pill px-4 fw-semibold"
-                    disabled={isSubmitting || complaintBookings.length === 0}
+                    disabled={isSubmitting || isInitialUnconfirmed || !bookingId}
                   >
                     {isSubmitting ? (
                       <>
