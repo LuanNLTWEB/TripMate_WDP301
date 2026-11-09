@@ -8,15 +8,9 @@ import Tour from '../models/Tour.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { validationResult } from 'express-validator';
+import ExcelJS from 'exceljs';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const escapeCsvValue = (value) => {
-  const text = value === null || value === undefined ? '' : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
-};
-
-const formatCsvDate = (value) => (value ? new Date(value).toISOString() : '');
 
 // Nhận thông tin đặt tour từ customer, kiểm tra tour còn chỗ, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
@@ -566,8 +560,9 @@ export const completeBooking = async (req, res) => {
 /**
  * UC-123 - Export Provider Booking Report.
  *
- * Exports all bookings for the authenticated provider's tours. Date filters use
- * booking creation time so the report describes orders received in the period.
+ * Xuất danh sách đơn đặt tour của nhà cung cấp ra file Excel (.xlsx) chuyên nghiệp,
+ * đồng bộ định dạng bảng biểu, màu sắc thương hiệu và thống kê tổng kết tương tự
+ * mẫu Quản lý khách hàng du lịch (Passenger Manifest).
  */
 export const exportProviderBookingReport = async (req, res) => {
   const { from, to } = req.query;
@@ -586,47 +581,325 @@ export const exportProviderBookingReport = async (req, res) => {
   if (from || to) {
     query.createdAt = {};
     if (from) query.createdAt.$gte = new Date(`${from}T00:00:00.000Z`);
-    if (to) query.createdAt.$lt = new Date(`${to}T00:00:00.000Z`);
-    if (to) query.createdAt.$lt.setUTCDate(query.createdAt.$lt.getUTCDate() + 1);
+    if (to) {
+      const endDate = new Date(`${to}T00:00:00.000Z`);
+      endDate.setUTCDate(endDate.getUTCDate() + 1);
+      query.createdAt.$lt = endDate;
+    }
   }
 
   try {
-    const providerTours = await Tour.find({ providerId: req.user._id })
-      .select('_id')
+    const providerTours = await Tour.find({ providerId: req.user?._id })
+      .select('_id title')
       .lean();
-    query.tourId = { $in: providerTours.map((tour) => tour._id) };
+    query.tourId = { $in: (providerTours || []).map((tour) => tour._id) };
 
     const bookings = await Booking.find(query)
       .populate('tourId', 'title departureLocation destinationLocation')
       .sort({ createdAt: -1 })
       .lean();
 
-    const header = [
-      'Booking ID', 'Tour', 'Customer', 'Phone', 'Email', 'Departure Date',
-      'Guests', 'Total Price', 'Status', 'Created At', 'Note'
-    ];
-    const rows = bookings.map((booking) => [
-      booking._id,
-      booking.tourId?.title || 'Tour không còn khả dụng',
-      booking.fullName,
-      booking.phone,
-      booking.email,
-      formatCsvDate(booking.departureDate),
-      booking.numberOfPeople,
-      booking.totalPrice,
-      booking.status,
-      formatCsvDate(booking.createdAt),
-      booking.note
-    ]);
-    const csv = `\uFEFF${[header, ...rows]
-      .map((row) => row.map(escapeCsvValue).join(','))
-      .join('\r\n')}\r\n`;
+    const totalPassengers = bookings.reduce((sum, b) => sum + (b.numberOfPeople || 0), 0);
+    const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
 
-    res.set({
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="tripmate-provider-booking-report.csv"'
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'TripMate Platform';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet('Báo cáo đơn đặt tour', {
+      views: [{ showGridLines: true }]
     });
-    return res.send(csv);
+
+    // 1. Cấu hình độ rộng các cột (12 cột)
+    worksheet.columns = [
+      { key: 'stt', width: 7 },
+      { key: 'bookingCode', width: 16 },
+      { key: 'tourTitle', width: 34 },
+      { key: 'fullName', width: 26 },
+      { key: 'phone', width: 16 },
+      { key: 'email', width: 28 },
+      { key: 'departureDate', width: 16 },
+      { key: 'numberOfPeople', width: 14 },
+      { key: 'totalPrice', width: 20 },
+      { key: 'status', width: 20 },
+      { key: 'createdAt', width: 16 },
+      { key: 'note', width: 38 }
+    ];
+
+    // 2. Brand Name / Logo
+    worksheet.mergeCells('B2:E2');
+    const brandCell = worksheet.getCell('B2');
+    brandCell.value = 'TRIPMATE TRAVEL - SLIM CRM';
+    brandCell.font = { name: 'Segoe UI', size: 13, bold: true, color: { argb: 'FFE65100' } };
+    brandCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    // 3. Tiêu đề chính
+    worksheet.mergeCells('A3:L3');
+    const titleCell = worksheet.getCell('A3');
+    titleCell.value = 'BÁO CÁO CHI TIẾT ĐƠN ĐẶT TOUR';
+    titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FF1F4E79' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    worksheet.getRow(3).height = 30;
+
+    // 4. Tiêu đề phụ / Mô tả mẫu
+    worksheet.mergeCells('A4:L4');
+    const subtitleCell = worksheet.getCell('A4');
+    subtitleCell.value = 'Bảng thống kê toàn bộ đơn đặt tour theo nhà cung cấp: Mã đơn, Khách hàng, Tour đăng ký, Số lượng vé, Doanh thu và Trạng thái xử lý.';
+    subtitleCell.font = { name: 'Segoe UI', size: 10, italic: true, color: { argb: 'FF555555' } };
+    subtitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // 5. Khung tóm tắt thông tin báo cáo (Rows 6 - 8)
+    const infoBorder = {
+      top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+      left: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+      bottom: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+      right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
+    };
+    const infoFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4F8' } };
+
+    worksheet.mergeCells('A6:F6');
+    const providerName = req.user?.businessName || req.user?.username || 'TripMate Partner';
+    worksheet.getCell('A6').value = `Nhà cung cấp: ${providerName}`;
+    worksheet.getCell('A6').font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1A237E' } };
+
+    worksheet.mergeCells('G6:L6');
+    let periodText = 'Toàn bộ thời gian';
+    if (from && to) {
+      periodText = `Từ ${new Date(from).toLocaleDateString('vi-VN')} đến ${new Date(to).toLocaleDateString('vi-VN')}`;
+    } else if (from) {
+      periodText = `Từ ngày ${new Date(from).toLocaleDateString('vi-VN')}`;
+    } else if (to) {
+      periodText = `Đến ngày ${new Date(to).toLocaleDateString('vi-VN')}`;
+    }
+    worksheet.getCell('G6').value = `Khoảng thời gian: ${periodText}`;
+    worksheet.getCell('G6').font = { name: 'Segoe UI', size: 10, bold: true };
+
+    worksheet.mergeCells('A7:F7');
+    const providerContact = req.user?.phone ? ` - Hotline: ${req.user.phone}` : '';
+    worksheet.getCell('A7').value = `Liên hệ: ${req.user?.email || 'N/A'}${providerContact}`;
+    worksheet.getCell('A7').font = { name: 'Segoe UI', size: 10 };
+
+    worksheet.mergeCells('G7:L7');
+    worksheet.getCell('G7').value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`;
+    worksheet.getCell('G7').font = { name: 'Segoe UI', size: 10 };
+
+    worksheet.mergeCells('A8:F8');
+    worksheet.getCell('A8').value = `Số tour sở hữu: ${(providerTours || []).length} tour`;
+    worksheet.getCell('A8').font = { name: 'Segoe UI', size: 10 };
+
+    worksheet.mergeCells('G8:L8');
+    worksheet.getCell('G8').value = `Tổng số đơn: ${bookings.length} đơn | Tổng vé: ${totalPassengers} vé`;
+    worksheet.getCell('G8').font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF2E7D32' } };
+
+    for (let r = 6; r <= 8; r++) {
+      const row = worksheet.getRow(r);
+      row.height = 20;
+      for (let c = 1; c <= 12; c++) {
+        const cell = row.getCell(c);
+        cell.fill = infoFill;
+        cell.border = infoBorder;
+      }
+    }
+
+    // 6. Header của bảng (Row 10)
+    const headerRow = worksheet.getRow(10);
+    headerRow.height = 28;
+    const headers = [
+      'STT',
+      'Mã đơn',
+      'Tên tour',
+      'Họ và tên khách hàng',
+      'Số điện thoại',
+      'Email',
+      'Ngày khởi hành',
+      'Số lượng vé',
+      'Tổng tiền',
+      'Trạng thái',
+      'Ngày đặt',
+      'Ghi chú'
+    ];
+
+    headers.forEach((h, idx) => {
+      const cell = headerRow.getCell(idx + 1);
+      cell.value = h;
+      cell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'medium', color: { argb: 'FF0D3A63' } },
+        left: { style: 'thin', color: { argb: 'FF336699' } },
+        bottom: { style: 'medium', color: { argb: 'FF0D3A63' } },
+        right: { style: 'thin', color: { argb: 'FF336699' } }
+      };
+    });
+
+    worksheet.autoFilter = 'A10:L10';
+
+    // 7. Render danh sách đơn đặt tour
+    const thinBorder = {
+      top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+      left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+      bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+      right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+    };
+
+    const getStatusText = (status) => {
+      switch (status) {
+        case 'paid': return 'Đã thanh toán';
+        case 'checked_in': return 'Đã điểm danh';
+        case 'completed': return 'Đã hoàn thành';
+        case 'confirmed': return 'Đã xác nhận';
+        case 'pending': return 'Chờ xác nhận';
+        case 'cancelled': return 'Đã hủy';
+        case 'rejected': return 'Đã từ chối';
+        case 'no_show': return 'Vắng mặt (No-show)';
+        default: return status || 'N/A';
+      }
+    };
+
+    if (bookings.length === 0) {
+      const emptyRow = worksheet.getRow(11);
+      emptyRow.height = 24;
+      worksheet.mergeCells('A11:L11');
+      const emptyCell = emptyRow.getCell(1);
+      emptyCell.value = 'Không có dữ liệu đơn đặt tour nào trong khoảng thời gian này';
+      emptyCell.font = { name: 'Segoe UI', size: 10, italic: true, color: { argb: 'FF888888' } };
+      emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      for (let c = 1; c <= 12; c++) {
+        emptyRow.getCell(c).border = thinBorder;
+      }
+    } else {
+      bookings.forEach((booking, index) => {
+        const rowIdx = 11 + index;
+        const row = worksheet.getRow(rowIdx);
+        row.height = 24;
+        const isEven = index % 2 === 1;
+        const rowFill = isEven ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } } : null;
+
+        const bookingCode = `BK-${booking._id ? booking._id.toString().slice(-6).toUpperCase() : 'UNKNOWN'}`;
+        const statusText = getStatusText(booking.status);
+        const departureDateText = booking.departureDate ? new Date(booking.departureDate).toLocaleDateString('vi-VN') : 'N/A';
+        const createdAtText = booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('vi-VN') : 'N/A';
+        const noteText = booking.note || 'Không có ghi chú';
+
+        row.values = [
+          index + 1,
+          bookingCode,
+          booking.tourId?.title || 'Tour không còn khả dụng',
+          booking.fullName || 'N/A',
+          booking.phone || 'N/A',
+          booking.email || 'N/A',
+          departureDateText,
+          booking.numberOfPeople || 0,
+          booking.totalPrice || 0,
+          statusText,
+          createdAtText,
+          noteText
+        ];
+
+        for (let c = 1; c <= 12; c++) {
+          const cell = row.getCell(c);
+          cell.font = { name: 'Segoe UI', size: 10 };
+          cell.border = thinBorder;
+          if (rowFill) cell.fill = rowFill;
+
+          if ([1, 2, 5, 7, 8, 10, 11].includes(c)) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          } else if (c === 9) {
+            cell.alignment = { vertical: 'middle', horizontal: 'right' };
+            cell.numFmt = '#,##0 "đ"';
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: c === 12 };
+          }
+        }
+
+        // Tô màu nhấn mạnh trạng thái
+        const statusCell = row.getCell(10);
+        if (['completed', 'paid'].includes(booking.status)) {
+          statusCell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF15803D' } };
+        } else if (['confirmed', 'checked_in'].includes(booking.status)) {
+          statusCell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF1D4ED8' } };
+        } else if (booking.status === 'pending') {
+          statusCell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFD97706' } };
+        } else if (['cancelled', 'rejected', 'no_show'].includes(booking.status)) {
+          statusCell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFDC2626' } };
+        }
+      });
+    }
+
+    // 8. Dòng tổng cộng (Summary Row)
+    const totalRowIdx = 11 + Math.max(bookings.length, 1);
+    const totalRow = worksheet.getRow(totalRowIdx);
+    totalRow.height = 26;
+
+    worksheet.mergeCells(`A${totalRowIdx}:G${totalRowIdx}`);
+    const labelCell = totalRow.getCell(1);
+    labelCell.value = 'TỔNG CỘNG / TOTAL';
+    labelCell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F4E79' } };
+    labelCell.alignment = { vertical: 'middle', horizontal: 'right' };
+
+    const totalPaxCell = totalRow.getCell(8);
+    totalPaxCell.value = totalPassengers;
+    totalPaxCell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F4E79' } };
+    totalPaxCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const totalRevCell = totalRow.getCell(9);
+    totalRevCell.value = totalRevenue;
+    totalRevCell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFB91C1C' } };
+    totalRevCell.alignment = { vertical: 'middle', horizontal: 'right' };
+    totalRevCell.numFmt = '#,##0 "đ"';
+
+    worksheet.mergeCells(`J${totalRowIdx}:L${totalRowIdx}`);
+    const summaryCountCell = totalRow.getCell(10);
+    summaryCountCell.value = `${bookings.length} đơn đặt chỗ`;
+    summaryCountCell.font = { name: 'Segoe UI', size: 10, italic: true };
+    summaryCountCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    for (let c = 1; c <= 12; c++) {
+      const cell = totalRow.getCell(c);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF64748B' } },
+        bottom: { style: 'double', color: { argb: 'FF1F4E79' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    }
+
+    // 9. Ghi chú thời gian & Phần ký tên
+    const footerRowIdx = totalRowIdx + 2;
+    worksheet.getCell(`A${footerRowIdx}`).value = `* Báo cáo đơn đặt tour được xuất tự động từ hệ thống TripMate vào lúc: ${new Date().toLocaleString('vi-VN')}`;
+    worksheet.getCell(`A${footerRowIdx}`).font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF64748B' } };
+
+    const sigRowIdx = footerRowIdx + 2;
+    worksheet.mergeCells(`B${sigRowIdx}:E${sigRowIdx}`);
+    worksheet.getCell(`B${sigRowIdx}`).value = 'NGƯỜI LẬP BẢNG';
+    worksheet.getCell(`B${sigRowIdx}`).font = { name: 'Segoe UI', size: 10, bold: true };
+    worksheet.getCell(`B${sigRowIdx}`).alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells(`H${sigRowIdx}:L${sigRowIdx}`);
+    worksheet.getCell(`H${sigRowIdx}`).value = 'ĐẠI DIỆN ĐƠN VỊ TỔ CHỨC / NHÀ CUNG CẤP';
+    worksheet.getCell(`H${sigRowIdx}`).font = { name: 'Segoe UI', size: 10, bold: true };
+    worksheet.getCell(`H${sigRowIdx}`).alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells(`B${sigRowIdx + 1}:E${sigRowIdx + 1}`);
+    worksheet.getCell(`B${sigRowIdx + 1}`).value = '(Ký và ghi rõ họ tên)';
+    worksheet.getCell(`B${sigRowIdx + 1}`).font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF888888' } };
+    worksheet.getCell(`B${sigRowIdx + 1}`).alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells(`H${sigRowIdx + 1}:L${sigRowIdx + 1}`);
+    worksheet.getCell(`H${sigRowIdx + 1}`).value = '(Ký, đóng dấu hoặc xác nhận)';
+    worksheet.getCell(`H${sigRowIdx + 1}`).font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF888888' } };
+    worksheet.getCell(`H${sigRowIdx + 1}`).alignment = { horizontal: 'center' };
+
+    const fileDate = new Date().toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="tripmate-provider-booking-report-${fileDate}.xlsx"`
+    });
+
+    await workbook.xlsx.write(res);
+    return res.end();
   } catch (error) {
     console.error('Error exporting provider booking report:', error);
     return res.status(500).json({
