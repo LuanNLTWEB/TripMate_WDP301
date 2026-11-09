@@ -173,7 +173,7 @@ async function seedData() {
     numberOfPeople: 2,
     departureDate: complaintDate,
     totalPrice: 7000000,
-    status: 'confirmed',
+    status: 'completed',
     note: 'Chuyến đi gia đình 2 người'
   });
 

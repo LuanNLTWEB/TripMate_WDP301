@@ -27,6 +27,12 @@ const MAX_DESCRIPTION = 2000;
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const COMPLAINT_ELIGIBLE_BOOKING_STATUSES = Object.freeze([
+  'paid',
+  'checked_in',
+  'completed',
+  'no_show'
+]);
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -58,9 +64,10 @@ const getStatusLabel = (status) =>
 const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, onSubmitted }) => {
   const toast = useToast();
   const objectUrls = useRef([]);
-  // Chỉ khiếu nại được đơn đã xác nhận (backend cũng kiểm tra lại).
+  // Backend cũng kiểm tra lại; mỗi đơn chỉ có một khiếu nại đang xử lý,
+  // nhưng khách hàng có thể chọn nhiều đơn khác nhau.
   const complaintBookings = useMemo(
-    () => bookings.filter((booking) => booking.status === 'confirmed'),
+    () => bookings.filter((booking) => COMPLAINT_ELIGIBLE_BOOKING_STATUSES.includes(booking.status)),
     [bookings]
   );
   const [bookingId, setBookingId] = useState(initialBooking?._id || complaintBookings[0]?._id || '');
@@ -336,7 +343,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                       }}
                     >
                       {complaintBookings.length === 0 && (
-                        <option value="">Bạn chưa có đơn đặt tour nào đã xác nhận</option>
+                        <option value="">Bạn chưa có đơn đặt tour đủ điều kiện</option>
                       )}
                       {complaintBookings.map((booking) => (
                         <option key={booking._id} value={booking._id}>
