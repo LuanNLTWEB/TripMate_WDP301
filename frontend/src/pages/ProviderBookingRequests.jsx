@@ -604,7 +604,8 @@ export default function ProviderBookingRequests() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'tripmate-provider-booking-report.csv';
+      const fileDate = new Date().toISOString().slice(0, 10);
+      link.download = `tripmate-provider-booking-report-${fileDate}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -704,7 +705,7 @@ export default function ProviderBookingRequests() {
           onClick={() => setShowExportBar((prev) => !prev)}
         >
           <i className="bi bi-file-earmark-spreadsheet"></i>
-          <span>{showExportBar ? 'Ẩn bộ lọc báo cáo' : 'Xuất báo cáo CSV'}</span>
+          <span>{showExportBar ? 'Ẩn bộ lọc báo cáo' : 'Xuất báo cáo Excel'}</span>
         </button>
       </div>
 
@@ -734,7 +735,7 @@ export default function ProviderBookingRequests() {
             <button type="button" className="btn btn-primary btn-sm" onClick={handleExportReport} disabled={isExporting}>
               {isExporting
                 ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang xuất...</>
-                : <><i className="bi bi-download me-1"></i>Tải file CSV</>}
+                : <><i className="bi bi-download me-1"></i>Tải file Excel</>}
             </button>
             <span className="small text-muted">Lọc theo thời điểm tạo đơn đặt tour.</span>
           </div>
