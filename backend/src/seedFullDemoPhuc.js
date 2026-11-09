@@ -26,9 +26,10 @@ async function seedFullDemo() {
 
     // =========================================================================
     // 1. SETUP ACCOUNTS (Customer A, Customer B, Staff, Provider)
+    // Note: Do NOT pre-hash with bcrypt because UserSchema has a pre('save') hook
+    // that hashes this.password automatically when modified.
     // =========================================================================
     console.log('\n--- 1. SETTING UP ACCOUNTS ---');
-    const hashedPassword = await bcrypt.hash('Phuc123@', 10);
 
     // 1.1 Customer A (Primary account: phuclh)
     let customerA = await User.findOne({ email: 'phuclhce191132@gmail.com' });
@@ -36,7 +37,7 @@ async function seedFullDemo() {
       customerA = await User.create({
         username: 'phuclh',
         email: 'phuclhce191132@gmail.com',
-        password: hashedPassword,
+        password: 'Phuc123@',
         phone: '0847395252',
         role: 'customer',
         isActive: true,
@@ -44,7 +45,7 @@ async function seedFullDemo() {
       });
     } else {
       customerA.username = 'phuclh';
-      customerA.password = hashedPassword;
+      customerA.password = 'Phuc123@';
       customerA.role = 'customer';
       customerA.isActive = true;
       customerA.isDeleted = false;
@@ -59,7 +60,7 @@ async function seedFullDemo() {
       customerB = await User.create({
         username: 'phuc3112',
         email: 'lamphuc3112@gmail.com',
-        password: hashedPassword,
+        password: 'Phuc123@',
         phone: '0987654321',
         role: 'customer',
         isActive: true,
@@ -67,7 +68,7 @@ async function seedFullDemo() {
       });
     } else {
       customerB.username = 'phuc3112';
-      customerB.password = hashedPassword;
+      customerB.password = 'Phuc123@';
       customerB.role = 'customer';
       customerB.isActive = true;
       customerB.isDeleted = false;
@@ -76,47 +77,47 @@ async function seedFullDemo() {
     }
     console.log(`[Account] Customer B: lamphuc3112@gmail.com / Phuc123@ (_id: ${customerB._id})`);
 
-    // 1.3 Staff (ayano)
+    // 1.3 Staff (ayano) - preserves default password 123456
     let staffUser = await User.findOne({ email: 'ayano123@gmail.com' });
     if (!staffUser) {
       staffUser = await User.create({
         username: 'ayano',
         email: 'ayano123@gmail.com',
-        password: hashedPassword,
+        password: '123456',
         phone: '0912345678',
         role: 'staff',
         isActive: true,
         isDeleted: false
       });
     } else {
-      staffUser.password = hashedPassword;
+      staffUser.password = '123456';
       staffUser.role = 'staff';
       staffUser.isActive = true;
       staffUser.isDeleted = false;
       await staffUser.save();
     }
-    console.log(`[Account] Staff: ayano123@gmail.com / Phuc123@ (_id: ${staffUser._id})`);
+    console.log(`[Account] Staff: ayano123@gmail.com / 123456 (_id: ${staffUser._id})`);
 
-    // 1.4 Provider (provider)
+    // 1.4 Provider (provider) - preserves default password 123456
     let providerUser = await User.findOne({ email: 'provider123@gmail.com' });
     if (!providerUser) {
       providerUser = await User.create({
         username: 'provider',
         email: 'provider123@gmail.com',
-        password: hashedPassword,
+        password: '123456',
         phone: '0933456789',
         role: 'tourProvider',
         isActive: true,
         isDeleted: false
       });
     } else {
-      providerUser.password = hashedPassword;
+      providerUser.password = '123456';
       providerUser.role = 'tourProvider';
       providerUser.isActive = true;
       providerUser.isDeleted = false;
       await providerUser.save();
     }
-    console.log(`[Account] Provider: provider123@gmail.com / Phuc123@ (_id: ${providerUser._id})`);
+    console.log(`[Account] Provider: provider123@gmail.com / 123456 (_id: ${providerUser._id})`);
 
     // =========================================================================
     // 2. FLOW 1: STAFF ANNOUNCEMENTS (UC 124, 125, 126, 83, 127)
@@ -569,3 +570,4 @@ async function seedFullDemo() {
 }
 
 seedFullDemo();
+
