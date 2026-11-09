@@ -127,7 +127,11 @@ const BookingPage = () => {
         }
       })
       .catch((err) => {
-        if (isMounted) setTourError(err.message || 'Không thể tải thông tin tour.');
+        if (isMounted) {
+          const msg = err.message || 'Không thể tải thông tin tour.';
+          setTourError(msg);
+          toast.error(msg);
+        }
       })
       .finally(() => {
         if (isMounted) setTourLoading(false);
@@ -222,11 +226,15 @@ const BookingPage = () => {
     return (
       <>
         <Navbar />
-        <main className="container py-5" style={{ minHeight: '80vh' }}>
-          <div className="alert alert-danger">{tourError || 'Không tìm thấy tour.'}</div>
-          <Link to="/tours" className="btn btn-outline-primary">
-            <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
-          </Link>
+        <main className="container py-5 text-center" style={{ minHeight: '80vh' }}>
+          <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+            <i className="bi bi-compass text-muted fs-1 mb-3"></i>
+            <h5 className="fw-bold mb-2">Không tìm thấy tour</h5>
+            <p className="text-muted small mb-4">{tourError || 'Tour bạn muốn đặt không tồn tại hoặc đã bị gỡ bỏ.'}</p>
+            <Link to="/tours" className="btn btn-primary rounded-pill px-4">
+              <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
+            </Link>
+          </div>
         </main>
         <Footer />
       </>
@@ -256,13 +264,6 @@ const BookingPage = () => {
                 <div className="card-body p-4 p-md-5">
                   <h1 className="h3 fw-bold mb-1">Thông tin đặt tour</h1>
                   <p className="text-muted mb-4">Vui lòng điền đầy đủ thông tin để đặt tour</p>
-
-                  {apiError && (
-                    <div className="alert alert-danger d-flex align-items-center gap-2 mb-4">
-                      <i className="bi bi-exclamation-circle-fill"></i>
-                      <span>{apiError}</span>
-                    </div>
-                  )}
 
                   <form onSubmit={handleSubmit} noValidate>
                     <div className="row g-3 mb-3">

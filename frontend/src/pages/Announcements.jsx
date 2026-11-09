@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { announcementApi } from '../services/api';
@@ -10,6 +11,7 @@ import {
 
 // START UC-83 Search & Filter Platform Announcements
 export default function Announcements() {
+  const toast = useToast();
   const [announcements, setAnnouncements] = useState([]);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
@@ -17,7 +19,6 @@ export default function Announcements() {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -34,13 +35,12 @@ export default function Announcements() {
         setAnnouncements(response.data || []);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 0);
-        setError('');
       } catch (requestError) {
         if (!active) return;
         setAnnouncements([]);
         setTotal(0);
         setTotalPages(0);
-        setError(requestError.message || 'Không thể tải thông báo hệ thống.');
+        toast.error(requestError.message || 'Không thể tải thông báo hệ thống.');
       } finally {
         if (active) setLoading(false);
       }
@@ -50,7 +50,7 @@ export default function Announcements() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, currentPage]);
+  }, [appliedSearch, currentPage, toast]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -160,13 +160,6 @@ export default function Announcements() {
               )}
             </div>
           </div>
-
-          {error && (
-            <div className="alert alert-danger d-flex align-items-center mb-4 shadow-sm" role="alert">
-              <i className="bi bi-exclamation-triangle-fill fs-5 me-2 flex-shrink-0"></i>
-              <div>{error}</div>
-            </div>
-          )}
 
           {loading ? (
             <div className="text-center py-5 my-5">

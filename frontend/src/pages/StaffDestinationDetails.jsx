@@ -33,6 +33,7 @@ function StaffDestinationDetails() {
       setError('');
     } catch (err) {
       setError(err.message || 'Không thể tải thông tin điểm đến.');
+      toast.error(err.message || 'Không thể tải thông tin điểm đến.');
     } finally {
       setIsLoading(false);
     }
@@ -98,11 +99,15 @@ function StaffDestinationDetails() {
   if (error || !destination) {
     return (
       <section className="management-page-section">
-        <div className="alert alert-danger mb-4">{error || 'Không tìm thấy điểm đến.'}</div>
-        <Link to="/management/destinations" className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
-          <i className="bi bi-arrow-left"></i>
-          <span>Quay lại danh sách điểm đến</span>
-        </Link>
+        <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+          <i className="bi bi-geo-alt-fill text-muted fs-1 mb-3"></i>
+          <h5 className="fw-bold mb-2">Không tìm thấy điểm đến</h5>
+          <p className="text-muted small mb-4">{error || 'Điểm đến không tồn tại hoặc đã bị xóa.'}</p>
+          <Link to="/management/destinations" className="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2">
+            <i className="bi bi-arrow-left"></i>
+            <span>Quay lại danh sách điểm đến</span>
+          </Link>
+        </div>
       </section>
     );
   }

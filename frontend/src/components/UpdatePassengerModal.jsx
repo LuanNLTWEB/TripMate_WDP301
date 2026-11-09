@@ -147,13 +147,6 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
             {/* Form Body */}
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4">
-                {error && (
-                  <div className="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill flex-shrink-0" />
-                    <div>{error}</div>
-                  </div>
-                )}
-
                 {isLimitReached ? (
                   <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
                     <i className="bi bi-exclamation-triangle-fill flex-shrink-0 fs-5" />

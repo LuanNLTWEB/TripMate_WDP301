@@ -153,7 +153,7 @@ function Itinerary() {
       setDestinations((destinationResponse.data || []).filter((destination) => destination.status !== 'inactive'));
       setTours((tourResponse.data || []).filter((tour) => tour.status !== 'suspended'));
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || 'Không thể tải lịch trình.');
     } finally {
       setLoading(false);
     }
@@ -1012,8 +1012,6 @@ function Itinerary() {
             <div className="alert alert-warning">Chức năng lịch trình cá nhân dành cho Customer.</div>
           ) : (
             <>
-              {error && <div className="alert alert-danger">{error}</div>}
-
               <CollaborationBanner collab={collab} />
 
               <ul className="nav nav-tabs mb-4">

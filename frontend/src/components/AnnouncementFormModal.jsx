@@ -124,13 +124,6 @@ export default function AnnouncementFormModal({
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4" style={{ overflow: 'visible' }}>
-                {error && (
-                  <div className="alert alert-danger py-2 d-flex align-items-center mb-3" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill me-2 flex-shrink-0"></i>
-                    <div>{error}</div>
-                  </div>
-                )}
-
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <label className="form-label fw-semibold text-dark mb-0" htmlFor="announcement-title">

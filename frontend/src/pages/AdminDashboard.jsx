@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
 import { statsApi } from '../services/api';
 import MonthlyRegistrationChart from '../components/charts/MonthlyRegistrationChart';
 import AccountStatusDoughnutChart from '../components/charts/AccountStatusDoughnutChart';
@@ -35,9 +36,9 @@ const roleBorderClasses = {
 const formatDate = (date) => (date ? new Date(date).toLocaleDateString('vi-VN') : '—');
 
 function AdminDashboard() {
+  const toast = useToast();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [monthsCount, setMonthsCount] = useState(12);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -47,7 +48,6 @@ function AdminDashboard() {
     } else {
       setLoading(true);
     }
-    setError('');
 
     try {
       const response = await statsApi.getAdminStats({ months });
@@ -57,7 +57,7 @@ function AdminDashboard() {
         throw new Error(response?.message || 'Không thể tải số liệu thống kê.');
       }
     } catch (err) {
-      setError(err.message || 'Không thể tải số liệu thống kê từ hệ thống.');
+      toast.error(err.message || 'Không thể tải số liệu thống kê từ hệ thống.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -74,7 +74,7 @@ function AdminDashboard() {
         }
       } catch (err) {
         if (!ignore) {
-          setError(err.message || 'Không thể tải số liệu thống kê từ hệ thống.');
+          toast.error(err.message || 'Không thể tải số liệu thống kê từ hệ thống.');
         }
       } finally {
         if (!ignore) {
@@ -88,7 +88,7 @@ function AdminDashboard() {
     return () => {
       ignore = true;
     };
-  }, [monthsCount]);
+  }, [monthsCount, toast]);
 
   const handleRefresh = () => {
     fetchStats(monthsCount, true);
@@ -140,23 +140,6 @@ function AdminDashboard() {
             </Link>
           </div>
         </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="alert alert-danger d-flex align-items-center justify-content-between mb-4" role="alert">
-            <div>
-              <i className="bi bi-exclamation-triangle-fill me-2"></i>
-              <strong>Lỗi tải dữ liệu:</strong> {error}
-            </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => fetchStats(monthsCount)}
-            >
-              Thử lại
-            </button>
-          </div>
-        )}
 
         {/* Loading State */}
         {loading ? (

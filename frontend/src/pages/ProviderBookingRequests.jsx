@@ -427,7 +427,9 @@ export default function ProviderBookingRequests() {
       toast.success(response.message || 'Đã xác nhận đặt tour thành công.');
       setApproveModal({ open: false, booking: null, submitting: false, error: '' });
     } catch (requestError) {
-      setApproveModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể xác nhận đặt tour.' }));
+      const msg = requestError.message || 'Không thể xác nhận đặt tour.';
+      toast.error(msg);
+      setApproveModal((prev) => ({ ...prev, submitting: false, error: msg }));
     }
   };
 
@@ -491,7 +493,9 @@ export default function ProviderBookingRequests() {
       toast.success(response.message || 'Đã ghi nhận khách vắng mặt thành công.');
       setNoShowModal({ open: false, booking: null, reason: '', submitting: false, error: '' });
     } catch (requestError) {
-      setNoShowModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể ghi nhận khách vắng mặt.' }));
+      const msg = requestError.message || 'Không thể ghi nhận khách vắng mặt.';
+      toast.error(msg);
+      setNoShowModal((prev) => ({ ...prev, submitting: false, error: msg }));
     }
   };
   // END UC-86 Mark Booking as No-Show (Provider)
@@ -1095,10 +1099,6 @@ export default function ProviderBookingRequests() {
                     <i className="bi bi-info-circle text-primary me-1"></i>
                     Khi duyệt, đơn sẽ chuyển sang trạng thái <strong>Đã xác nhận</strong> và tự động cập nhật số chỗ trống của tour.
                   </p>
-
-                  {approveModal.error && (
-                    <div className="alert alert-danger py-2 small mt-3 mb-0">{approveModal.error}</div>
-                  )}
                 </div>
                 <div className="modal-footer">
                   <button
@@ -1282,9 +1282,6 @@ export default function ProviderBookingRequests() {
                       ></textarea>
                       <div className="form-text text-end">{noShowModal.reason.length}/500</div>
                     </div>
-                    {noShowModal.error && (
-                      <div className="alert alert-danger py-2 small mb-0">{noShowModal.error}</div>
-                    )}
                   </div>
                   <div className="modal-footer">
                     <button

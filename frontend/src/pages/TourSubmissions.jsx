@@ -94,7 +94,7 @@ export default function TourSubmissions() {
       setTotalPages(response.totalPages || 1);
       setListError('');
     } catch (requestError) {
-      setListError(requestError.message || 'Không thể tải danh sách yêu cầu duyệt tour.');
+      toast.error(requestError.message || 'Không thể tải danh sách yêu cầu duyệt tour.');
     } finally {
       setIsLoading(false);
     }
@@ -180,14 +180,6 @@ export default function TourSubmissions() {
           </button>
         )}
       </div>
-
-      {listError && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {listError}
-          <button type="button" className="btn-close" onClick={() => setListError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       <div className="management-table-card">
         <div className="management-table-toolbar">

@@ -51,7 +51,6 @@ const Tours = () => {
   const { isSelected, toggleTour } = useTourCompare();
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [favoriteTourIds, setFavoriteTourIds] = useState(new Set());
   const [favoriteOwnerId, setFavoriteOwnerId] = useState('');
   const [savingFavoriteId, setSavingFavoriteId] = useState('');
@@ -67,7 +66,6 @@ const Tours = () => {
 
   const fetchTours = async (filters = {}, pageNum = 1) => {
     setLoading(true);
-    setError(null);
     try {
       const response = await tourApi.getAll({ ...filters, page: pageNum, limit: 6 });
       setTours(response.data || []);
@@ -75,7 +73,7 @@ const Tours = () => {
       setTotalTours(response.total !== undefined ? response.total : (response.data || []).length);
       setCurrentPage(response.currentPage || pageNum);
     } catch (err) {
-      setError(err.message || 'Không thể tải danh sách tour.');
+      toast.error(err.message || 'Không thể tải danh sách tour.');
     } finally {
       setLoading(false);
     }
@@ -434,10 +432,6 @@ const Tours = () => {
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>
-            </div>
-          ) : error ? (
-            <div className="alert alert-danger" role="alert">
-              {error}
             </div>
           ) : tours.length === 0 ? (
             <div className="text-center text-muted py-5 border rounded-4 bg-light">

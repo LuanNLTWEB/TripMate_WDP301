@@ -89,13 +89,6 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4">
-                {error && (
-                  <div className="alert alert-danger py-2 small mb-3">
-                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                    {error}
-                  </div>
-                )}
-
                 <div className="mb-3">
                   <label htmlFor="edit-tour-price" className="form-label fw-semibold">
                     Giá tour mới (VNĐ) <span className="text-danger">*</span>

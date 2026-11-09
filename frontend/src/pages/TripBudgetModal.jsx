@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { itineraryApi } from '../services/api';
+import { useToast } from '../hooks/useToast';
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
 
 export default function TripBudgetModal({ open, itinerary, onClose }) {
+  const toast = useToast();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -15,9 +17,13 @@ export default function TripBudgetModal({ open, itinerary, onClose }) {
     setResult(null);
     itineraryApi.getBudget(itinerary._id)
       .then((res) => setResult(res))
-      .catch((err) => setError(err.message || 'Không thể tính toán ngân sách chuyến đi'))
+      .catch((err) => {
+        const msg = err.message || 'Không thể tính toán ngân sách chuyến đi';
+        setError(msg);
+        toast.error(msg);
+      })
       .finally(() => setLoading(false));
-  }, [open, itinerary]);
+  }, [open, itinerary, toast]);
 
   if (!open) return null;
 
@@ -50,8 +56,6 @@ export default function TripBudgetModal({ open, itinerary, onClose }) {
                   <span className="ms-2 text-muted small">Đang tính toán...</span>
                 </div>
               )}
-
-              {error && <div className="alert alert-danger mb-0">{error}</div>}
 
               {breakdown && (
                 <ul className="list-group">

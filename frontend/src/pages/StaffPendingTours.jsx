@@ -35,7 +35,7 @@ export default function StaffPendingTours() {
       setTotal(typeof response.total === 'number' ? response.total : (response.data || []).length);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách tour chờ duyệt.');
+      toast.error(requestError.message || 'Không thể tải danh sách tour chờ duyệt.');
     } finally {
       setIsLoading(false);
     }
@@ -114,13 +114,6 @@ export default function StaffPendingTours() {
         <h1>Duyệt Tour Chờ</h1>
         <p>Kiểm tra và phê duyệt các tour do đối tác hoặc khách hàng đề xuất lên hệ thống.</p>
       </div>
-
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       <div className="management-table-card">
         <div className="management-table-toolbar">

@@ -28,6 +28,7 @@ function StaffAnnouncementDetails() {
       setError('');
     } catch (err) {
       setError(err.message || 'Không thể tải chi tiết tin tức.');
+      toast.error(err.message || 'Không thể tải chi tiết tin tức.');
     } finally {
       setIsLoading(false);
     }
@@ -81,11 +82,15 @@ function StaffAnnouncementDetails() {
   if (error || !announcement) {
     return (
       <section className="management-page-section">
-        <div className="alert alert-danger mb-4">{error || 'Không tìm thấy tin tức.'}</div>
-        <Link to="/management/announcements" className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
-          <i className="bi bi-arrow-left"></i>
-          <span>Quay lại danh sách tin tức</span>
-        </Link>
+        <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+          <i className="bi bi-newspaper text-muted fs-1 mb-3"></i>
+          <h5 className="fw-bold mb-2">Không tìm thấy tin tức</h5>
+          <p className="text-muted small mb-4">{error || 'Tin tức không tồn tại hoặc đã bị xóa.'}</p>
+          <Link to="/management/announcements" className="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2">
+            <i className="bi bi-arrow-left"></i>
+            <span>Quay lại danh sách tin tức</span>
+          </Link>
+        </div>
       </section>
     );
   }

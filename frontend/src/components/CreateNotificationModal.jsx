@@ -179,13 +179,6 @@ export default function CreateNotificationModal({
               </div>
 
               <div className="modal-body p-4">
-                {error && (
-                  <div className="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3">
-                    <i className="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                    <div>{error}</div>
-                  </div>
-                )}
-
                 <div className="mb-3">
                   <label htmlFor="notif-title" className="form-label small fw-semibold">
                     Tiêu đề thông báo <span className="text-danger">*</span>

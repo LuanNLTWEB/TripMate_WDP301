@@ -115,7 +115,6 @@ function AccountForm({ account, roles, onClose, onSaved }) {
               <button type="button" className="btn-close" onClick={onClose} disabled={isSaving} aria-label="Đóng"></button>
             </div>
             <div className="modal-body">
-              {error && <div className="alert alert-danger small mb-3">{error}</div>}
               <div className="row g-3">
                 {isEditing ? (
                   <div className="col-12">
@@ -292,7 +291,7 @@ function AdminAccounts() {
       setTotal(typeof response.total === 'number' ? response.total : (response.accounts || []).length);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách tài khoản.');
+      toast.error(requestError.message || 'Không thể tải danh sách tài khoản.');
     } finally {
       setIsLoading(false);
     }
@@ -371,7 +370,6 @@ function AdminAccounts() {
             </div>
             <button className="btn btn-primary" onClick={openCreateForm}><i className="bi bi-person-plus me-2"></i>Tạo tài khoản</button>
           </div>
-          {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">

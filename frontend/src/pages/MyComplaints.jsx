@@ -186,7 +186,7 @@ export default function MyComplaints() {
       setComplaints(complaintResponse.data || []);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải khiếu nại.');
+      toast.error(requestError.message || 'Không thể tải khiếu nại.');
     } finally {
       setLoading(false);
     }
@@ -312,8 +312,6 @@ export default function MyComplaints() {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-danger">{error}</div>}
 
         {loading ? (
           <div className="text-center py-5">
@@ -519,13 +517,6 @@ export default function MyComplaints() {
                           Mã đơn: {bookingCode(editingComplaint.bookingId?._id)} · Trạng thái: Mới gửi (Được phép cập nhật)
                         </div>
                       </div>
-
-                      {editError && (
-                        <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
-                          <i className="bi bi-exclamation-circle-fill"></i>
-                          <div>{editError}</div>
-                        </div>
-                      )}
 
                       <div className="mb-3">
                         <label htmlFor="edit-complaint-category" className="form-label fw-semibold small text-muted text-uppercase">

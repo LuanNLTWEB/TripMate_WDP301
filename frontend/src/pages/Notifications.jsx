@@ -14,7 +14,6 @@ export default function Notifications() {
   const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,7 +33,6 @@ export default function Notifications() {
 
     const loadNotifications = async () => {
       setIsLoading(true);
-      setError('');
       try {
         const response = await notificationApi.getAll({
           page: currentPage,
@@ -49,7 +47,7 @@ export default function Notifications() {
         setUnreadCount(response.unreadCount || 0);
       } catch (err) {
         if (!active) return;
-        setError(err.message || 'Không thể tải danh sách thông báo');
+        toast.error(err.message || 'Không thể tải danh sách thông báo');
         setNotifications([]);
         setTotal(0);
         setTotalPages(1);
@@ -180,14 +178,6 @@ export default function Notifications() {
               </div>
             </div>
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert">
-              <i className="bi bi-exclamation-triangle-fill"></i>
-              <div>{error}</div>
-            </div>
-          )}
 
           {/* Notifications List */}
           {isLoading ? (

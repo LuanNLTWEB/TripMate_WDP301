@@ -139,10 +139,6 @@ export default function TourSubmissionFormModal({
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4 py-3">
-                {error && (
-                  <div className="alert alert-danger py-2 small" role="alert">{error}</div>
-                )}
-
                 {isEdit ? (
                   <div className="mb-3">
                     <label className="form-label small fw-semibold text-secondary">Tour đang gửi duyệt</label>

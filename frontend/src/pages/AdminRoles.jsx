@@ -119,7 +119,7 @@ function AdminRoles() {
       setRoles(response.roles || []);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách vai trò.');
+      toast.error(requestError.message || 'Không thể tải danh sách vai trò.');
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +183,6 @@ function AdminRoles() {
             </div>
             <button className="btn btn-primary" onClick={openCreateForm}><i className="bi bi-plus-lg me-2"></i>Tạo vai trò</button>
           </div>
-          {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">

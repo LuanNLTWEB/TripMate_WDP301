@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { activityLogApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import ManagementPagination from '../components/management/ManagementPagination';
@@ -61,6 +62,7 @@ const formatDateTime = (dateString) => {
 
 function AdminActivityLogs() {
   const { user } = useAuth();
+  const toast = useToast();
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -69,7 +71,6 @@ function AdminActivityLogs() {
   const [actionFilter, setActionFilter] = useState('all');
   const [targetTypeFilter, setTargetTypeFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const loadLogs = useCallback(async (page = 1, searchKeyword = search, action = actionFilter, targetType = targetTypeFilter) => {
     setIsLoading(true);
@@ -85,13 +86,12 @@ function AdminActivityLogs() {
       setTotal(response.pagination?.total || 0);
       setTotalPages(response.pagination?.totalPages || 1);
       setCurrentPage(response.pagination?.page || 1);
-      setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải nhật ký hoạt động.');
+      toast.error(requestError.message || 'Không thể tải nhật ký hoạt động.');
     } finally {
       setIsLoading(false);
     }
-  }, [search, actionFilter, targetTypeFilter]);
+  }, [search, actionFilter, targetTypeFilter, toast]);
 
   // Debounced search & filter trigger
   useEffect(() => {
@@ -130,13 +130,6 @@ function AdminActivityLogs() {
             <i className="bi bi-arrow-clockwise me-1"></i>Làm mới
           </button>
         </div>
-
-        {error && (
-          <div className="alert alert-danger alert-dismissible fade show" role="alert">
-            {error}
-            <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-          </div>
-        )}
 
         <div className="card shadow-sm border-0 mb-4">
           <div className="card-body p-3">

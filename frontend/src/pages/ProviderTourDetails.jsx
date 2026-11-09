@@ -99,7 +99,9 @@ export default function ProviderTourDetails() {
         setCapacityInput(String(data.availableSeats ?? 0));
       })
       .catch((err) => {
-        setError(err.message || 'Không thể tải thông tin tour.');
+        const msg = err.message || 'Không thể tải thông tin tour.';
+        setError(msg);
+        toast.error(msg);
       })
       .finally(() => {
         setLoading(false);
@@ -229,10 +231,15 @@ export default function ProviderTourDetails() {
   if (error || !tour) {
     return (
       <section className="management-page-section">
-        <div className="alert alert-danger">{error || 'Không tìm thấy tour.'}</div>
-        <Link to="/management/my-tours" className="btn btn-outline-primary">
-          <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
-        </Link>
+        <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+          <i className="bi bi-compass text-muted fs-1 mb-3"></i>
+          <h5 className="fw-bold mb-2">Không tìm thấy tour</h5>
+          <p className="text-muted small mb-4">{error || 'Tour không tồn tại hoặc đã bị xóa.'}</p>
+          <Link to="/management/my-tours" className="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2">
+            <i className="bi bi-arrow-left"></i>
+            <span>Quay lại danh sách tour</span>
+          </Link>
+        </div>
       </section>
     );
   }

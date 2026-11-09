@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useToast } from '../hooks/useToast';
 
 const CONFIRM_VARIANTS = {
   danger: { headerClass: 'text-danger', icon: 'bi-exclamation-triangle', buttonClass: 'btn-danger' },
@@ -24,6 +25,13 @@ export default function ConfirmDeleteModal({
   onConfirm,
   onClose
 }) {
+  const toast = useToast();
+
+  useEffect(() => {
+    if (error && isOpen) {
+      toast.error(error);
+    }
+  }, [error, isOpen, toast]);
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
@@ -74,12 +82,6 @@ export default function ConfirmDeleteModal({
                 <p className="mb-0 text-dark">{message}</p>
               ) : (
                 message
-              )}
-              {error && (
-                <div className="alert alert-danger py-2 small mt-3 mb-0" role="alert">
-                  <i className="bi bi-exclamation-circle me-2"></i>
-                  {error}
-                </div>
               )}
               {onReasonChange && (
                 <div className="mt-3">

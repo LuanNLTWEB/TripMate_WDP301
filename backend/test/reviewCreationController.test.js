@@ -228,3 +228,57 @@ test('rejects review creation until a confirmed trip has ended', async () => {
   assert.equal(result.body.reason, 'trip_not_completed');
   assert.equal(result.body.eligibleAt.toISOString(), '2099-12-05T00:00:00.000Z');
 });
+
+test('allows re-reviewing when existing review was deleted and reactivates record', async () => {
+  let savedCalled = false;
+  Tour.findById = async () => ({ _id: 'tour-1', duration: '1 ngày' });
+  // findOne returns null for { isDeleted: false }, but returns deleted review for { isDeleted: true }
+  Review.findOne = async (query) => {
+    if (query.isDeleted === false) return null;
+    if (query.isDeleted === true) {
+      return {
+        _id: 'deleted-review-1',
+        tourId: 'tour-1',
+        userId: 'customer-1',
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: 'customer-1',
+        rating: 1,
+        comment: 'Cũ',
+        status: 'approved',
+        async save() {
+          savedCalled = true;
+          return this;
+        },
+        async populate() {
+          this.userId = { _id: 'customer-1', username: 'phuclh' };
+          return this;
+        }
+      };
+    }
+    return null;
+  };
+
+  mockBookingFind([
+    { _id: 'booking-completed-1', status: 'completed', departureDate: new Date('2026-01-01T00:00:00.000Z') }
+  ]);
+
+  Review.find = () => ({
+    async select() {
+      return [{ rating: 5 }];
+    }
+  });
+  Tour.findByIdAndUpdate = async () => {};
+
+  const result = createResponse();
+  await createReview(makeRequest({
+    rating: 5,
+    comment: 'Tôi đánh giá lại sau khi được chăm sóc tốt.'
+  }), result.response);
+
+  assert.equal(result.statusCode, 201);
+  assert.equal(savedCalled, true);
+  assert.equal(result.body.data.isDeleted, false);
+  assert.equal(result.body.data.rating, 5);
+  assert.equal(result.body.data.comment, 'Tôi đánh giá lại sau khi được chăm sóc tốt.');
+});

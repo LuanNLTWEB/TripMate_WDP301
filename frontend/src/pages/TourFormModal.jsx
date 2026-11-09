@@ -68,7 +68,7 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
         if (active) setCategories(response.data || []);
       })
       .catch(() => {
-        if (active) setError('Không thể tải danh mục tour.');
+        if (active) toast.error('Không thể tải danh mục tour.');
       });
     return () => {
       active = false;
@@ -106,11 +106,11 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Vui lòng chọn đúng định dạng hình ảnh.');
+      toast.error('Vui lòng chọn đúng định dạng hình ảnh.');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Kích thước ảnh không được vượt quá 5MB.');
+      toast.error('Kích thước ảnh không được vượt quá 5MB.');
       return;
     }
 
@@ -119,7 +119,6 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
     setImagePreview(URL.createObjectURL(file));
     setImageLoadError(false);
     if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }));
-    setError('');
   };
 
   const handleImageUrlChange = (event) => {
@@ -184,9 +183,14 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
       setIsSubmitting(false);
       onClose();
     } catch (requestError) {
-      setError(requestError.message || (isUpdate
+      const msg = requestError.message || (isUpdate
         ? 'Không thể cập nhật tour. Vui lòng thử lại.'
-        : 'Không thể tạo tour. Vui lòng thử lại.'));
+        : 'Không thể tạo tour. Vui lòng thử lại.');
+      toast.error(msg);
+      if (msg.includes('Số chỗ') || msg.includes('chỗ')) {
+        setErrors((prev) => ({ ...prev, availableSeats: msg }));
+        document.getElementById(`${mode}-tour-availableSeats`)?.focus();
+      }
       setIsSubmitting(false);
     }
   };
@@ -238,14 +242,6 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
               noValidate
             >
               <div className="modal-body p-4 overflow-y-auto" style={{ minHeight: 0 }}>
-                {error && (
-                  <div className="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                    {error}
-                    <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-                  </div>
-                )}
-
                 <div className="row g-4">
                   <div className="col-12 col-lg-8">
                     <div className="card border rounded-4 p-4 shadow-none bg-light-subtle mb-0">

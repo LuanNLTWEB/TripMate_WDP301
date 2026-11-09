@@ -43,7 +43,7 @@ function StaffTours() {
       setTotalPages(response.totalPages || 1);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách tour.');
+      toast.error(requestError.message || 'Không thể tải danh sách tour.');
     } finally {
       setIsLoading(false);
     }
@@ -116,13 +116,6 @@ function StaffTours() {
         <h1>Quản lý tour</h1>
         <p>Theo dõi trạng thái và tạm ngưng những tour không còn đủ điều kiện hoạt động.</p>
       </div>
-
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       <div className="management-table-card">
         <div className="management-table-toolbar">
