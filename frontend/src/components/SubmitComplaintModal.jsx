@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { complaintApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
+import CustomSelect from './CustomSelect';
 
 // UC-66 – Submit Booking Complaint
 // Danh mục loại khiếu nại. Value phải khớp enum trong
@@ -83,6 +84,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [images, setImages] = useState([]);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -149,24 +151,31 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
     if (isSubmitting) return;
 
     const normalizedDescription = description.trim();
+    const fieldErrors = {};
 
     if (!bookingId) {
-      setError('Vui lòng chọn đơn đặt tour cần khiếu nại.');
-      return;
+      fieldErrors.bookingId = 'Vui lòng chọn đơn đặt tour cần khiếu nại.';
     }
     if (!category) {
-      setError('Vui lòng chọn loại khiếu nại.');
-      return;
+      fieldErrors.category = 'Vui lòng chọn loại khiếu nại.';
     }
-    if (normalizedDescription.length < MIN_DESCRIPTION) {
-      setError(`Nội dung khiếu nại phải có ít nhất ${MIN_DESCRIPTION} ký tự.`);
-      return;
+    if (!normalizedDescription) {
+      fieldErrors.description = 'Vui lòng nhập nội dung khiếu nại.';
+    } else if (normalizedDescription.length < MIN_DESCRIPTION) {
+      fieldErrors.description = `Nội dung khiếu nại phải có ít nhất ${MIN_DESCRIPTION} ký tự.`;
+    } else if (normalizedDescription.length > MAX_DESCRIPTION) {
+      fieldErrors.description = `Nội dung khiếu nại không được vượt quá ${MAX_DESCRIPTION} ký tự.`;
     }
-    if (normalizedDescription.length > MAX_DESCRIPTION) {
-      setError(`Nội dung khiếu nại không được vượt quá ${MAX_DESCRIPTION} ký tự.`);
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin khiếu nại.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
       return;
     }
 
+    setErrors({});
     setError('');
     setIsSubmitting(true);
 
@@ -327,6 +336,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                 onSubmit={handleSubmit}
                 className="d-flex flex-column flex-grow-1"
                 style={{ minHeight: 0 }}
+                noValidate
               >
                 <div className="modal-body p-4" style={{ minHeight: 0, overflowY: 'auto' }}>
                   <div className="alert alert-light border small d-flex gap-2 mb-4">
@@ -375,27 +385,45 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                       </div>
                     ) : (
                       /* Nếu không có initialBooking: hiển thị dropdown chọn */
-                      <select
-                        id="complaintBookingId"
-                        className="form-select"
-                        value={bookingId}
-                        disabled={isSubmitting || complaintBookings.length === 0}
-                        onChange={(event) => {
-                          setBookingId(event.target.value);
-                          setError('');
-                        }}
-                      >
-                        {complaintBookings.length === 0 ? (
-                          <option value="">Bạn chưa có đơn đặt tour đủ điều kiện khiếu nại</option>
-                        ) : (
-                          complaintBookings.map((booking) => (
-                            <option key={booking._id} value={booking._id}>
-                              {bookingCode(booking._id)} · {booking.tourId?.title || 'Tour'} · Khởi hành{' '}
-                              {formatDate(booking.departureDate)} · {getStatusLabel(booking.status)}
-                            </option>
-                          ))
+                      <>
+                        <CustomSelect
+                          id="complaintBookingId"
+                          value={bookingId}
+                          className={errors.bookingId ? 'is-invalid' : ''}
+                          options={complaintBookings.length === 0 ? [
+                            { value: '', label: 'Bạn chưa có đơn đặt tour đủ điều kiện khiếu nại', disabled: true }
+                          ] : complaintBookings.map((b) => ({
+                            value: b._id,
+                            label: `${bookingCode(b._id)} · ${b.tourId?.title || 'Tour'} · Khởi hành ${formatDate(b.departureDate)} · ${getStatusLabel(b.status)}`
+                          }))}
+                          disabled={isSubmitting || complaintBookings.length === 0}
+                          placeholder="Chọn đơn đặt tour"
+                          onChange={(event, val) => {
+                            setBookingId(val !== undefined ? val : event.target.value);
+                            if (errors.bookingId) setErrors((prev) => ({ ...prev, bookingId: '' }));
+                            setError('');
+                          }}
+                        />
+                        {errors.bookingId && (
+                          <div className="invalid-feedback d-block">{errors.bookingId}</div>
                         )}
-                      </select>
+                        {selectedBooking && (
+                          <div className="mt-2 p-2 rounded-3 bg-light small text-muted d-flex flex-wrap gap-3">
+                            <span>
+                              <i className="bi bi-receipt me-1"></i>
+                              {bookingCode(selectedBooking._id)}
+                            </span>
+                            <span>
+                              <i className="bi bi-calendar-event me-1"></i>
+                              {formatDate(selectedBooking.departureDate)}
+                            </span>
+                            <span>
+                              <i className="bi bi-people me-1"></i>
+                              {selectedBooking.numberOfPeople} khách
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {isInitialIneligible && (
@@ -412,23 +440,25 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                     <label htmlFor="complaintType" className="form-label fw-semibold">
                       Loại khiếu nại <span className="text-danger">*</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="complaintType"
-                      className="form-select"
                       value={category}
+                      className={errors.category ? 'is-invalid' : ''}
+                      options={[
+                        { value: '', label: '-- Chọn loại khiếu nại --' },
+                        ...COMPLAINT_TYPES
+                      ]}
                       disabled={isSubmitting}
-                      onChange={(event) => {
-                        setCategory(event.target.value);
+                      placeholder="-- Chọn loại khiếu nại --"
+                      onChange={(event, val) => {
+                        setCategory(val !== undefined ? val : event.target.value);
+                        if (errors.category) setErrors((prev) => ({ ...prev, category: '' }));
                         setError('');
                       }}
-                    >
-                      <option value="">-- Chọn loại khiếu nại --</option>
-                      {COMPLAINT_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
+                    {errors.category && (
+                      <div className="invalid-feedback d-block">{errors.category}</div>
+                    )}
                   </div>
 
                   <div className="mb-3">
@@ -437,7 +467,7 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                     </label>
                     <textarea
                       id="complaintDescription"
-                      className={`form-control ${error && description.trim().length < MIN_DESCRIPTION ? 'is-invalid' : ''}`}
+                      className={`form-control ${errors.description ? 'is-invalid' : ''}`}
                       rows={5}
                       minLength={MIN_DESCRIPTION}
                       maxLength={MAX_DESCRIPTION}
@@ -446,9 +476,13 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                       disabled={isSubmitting}
                       onChange={(event) => {
                         setDescription(event.target.value);
+                        if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
                         setError('');
                       }}
                     />
+                    {errors.description && (
+                      <div className="invalid-feedback">{errors.description}</div>
+                    )}
                     <div className="d-flex justify-content-between mt-1">
                       <span className="text-muted small">Tối thiểu {MIN_DESCRIPTION} ký tự</span>
                       <span className="text-muted small">

@@ -4,6 +4,7 @@ import AuthProvider from './context/AuthProvider';
 import ToastProvider from './context/ToastProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import ManagementLayout from './components/management/ManagementLayout';
+import CustomerLayout from './components/customer/CustomerLayout';
 import { ACCESS_ROLES } from './config/accessControl';
 import { MANAGEMENT_ROLES } from './config/managementNavigation';
 import Home from './pages/Home';
@@ -85,22 +86,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/my-bookings"
-              element={
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
-                  <BookingHistory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-complaints"
-              element={(
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
-                  <MyComplaints />
-                </ProtectedRoute>
-              )}
-            />
             <Route path="/bookings" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/bookings/history" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
             <Route path="/my-bookings/history" element={<RoleRedirect to="/my-bookings" allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY} />} />
@@ -109,30 +94,6 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-otp" element={<VerifyOtp />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/profile"
-              element={(
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
-                  <Profile />
-                </ProtectedRoute>
-              )}
-            />
-            <Route
-              path="/itinerary"
-              element={(
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
-                  <Itinerary />
-                </ProtectedRoute>
-              )}
-            />
-            <Route
-              path="/favorites"
-              element={(
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
-                  <FavoriteDestinations />
-                </ProtectedRoute>
-              )}
-            />
             <Route
               path="/about"
               element={(
@@ -157,14 +118,58 @@ function App() {
                 </ProtectedRoute>
               )}
             />
-            <Route
-              path="/notifications"
-              element={(
-                <ProtectedRoute allowedRoles={ACCESS_ROLES.NOTIFICATION_VIEW}>
-                  <Notifications />
-                </ProtectedRoute>
-              )}
-            />
+
+            {/* Customer Area with Collapsible Sidebar */}
+            <Route element={<CustomerLayout />}>
+              <Route
+                path="/my-bookings"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                    <BookingHistory />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/itinerary"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                    <Itinerary />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/favorites"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                    <FavoriteDestinations />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/my-complaints"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                    <MyComplaints />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/profile"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.CUSTOMER_ONLY}>
+                    <Profile />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/notifications"
+                element={(
+                  <ProtectedRoute allowedRoles={ACCESS_ROLES.NOTIFICATION_VIEW}>
+                    <Notifications />
+                  </ProtectedRoute>
+                )}
+              />
+            </Route>
             <Route
               path="/provider/create-tour"
               element={(

@@ -19,22 +19,30 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
   const [rating, setRating] = useState(review?.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState(review?.comment || '');
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const normalizedComment = comment.trim();
+    const fieldErrors = {};
 
     if (!rating) {
-      setError('Vui lòng chọn số sao đánh giá.');
-      return;
+      fieldErrors.rating = 'Vui lòng chọn số sao đánh giá.';
     }
     if (normalizedComment.length < 10) {
-      setError('Nội dung đánh giá phải có ít nhất 10 ký tự.');
+      fieldErrors.comment = 'Nội dung đánh giá phải có ít nhất 10 ký tự.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng hoàn thiện đánh giá theo đúng yêu cầu.');
+      if (fieldErrors.comment) document.getElementById('editReviewComment')?.focus();
       return;
     }
 
+    setErrors({});
     setError('');
     setIsSubmitting(true);
     try {
@@ -46,7 +54,9 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
       onUpdated(response);
       onClose();
     } catch (err) {
-      setError(err.message || 'Không thể cập nhật đánh giá tour.');
+      const msg = err.message || 'Không thể cập nhật đánh giá tour.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -73,7 +83,7 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4">
                 <p className="text-muted small mb-4">
                   Đánh giá của bạn về <strong className="text-dark">{tourTitle}</strong> sẽ được cập nhật và điểm trung bình của tour được tính lại.
@@ -101,6 +111,7 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
                         onBlur={() => setHoveredRating(0)}
                         onClick={() => {
                           setRating(star);
+                          if (errors.rating) setErrors((prev) => ({ ...prev, rating: '' }));
                           setError('');
                         }}
                       >
@@ -111,6 +122,9 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
                       {visibleRating ? STAR_LABELS[visibleRating - 1] : 'Chọn số sao'}
                     </span>
                   </div>
+                  {errors.rating && (
+                    <div className="text-danger small mt-1.5">{errors.rating}</div>
+                  )}
                 </fieldset>
 
                 <div className="mb-2">
@@ -119,7 +133,7 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
                   </label>
                   <textarea
                     id="editReviewComment"
-                    className={`form-control ${error && comment.trim().length < 10 ? 'is-invalid' : ''}`}
+                    className={`form-control ${errors.comment ? 'is-invalid' : ''}`}
                     rows={5}
                     minLength={10}
                     maxLength={1000}
@@ -128,9 +142,13 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
                     disabled={isSubmitting}
                     onChange={(event) => {
                       setComment(event.target.value);
+                      if (errors.comment) setErrors((prev) => ({ ...prev, comment: '' }));
                       setError('');
                     }}
                   />
+                  {errors.comment && (
+                    <div className="invalid-feedback">{errors.comment}</div>
+                  )}
                   <div className="d-flex justify-content-between mt-1">
                     <span className="text-muted small">Tối thiểu 10 ký tự</span>
                     <span className="text-muted small">{comment.length}/1000</span>

@@ -57,9 +57,12 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
     if (isSubmitting || !isPending) return;
 
     if (requiresNote && !note.trim()) {
-      setError(decision === 'rejected'
+      const msg = decision === 'rejected'
         ? 'Vui lòng nhập lý do từ chối tour.'
-        : 'Vui lòng nhập nội dung cần chỉnh sửa.');
+        : 'Vui lòng nhập nội dung cần chỉnh sửa.';
+      setError(msg);
+      toast.error(msg);
+      document.getElementById('submission-review-note')?.focus();
       return;
     }
 
@@ -75,7 +78,9 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
       if (onReviewed) await onReviewed(response.data);
       onClose();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể cập nhật yêu cầu duyệt tour.');
+      const msg = requestError.message || 'Không thể cập nhật yêu cầu duyệt tour.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +115,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
               <button type="button" className="btn-close" onClick={onClose} disabled={isSubmitting} aria-label="Đóng"></button>
             </div>
 
-            <form className="d-flex flex-column flex-grow-1 overflow-hidden" onSubmit={handleSubmit}>
+            <form className="d-flex flex-column flex-grow-1 overflow-hidden" onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4 py-3 pb-5 flex-grow-1 overflow-y-auto" style={{ minHeight: 0 }}>
                 {!tour ? (
                   <div className="alert alert-warning small">
@@ -249,7 +254,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
                         id="submission-review-note"
                         rows="3"
                         maxLength={1000}
-                        className="form-control rounded-3"
+                        className={`form-control rounded-3 ${error ? 'is-invalid' : ''}`}
                         placeholder={requiresNote
                           ? 'Nêu rõ nội dung cần chỉnh sửa hoặc lý do từ chối...'
                           : 'Ghi chú thêm cho nhà cung cấp (không bắt buộc)'}
@@ -259,6 +264,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
                           if (error) setError('');
                         }}
                       ></textarea>
+                      {error && <div className="invalid-feedback">{error}</div>}
                     </div>
                   </>
                 )}

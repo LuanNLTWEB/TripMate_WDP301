@@ -93,21 +93,21 @@ export const getNotificationTypeMeta = (notificationType) => (
 
 export const getInboxTypeFilterOptions = (role) => {
   const options = [
-    { value: 'all', label: 'Tất cả loại thông báo' },
-    { value: 'system', label: 'Thông báo hệ thống' }
+    { value: 'all', label: 'Tất cả loại thông báo', icon: 'bi-collection' },
+    { value: 'system', label: 'Thông báo hệ thống', icon: 'bi-bell-fill' }
   ];
 
   if (role === 'customer') {
     options.push(
-      { value: 'itinerary_invite', label: 'Lời mời lịch trình' },
-      { value: 'itinerary_leave', label: 'Thành viên rời lịch trình' },
-      { value: 'itinerary_transfer', label: 'Chuyển quyền lịch trình' },
-      { value: 'review_reply', label: 'Phản hồi đánh giá' }
+      { value: 'itinerary_invite', label: 'Lời mời lịch trình', icon: 'bi-envelope-paper-fill' },
+      { value: 'itinerary_leave', label: 'Thành viên rời lịch trình', icon: 'bi-box-arrow-right' },
+      { value: 'itinerary_transfer', label: 'Chuyển quyền lịch trình', icon: 'bi-arrow-left-right' },
+      { value: 'review_reply', label: 'Phản hồi đánh giá', icon: 'bi-chat-quote-fill' }
     );
   } else if (role === 'tourProvider') {
-    options.push({ value: 'tour_submission_result', label: 'Kết quả duyệt tour' });
+    options.push({ value: 'tour_submission_result', label: 'Kết quả duyệt tour', icon: 'bi-clipboard-check-fill' });
   } else if (role === 'staff') {
-    options.push({ value: 'tour_submission', label: 'Yêu cầu duyệt tour' });
+    options.push({ value: 'tour_submission', label: 'Yêu cầu duyệt tour', icon: 'bi-send-check-fill' });
   }
 
   return options;

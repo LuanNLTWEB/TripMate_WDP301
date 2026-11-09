@@ -3,6 +3,7 @@ import { notificationApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import CreateNotificationModal from '../components/CreateNotificationModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import CustomSelect from '../components/CustomSelect';
 import ManagementPagination from '../components/management/ManagementPagination';
 import {
   NOTIFICATION_TARGET_OPTIONS,
@@ -153,13 +154,10 @@ export default function StaffNotifications() {
             <div className="card-body p-3">
               <div className="row g-2 align-items-center">
                 <div className="col-12 col-md-5">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text bg-white border-end-0 text-muted">
-                      <i className="bi bi-search"></i>
-                    </span>
+                  <div className="management-search-box" style={{ maxWidth: '100%' }}>
+                    <i className="bi bi-search"></i>
                     <input
                       type="search"
-                      className="form-control border-start-0 ps-0"
                       placeholder="Tìm theo tiêu đề, nội dung hoặc email..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -172,22 +170,22 @@ export default function StaffNotifications() {
                     <label htmlFor="filter-target" className="small text-muted text-nowrap">
                       Đối tượng:
                     </label>
-                    <select
+                    <CustomSelect
                       id="filter-target"
-                      className="form-select form-select-sm"
                       value={targetFilter}
-                      onChange={(e) => {
-                        setTargetFilter(e.target.value);
+                      options={[
+                        { value: '', label: 'Tất cả đối tượng nhận' },
+                        ...NOTIFICATION_TARGET_OPTIONS.map((option) => ({
+                          value: option.value,
+                          label: option.filterLabel
+                        }))
+                      ]}
+                      onChange={(e, val) => {
+                        setTargetFilter(val !== undefined ? val : e.target.value);
                         setCurrentPage(1);
                       }}
-                    >
-                      <option value="">Tất cả đối tượng nhận</option>
-                      {NOTIFICATION_TARGET_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.filterLabel}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Tất cả đối tượng nhận"
+                    />
                   </div>
                 </div>
               </div>

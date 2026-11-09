@@ -106,7 +106,6 @@ function StaffDestinationCategories() {
     <section className="management-page-section">
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <span className="management-page-kicker">Destination Categories</span>
           <h1>Quản lý danh mục điểm đến</h1>
           <p>Xem, tạo mới và sắp xếp các danh mục phân loại điểm đến du lịch.</p>
         </div>

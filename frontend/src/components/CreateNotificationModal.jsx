@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { notificationApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
+import CustomSelect from './CustomSelect';
 import {
   NOTIFICATION_TARGET_OPTIONS,
   getNotificationTargetMeta
@@ -39,6 +40,7 @@ export default function CreateNotificationModal({
     targetType: notification?.targetType || 'all',
     targetEmail: notification?.targetEmail || notification?.recipient?.email || ''
   }));
+  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -61,6 +63,7 @@ export default function CreateNotificationModal({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     if (error) setError('');
   };
 
@@ -71,21 +74,34 @@ export default function CreateNotificationModal({
     const trimmedMessage = formData.message.trim();
     const trimmedEmail = formData.targetEmail.trim();
 
+    const fieldErrors = {};
     if (!trimmedTitle) {
-      setError('Vui lòng nhập tiêu đề thông báo');
-      return;
+      fieldErrors.title = 'Vui lòng nhập tiêu đề thông báo';
     }
 
     if (!trimmedMessage) {
-      setError('Vui lòng nhập nội dung thông báo');
+      fieldErrors.message = 'Vui lòng nhập nội dung thông báo';
+    }
+
+    if (!isEditing && formData.targetType === 'specific_user') {
+      if (!trimmedEmail) {
+        fieldErrors.targetEmail = 'Vui lòng nhập email người nhận';
+      } else if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+        fieldErrors.targetEmail = 'Email người nhận không hợp lệ';
+      }
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField === 'title') document.getElementById('notif-title')?.focus();
+      else if (firstField === 'targetEmail') document.getElementById('notif-email')?.focus();
+      else if (firstField === 'message') document.getElementById('notif-message')?.focus();
       return;
     }
 
-    if (!isEditing && formData.targetType === 'specific_user' && !trimmedEmail) {
-      setError('Vui lòng nhập email người nhận');
-      return;
-    }
-
+    setErrors({});
     setIsSubmitting(true);
     setError('');
 
@@ -111,7 +127,9 @@ export default function CreateNotificationModal({
       onClose();
     } catch (err) {
       const fallbackMsg = isEditing ? 'Không thể cập nhật thông báo' : 'Không thể tạo thông báo';
-      setError(err.message || fallbackMsg);
+      const msg = err.message || fallbackMsg;
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +152,7 @@ export default function CreateNotificationModal({
       >
         <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
           <div className="modal-content shadow border-0 rounded-4">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-header border-bottom px-4 pt-4 pb-3">
                 <div className="d-flex align-items-center gap-2">
                   <div className="bg-primary bg-opacity-10 text-primary p-2 rounded-circle">
@@ -176,7 +194,7 @@ export default function CreateNotificationModal({
                     type="text"
                     id="notif-title"
                     name="title"
-                    className="form-control"
+                    className={`form-control ${errors.title ? 'is-invalid' : ''}`}
                     placeholder="VD: Nhắc nhở cập nhật thông tin cá nhân..."
                     value={formData.title}
                     onChange={handleChange}
@@ -184,6 +202,7 @@ export default function CreateNotificationModal({
                     disabled={isSubmitting}
                     required
                   />
+                  {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                   <div className="form-text text-end small">{formData.title.length}/150 ký tự</div>
                 </div>
 
@@ -205,20 +224,20 @@ export default function CreateNotificationModal({
                       <label htmlFor="notif-target" className="form-label small fw-semibold">
                         Đối tượng nhận thông báo <span className="text-danger">*</span>
                       </label>
-                      <select
+                      <CustomSelect
                         id="notif-target"
                         name="targetType"
-                        className="form-select"
                         value={formData.targetType}
-                        onChange={handleChange}
+                        options={NOTIFICATION_TARGET_OPTIONS.map((option) => ({
+                          value: option.value,
+                          label: option.createLabel
+                        }))}
+                        onChange={(e, val) => {
+                          const targetVal = val !== undefined ? val : e.target.value;
+                          setFormData((prev) => ({ ...prev, targetType: targetVal }));
+                        }}
                         disabled={isSubmitting}
-                      >
-                        {NOTIFICATION_TARGET_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.createLabel}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
 
                     {formData.targetType === 'specific_user' && (
@@ -230,13 +249,14 @@ export default function CreateNotificationModal({
                           type="email"
                           id="notif-email"
                           name="targetEmail"
-                          className="form-control"
+                          className={`form-control ${errors.targetEmail ? 'is-invalid' : ''}`}
                           placeholder="name@example.com"
                           value={formData.targetEmail}
                           onChange={handleChange}
                           disabled={isSubmitting}
                           required
                         />
+                        {errors.targetEmail && <div className="invalid-feedback">{errors.targetEmail}</div>}
                       </div>
                     )}
                   </>
@@ -249,7 +269,7 @@ export default function CreateNotificationModal({
                   <textarea
                     id="notif-message"
                     name="message"
-                    className="form-control"
+                    className={`form-control ${errors.message ? 'is-invalid' : ''}`}
                     rows="4"
                     placeholder="Nhập nội dung thông báo gửi đến người dùng..."
                     value={formData.message}
@@ -258,6 +278,7 @@ export default function CreateNotificationModal({
                     disabled={isSubmitting}
                     required
                   ></textarea>
+                  {errors.message && <div className="invalid-feedback">{errors.message}</div>}
                   <div className="form-text text-end small">{formData.message.length}/500 ký tự</div>
                 </div>
               </div>

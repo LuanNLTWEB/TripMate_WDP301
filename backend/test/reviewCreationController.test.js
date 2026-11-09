@@ -86,8 +86,40 @@ test('returns booking_not_confirmed when customer has no confirmed booking', asy
   assert.deepEqual(bookingCapture.query, {
     tourId: 'tour-1',
     customerId: 'customer-1',
-    status: 'confirmed'
+    status: { $in: ['confirmed', 'paid', 'checked_in', 'completed'] }
   });
+});
+
+test('allows review when booking has status completed even if departure is in the future', async () => {
+  Tour.findById = async () => ({ _id: 'tour-1', duration: '3 ngày 2 đêm' });
+  Review.findOne = async () => null;
+  mockBookingFind([
+    { _id: 'booking-completed-1', status: 'completed', departureDate: new Date('2099-01-01T00:00:00.000Z'), completedAt: new Date('2026-11-09T00:00:00.000Z') }
+  ]);
+  const result = createResponse();
+
+  await getReviewEligibility(makeRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.data.eligible, true);
+  assert.equal(result.body.data.reason, 'eligible');
+  assert.equal(result.body.data.bookingId, 'booking-completed-1');
+});
+
+test('allows review when booking has status paid or checked_in and departure has ended', async () => {
+  Tour.findById = async () => ({ _id: 'tour-1', duration: '1 ngày' });
+  Review.findOne = async () => null;
+  mockBookingFind([
+    { _id: 'booking-checked-in', status: 'checked_in', departureDate: new Date('2020-01-01T00:00:00.000Z') }
+  ]);
+  const result = createResponse();
+
+  await getReviewEligibility(makeRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.data.eligible, true);
+  assert.equal(result.body.data.reason, 'eligible');
+  assert.equal(result.body.data.bookingId, 'booking-checked-in');
 });
 
 test('returns the next eligibility date while a confirmed trip is not completed', async () => {

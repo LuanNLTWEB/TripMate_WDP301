@@ -101,9 +101,9 @@ const managementNavigation = [
   },
   {
     key: 'announcements',
-    label: 'Thông báo hệ thống',
-    description: 'Quản lý thông báo dành cho người dùng TripMate',
-    icon: 'bi-megaphone',
+    label: 'Quản lý tin tức',
+    description: 'Đăng và quản lý tin tức, thông cáo dành cho người dùng TripMate',
+    icon: 'bi-newspaper',
     path: '/management/announcements',
     roles: ACCESS_ROLES.STAFF_ONLY
   },

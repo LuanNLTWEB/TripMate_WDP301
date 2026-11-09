@@ -13,15 +13,26 @@ function RoleForm({ role, onClose, onSaved }) {
   const [formData, setFormData] = useState(
     role ? { name: role.name, description: role.description || '' } : emptyForm
   );
+  const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!formData.name?.trim()) {
+      setErrors({ name: 'Vui lòng nhập tên vai trò.' });
+      document.getElementById('role-name')?.focus();
+      toast.error('Vui lòng nhập tên vai trò.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const data = { name: formData.name.trim(), description: formData.description.trim() };
@@ -48,16 +59,34 @@ function RoleForm({ role, onClose, onSaved }) {
             <div className="modal-body">
               <div className="mb-3">
                 <label className="form-label small fw-medium" htmlFor="role-name">Tên vai trò</label>
-                <input className="form-control" id="role-name" name="name" value={formData.name} onChange={handleChange} required disabled={isSaving} placeholder="Nhập tên vai trò" />
+                <input
+                  className={`form-control ${errors.name ? 'is-invalid' : ''}`}
+                  id="role-name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  placeholder="Nhập tên vai trò"
+                />
+                {errors.name && <div className="invalid-feedback">{errors.name}</div>}
               </div>
               <div className="mb-3">
                 <label className="form-label small fw-medium" htmlFor="role-description">Mô tả</label>
-                <textarea className="form-control" id="role-description" name="description" value={formData.description} onChange={handleChange} rows="3" disabled={isSaving} placeholder="Nhập mô tả vai trò (không bắt buộc)" />
+                <textarea
+                  className="form-control"
+                  id="role-description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows="3"
+                  disabled={isSaving}
+                  placeholder="Nhập mô tả vai trò (không bắt buộc)"
+                />
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline-secondary" onClick={onClose} disabled={isSaving}>Hủy</button>
-              <button type="submit" className="btn btn-primary" disabled={isSaving || !formData.name.trim()}>
+              <button type="submit" className="btn btn-primary" disabled={isSaving}>
                 {isSaving ? 'Đang lưu...' : 'Lưu vai trò'}
               </button>
             </div>
@@ -158,11 +187,10 @@ function AdminRoles() {
           <div className="card shadow-sm border-0">
             <div className="card-body p-3 p-md-4">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-                <div className="input-group" style={{ maxWidth: '400px' }}>
-                  <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                <div className="management-search-box" style={{ maxWidth: '400px' }}>
+                  <i className="bi bi-search"></i>
                   <input
                     type="search"
-                    className="form-control"
                     value={search}
                     onChange={handleSearchChange}
                     placeholder="Tìm theo tên vai trò hoặc mô tả..."

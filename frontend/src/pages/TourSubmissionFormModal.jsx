@@ -84,6 +84,8 @@ export default function TourSubmissionFormModal({
 
     if (!isEdit && !tourId) {
       setError('Vui lòng chọn tour cần gửi duyệt.');
+      document.getElementById('submission-tour')?.focus();
+      toast.error('Vui lòng chọn tour cần gửi duyệt.');
       return;
     }
 
@@ -99,6 +101,7 @@ export default function TourSubmissionFormModal({
       if (onSaved) await onSaved(response.data);
       onClose();
     } catch (requestError) {
+      toast.error(requestError.message || 'Không thể gửi duyệt tour.');
       setError(requestError.message || 'Không thể gửi duyệt tour.');
     } finally {
       setIsSubmitting(false);
@@ -134,7 +137,7 @@ export default function TourSubmissionFormModal({
               <button type="button" className="btn-close" onClick={onClose} disabled={isSubmitting} aria-label="Đóng"></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4 py-3">
                 {error && (
                   <div className="alert alert-danger py-2 small" role="alert">{error}</div>

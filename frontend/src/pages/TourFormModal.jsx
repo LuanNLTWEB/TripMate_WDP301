@@ -16,36 +16,36 @@ const createFormData = (tour) => ({
   description: tour?.description || ''
 });
 
-const validateForm = (formData, imageFile, mode) => {
-  if (!formData.title.trim()) return 'Vui lòng nhập tên tour.';
-  if (!formData.duration.trim()) return 'Vui lòng nhập thời lượng chuyến đi.';
-  if (!formData.departureLocation.trim()) return 'Vui lòng nhập điểm khởi hành.';
-  if (!formData.destinationLocation.trim()) return 'Vui lòng nhập điểm đến.';
+const validateTourFields = (formData, imageFile, mode) => {
+  const errs = {};
+  if (!formData.title.trim()) errs.title = 'Vui lòng nhập tên tour.';
+  if (!formData.duration.trim()) errs.duration = 'Vui lòng nhập thời lượng chuyến đi.';
+  if (!formData.departureLocation.trim()) errs.departureLocation = 'Vui lòng nhập điểm khởi hành.';
+  if (!formData.destinationLocation.trim()) errs.destinationLocation = 'Vui lòng nhập điểm đến.';
 
   const price = Number(formData.price);
   if (formData.price === '' || Number.isNaN(price) || price < 0) {
-    return 'Giá tour phải là một số hợp lệ lớn hơn hoặc bằng 0.';
+    errs.price = 'Giá tour phải là số hợp lệ lớn hơn hoặc bằng 0.';
   }
 
   const availableSeats = Number(formData.availableSeats);
   const minimumSeats = mode === 'create' ? 1 : 0;
   if (!Number.isInteger(availableSeats) || availableSeats < minimumSeats) {
-    return mode === 'create'
+    errs.availableSeats = mode === 'create'
       ? 'Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).'
       : 'Số lượng chỗ phải là số nguyên không âm.';
   }
 
   const descriptionLength = formData.description.trim().length;
   if (descriptionLength < 10 || descriptionLength > 5000) {
-    return 'Giới thiệu chuyến đi phải từ 10 đến 5000 ký tự.';
+    errs.description = 'Giới thiệu chuyến đi phải từ 10 đến 5000 ký tự.';
   }
   if (!imageFile && !formData.imageUrl.trim()) {
-    return 'Vui lòng tải lên hoặc dán URL hình ảnh đại diện của tour.';
+    errs.imageUrl = 'Vui lòng tải lên hoặc dán URL hình ảnh đại diện của tour.';
+  } else if (!imageFile && !/^https?:\/\//i.test(formData.imageUrl.trim())) {
+    errs.imageUrl = 'URL hình ảnh phải bắt đầu bằng http:// hoặc https://.';
   }
-  if (!imageFile && !/^https?:\/\//i.test(formData.imageUrl.trim())) {
-    return 'URL hình ảnh phải bắt đầu bằng http:// hoặc https://.';
-  }
-  return '';
+  return errs;
 };
 
 export default function TourFormModal({ mode = 'create', tour = null, onClose, onSaved }) {
@@ -53,6 +53,7 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
   const isUpdate = mode === 'update';
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState(() => createFormData(tour));
+  const [errors, setErrors] = useState({});
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -90,12 +91,14 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
       }
       return next;
     });
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     setError('');
   };
 
   const handlePriceChange = (event) => {
     const price = event.target.value.replace(/\D/g, '');
     setFormData((current) => ({ ...current, price }));
+    if (errors.price) setErrors((prev) => ({ ...prev, price: '' }));
     setError('');
   };
 
@@ -115,6 +118,7 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setImageLoadError(false);
+    if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }));
     setError('');
   };
 
@@ -124,6 +128,7 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
     setImagePreview('');
     setImageLoadError(false);
     setFormData((current) => ({ ...current, imageUrl: event.target.value }));
+    if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }));
     setError('');
   };
 
@@ -131,12 +136,16 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
     event.preventDefault();
     if (isSubmitting) return;
 
-    const validationMessage = validateForm(formData, imageFile, mode);
-    if (validationMessage) {
-      setError(validationMessage);
+    const fieldErrors = validateTourFields(formData, imageFile, mode);
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(`${mode}-tour-${firstField}`)?.focus();
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
     setError('');
     try {
@@ -254,12 +263,13 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
                           type="text"
                           name="title"
                           maxLength={100}
-                          className="form-control rounded-3"
+                          className={`form-control rounded-3 ${errors.title ? 'is-invalid' : ''}`}
                           placeholder="Ví dụ: Nghỉ dưỡng Đảo Ngọc Phú Quốc 4N3Đ - Chuẩn 5 Sao"
                           value={formData.title}
                           onChange={handleInputChange}
                           required
                         />
+                        {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                       </div>
 
                       <div className="row g-3 mb-3">
@@ -288,47 +298,50 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
                             type="text"
                             name="duration"
                             maxLength={100}
-                            className="form-control rounded-3"
+                            className={`form-control rounded-3 ${errors.duration ? 'is-invalid' : ''}`}
                             placeholder="Ví dụ: 3 ngày 2 đêm, 4 ngày 3 đêm..."
                             value={formData.duration}
                             onChange={handleInputChange}
                             required
                           />
+                          {errors.duration && <div className="invalid-feedback">{errors.duration}</div>}
                         </div>
                       </div>
 
                       <div className="row g-3 mb-3">
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-departure`}>
+                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-departureLocation`}>
                             Điểm khởi hành <span className="text-danger">*</span>
                           </label>
                           <input
-                            id={`${mode}-tour-departure`}
+                            id={`${mode}-tour-departureLocation`}
                             type="text"
                             name="departureLocation"
                             maxLength={150}
-                            className="form-control rounded-3"
+                            className={`form-control rounded-3 ${errors.departureLocation ? 'is-invalid' : ''}`}
                             placeholder="Ví dụ: Hà Nội, TP. Hồ Chí Minh, Đà Nẵng..."
                             value={formData.departureLocation}
                             onChange={handleInputChange}
                             required
                           />
+                          {errors.departureLocation && <div className="invalid-feedback">{errors.departureLocation}</div>}
                         </div>
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-destination`}>
+                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-destinationLocation`}>
                             Điểm đến chính <span className="text-danger">*</span>
                           </label>
                           <input
-                            id={`${mode}-tour-destination`}
+                            id={`${mode}-tour-destinationLocation`}
                             type="text"
                             name="destinationLocation"
                             maxLength={150}
-                            className="form-control rounded-3"
+                            className={`form-control rounded-3 ${errors.destinationLocation ? 'is-invalid' : ''}`}
                             placeholder="Ví dụ: Phú Quốc, Sapa, Nha Trang, Hạ Long..."
                             value={formData.destinationLocation}
                             onChange={handleInputChange}
                             required
                           />
+                          {errors.destinationLocation && <div className="invalid-feedback">{errors.destinationLocation}</div>}
                         </div>
                       </div>
 
@@ -342,32 +355,34 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
                               id={`${mode}-tour-price`}
                               type="text"
                               name="price"
-                              className="form-control rounded-start-3"
+                              className={`form-control rounded-start-3 ${errors.price ? 'is-invalid' : ''}`}
                               placeholder="Ví dụ: 4500000"
                               value={formData.price ? Number(formData.price).toLocaleString('vi-VN') : ''}
                               onChange={handlePriceChange}
                               required
                             />
                             <span className="input-group-text rounded-end-3 bg-white text-muted">đ / khách</span>
+                            {errors.price && <div className="invalid-feedback">{errors.price}</div>}
                           </div>
                         </div>
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-seats`}>
+                          <label className="form-label small fw-semibold text-secondary" htmlFor={`${mode}-tour-availableSeats`}>
                             Số lượng chỗ tối đa <span className="text-danger">*</span>
                           </label>
                           <div className="input-group">
                             <input
-                              id={`${mode}-tour-seats`}
+                              id={`${mode}-tour-availableSeats`}
                               type="number"
                               name="availableSeats"
                               min={isUpdate ? 0 : 1}
-                              className="form-control rounded-start-3"
+                              className={`form-control rounded-start-3 ${errors.availableSeats ? 'is-invalid' : ''}`}
                               placeholder="Ví dụ: 25"
                               value={formData.availableSeats}
                               onChange={handleInputChange}
                               required
                             />
                             <span className="input-group-text rounded-end-3 bg-white text-muted">chỗ</span>
+                            {errors.availableSeats && <div className="invalid-feedback">{errors.availableSeats}</div>}
                           </div>
                         </div>
                       </div>
@@ -381,13 +396,14 @@ export default function TourFormModal({ mode = 'create', tour = null, onClose, o
                           name="description"
                           rows={4}
                           maxLength={5000}
-                          className="form-control rounded-3 overflow-y-auto"
+                          className={`form-control rounded-3 overflow-y-auto ${errors.description ? 'is-invalid' : ''}`}
                           style={{ height: 104, resize: 'none' }}
                           placeholder="Mô tả tóm tắt điểm nổi bật, trải nghiệm đáng nhớ và nét đặc sắc của chuyến đi này..."
                           value={formData.description}
                           onChange={handleInputChange}
                           required
                         ></textarea>
+                        {errors.description && <div className="invalid-feedback">{errors.description}</div>}
                         <div className="form-text text-end">{formData.description.length}/5000</div>
                       </div>
                     </div>

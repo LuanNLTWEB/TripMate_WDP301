@@ -199,12 +199,26 @@ export default function useCollaboration({
 
   const handleInviteCollaborator = async (e) => {
     e.preventDefault();
-    if (!selected || !inviteForm.email.trim()) return;
+    if (!selected) return;
+
+    const emailTrim = inviteForm.email?.trim();
+    if (!emailTrim) {
+      setInviteForm((prev) => ({ ...prev, error: 'Vui lòng nhập địa chỉ email.' }));
+      document.getElementById('invite-email')?.focus();
+      toast.error('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      setInviteForm((prev) => ({ ...prev, error: 'Địa chỉ email không đúng định dạng.' }));
+      document.getElementById('invite-email')?.focus();
+      toast.error('Địa chỉ email không đúng định dạng.');
+      return;
+    }
 
     setInviteForm((prev) => ({ ...prev, submitting: true, error: '' }));
     try {
       const response = await itineraryApi.invite(selected._id, {
-        email: inviteForm.email.trim().toLowerCase(),
+        email: emailTrim.toLowerCase(),
         permission: inviteForm.permission
       });
       toast.success(response.message || 'Đã gửi lời mời cộng tác.');
@@ -363,17 +377,11 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
                   ) : (
                     <>
                       {isOwner && (
-                        <form onSubmit={handleInviteCollaborator} className="border rounded p-3 mb-3 bg-light">
+                        <form onSubmit={handleInviteCollaborator} noValidate className="border rounded p-3 mb-3 bg-light">
                           <h6 className="fw-semibold small text-uppercase text-muted mb-2">
                             <i className="bi bi-person-plus me-1"></i>
                             Gửi lời mời
                           </h6>
-                          {inviteForm.error && (
-                            <div className="alert alert-danger py-2 small mb-2">
-                              <i className="bi bi-exclamation-circle me-1"></i>
-                              {inviteForm.error}
-                            </div>
-                          )}
                           <div className="row g-2 align-items-end">
                             <div className="col">
                               <label className="form-label small fw-semibold mb-1" htmlFor="invite-email">
@@ -382,14 +390,14 @@ export function CollaboratorModal({ collab, selected, isOwner }) {
                               <input
                                 id="invite-email"
                                 type="email"
-                                className="form-control"
+                                className={`form-control ${inviteForm.error ? 'is-invalid' : ''}`}
                                 style={{ minHeight: '42px' }}
                                 placeholder="nguoidung@example.com"
                                 value={inviteForm.email}
                                 onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value, error: '' }))}
-                                required
                                 disabled={inviteForm.submitting}
                               />
+                              {inviteForm.error && <div className="invalid-feedback">{inviteForm.error}</div>}
                             </div>
                             <div className="col">
                               <label className="form-label small fw-semibold mb-1" htmlFor="invite-permission">

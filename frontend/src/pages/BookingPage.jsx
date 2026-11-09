@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomDatePicker from '../components/CustomDatePicker';
 import { tourApi, bookingApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -85,19 +86,23 @@ const validateForm = (fields, availableSeats) => {
 const BookingPage = () => {
   const { tourId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialDepartureDate = location.state?.departureDate || searchParams.get('departureDate') || '';
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
 
   const [tour, setTour] = useState(null);
   const [tourLoading, setTourLoading] = useState(true);
   const [tourError, setTourError] = useState('');
+  const [departures, setDepartures] = useState([]);
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [numberOfPeople, setNumberOfPeople] = useState(1);
-  const [departureDate, setDepartureDate] = useState('');
+  const [departureDate, setDepartureDate] = useState(() => initialDepartureDate);
   const [note, setNote] = useState('');
   const [agreePolicy, setAgreePolicy] = useState(false);
   const [errors, setErrors] = useState({});
@@ -127,6 +132,14 @@ const BookingPage = () => {
       .finally(() => {
         if (isMounted) setTourLoading(false);
       });
+
+    tourApi.checkAvailability(tourId)
+      .then((res) => {
+        if (isMounted && res.data?.departures) {
+          setDepartures(res.data.departures);
+        }
+      })
+      .catch(() => {});
 
     return () => {
       isMounted = false;
@@ -160,6 +173,9 @@ const BookingPage = () => {
 
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(formErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
       return;
     }
 
@@ -390,22 +406,63 @@ const BookingPage = () => {
                         <label htmlFor="departureDate" className="form-label fw-medium text-dark">
                           Ngày khởi hành <span className="text-danger">(*)</span>
                         </label>
-                        <input
+                        <CustomDatePicker
                           id="departureDate"
-                          type="date"
-                          className={`form-control rounded-pill px-3 py-2 ${errors.departureDate ? 'is-invalid' : ''}`}
-                          style={{
-                            backgroundColor: '#f8f9fa',
-                            border: errors.departureDate ? '1px solid #dc3545' : '1px solid #eef0f3',
-                            minHeight: '42px'
-                          }}
-                          min={today}
+                          name="departureDate"
                           value={departureDate}
-                          onChange={(e) => { setDepartureDate(e.target.value); clearError('departureDate'); }}
+                          min={today}
+                          placeholder="dd/mm/yyyy"
+                          onChange={(e, val) => {
+                            const selected = val !== undefined ? val : e.target.value;
+                            setDepartureDate(selected);
+                            clearError('departureDate');
+                          }}
                           disabled={submitting}
+                          className={errors.departureDate ? 'is-invalid' : ''}
                         />
                         {errors.departureDate && (
-                          <div className="invalid-feedback">{errors.departureDate}</div>
+                          <div className="text-danger small mt-1">{errors.departureDate}</div>
+                        )}
+
+                        {departures.length > 0 && (
+                          <div className="mt-2.5">
+                            <div className="small text-muted mb-1.5 d-flex align-items-center gap-1.5">
+                              <i className="bi bi-calendar2-check text-primary"></i>
+                              <span className="fw-medium">Lịch khởi hành có sẵn:</span>
+                            </div>
+                            <div className="d-flex flex-wrap gap-1.5">
+                              {departures.map((dep) => (
+                                <button
+                                  key={dep._id || dep.dateKey}
+                                  type="button"
+                                  className={`btn btn-sm py-1 px-2.5 rounded-pill d-inline-flex align-items-center gap-1.5 transition-all ${
+                                    departureDate === dep.dateKey
+                                      ? 'btn-primary shadow-xs'
+                                      : 'btn-outline-secondary bg-white'
+                                  }`}
+                                  style={{ fontSize: '0.8rem' }}
+                                  onClick={() => {
+                                    setDepartureDate(dep.dateKey);
+                                    clearError('departureDate');
+                                  }}
+                                  disabled={submitting || !dep.isAvailable}
+                                >
+                                  <span>{new Date(dep.departureDate).toLocaleDateString('vi-VN')}</span>
+                                  <span
+                                    className={`badge rounded-pill ${
+                                      dep.isAvailable
+                                        ? departureDate === dep.dateKey
+                                          ? 'bg-white text-primary'
+                                          : 'bg-success-subtle text-success'
+                                        : 'bg-danger-subtle text-danger'
+                                    }`}
+                                  >
+                                    {dep.isAvailable ? `Còn ${dep.remainingSeats} chỗ` : 'Hết chỗ'}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

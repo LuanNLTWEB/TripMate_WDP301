@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import CustomDatePicker from '../components/CustomDatePicker';
+import CustomSelect from '../components/CustomSelect';
 import { departureApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
@@ -68,7 +70,15 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
     e.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || submitting) return;
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(nextErrors)[0];
+      if (firstField === 'departureDate') document.getElementById('edit-departure-date')?.focus();
+      else if (firstField === 'availableSeats') document.getElementById('edit-departure-seats')?.focus();
+      else if (firstField === 'price') document.getElementById('edit-departure-price')?.focus();
+      return;
+    }
+    if (submitting) return;
 
     setSubmitting(true);
     try {
@@ -117,14 +127,15 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
                     <label htmlFor="slot-departure-date" className="form-label fw-semibold">
                       Ngày khởi hành <span className="text-danger">*</span>
                     </label>
-                    <input
+                    <CustomDatePicker
                       id="slot-departure-date"
-                      type="date"
-                      className={`form-control ${errors.departureDate ? 'is-invalid' : ''}`}
+                      name="departureDate"
                       value={departureDate}
-                      onChange={(e) => setDepartureDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      placeholder="dd/mm/yyyy"
+                      onChange={(e, val) => setDepartureDate(val !== undefined ? val : e.target.value)}
                       disabled={submitting}
-                      autoFocus
+                      className={errors.departureDate ? 'is-invalid' : ''}
                     />
                     {errors.departureDate
                       ? <div className="invalid-feedback d-block">{errors.departureDate}</div>
@@ -174,16 +185,17 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
                     <label htmlFor="slot-status" className="form-label fw-semibold">
                       Trạng thái lịch
                     </label>
-                    <select
+                    <CustomSelect
                       id="slot-status"
-                      className="form-select"
                       value={status}
-                      onChange={(e) => setStatus(e.target.value)}
+                      options={[
+                        { value: 'scheduled', label: 'Đang lên lịch (Hoạt động)', icon: 'bi-check-circle text-success' },
+                        { value: 'cancelled', label: 'Đã hủy (Tạm ngưng)', icon: 'bi-x-circle text-danger' }
+                      ]}
+                      onChange={(e, val) => setStatus(val !== undefined ? val : e.target.value)}
                       disabled={submitting}
-                    >
-                      <option value="scheduled">Đang lên lịch (Hoạt động)</option>
-                      <option value="cancelled">Đã hủy (Tạm ngưng)</option>
-                    </select>
+                      placeholder="Chọn trạng thái"
+                    />
                   </div>
 
                   <div className="col-12">

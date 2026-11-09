@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CustomSelect from './CustomSelect';
 import { ANNOUNCEMENT_AUDIENCE_OPTIONS } from '../utils/announcementFormatters';
+import { useToast } from '../hooks/useToast';
 
 const EMPTY_FORM = {
   title: '',
@@ -16,6 +17,7 @@ export default function AnnouncementFormModal({
   onClose,
   onSubmit
 }) {
+  const toast = useToast();
   const [form, setForm] = useState(() =>
     announcement
       ? {
@@ -26,6 +28,7 @@ export default function AnnouncementFormModal({
         }
       : EMPTY_FORM
   );
+  const [errors, setErrors] = useState({});
   const [validationError, setValidationError] = useState('');
   const isEditing = Boolean(announcement?._id);
 
@@ -35,6 +38,7 @@ export default function AnnouncementFormModal({
       ...current,
       [name]: type === 'checkbox' ? checked : value
     }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     setValidationError('');
   };
 
@@ -42,14 +46,25 @@ export default function AnnouncementFormModal({
     event.preventDefault();
     const title = form.title.trim();
     const content = form.content.trim();
+    const fieldErrors = {};
+
     if (!title) {
-      setValidationError('Vui lòng nhập tiêu đề thông báo.');
-      return;
+      fieldErrors.title = 'Vui lòng nhập tiêu đề tin tức.';
     }
     if (!content) {
-      setValidationError('Vui lòng nhập nội dung thông báo.');
+      fieldErrors.content = 'Vui lòng nhập nội dung tin tức.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(`announcement-${firstField}`)?.focus();
       return;
     }
+
+    setErrors({});
+    setValidationError('');
     onSubmit({ ...form, title, content });
   };
 
@@ -87,14 +102,14 @@ export default function AnnouncementFormModal({
                   }`}
                   style={{ width: '38px', height: '38px' }}
                 >
-                  <i className={`bi ${isEditing ? 'bi-pencil-square' : 'bi-megaphone'} fs-5`}></i>
+                  <i className={`bi ${isEditing ? 'bi-pencil-square' : 'bi-newspaper'} fs-5`}></i>
                 </div>
                 <div>
                   <span className="small text-uppercase text-primary fw-bold" style={{ letterSpacing: '0.08em' }}>
-                    System Announcements
+                    System News & Announcements
                   </span>
                   <h2 className="modal-title h5 fw-bold mb-0 text-dark">
-                    {isEditing ? 'Cập nhật thông báo hệ thống' : 'Tạo thông báo hệ thống mới'}
+                    {isEditing ? 'Cập nhật tin tức hệ thống' : 'Tạo tin tức hệ thống mới'}
                   </h2>
                 </div>
               </div>
@@ -107,7 +122,7 @@ export default function AnnouncementFormModal({
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4" style={{ overflow: 'visible' }}>
                 {error && (
                   <div className="alert alert-danger py-2 d-flex align-items-center mb-3" role="alert">
@@ -119,7 +134,7 @@ export default function AnnouncementFormModal({
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <label className="form-label fw-semibold text-dark mb-0" htmlFor="announcement-title">
-                      Tiêu đề thông báo <span className="text-danger">*</span>
+                      Tiêu đề tin tức <span className="text-danger">*</span>
                     </label>
                     <span
                       className={`small ${
@@ -133,20 +148,21 @@ export default function AnnouncementFormModal({
                     id="announcement-title"
                     name="title"
                     type="text"
-                    className="form-control"
-                    placeholder="VD: Thông báo bảo trì máy chủ ngày 25/10/2026..."
+                    className={`form-control ${errors.title ? 'is-invalid' : ''}`}
+                    placeholder="VD: Cập nhật chính sách dịch vụ và ưu đãi mùa lễ hội..."
                     value={form.title}
                     maxLength={150}
                     disabled={saving}
                     autoFocus
                     onChange={handleChange}
                   />
+                  {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                 </div>
 
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <label className="form-label fw-semibold text-dark mb-0" htmlFor="announcement-content">
-                      Nội dung thông báo <span className="text-danger">*</span>
+                      Nội dung tin tức <span className="text-danger">*</span>
                     </label>
                     <span
                       className={`small ${
@@ -159,15 +175,16 @@ export default function AnnouncementFormModal({
                   <textarea
                     id="announcement-content"
                     name="content"
-                    className="form-control"
+                    className={`form-control ${errors.content ? 'is-invalid' : ''}`}
                     rows="5"
                     value={form.content}
                     maxLength={5000}
                     disabled={saving}
-                    placeholder="Nhập nội dung chi tiết cần thông báo tới người dùng TripMate..."
+                    placeholder="Nhập nội dung chi tiết bài viết tin tức tới người dùng TripMate..."
                     onChange={handleChange}
                     style={{ lineHeight: 1.6 }}
                   ></textarea>
+                  {errors.content && <div className="invalid-feedback">{errors.content}</div>}
                   <div className="form-text text-muted mt-1">
                     <i className="bi bi-info-circle me-1"></i>
                     Nội dung giữ nguyên các khoảng cách và định dạng xuống dòng khi hiển thị cho người đọc.
@@ -177,7 +194,7 @@ export default function AnnouncementFormModal({
                 <div className="row g-3 align-items-center pt-2">
                   <div className="col-md-7">
                     <label className="form-label fw-semibold text-dark mb-1" htmlFor="announcement-audience">
-                      Đối tượng nhận thông báo
+                      Đối tượng nhận tin tức
                     </label>
                     <CustomSelect
                       id="announcement-audience"
@@ -240,7 +257,7 @@ export default function AnnouncementFormModal({
                   ) : (
                     <>
                       <i className={`bi ${isEditing ? 'bi-check-lg' : 'bi-send-check'}`}></i>
-                      <span>{isEditing ? 'Lưu thay đổi' : 'Tạo thông báo'}</span>
+                      <span>{isEditing ? 'Lưu thay đổi' : 'Tạo tin tức'}</span>
                     </>
                   )}
                 </button>

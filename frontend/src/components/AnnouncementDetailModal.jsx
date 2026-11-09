@@ -131,7 +131,7 @@ export default function AnnouncementDetailModal({ announcement, onClose, showSta
               <div className="border rounded-3 p-3 bg-white border-light-subtle d-flex align-items-center gap-3 text-muted small">
                 <i className="bi bi-info-circle-fill text-primary fs-5 flex-shrink-0"></i>
                 <div>
-                  Đây là thông báo chính thức từ ban điều hành hệ thống TripMate. Nếu cần hỗ trợ thêm, vui lòng liên hệ bộ phận chăm sóc khách hàng.
+                  Đây là tin tức chính thức từ ban điều hành hệ thống TripMate. Nếu cần hỗ trợ thêm, vui lòng liên hệ bộ phận chăm sóc khách hàng.
                 </div>
               </div>
             </div>
