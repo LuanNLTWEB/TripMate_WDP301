@@ -314,7 +314,41 @@ export const changeCollaboratorRole = async (req, res) => {
   try {
     const { permission } = req.body;
 
-    const itinerary = await Itinerary.findById(req.params.id);
+    // UC-135 – cập nhật đúng field permission bằng một truy vấn nguyên tử thay vì
+    // đọc cả document rồi save() (validate + ghi lại toàn bộ itinerary).
+    // Chỉ khớp khi user đang là owner và collaborator chưa có quyền này, nhờ vậy
+    // giữ được thông báo "quyền đã là ..." như trước.
+    const previous = await Itinerary.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        owner: req.user._id,
+        collaborators: {
+          $elemMatch: {
+            user: req.params.userId,
+            permission: { $ne: permission }
+          }
+        }
+      },
+      { $set: { 'collaborators.$.permission': permission } },
+      { new: false, projection: { owner: 1, collaborators: 1 } }
+    );
+
+    if (previous) {
+      const changed = (previous.collaborators || []).find(
+        (c) => String(c.user?._id || c.user) === String(req.params.userId)
+      );
+      const collaboratorPayload = changed?.toObject ? changed.toObject() : { ...changed, permission };
+      collaboratorPayload.permission = permission;
+
+      return res.status(200).json({
+        success: true,
+        message: `Đã đổi quyền cộng tác viên thành ${permission === 'edit' ? 'chỉnh sửa' : 'chỉ xem'}`,
+        collaborator: collaboratorPayload
+      });
+    }
+
+    // Không update được: truy vấn nhẹ để trả đúng 404/403 hoặc nhánh "đã là".
+    const itinerary = await Itinerary.findById(req.params.id).select('owner collaborators');
 
     if (!itinerary) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });

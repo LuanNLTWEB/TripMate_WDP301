@@ -64,16 +64,37 @@ export default function useCollaboration({
   const handleChangeRole = async (userId, permission) => {
     if (!selected) return;
 
+    // UC-135 – optimistic update: đổi quyền trên UI ngay khi click, không chờ
+    // PUT. Nếu server báo lỗi thì rollback về dữ liệu trước đó.
+    const previousCollaborators = selected.collaborators || [];
+    const previousModalCollaborators = membersModal.collaborators || [];
+    const patchPermission = (collaborators = []) => collaborators.map((collaborator) => (
+      String(collaborator.user?._id || collaborator.user) === String(userId)
+        ? { ...collaborator, permission }
+        : collaborator
+    ));
+
+    applyItinerary({
+      ...selected,
+      collaborators: patchPermission(previousCollaborators)
+    });
+    setMembersModal((prev) => ({
+      ...prev,
+      collaborators: patchPermission(prev.collaborators)
+    }));
     setChangingRoleId(userId);
+
     try {
       const response = await itineraryApi.changeCollaboratorRole(selected._id, userId, permission);
       toast.success(response.message || 'Đã đổi quyền cộng tác viên.');
     } catch (err) {
+      applyItinerary({ ...selected, collaborators: previousCollaborators });
+      setMembersModal((prev) => ({
+        ...prev,
+        collaborators: previousModalCollaborators
+      }));
       toast.error(err.message || 'Không thể đổi quyền cộng tác viên.');
     } finally {
-      if (membersModal.open) {
-        await reloadMembers();
-      }
       setChangingRoleId(null);
     }
   };
