@@ -72,6 +72,41 @@ const reviewSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // Phản hồi đánh giá từ Nhà cung cấp tour (Reply to Tour Review)
+  reply: {
+    comment: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Reply cannot exceed 1000 characters'],
+      default: ''
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    repliedAt: {
+      type: Date,
+      default: null
+    },
+    updatedAt: {
+      type: Date,
+      default: null
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    }
+  },
   // Xóa mềm (UC-95 Restore Review): giữ lại bản ghi để nhân viên có thể
   // khôi phục lại và để việc xóa luôn có dấu vết kiểm toán.
   isDeleted: {

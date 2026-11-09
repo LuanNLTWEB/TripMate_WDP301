@@ -48,17 +48,103 @@ const TourDetails = () => {
   const [dateAvailability, setDateAvailability] = useState(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [votingReviewId, setVotingReviewId] = useState(null);
+  // START Reply to Tour Review
+  const [replyingReviewId, setReplyingReviewId] = useState(null);
+  const [replyComment, setReplyComment] = useState('');
+  const [replyError, setReplyError] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [replyToDelete, setReplyToDelete] = useState(null);
+  const [isDeletingReply, setIsDeletingReply] = useState(false);
+  // END Reply to Tour Review
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   const isTourOwner = Boolean(user && tour && (
     user.role === 'tourProvider' && (
       (typeof tour.providerId === 'string' && tour.providerId === user._id) ||
-      (tour.providerId?._id && tour.providerId._id === user._id)
+      (tour.providerId?._id && tour.providerId._id === user._id) ||
+      (typeof tour.providerId === 'string' && tour.providerId === user.id) ||
+      (tour.providerId?._id && tour.providerId._id === user.id)
     )
   ));
   const currentReviewEligibility = reviewEligibility?.tourId === id
     ? reviewEligibility
     : null;
+
+  // START Reply to Tour Review
+  const handleOpenReplyForm = (review) => {
+    const existingReply = review.reply?.comment && !review.reply?.isDeleted
+      ? review.reply.comment
+      : '';
+    setReplyingReviewId(review._id);
+    setReplyComment(existingReply);
+    setReplyError('');
+  };
+
+  const handleCloseReplyForm = () => {
+    setReplyingReviewId(null);
+    setReplyComment('');
+    setReplyError('');
+  };
+
+  const handleReplySubmit = async (event, review) => {
+    event.preventDefault();
+    if (isSubmittingReply) return;
+
+    const normalizedComment = replyComment.trim();
+    if (normalizedComment.length < 5) {
+      setReplyError('Nội dung phản hồi phải có từ 5 đến 1000 ký tự.');
+      return;
+    }
+
+    const isEditing = Boolean(review.reply?.comment && !review.reply?.isDeleted);
+    setReplyError('');
+    setIsSubmittingReply(true);
+    try {
+      const response = isEditing
+        ? await reviewApi.updateReply(review._id, { comment: normalizedComment })
+        : await reviewApi.reply(review._id, { comment: normalizedComment });
+
+      if (response.success && response.data) {
+        setReviews((prevReviews) =>
+          prevReviews.map((item) =>
+            item._id === review._id ? response.data : item
+          )
+        );
+      }
+      toast.success(
+        response.message ||
+          (isEditing ? 'Cập nhật phản hồi thành công.' : 'Đã gửi phản hồi đánh giá thành công.')
+      );
+      handleCloseReplyForm();
+    } catch (err) {
+      setReplyError(err.message || 'Không thể lưu phản hồi đánh giá.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async () => {
+    if (!replyToDelete || isDeletingReply) return;
+
+    setIsDeletingReply(true);
+    try {
+      const response = await reviewApi.deleteReply(replyToDelete._id);
+      if (response.success && response.data) {
+        setReviews((prevReviews) =>
+          prevReviews.map((item) =>
+            item._id === replyToDelete._id ? response.data : item
+          )
+        );
+      }
+      toast.success(response.message || 'Đã xóa phản hồi đánh giá thành công.');
+      setReplyToDelete(null);
+    } catch (err) {
+      toast.error(err.message || 'Không thể xóa phản hồi đánh giá.');
+    } finally {
+      setIsDeletingReply(false);
+    }
+  };
+  // END Reply to Tour Review
 
   const handleVoteHelpful = async (review) => {
     if (votingReviewId) return;
@@ -192,10 +278,11 @@ const TourDetails = () => {
   };
 
   useEffect(() => {
-    if (!id || !isAuthenticated || user?.role !== 'customer') return;
+    if (!id || !isAuthenticated || (user?.role !== 'customer' && !isTourOwner)) return;
 
     let isMounted = true;
 
+    if (user?.role !== 'customer') return;
     reviewApi.getEligibility(id)
       .then((response) => {
         if (isMounted) setReviewEligibility({ ...response.data, tourId: id });
@@ -217,12 +304,13 @@ const TourDetails = () => {
   }, [id, isAuthenticated, user?.role, user?.id, user?._id, eligibilityRefreshKey]);
 
   useEffect(() => {
-    if (!id || !isAuthenticated || user?.role !== 'customer') return;
+    if (!id || !isAuthenticated || (user?.role !== 'customer' && !isTourOwner)) return;
 
     let isMounted = true;
     setReviewsLoading(true);
 
-    reviewApi.getByTour(id)
+    setReviewsError('');
+    (user?.role === 'tourProvider' ? reviewApi.getProviderByTour(id) : reviewApi.getByTour(id))
       .then((response) => {
         if (isMounted) {
           setReviews(response.reviews || []);
@@ -242,7 +330,7 @@ const TourDetails = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, isAuthenticated, user?.role]);
+  }, [id, isAuthenticated, user?.role, isTourOwner]);
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'customer') return;
@@ -890,7 +978,7 @@ const TourDetails = () => {
             </div>
           </div>
 
-          {user?.role === 'customer' && (
+          {(user?.role === 'customer' || isTourOwner) && (
           <div className="card border-0 shadow-sm rounded-4 mb-4">
             <div className="card-body p-4 p-md-5">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -980,6 +1068,7 @@ const TourDetails = () => {
                     const helpfulCount = typeof review.helpfulCount === 'number'
                       ? review.helpfulCount
                       : votes.length;
+                    const hasActiveReply = Boolean(review.reply?.comment && !review.reply?.isDeleted);
 
                     return (
                       <div key={review._id} className="col-md-6">
@@ -1044,6 +1133,115 @@ const TourDetails = () => {
                             {review.comment && (
                               <p className="text-secondary mb-0 small">{review.comment}</p>
                             )}
+                            {/* START Reply to Tour Review */}
+                            {hasActiveReply && replyingReviewId !== review._id && (
+                              <div className="mt-3 p-3 rounded-3 bg-light border-start border-primary border-3">
+                                <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                                    <i className="bi bi-reply-fill text-primary"></i>
+                                    <span className="fw-semibold small text-dark">
+                                      Phản hồi từ Nhà cung cấp
+                                    </span>
+                                    <span className="badge text-bg-light border text-primary small">
+                                      {review.reply?.userId?.username || tour?.providerId?.username || 'Nhà cung cấp'}
+                                    </span>
+                                  </div>
+                                  {isTourOwner && (
+                                    <div className="d-flex align-items-center gap-1">
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary border-0 p-1 px-2 rounded-2"
+                                        title="Sửa phản hồi"
+                                        aria-label="Sửa phản hồi"
+                                        onClick={() => handleOpenReplyForm(review)}
+                                      >
+                                        <i className="bi bi-pencil"></i>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-danger border-0 p-1 px-2 rounded-2"
+                                        title="Xóa phản hồi"
+                                        aria-label="Xóa phản hồi"
+                                        onClick={() => setReplyToDelete(review)}
+                                      >
+                                        <i className="bi bi-trash"></i>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-secondary mb-1 small" style={{ whiteSpace: 'pre-line' }}>
+                                  {review.reply.comment}
+                                </p>
+                                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                  {review.reply.repliedAt
+                                    ? new Date(review.reply.repliedAt).toLocaleDateString('vi-VN')
+                                    : ''}
+                                  {review.reply.updatedAt && ' • Đã chỉnh sửa'}
+                                </div>
+                              </div>
+                            )}
+
+                            {isTourOwner && replyingReviewId === review._id && (
+                              <form onSubmit={(e) => handleReplySubmit(e, review)} className="mt-3 p-3 rounded-3 bg-light border">
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                  <label htmlFor={`reply-input-${review._id}`} className="form-label fw-semibold small text-dark mb-0">
+                                    <i className="bi bi-reply-fill text-primary me-1"></i>
+                                    {hasActiveReply ? 'Chỉnh sửa phản hồi' : 'Phản hồi đánh giá khách hàng'}
+                                  </label>
+                                </div>
+                                <textarea
+                                  id={`reply-input-${review._id}`}
+                                  className={`form-control form-control-sm ${replyError ? 'is-invalid' : ''}`}
+                                  rows={3}
+                                  minLength={5}
+                                  maxLength={1000}
+                                  placeholder="Nhập nội dung phản hồi tới khách hàng (từ 5 đến 1000 ký tự)..."
+                                  value={replyComment}
+                                  disabled={isSubmittingReply}
+                                  onChange={(e) => {
+                                    setReplyComment(e.target.value);
+                                    if (replyError) setReplyError('');
+                                  }}
+                                />
+                                <div className="d-flex justify-content-between mt-1">
+                                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>Tối thiểu 5 ký tự</span>
+                                  <span className="text-muted" style={{ fontSize: '0.75rem' }}>{replyComment.length}/1000</span>
+                                </div>
+                                {replyError && (
+                                  <div className="alert alert-danger py-1 px-2 small mt-2 mb-0" role="alert">
+                                    <i className="bi bi-exclamation-circle me-1"></i>{replyError}
+                                  </div>
+                                )}
+                                <div className="d-flex justify-content-end gap-2 mt-2">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={handleCloseReplyForm}
+                                    disabled={isSubmittingReply}
+                                  >
+                                    Hủy
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
+                                    disabled={isSubmittingReply}
+                                  >
+                                    {isSubmittingReply ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm" style={{ width: '0.75rem', height: '0.75rem' }} aria-hidden="true"></span>
+                                        <span>Đang lưu...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="bi bi-send-fill"></i>
+                                        <span>{hasActiveReply ? 'Lưu thay đổi' : 'Gửi phản hồi'}</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              </form>
+                            // END Reply to Tour Review
+                            )}
                           </div>
 
                           <div className="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
@@ -1058,7 +1256,23 @@ const TourDetails = () => {
                               )}
                             </span>
 
-                            {!isMyReview ? (
+                            {isTourOwner ? (
+                              !hasActiveReply && replyingReviewId !== review._id ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary rounded-pill px-3 py-0 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: '0.78rem' }}
+                                  onClick={() => handleOpenReplyForm(review)}
+                                >
+                                  <i className="bi bi-reply-fill"></i>
+                                  <span>Phản hồi</span>
+                                </button>
+                              ) : hasActiveReply ? (
+                                <span className="badge bg-success-subtle text-success border border-success-subtle small">
+                                  <i className="bi bi-check2-circle me-1"></i>Đã phản hồi
+                                </span>
+                              ) : null
+                            ) : !isMyReview ? (
                               <button
                                 type="button"
                                 className={`btn btn-sm ${
@@ -1093,6 +1307,61 @@ const TourDetails = () => {
             </div>
           </div>
           )}
+
+        {/* START Reply to Tour Review */}
+        {replyToDelete && (
+          <>
+            <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content border-0 shadow">
+                  <div className="modal-header">
+                    <h2 className="modal-title h5 fw-bold">Xác nhận xóa phản hồi</h2>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => !isDeletingReply && setReplyToDelete(null)}
+                      disabled={isDeletingReply}
+                      aria-label="Đóng"
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p className="mb-2">Bạn có chắc muốn xóa phản hồi đánh giá này?</p>
+                    <p className="text-muted small mb-0">
+                      Phản hồi sẽ được gỡ khỏi phần hiển thị đánh giá của tour.
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => setReplyToDelete(null)}
+                      disabled={isDeletingReply}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleDeleteReply}
+                      disabled={isDeletingReply}
+                    >
+                      {isDeletingReply ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                          Đang xóa...
+                        </>
+                      ) : (
+                        'Xác nhận xóa'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="modal-backdrop fade show"></div>
+          </>
+        )}
+        {/* END Reply to Tour Review */}
 
         {reviewToDelete && (
           <>

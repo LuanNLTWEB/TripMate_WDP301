@@ -77,6 +77,26 @@ export default function ReviewDetailModal({
                 </p>
                 <div className="small text-muted">
                   Gửi lúc {formatReviewDateTime(review.createdAt)}
+                {review.reply?.comment && !review.reply?.isDeleted && (
+                  <div className="mt-3 p-3 rounded-3 bg-light border-start border-primary border-3 text-body">
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <i className="bi bi-reply-fill text-primary"></i>
+                      <span className="fw-semibold small text-dark">Phản hồi từ Nhà cung cấp</span>
+                      {review.reply.userId?.username && (
+                        <span className="badge text-bg-light border text-primary small">
+                          {review.reply.userId.username}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mb-1 text-secondary small" style={{ whiteSpace: 'pre-line' }}>
+                      {review.reply.comment}
+                    </p>
+                    <div className="small text-muted" style={{ fontSize: '0.75rem' }}>
+                      Phản hồi lúc {formatReviewDateTime(review.reply.repliedAt)}
+                      {review.reply.updatedAt && ' • Đã chỉnh sửa'}
+                    </div>
+                  </div>
+                )}
                 </div>
               </section>
 

@@ -79,6 +79,11 @@ const TYPE_META_MAP = {
     label: 'Kết quả duyệt tour',
     iconClass: 'bi-clipboard-check-fill text-success',
     badgeClass: 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
+  },
+  review_reply: {
+    label: 'Phản hồi đánh giá',
+    iconClass: 'bi-chat-quote-fill text-primary',
+    badgeClass: 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
   }
 };
 
@@ -96,7 +101,8 @@ export const getInboxTypeFilterOptions = (role) => {
     options.push(
       { value: 'itinerary_invite', label: 'Lời mời lịch trình' },
       { value: 'itinerary_leave', label: 'Thành viên rời lịch trình' },
-      { value: 'itinerary_transfer', label: 'Chuyển quyền lịch trình' }
+      { value: 'itinerary_transfer', label: 'Chuyển quyền lịch trình' },
+      { value: 'review_reply', label: 'Phản hồi đánh giá' }
     );
   } else if (role === 'tourProvider') {
     options.push({ value: 'tour_submission_result', label: 'Kết quả duyệt tour' });

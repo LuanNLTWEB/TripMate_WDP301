@@ -6,6 +6,7 @@
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
+import Notification from '../models/Notification.js';
 import { validationResult } from 'express-validator';
 
 const VALID_REPORT_REASONS = [
@@ -246,6 +247,7 @@ export const getReviewsByTour = async (req, res) => {
     }
 
     const reviews = await Review.find({ tourId, status: 'approved', isDeleted: false })
+      .populate('reply.userId', 'username')
       .populate('userId', 'username')
       .sort({ createdAt: -1 });
 
@@ -298,6 +300,7 @@ export const getAllReviewsForModeration = async (req, res) => {
       .populate('userId', 'username email')
       .populate('tourId', 'title location departureLocation')
       .populate('moderatedBy', 'username email')
+      .populate('reply.userId', 'username email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -368,6 +371,7 @@ export const getReportedReviews = async (req, res) => {
       .populate('tourId', 'title location departureLocation destinationLocation')
       .populate('reportedBy', 'username email')
       .populate('moderatedBy', 'username email')
+      .populate('reply.userId', 'username email')
       .sort({ reportedAt: -1, createdAt: -1 })
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
@@ -436,7 +440,8 @@ export const moderateReview = async (req, res) => {
     const populated = await Review.findById(id)
       .populate('userId', 'username email')
       .populate('tourId', 'title location departureLocation')
-      .populate('moderatedBy', 'username email');
+      .populate('moderatedBy', 'username email')
+      .populate('reply.userId', 'username email');
 
     res.status(200).json({
       success: true,
@@ -614,7 +619,8 @@ export const restoreReview = async (req, res) => {
 
     const populated = await Review.findById(id)
       .populate('userId', 'username email')
-      .populate('tourId', 'title location departureLocation');
+      .populate('tourId', 'title location departureLocation')
+      .populate('reply.userId', 'username email');
 
     res.status(200).json({
       success: true,
@@ -701,7 +707,8 @@ export const updateReview = async (req, res) => {
 
     const populated = await Review.findById(id)
       .populate('userId', 'username email')
-      .populate('tourId', 'title location departureLocation');
+      .populate('tourId', 'title location departureLocation')
+      .populate('reply.userId', 'username email');
 
     res.status(200).json({
       success: true,
@@ -801,3 +808,322 @@ export const voteHelpfulReview = async (req, res) => {
   }
 };
 // END Vote Helpful on Tour Review
+
+
+// START Reply to Tour Review
+/**
+ * @desc    View approved reviews of a tour owned by the current provider
+ * @route   GET /api/reviews/provider/tours/:tourId
+ * @access  Private (tourProvider)
+ */
+export const getProviderReviewsByTour = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã tour không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { tourId } = req.params;
+    const tour = await Tour.findById(tourId);
+    if (!tour || tour.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour'
+      });
+    }
+
+    const providerId = tour.providerId?._id || tour.providerId;
+    if (!providerId || String(providerId) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có thể xem đánh giá của các tour thuộc quyền sở hữu của mình'
+      });
+    }
+
+    const reviews = await Review.find({ tourId, status: 'approved', isDeleted: false })
+      .populate('userId', 'username')
+      .populate('reply.userId', 'username')
+      .sort({ createdAt: -1 });
+
+    const totalReviews = reviews.length;
+    const averageRating = totalReviews > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
+      : 0;
+
+    return res.status(200).json({
+      success: true,
+      reviews,
+      averageRating,
+      totalReviews
+    });
+  } catch (error) {
+    console.error('Error fetching provider tour reviews:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách đánh giá'
+    });
+  }
+};
+
+/**
+ * @desc    Provider replies to a customer's tour review
+ * @route   POST /api/reviews/:id/reply
+ * @access  Private (tourProvider)
+ */
+export const replyReview = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Nội dung phản hồi không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const review = await Review.findById(id);
+
+    if (!review || review.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá hoặc đánh giá đã bị xóa'
+      });
+    }
+
+    if (review.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể phản hồi các đánh giá đang hiển thị công khai'
+      });
+    }
+
+    const tour = await Tour.findById(review.tourId);
+    if (!tour || tour.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour của đánh giá này'
+      });
+    }
+
+    const providerId = tour.providerId?._id || tour.providerId;
+    if (!providerId || String(providerId) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có quyền phản hồi đánh giá thuộc tour của chính mình'
+      });
+    }
+
+    const hasActiveReply = Boolean(review.reply?.comment && !review.reply?.isDeleted);
+    if (hasActiveReply) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã có phản hồi. Vui lòng sử dụng chức năng chỉnh sửa phản hồi'
+      });
+    }
+
+    review.reply = {
+      comment: req.body.comment.trim(),
+      userId: req.user._id,
+      repliedAt: new Date(),
+      updatedAt: null,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null
+    };
+    await review.save();
+
+    try {
+      const recipientId = review.userId?._id || review.userId;
+      if (recipientId) {
+        await Notification.create({
+          recipient: recipientId,
+          sender: req.user._id,
+          title: 'Phản hồi mới cho đánh giá của bạn',
+          message: `Nhà cung cấp đã phản hồi đánh giá của bạn về tour "${tour.title}".`,
+          notificationType: 'review_reply',
+          targetType: 'specific_user',
+          status: 'sent',
+          isRead: false
+        });
+      }
+    } catch (notifErr) {
+      console.error('Error sending review reply notification:', notifErr);
+    }
+
+    if (typeof review.populate === 'function') {
+      await review.populate('userId', 'username');
+      await review.populate('reply.userId', 'username');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã gửi phản hồi đánh giá thành công.',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error replying to review:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể gửi phản hồi đánh giá'
+    });
+  }
+};
+
+/**
+ * @desc    Provider updates their reply on a tour review
+ * @route   PUT /api/reviews/:id/reply
+ * @access  Private (tourProvider)
+ */
+export const updateReviewReply = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Nội dung phản hồi không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const review = await Review.findById(id);
+
+    if (!review || review.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá hoặc đánh giá đã bị xóa'
+      });
+    }
+
+    if (review.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể chỉnh sửa phản hồi trên đánh giá đang hiển thị công khai'
+      });
+    }
+
+    const tour = await Tour.findById(review.tourId);
+    if (!tour || tour.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour của đánh giá này'
+      });
+    }
+
+    const providerId = tour.providerId?._id || tour.providerId;
+    if (!providerId || String(providerId) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có quyền chỉnh sửa phản hồi thuộc tour của chính mình'
+      });
+    }
+
+    const hasActiveReply = Boolean(review.reply?.comment && !review.reply?.isDeleted);
+    if (!hasActiveReply) {
+      return res.status(404).json({
+        success: false,
+        message: 'Chưa có phản hồi để chỉnh sửa'
+      });
+    }
+
+    review.reply.comment = req.body.comment.trim();
+    review.reply.updatedAt = new Date();
+    await review.save();
+
+    if (typeof review.populate === 'function') {
+      await review.populate('userId', 'username');
+      await review.populate('reply.userId', 'username');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Cập nhật phản hồi đánh giá thành công.',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error updating review reply:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật phản hồi đánh giá'
+    });
+  }
+};
+
+/**
+ * @desc    Provider soft-deletes their reply on a tour review
+ * @route   DELETE /api/reviews/:id/reply
+ * @access  Private (tourProvider)
+ */
+export const deleteReviewReply = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Mã đánh giá không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const review = await Review.findById(id);
+
+    if (!review || review.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đánh giá hoặc đánh giá đã bị xóa'
+      });
+    }
+
+    const tour = await Tour.findById(review.tourId);
+    if (!tour || tour.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy tour của đánh giá này'
+      });
+    }
+
+    const providerId = tour.providerId?._id || tour.providerId;
+    if (!providerId || String(providerId) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có quyền xóa phản hồi thuộc tour của chính mình'
+      });
+    }
+
+    if (!review.reply?.comment || review.reply?.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Phản hồi không tồn tại hoặc đã bị xóa trước đó'
+      });
+    }
+
+    review.reply.isDeleted = true;
+    review.reply.deletedAt = new Date();
+    review.reply.deletedBy = req.user._id;
+    await review.save();
+
+    if (typeof review.populate === 'function') {
+      await review.populate('userId', 'username');
+      await review.populate('reply.userId', 'username');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã xóa phản hồi đánh giá thành công.',
+      data: review
+    });
+  } catch (error) {
+    console.error('Error deleting review reply:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể xóa phản hồi đánh giá'
+    });
+  }
+};
+// END Reply to Tour Review
