@@ -700,6 +700,8 @@ function Itinerary() {
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
+  // UC-151 – mọi thành viên (kể cả quyền 'view') được tự đánh dấu tiến độ của mình.
+  const canMarkPacked = Boolean(isOwner || myPermission);
   const isCollaborator = Boolean(!isOwner && myPermission);
 
   // START UC-137 Leave Itinerary
@@ -895,7 +897,7 @@ function Itinerary() {
   };
 
   const handleTogglePackingItemStatus = async (item) => {
-    if (!selected || !item?._id || !canEditSelected) return;
+    if (!selected || !item?._id || !canMarkPacked) return;
 
     const itemId = String(item._id);
     const locks = packingStatusLocksRef.current;
@@ -1623,10 +1625,10 @@ function Itinerary() {
                                           }`}
                                           style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
                                           onClick={() => handleTogglePackingItemStatus(item)}
-                                          disabled={!canEditSelected || !item._id || isPackingItemUpdating(item._id)}
+                                          disabled={!canMarkPacked || !item._id || isPackingItemUpdating(item._id)}
                                           title={
-                                            !canEditSelected
-                                              ? 'Bạn chỉ có quyền xem danh sách hành lý'
+                                            !canMarkPacked
+                                              ? 'Bạn không có quyền đánh dấu vật dụng trong lịch trình này'
                                               : item.isPacked
                                                 ? 'Bỏ đánh dấu vật dụng'
                                                 : 'Đánh dấu vật dụng đã chuẩn bị'

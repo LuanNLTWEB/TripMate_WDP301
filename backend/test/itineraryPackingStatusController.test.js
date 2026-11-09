@@ -32,8 +32,8 @@ const createResponse = () => {
   return output;
 };
 
-const createFakeItinerary = ({ isPacked = false, collaborators = [], save } = {}) => {
-  const item = { _id: ITEM_ID, name: 'Quần áo', isPacked };
+const createFakeItinerary = ({ isPacked = false, packedBy = [], collaborators = [], save } = {}) => {
+  const item = { _id: ITEM_ID, name: 'Quần áo', isPacked, packedBy: [...packedBy] };
   const itinerary = {
     _id: ITINERARY_ID,
     owner: OWNER_ID,
@@ -82,7 +82,9 @@ test('UC-151 - owner marks a packing item as packed', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.success, true);
   assert.equal(item.isPacked, true);
+  assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
   assert.equal(res.body.packingItem.isPacked, true);
+  assert.equal(res.body.packingItem.packedCount, 1);
   assert.equal(res.body.packingItem.status, 'completed');
   assert.equal(res.body.packingItem._id, ITEM_ID);
   assert.equal(res.body.packingItem.name, 'Quần áo');
@@ -90,7 +92,7 @@ test('UC-151 - owner marks a packing item as packed', async () => {
 });
 
 test('UC-151 - owner unmarks a packed item', async () => {
-  const { itinerary, item } = createFakeItinerary({ isPacked: true });
+  const { itinerary, item } = createFakeItinerary({ isPacked: true, packedBy: [OWNER_ID] });
   stubFindById(itinerary);
 
   const res = createResponse();
@@ -99,6 +101,7 @@ test('UC-151 - owner unmarks a packed item', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.success, true);
   assert.equal(item.isPacked, false);
+  assert.deepEqual(item.packedBy.map(String), []);
   assert.equal(res.body.packingItem.isPacked, false);
   assert.equal(res.body.packingItem.status, 'incomplete');
   assert.match(res.body.message, /Đã bỏ đánh dấu vật dụng/);
@@ -116,9 +119,11 @@ test('UC-151 - editor collaborator can update packing status', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.success, true);
   assert.equal(item.isPacked, true);
+  assert.deepEqual(item.packedBy.map(String), [EDITOR_ID]);
+  assert.equal(res.body.packingItem.isPacked, true);
 });
 
-test('UC-151 - viewer collaborator cannot update packing status', async () => {
+test('UC-151 - viewer collaborator can mark the item for themselves', async () => {
   const { itinerary, item } = createFakeItinerary({
     collaborators: [{ user: VIEWER_ID, permission: 'view' }]
   });
@@ -127,9 +132,45 @@ test('UC-151 - viewer collaborator cannot update packing status', async () => {
   const res = createResponse();
   await updatePackingItemStatus(buildRequest('completed', VIEWER_ID), res.response);
 
-  assert.equal(res.statusCode, 403);
-  assert.equal(res.body.success, false);
-  assert.equal(item.isPacked, false);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(item.isPacked, true);
+  assert.deepEqual(item.packedBy.map(String), [VIEWER_ID]);
+  assert.equal(res.body.packingItem.isPacked, true);
+});
+
+test('UC-151 - packed state is independent for each member', async () => {
+  const { itinerary, item } = createFakeItinerary({
+    collaborators: [
+      { user: EDITOR_ID, permission: 'edit' },
+      { user: VIEWER_ID, permission: 'view' }
+    ]
+  });
+  stubFindById(itinerary);
+
+  // Owner tick
+  const ownerRes = createResponse();
+  await updatePackingItemStatus(buildRequest('completed', OWNER_ID), ownerRes.response);
+  assert.equal(ownerRes.body.packingItem.isPacked, true);
+  assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
+
+  // Viewer chưa tick thì gọi bỏ tick cũng không ảnh hưởng owner
+  const viewerRes = createResponse();
+  await updatePackingItemStatus(buildRequest('incomplete', VIEWER_ID), viewerRes.response);
+  assert.equal(viewerRes.body.packingItem.isPacked, false);
+  assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
+
+  // Editor tick độc lập
+  const editorRes = createResponse();
+  await updatePackingItemStatus(buildRequest('completed', EDITOR_ID), editorRes.response);
+  assert.equal(editorRes.body.packingItem.isPacked, true);
+  assert.deepEqual(item.packedBy.map(String).sort(), [OWNER_ID, EDITOR_ID].sort());
+
+  // Owner bỏ tick chỉ ảnh hưởng owner
+  const ownerUnmarkRes = createResponse();
+  await updatePackingItemStatus(buildRequest('incomplete', OWNER_ID), ownerUnmarkRes.response);
+  assert.equal(ownerUnmarkRes.body.packingItem.isPacked, false);
+  assert.deepEqual(item.packedBy.map(String), [EDITOR_ID]);
 });
 
 test('UC-151 - unrelated user cannot update another itinerary checklist', async () => {

@@ -83,7 +83,14 @@ const packingItemSchema = new mongoose.Schema({
   isPacked: {
     type: Boolean,
     default: false
-  }
+  },
+  // UC-151 – trạng thái "đã chuẩn bị" theo từng thành viên.
+  // Mỗi user tick thì thêm _id vào mảng này; isPacked phía trên chỉ còn là
+  // cờ tổng hợp/legacy để tương thích dữ liệu cũ.
+  packedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, { _id: true });
 
 const itinerarySchema = new mongoose.Schema({

@@ -130,10 +130,32 @@ const detectScheduleConflicts = (itinerary) => {
 
 /**
  * Return a plain-object itinerary with a computed `conflicts` field.
+ * UC-151 – `isPacked` được tính riêng theo user đang xem dựa trên `packedBy`.
  */
-const hydrateItinerary = (itinerary) => {
+const hydrateItinerary = (itinerary, viewerId) => {
   const doc = itinerary.toObject ? itinerary.toObject() : itinerary;
-  return { ...doc, conflicts: detectScheduleConflicts(doc) };
+  const viewerKey = viewerId ? String(viewerId) : '';
+  const ownerKey = String(doc.owner?._id || doc.owner || '');
+
+  const packingItems = (doc.packingItems || []).map((item) => {
+    const packedByIds = (item.packedBy || []).map((id) => String(id?._id || id));
+    // Dữ liệu cũ: item có isPacked = true nhưng chưa có packedBy thì coi như owner đã tick.
+    const legacyOwnerPacked = packedByIds.length === 0
+      && Boolean(item.isPacked)
+      && ownerKey === viewerKey;
+
+    return {
+      ...item,
+      isPacked: packedByIds.includes(viewerKey) || legacyOwnerPacked,
+      packedCount: packedByIds.length + (legacyOwnerPacked ? 1 : 0)
+    };
+  });
+
+  return {
+    ...doc,
+    packingItems,
+    conflicts: detectScheduleConflicts(doc)
+  };
 };
 
 const canView = (itinerary, userId) => (
@@ -185,7 +207,7 @@ export const createItinerary = async (req, res) => {
     });
 
     const populated = await findByIdPopulated(itinerary._id);
-    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated) });
+    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated, req.user._id) });
   } catch (error) {
     console.error('Create itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Unable to create itinerary' });
@@ -241,7 +263,7 @@ export const updateItinerary = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Cập nhật lịch trình thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Update itinerary error:', error);
@@ -279,7 +301,7 @@ const findByIdPopulated = (id) => Itinerary.findById(id)
 export const listItineraries = async (req, res) => {
   try {
     const itineraries = await findAllPopulated({ owner: req.user._id }).sort({ updatedAt: -1 });
-    return res.json({ success: true, itineraries: itineraries.map(hydrateItinerary) });
+    return res.json({ success: true, itineraries: itineraries.map((itinerary) => hydrateItinerary(itinerary, req.user._id)) });
   } catch (error) {
     console.error('List itineraries error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itineraries' });
@@ -330,7 +352,7 @@ export const deleteItinerary = async (req, res) => {
 export const listSharedItineraries = async (req, res) => {
   try {
     const itineraries = await findAllPopulated({ 'collaborators.user': req.user._id }).sort({ updatedAt: -1 });
-    return res.json({ success: true, itineraries: itineraries.map(hydrateItinerary) });
+    return res.json({ success: true, itineraries: itineraries.map((itinerary) => hydrateItinerary(itinerary, req.user._id)) });
   } catch (error) {
     console.error('List shared itineraries error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load shared itineraries' });
@@ -356,7 +378,7 @@ export const getItinerary = async (req, res) => {
     if (!itinerary || !canView(itinerary, req.user._id)) {
       return res.status(404).json({ success: false, message: 'Itinerary not found' });
     }
-    return res.json({ success: true, itinerary: hydrateItinerary(itinerary) });
+    return res.json({ success: true, itinerary: hydrateItinerary(itinerary, req.user._id) });
   } catch (error) {
     console.error('Get itinerary error:', error);
     return res.status(500).json({ success: false, message: 'Unable to load itinerary' });
@@ -552,7 +574,7 @@ export const addActivity = async (req, res) => {
     await itinerary.save();
 
     const populated = await findByIdPopulated(itinerary._id);
-    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated) });
+    return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated, req.user._id) });
   } catch (error) {
     console.error('Add itinerary activity error:', error);
     return res.status(500).json({ success: false, message: 'Unable to add activity' });
@@ -603,7 +625,7 @@ export const reorderActivities = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã sắp xếp lại hoạt động',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Reorder activities error:', error);
@@ -640,7 +662,7 @@ export const removeActivity = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã xóa hoạt động khỏi lịch trình',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Remove itinerary activity error:', error);
@@ -692,7 +714,7 @@ export const updateActivity = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã cập nhật hoạt động thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Update itinerary activity error:', error);
@@ -740,7 +762,7 @@ export const addDestination = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Đã thêm điểm đến vào lịch trình',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Add itinerary destination error:', error);
@@ -781,7 +803,7 @@ export const removeDestination = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã xóa điểm đến khỏi lịch trình',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Remove itinerary destination error:', error);
@@ -825,7 +847,7 @@ export const addTour = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Đã thêm tour vào lịch trình',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Add tour to itinerary error:', error);
@@ -864,7 +886,7 @@ export const removeTour = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã xóa tour khỏi lịch trình',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Remove tour from itinerary error:', error);
@@ -953,7 +975,7 @@ export const duplicateItinerary = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Đã lưu lịch trình vào tài khoản thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Duplicate itinerary error:', error);
@@ -1035,7 +1057,7 @@ export const shareItinerary = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: `Đã chia sẻ lịch trình với ${targetUser.username || targetUser.email}`,
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Share itinerary error:', error);
@@ -1181,7 +1203,7 @@ export const removeCollaborator = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Đã xóa quyền cộng tác viên',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Remove collaborator error:', error);
@@ -1281,7 +1303,7 @@ export const transferOwnership = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Chuyển quyền sở hữu thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Transfer ownership error:', error);
@@ -1341,7 +1363,7 @@ export const addComment = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Đã gửi bình luận thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Add itinerary comment error:', error);
@@ -1393,7 +1415,7 @@ export const deleteComment = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Đã xóa bình luận thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Delete itinerary comment error:', error);
@@ -1432,7 +1454,7 @@ export const addPackingItem = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Đã thêm vật dụng vào danh sách hành lý thành công',
-      itinerary: hydrateItinerary(populated),
+      itinerary: hydrateItinerary(populated, req.user._id),
       packingItem: itinerary.packingItems[itinerary.packingItems.length - 1]
     });
   } catch (error) {
@@ -1471,7 +1493,7 @@ export const updatePackingItem = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã cập nhật vật dụng thành công',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Update packing item error:', error);
@@ -1508,7 +1530,7 @@ export const removePackingItem = async (req, res) => {
     return res.json({
       success: true,
       message: 'Đã xóa vật dụng khỏi danh sách hành lý',
-      itinerary: hydrateItinerary(populated)
+      itinerary: hydrateItinerary(populated, req.user._id)
     });
   } catch (error) {
     console.error('Remove packing item error:', error);
@@ -1519,7 +1541,9 @@ export const removePackingItem = async (req, res) => {
 // START UC-151 Mark Item as Packed
 /**
  * Mark a packing item as packed or not packed.
- * Only the itinerary owner or a collaborator with edit permission may change status.
+ * Any member of the itinerary (owner or collaborator, including view-only)
+ * may mark the item as packed for themselves. The state is stored per user
+ * in `packedBy` so each member has an independent checklist progress.
  * @route PATCH /api/itineraries/:id/packing-items/:itemId/status
  * @access Customer
  */
@@ -1547,7 +1571,9 @@ export const updatePackingItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
     }
 
-    if (!canEdit(itinerary, req.user._id)) {
+    // Xem được lịch trình là được tự đánh dấu tiến độ của mình,
+    // kể cả collaborator chỉ có quyền 'view'.
+    if (!canView(itinerary, req.user._id)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật trạng thái vật dụng trong lịch trình này'
@@ -1559,24 +1585,49 @@ export const updatePackingItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy vật dụng trong danh sách hành lý' });
     }
 
-    const isPacked = status === 'completed';
-    item.isPacked = isPacked;
+    const viewerId = req.user._id;
+    const viewerKey = String(viewerId);
+    const ownerId = itinerary.owner?._id || itinerary.owner;
+
+    // Dữ liệu cũ: isPacked = true nhưng chưa có packedBy -> gán cho owner.
+    if ((item.packedBy || []).length === 0 && item.isPacked && ownerId) {
+      item.packedBy = [ownerId];
+    }
+
+    const packedByIds = (item.packedBy || []).map((id) => String(id?._id || id));
+    const shouldPack = status === 'completed';
+
+    if (shouldPack) {
+      if (!packedByIds.includes(viewerKey)) {
+        if (!Array.isArray(item.packedBy)) item.packedBy = [];
+        item.packedBy.push(viewerId);
+      }
+    } else {
+      item.packedBy = (item.packedBy || []).filter((id) => String(id?._id || id) !== viewerKey);
+    }
+
+    // Cờ tổng hợp/legacy: true nếu còn ít nhất một người đã đánh dấu.
+    item.isPacked = (item.packedBy || []).length > 0;
     await itinerary.save();
 
     const populated = await findByIdPopulated(itinerary._id);
     const updatedItem = itinerary.packingItems.find(
       (packingItem) => String(packingItem._id) === String(req.params.itemId)
     ) || item;
+    const viewerPacked = (updatedItem.packedBy || []).some(
+      (id) => String(id?._id || id) === viewerKey
+    );
 
     return res.json({
       success: true,
-      message: isPacked ? 'Đã đánh dấu vật dụng đã chuẩn bị' : 'Đã bỏ đánh dấu vật dụng',
-      itinerary: hydrateItinerary(populated),
+      message: viewerPacked ? 'Đã đánh dấu vật dụng đã chuẩn bị' : 'Đã bỏ đánh dấu vật dụng',
+      itinerary: hydrateItinerary(populated, viewerId),
       packingItem: {
         _id: updatedItem._id,
         name: updatedItem.name,
-        isPacked: updatedItem.isPacked,
-        status: updatedItem.isPacked ? 'completed' : 'incomplete'
+        isPacked: viewerPacked,
+        packedCount: (updatedItem.packedBy || []).length,
+        status: viewerPacked ? 'completed' : 'incomplete'
       }
     });
   } catch (error) {
