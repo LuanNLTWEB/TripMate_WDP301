@@ -33,7 +33,10 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
     e.preventDefault();
     const numPrice = Number(price);
     if (!price || isNaN(numPrice) || numPrice <= 0) {
-      setError('Giá tour mới phải là số hợp lệ lớn hơn 0.');
+      const msg = 'Giá tour mới phải là số hợp lệ lớn hơn 0.';
+      setError(msg);
+      toast.error(msg);
+      document.getElementById('edit-tour-price')?.focus();
       return;
     }
 
@@ -48,7 +51,9 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Không thể cập nhật giá tour.');
+      const msg = err.message || 'Không thể cập nhật giá tour.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +87,7 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4">
                 {error && (
                   <div className="alert alert-danger py-2 small mb-3">
@@ -99,7 +104,7 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
                     <input
                       type="text"
                       id="edit-tour-price"
-                      className="form-control font-monospace fw-semibold"
+                      className={`form-control font-monospace fw-semibold ${error ? 'is-invalid' : ''}`}
                       value={price ? Number(price).toLocaleString('vi-VN') : ''}
                       onChange={handlePriceChange}
                       placeholder="Ví dụ: 1.500.000"
@@ -107,6 +112,7 @@ export default function EditTourPriceModal({ open, onClose, tour, onUpdated }) {
                       required
                     />
                     <span className="input-group-text bg-light text-muted">VNĐ</span>
+                    {error && <div className="invalid-feedback">{error}</div>}
                   </div>
                   {price && !isNaN(Number(price)) && (
                     <div className="form-text mt-1 text-primary fw-medium small">

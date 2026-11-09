@@ -43,7 +43,10 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
     const normalizedReason = reason.trim();
 
     if (normalizedReason.length < MIN_REASON) {
-      setError(`Lý do hủy phải có ít nhất ${MIN_REASON} ký tự.`);
+      const msg = `Lý do hủy phải có ít nhất ${MIN_REASON} ký tự.`;
+      setError(msg);
+      toast.error(msg);
+      document.getElementById('cancelBookingReason')?.focus();
       return;
     }
 
@@ -57,6 +60,7 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
     } catch (requestError) {
       const message = requestError.message || 'Không thể hủy đặt tour.';
       setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +99,7 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4">
                 <p className="text-muted small mb-4">
                   Bạn đang hủy đơn cho <strong className="text-dark">{tourTitle}</strong>.
@@ -132,6 +136,7 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
                       setError('');
                     }}
                   />
+                  {error && <div className="invalid-feedback">{error}</div>}
                   <div className="d-flex justify-content-between mt-1">
                     <span className="text-muted small">Tối thiểu {MIN_REASON} ký tự</span>
                     <span className="text-muted small">{reason.length}/{MAX_REASON}</span>

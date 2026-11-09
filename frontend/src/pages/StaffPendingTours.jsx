@@ -111,7 +111,6 @@ export default function StaffPendingTours() {
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
-        <span className="management-page-kicker">Tour Approvals</span>
         <h1>Duyệt Tour Chờ</h1>
         <p>Kiểm tra và phê duyệt các tour do đối tác hoặc khách hàng đề xuất lên hệ thống.</p>
       </div>
@@ -266,7 +265,7 @@ export default function StaffPendingTours() {
           <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
-                <form onSubmit={handleConfirmApprove}>
+                <form onSubmit={handleConfirmApprove} noValidate>
                   <div className="modal-header">
                     <h2 className="modal-title h5 fw-bold d-flex align-items-center gap-2 text-success">
                       <i className="bi bi-check-circle"></i>
@@ -319,7 +318,7 @@ export default function StaffPendingTours() {
           <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
-                <form onSubmit={handleConfirmReject}>
+                <form onSubmit={handleConfirmReject} noValidate>
                   <div className="modal-header">
                     <h2 className="modal-title h5 fw-bold text-danger d-flex align-items-center gap-2">
                       <i className="bi bi-x-circle"></i>

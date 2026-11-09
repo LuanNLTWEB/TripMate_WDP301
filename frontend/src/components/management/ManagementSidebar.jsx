@@ -72,25 +72,45 @@ export function checkIsActive(item, location, user) {
   return false;
 }
 
-export default function ManagementSidebar({ isSidebarOpen, setIsSidebarOpen }) {
+export default function ManagementSidebar({ isSidebarOpen, setIsSidebarOpen, isCollapsed, setIsCollapsed }) {
   const { user } = useAuth();
   const location = useLocation();
   const navigation = getManagementNavigation(user?.role);
   const roleLabel = user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'tourProvider' ? 'Nhà cung cấp' : 'Nhân viên';
 
   return (
-    <aside className={`management-sidebar ${isSidebarOpen ? 'is-open' : ''}`}>
+    <aside className={`management-sidebar ${isSidebarOpen ? 'is-open' : ''} ${isCollapsed ? 'is-collapsed' : ''}`}>
       <div className="management-sidebar-header">
         <div>
           <span className="management-sidebar-eyebrow">Khu vực quản lý</span>
           <strong>{roleLabel}</strong>
         </div>
-        <button
-          type="button"
-          className="btn-close d-lg-none"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-label="Đóng menu"
-        ></button>
+        <div className="d-flex align-items-center gap-1">
+          {/* Desktop collapse icon button */}
+          {setIsCollapsed && (
+            <button
+              type="button"
+              className="management-sidebar-header-toggle btn btn-sm p-0 d-none d-md-inline-flex align-items-center justify-content-center"
+              onClick={() => {
+                setIsCollapsed(true);
+                try {
+                  localStorage.setItem('tripmate_sidebar_collapsed', 'true');
+                } catch {}
+              }}
+              title="Thu gọn menu quản lý"
+              aria-label="Thu gọn menu quản lý"
+            >
+              <i className="bi bi-layout-sidebar"></i>
+            </button>
+          )}
+          {/* Mobile close button */}
+          <button
+            type="button"
+            className="btn-close d-md-none"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Đóng menu"
+          ></button>
+        </div>
       </div>
 
       <nav className="management-navigation" aria-label="Điều hướng quản lý">

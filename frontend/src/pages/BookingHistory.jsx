@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
 import { bookingApi } from '../services/api';
 import CancelBookingModal from '../components/CancelBookingModal';
 // START UC-66 Submit Booking Complaint
@@ -115,6 +114,14 @@ const canCancelBooking = (booking) => {
   const hoursToDeparture = (new Date(booking.departureDate).getTime() - Date.now()) / (60 * 60 * 1000);
   return hoursToDeparture >= 48;
 };
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Mới đặt gần đây' },
+  { value: 'oldest', label: 'Cũ nhất' },
+  { value: 'departure-soon', label: 'Khởi hành gần nhất' },
+  { value: 'price-desc', label: 'Tổng tiền giảm dần' },
+  { value: 'price-asc', label: 'Tổng tiền tăng dần' }
+];
 
 const BookingHistory = () => {
   const { user, isAuthenticated } = useAuth();
@@ -283,22 +290,26 @@ const BookingHistory = () => {
       });
   }, [bookings, statusFilter, searchTerm, sortBy]);
 
+  const PAGE_SIZE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const pagedBookings = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredBookings.slice(start, start + PAGE_SIZE);
+  }, [filteredBookings, currentPage]);
+
   return (
     <>
-      <Navbar />
-
-      <main className="bg-light py-5 flex-grow-1" style={{ minHeight: '85vh' }}>
-        <div className="container">
+      <div className="management-page-section">
+        <div>
           {/* Header Banner */}
           <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
             <div>
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <span className="badge bg-primary-subtle text-primary border border-primary-subtle text-uppercase fw-semibold px-2 py-1 small">
-                  Booking History
-                </span>
-                <span className="text-muted small">·</span>
-                <span className="text-muted small">Cổng thông tin khách hàng</span>
-              </div>
               <h1 className="fw-bold mb-1 display-6">Lịch sử đặt tour</h1>
               <p className="text-muted mb-0">
                 Theo dõi trạng thái, chi tiết hành trình và quản lý các đơn đặt tour của bạn cùng TripMate.
@@ -348,178 +359,197 @@ const BookingHistory = () => {
             </div>
           ) : (
             <>
-              {/* Filter & Search Bar */}
+              {/* Filter & Search Section */}
               <div className="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-4 bg-white">
-                <div className="row g-3 align-items-center">
-                  {/* Status Pills */}
-                  <div className="col-12 col-lg-6">
-                    <div className="d-flex flex-wrap gap-2" role="tablist">
-                      <button
-                        type="button"
-                        id="tab-all-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'all'
-                            ? 'btn-dark text-white'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('all')}
-                      >
-                        Tất cả <span className="badge rounded-pill bg-white text-dark ms-1">{counts.all}</span>
-                      </button>
+                {/* Hàng 1: Danh sách các tab trạng thái dàn đều full-width */}
+                <div
+                  className="d-flex flex-wrap align-items-center gap-2 pb-3 border-bottom"
+                  role="tablist"
+                  aria-label="Lọc theo trạng thái đơn đặt tour"
+                >
+                  <button
+                    type="button"
+                    id="tab-all-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'all'
+                        ? 'btn-dark text-white'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('all')}
+                  >
+                    Tất cả <span className="badge rounded-pill bg-white text-dark ms-1">{counts.all}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-pending-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'pending'
-                            ? 'btn-warning text-dark fw-semibold'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('pending')}
-                      >
-                        Chờ xác nhận <span className="badge rounded-pill bg-warning-subtle text-dark ms-1">{counts.pending}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-pending-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'pending'
+                        ? 'btn-warning text-dark fw-semibold'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('pending')}
+                  >
+                    Chờ xác nhận <span className="badge rounded-pill bg-warning-subtle text-dark ms-1">{counts.pending}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-confirmed-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'confirmed'
-                            ? 'btn-success text-white'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('confirmed')}
-                      >
-                        Đã xác nhận <span className="badge rounded-pill bg-success-subtle text-success ms-1">{counts.confirmed}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-confirmed-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'confirmed'
+                        ? 'btn-success text-white'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('confirmed')}
+                  >
+                    Đã xác nhận <span className="badge rounded-pill bg-success-subtle text-success ms-1">{counts.confirmed}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-paid-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'paid'
-                            ? 'btn-info text-dark'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('paid')}
-                      >
-                        Đã thanh toán <span className="badge rounded-pill bg-info-subtle text-info-emphasis ms-1">{counts.paid}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-paid-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'paid'
+                        ? 'btn-info text-dark'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('paid')}
+                  >
+                    Đã thanh toán <span className="badge rounded-pill bg-info-subtle text-info-emphasis ms-1">{counts.paid}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-checked-in-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'checked_in'
-                            ? 'btn-primary text-white'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('checked_in')}
-                      >
-                        Đã điểm danh <span className="badge rounded-pill bg-primary-subtle text-primary ms-1">{counts.checked_in}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-checked-in-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'checked_in'
+                        ? 'btn-primary text-white'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('checked_in')}
+                  >
+                    Đã điểm danh <span className="badge rounded-pill bg-primary-subtle text-primary ms-1">{counts.checked_in}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-completed-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'completed'
-                            ? 'btn-secondary text-white'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('completed')}
-                      >
-                        Đã hoàn thành <span className="badge rounded-pill bg-secondary-subtle text-secondary ms-1">{counts.completed}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-completed-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'completed'
+                        ? 'btn-secondary text-white'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('completed')}
+                  >
+                    Đã hoàn thành <span className="badge rounded-pill bg-secondary-subtle text-secondary ms-1">{counts.completed}</span>
+                  </button>
 
-                      <button
-                        type="button"
-                        id="tab-cancelled-bookings"
-                        className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                          statusFilter === 'cancelled'
-                            ? 'btn-danger text-white'
-                            : 'btn-outline-secondary border-0 bg-light text-muted'
-                        }`}
-                        onClick={() => setStatusFilter('cancelled')}
-                      >
-                        Đã hủy <span className="badge rounded-pill bg-danger-subtle text-danger ms-1">{counts.cancelled}</span>
-                      </button>
+                  <button
+                    type="button"
+                    id="tab-cancelled-bookings"
+                    className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                      statusFilter === 'cancelled'
+                        ? 'btn-danger text-white'
+                        : 'btn-outline-secondary border-0 bg-light text-muted'
+                    }`}
+                    onClick={() => setStatusFilter('cancelled')}
+                  >
+                    Đã hủy <span className="badge rounded-pill bg-danger-subtle text-danger ms-1">{counts.cancelled}</span>
+                  </button>
 
-                      {counts.rejected > 0 && (
+                  {counts.rejected > 0 && (
+                    <button
+                      type="button"
+                      id="tab-rejected-bookings"
+                      className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                        statusFilter === 'rejected'
+                          ? 'btn-secondary text-white'
+                          : 'btn-outline-secondary border-0 bg-light text-muted'
+                      }`}
+                      onClick={() => setStatusFilter('rejected')}
+                    >
+                      Bị từ chối <span className="badge rounded-pill bg-secondary-subtle text-dark ms-1">{counts.rejected}</span>
+                    </button>
+                  )}
+
+                  {counts.no_show > 0 && (
+                    <button
+                      type="button"
+                      id="tab-noshow-bookings"
+                      className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
+                        statusFilter === 'no_show'
+                          ? 'btn-dark text-white'
+                          : 'btn-outline-danger border-0 bg-danger-subtle text-danger'
+                      }`}
+                      onClick={() => setStatusFilter('no_show')}
+                    >
+                      Vắng mặt <span className="badge rounded-pill bg-danger text-white ms-1">{counts.no_show}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Hàng 2: Thanh công cụ Tìm kiếm & Sắp xếp tách riêng biệt */}
+                <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3 pt-3">
+                  {/* Cột trái: Ô tìm kiếm và nút đặt lại bộ lọc */}
+                  <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: '520px' }}>
+                    <div className="input-group">
+                      <span className="input-group-text bg-light border-end-0 text-muted">
+                        <i className="bi bi-search"></i>
+                      </span>
+                      <input
+                        type="text"
+                        id="search-bookings-input"
+                        className="form-control bg-light border-start-0"
+                        placeholder="Tìm mã đơn, tên tour, điểm đến, tên khách..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      {searchTerm && (
                         <button
                           type="button"
-                          id="tab-rejected-bookings"
-                          className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                            statusFilter === 'rejected'
-                              ? 'btn-secondary text-white'
-                              : 'btn-outline-secondary border-0 bg-light text-muted'
-                          }`}
-                          onClick={() => setStatusFilter('rejected')}
+                          className="btn bg-light border-0 text-muted"
+                          onClick={() => setSearchTerm('')}
+                          title="Xóa tìm kiếm"
                         >
-                          Bị từ chối <span className="badge rounded-pill bg-secondary-subtle text-dark ms-1">{counts.rejected}</span>
-                        </button>
-                      )}
-
-                      {counts.no_show > 0 && (
-                        <button
-                          type="button"
-                          id="tab-noshow-bookings"
-                          className={`btn btn-sm rounded-pill px-3 py-2 fw-medium ${
-                            statusFilter === 'no_show'
-                              ? 'btn-dark text-white'
-                              : 'btn-outline-danger border-0 bg-danger-subtle text-danger'
-                          }`}
-                          onClick={() => setStatusFilter('no_show')}
-                        >
-                          Vắng mặt <span className="badge rounded-pill bg-danger text-white ms-1">{counts.no_show}</span>
+                          <i className="bi bi-x"></i>
                         </button>
                       )}
                     </div>
+
+                    {(searchTerm || statusFilter !== 'all') && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary rounded-pill px-3 text-nowrap d-inline-flex align-items-center gap-1"
+                        onClick={() => {
+                          setSearchTerm('');
+                          setStatusFilter('all');
+                        }}
+                        title="Đặt lại bộ lọc về mặc định"
+                      >
+                        <i className="bi bi-arrow-counterclockwise"></i>
+                        <span className="d-none d-sm-inline">Đặt lại</span>
+                      </button>
+                    )}
                   </div>
 
-                  {/* Search and Sort Controls */}
-                  <div className="col-12 col-lg-6">
-                    <div className="d-flex flex-column flex-sm-row gap-2 justify-content-lg-end">
-                      {/* Search box */}
-                      <div className="input-group" style={{ maxWidth: '320px' }}>
-                        <span className="input-group-text bg-light border-end-0 text-muted">
-                          <i className="bi bi-search"></i>
-                        </span>
-                        <input
-                          type="text"
-                          id="search-bookings-input"
-                          className="form-control bg-light border-start-0"
-                          placeholder="Tìm mã đơn, tour, tên khách..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        {searchTerm && (
-                          <button
-                            type="button"
-                            className="btn bg-light border-0 text-muted"
-                            onClick={() => setSearchTerm('')}
-                            title="Xóa tìm kiếm"
-                          >
-                            <i className="bi bi-x"></i>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Sort select */}
-                      <select
+                  {/* Cột phải: Thông tin số lượng hiển thị và Dropdown sắp xếp */}
+                  <div className="d-flex align-items-center gap-3 justify-content-between justify-content-md-end">
+                    <span className="text-muted small text-nowrap">
+                      Hiển thị <strong>{filteredBookings.length}</strong> / {bookings.length} đơn
+                    </span>
+                    <div className="d-flex align-items-center gap-2">
+                      <label htmlFor="sort-bookings-select" className="small text-muted fw-semibold mb-0 text-nowrap d-none d-sm-inline">
+                        <i className="bi bi-sort-down me-1"></i>Sắp xếp:
+                      </label>
+                      <CustomSelect
                         id="sort-bookings-select"
-                        className="form-select bg-light border-0 fw-medium text-dark"
-                        style={{ width: 'auto' }}
                         value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        aria-label="Sắp xếp đơn đặt"
-                      >
-                        <option value="newest">Mới đặt gần đây</option>
-                        <option value="oldest">Cũ nhất</option>
-                        <option value="departure-soon">Khởi hành gần nhất</option>
-                        <option value="price-desc">Tổng tiền giảm dần</option>
-                        <option value="price-asc">Tổng tiền tăng dần</option>
-                      </select>
+                        options={SORT_OPTIONS}
+                        onChange={(e, val) => setSortBy(val !== undefined ? val : e.target.value)}
+                        style={{ minWidth: '190px' }}
+                        triggerStyle={{ height: '38px', backgroundColor: '#f8f9fa', border: '1px solid #dee2e6' }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -613,9 +643,10 @@ const BookingHistory = () => {
                   </div>
                 </div>
               ) : (
-                /* Bookings List */
-                <div className="row g-4">
-                  {filteredBookings.map((booking) => {
+                <>
+                  /* Bookings List */
+                  <div className="row g-4">
+                  {pagedBookings.map((booking) => {
                     const statusInfo = getStatusBadge(booking.status);
                     const shortCode = `BK-${booking._id.slice(-6).toUpperCase()}`;
                     const tour = booking.tourId || {};
@@ -787,6 +818,19 @@ const BookingHistory = () => {
                                   )}
                                   {/* END UC-82 Download Booking Voucher */}
 
+                                  {/* Đánh giá tour khi chuyến đi đã hoàn thành */}
+                                  {booking.status === 'completed' && (tour._id || booking.tourId) && (
+                                    <Link
+                                      to={`/tours/${tour._id || (typeof booking.tourId === 'object' ? booking.tourId._id : booking.tourId)}?review=true#reviews`}
+                                      id={`btn-review-booking-${booking._id}`}
+                                      className="btn btn-warning btn-sm rounded-pill py-1.5 px-3 fw-semibold w-100 d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs"
+                                      title="Đánh giá tour đã hoàn thành"
+                                    >
+                                      <i className="bi bi-star-fill text-dark"></i>
+                                      <span>Đánh giá tour</span>
+                                    </Link>
+                                  )}
+
                                   {/* Active Booking Quick Action: Sửa thông tin hành khách */}
                                   {booking.status !== 'cancelled' && booking.status !== 'completed' && booking.status !== 'checked_in' && (
                                     <div className="w-100">
@@ -829,7 +873,7 @@ const BookingHistory = () => {
                                       </button>
                                     )}
 
-                                    {booking.status !== 'cancelled' && (
+                                    {booking.status !== 'cancelled' && booking.status !== 'completed' && (
                                       <button
                                         type="button"
                                         id={`btn-cancel-booking-${booking._id}`}
@@ -851,11 +895,55 @@ const BookingHistory = () => {
                     );
                   })}
                 </div>
-              )}
+
+                {totalPages > 1 && (
+                  <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-4 pt-3 border-top">
+                    <div className="text-muted small">
+                      Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredBookings.length)} trên tổng số {filteredBookings.length} đơn đặt tour
+                    </div>
+                    <nav aria-label="Phân trang đơn đặt tour">
+                      <ul className="pagination pagination-sm mb-0">
+                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                          <button
+                            type="button"
+                            className="page-link"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <i className="bi bi-chevron-left me-1"></i>Trước
+                          </button>
+                        </li>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                            <button
+                              type="button"
+                              className="page-link"
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </button>
+                          </li>
+                        ))}
+                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                          <button
+                            type="button"
+                            className="page-link"
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                          >
+                            Sau<i className="bi bi-chevron-right ms-1"></i>
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </div>
+                )}
+              </>
+            )}
             </>
           )}
         </div>
-      </main>
+      </div>
 
       {/* START UC-66 Submit Booking Complaint */}
       {bookingToComplain && (
@@ -1171,6 +1259,16 @@ const BookingHistory = () => {
                       <i className="bi bi-ticket-perforated me-1"></i>Xem Voucher
                     </button>
                   )}
+                  {selectedBooking.status === 'completed' && (selectedBooking.tourId?._id || selectedBooking.tourId) && (
+                    <Link
+                      to={`/tours/${selectedBooking.tourId?._id || (typeof selectedBooking.tourId === 'object' ? selectedBooking.tourId._id : selectedBooking.tourId)}?review=true#reviews`}
+                      className="btn btn-warning rounded-pill px-4 fw-semibold d-inline-flex align-items-center gap-1.5"
+                      onClick={() => setSelectedBooking(null)}
+                    >
+                      <i className="bi bi-star-fill"></i>
+                      <span>Đánh giá tour</span>
+                    </Link>
+                  )}
                   <button
                     type="button"
                     id="btn-close-booking-modal"
@@ -1196,8 +1294,6 @@ const BookingHistory = () => {
         />
       )}
       {/* END UC-82 Download Booking Voucher */}
-
-      <Footer />
     </>
   );
 };

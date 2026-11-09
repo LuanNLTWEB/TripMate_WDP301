@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { notificationApi } from '../services/api';
@@ -93,14 +92,13 @@ export default function Notifications() {
 
   return (
     <>
-      <Navbar />
-      <main className="py-5 bg-light flex-grow-1" style={{ minHeight: 'calc(100vh - 160px)' }}>
-        <div className="container">
+      <div className="management-page-section">
+        <div>
           {/* Header */}
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
               <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                <h1 className="h3 fw-bold mb-0">Hộp thư thông báo</h1>
+                <h1 className="fw-bold mb-1 display-6">Hộp thư thông báo</h1>
                 {unreadCount > 0 && (
                   <>
                     <span className="badge bg-danger rounded-pill px-2 py-1">
@@ -108,7 +106,7 @@ export default function Notifications() {
                     </span>
                     <button
                       type="button"
-                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 ms-2"
+                      className="btn btn-sm btn-outline-primary rounded-pill d-inline-flex align-items-center gap-1 ms-2"
                       onClick={handleMarkAllAsRead}
                       disabled={isMarkingAll}
                       title="Đánh dấu tất cả thông báo là đã đọc"
@@ -128,26 +126,31 @@ export default function Notifications() {
           {/* Filter Bar */}
           <div className="card shadow-sm border-0 rounded-4 mb-4">
             <div className="card-body p-3">
-              <div className="row g-2 align-items-center">
+              <div className="row g-3 align-items-center justify-content-between">
                 <div className="col-12 col-md-auto">
-                  <div className="btn-group w-100" role="group">
+                  <div className="d-flex flex-wrap gap-1 p-1 bg-light rounded-3 border">
                     <button
                       type="button"
-                      className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn btn-sm rounded-2 px-3 fw-medium ${statusFilter === 'all' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'}`}
                       onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
                     >
                       Tất cả
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm ${statusFilter === 'unread' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn btn-sm rounded-2 px-3 fw-medium d-inline-flex align-items-center gap-1.5 ${statusFilter === 'unread' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'}`}
                       onClick={() => { setStatusFilter('unread'); setCurrentPage(1); }}
                     >
-                      Chưa đọc {unreadCount > 0 && `(${unreadCount})`}
+                      <span>Chưa đọc</span>
+                      {unreadCount > 0 && (
+                        <span className={`badge rounded-pill ${statusFilter === 'unread' ? 'bg-white text-primary' : 'bg-danger text-white'}`} style={{ fontSize: '0.72rem' }}>
+                          {unreadCount}
+                        </span>
+                      )}
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm ${statusFilter === 'read' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                      className={`btn btn-sm rounded-2 px-3 fw-medium ${statusFilter === 'read' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'}`}
                       onClick={() => { setStatusFilter('read'); setCurrentPage(1); }}
                     >
                       Đã đọc
@@ -157,19 +160,21 @@ export default function Notifications() {
 
                 <div className="col-12 col-md-auto ms-md-auto">
                   <div className="d-flex align-items-center gap-2">
-                    <label htmlFor="filter-type" className="small text-muted text-nowrap">Loại:</label>
-                    <select
+                    <label htmlFor="filter-type" className="small text-muted text-nowrap fw-medium d-flex align-items-center gap-1">
+                      <i className="bi bi-funnel text-primary"></i>
+                      <span>Loại:</span>
+                    </label>
+                    <CustomSelect
                       id="filter-type"
-                      className="form-select form-select-sm"
                       value={typeFilter}
-                      onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-                    >
-                      {typeFilterOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={typeFilterOptions}
+                      onChange={(e, val) => {
+                        setTypeFilter(val ?? e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      style={{ width: '230px' }}
+                      triggerStyle={{ height: '38px', borderRadius: '10px', fontSize: '0.88rem' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -214,7 +219,7 @@ export default function Notifications() {
                   <div
                     key={item._id}
                     className={`card shadow-sm border-0 rounded-4 transition-all ${
-                      !item.isRead ? 'border-start border-4 border-primary' : ''
+                      !item.isRead ? 'border-start border-4 border-primary' : 'border border-light-subtle'
                     }`}
                     style={{
                       backgroundColor: !item.isRead ? '#f8faff' : '#ffffff'
@@ -222,12 +227,19 @@ export default function Notifications() {
                   >
                     <div className="card-body p-3 p-md-4">
                       <div className="d-flex align-items-start gap-3">
-                        <div className="p-2 bg-white shadow-sm rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '44px', height: '44px' }}>
+                        <div
+                          className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5 shadow-sm"
+                          style={{
+                            width: '46px',
+                            height: '46px',
+                            backgroundColor: !item.isRead ? 'rgba(37, 99, 235, 0.12)' : 'rgba(100, 116, 139, 0.08)'
+                          }}
+                        >
                           <i className={`bi ${typeMeta.iconClass} fs-5`}></i>
                         </div>
 
                         <div className="flex-grow-1">
-                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1.5">
                             <h6 className={`mb-0 ${!item.isRead ? 'fw-bold text-dark' : 'fw-semibold text-secondary'}`}>
                               {item.title}
                             </h6>
@@ -236,14 +248,14 @@ export default function Notifications() {
                                 {typeMeta.label}
                               </span>
                               {!item.isRead && (
-                                <span className="badge bg-primary rounded-pill small" style={{ fontSize: '10px' }}>
+                                <span className="badge bg-danger rounded-pill px-2 py-0.5" style={{ fontSize: '10px' }}>
                                   Mới
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <p className="text-secondary small mb-2" style={{ whiteSpace: 'pre-wrap' }}>
+                          <p className="text-secondary small mb-3" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                             {item.message}
                           </p>
 
@@ -252,25 +264,25 @@ export default function Notifications() {
                               <span>
                                 {item.sender?.username ? (
                                   <>
-                                    <i className="bi bi-person-fill me-1"></i>
+                                    <i className="bi bi-person-fill me-1 text-primary"></i>
                                     Gửi bởi: <strong>{item.sender.username}</strong>
                                     {item.sender.role === 'staff' && ' (Nhân viên TripMate)'}
                                     {item.sender.role === 'tourProvider' && ' (Nhà cung cấp tour)'}
                                   </>
                                 ) : item.invitedBy?.username ? (
                                   <>
-                                    <i className="bi bi-person-fill me-1"></i>
+                                    <i className="bi bi-person-fill me-1 text-info"></i>
                                     Lời mời từ: <strong>{item.invitedBy.username}</strong>
                                   </>
                                 ) : (
                                   <>
-                                    <i className="bi bi-shield-check me-1"></i>
+                                    <i className="bi bi-shield-check me-1 text-success"></i>
                                     Hệ thống TripMate
                                   </>
                                 )}
                               </span>
-                              <span>
-                                <i className="bi bi-clock me-1"></i>
+                              <span className="font-monospace">
+                                <i className="bi bi-clock me-1 text-muted"></i>
                                 {formatNotificationDateTime(item.createdAt)}
                               </span>
                             </div>
@@ -279,14 +291,23 @@ export default function Notifications() {
                               <div className="d-flex align-items-center gap-2 ms-auto">
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-outline-primary py-0 px-2 d-inline-flex align-items-center gap-1"
-                                  style={{ fontSize: '0.78rem', height: '26px' }}
+                                  className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1.5 shadow-sm"
+                                  style={{ fontSize: '0.8rem' }}
                                   onClick={() => handleMarkAsRead(item._id)}
                                   disabled={actionLoadingId === item._id || isMarkingAll}
                                   title="Đánh dấu đã đọc"
                                 >
-                                  <i className="bi bi-check2"></i>
-                                  <span>Đánh dấu đã đọc</span>
+                                  {actionLoadingId === item._id ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                      <span>Đang xử lý...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <i className="bi bi-check2"></i>
+                                      <span>Đánh dấu đã đọc</span>
+                                    </>
+                                  )}
                                 </button>
                               </div>
                             )}
@@ -302,36 +323,62 @@ export default function Notifications() {
 
           {/* Pagination */}
           {!isLoading && totalPages > 1 && (
-            <div className="d-flex justify-content-between align-items-center pt-3 border-top">
-              <div className="small text-muted">
-                Hiển thị {notifications.length} / {total} thông báo
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 pt-3 border-top mt-4">
+              <div className="small text-muted fw-medium">
+                Hiển thị <strong>{notifications.length}</strong> / <strong>{total}</strong> thông báo · Trang <strong>{currentPage}</strong> / {totalPages}
               </div>
-              <div className="btn-group">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                >
-                  <i className="bi bi-chevron-left me-1"></i> Trang trước
-                </button>
-                <button type="button" className="btn btn-sm btn-outline-secondary disabled">
-                  {currentPage} / {totalPages}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                >
-                  Trang sau <i className="bi bi-chevron-right ms-1"></i>
-                </button>
-              </div>
+              <nav aria-label="Phân trang thông báo">
+                <ul className="pagination pagination-sm mb-0 shadow-sm">
+                  <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
+                    <button
+                      type="button"
+                      className="page-link"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    >
+                      <i className="bi bi-chevron-left me-1"></i>Trước
+                    </button>
+                  </li>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1)
+                    .filter((pageNum) => (
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      Math.abs(pageNum - currentPage) <= 1
+                    ))
+                    .map((pageNum, index, arr) => {
+                      const prev = arr[index - 1];
+                      const hasGap = prev && pageNum - prev > 1;
+                      return (
+                        <span key={pageNum} className="d-inline-flex">
+                          {hasGap && <li className="page-item disabled"><span className="page-link">…</span></li>}
+                          <li className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
+                            <button
+                              type="button"
+                              className="page-link"
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </button>
+                          </li>
+                        </span>
+                      );
+                    })}
+                  <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
+                    <button
+                      type="button"
+                      className="page-link"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    >
+                      Sau<i className="bi bi-chevron-right ms-1"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
             </div>
           )}
         </div>
-      </main>
-      <Footer />
+      </div>
     </>
   );
 }

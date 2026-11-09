@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { activityLogApi } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const ACTION_LABELS = {
   CREATE_ACCOUNT: 'Tạo tài khoản',
@@ -33,6 +35,16 @@ const TARGET_LABELS = {
   Role: 'Vai trò',
   Review: 'Đánh giá'
 };
+
+const ACTION_OPTIONS = [
+  { value: 'all', label: 'Tất cả hành động' },
+  ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label }))
+];
+
+const TARGET_OPTIONS = [
+  { value: 'all', label: 'Tất cả đối tượng' },
+  ...Object.entries(TARGET_LABELS).map(([value, label]) => ({ value, label }))
+];
 
 const formatDateTime = (dateString) => {
   if (!dateString) return '—';
@@ -130,11 +142,10 @@ function AdminActivityLogs() {
           <div className="card-body p-3">
             <div className="row g-2 align-items-center">
               <div className="col-12 col-md-5">
-                <div className="input-group">
-                  <span className="input-group-text bg-white"><i className="bi bi-search"></i></span>
+                <div className="management-search-box" style={{ maxWidth: '100%' }}>
+                  <i className="bi bi-search"></i>
                   <input
                     type="search"
-                    className="form-control"
                     placeholder="Tìm theo tên quản trị viên, email, chi tiết..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -143,37 +154,22 @@ function AdminActivityLogs() {
                 </div>
               </div>
               <div className="col-6 col-md-3">
-                <select
-                  className="form-select"
+                <CustomSelect
+                  id="action-filter-select"
                   value={actionFilter}
-                  onChange={(e) => setActionFilter(e.target.value)}
-                  aria-label="Lọc theo hành động"
-                >
-                  <option value="all">Tất cả hành động</option>
-                  <option value="CREATE_ACCOUNT">Tạo tài khoản</option>
-                  <option value="UPDATE_ACCOUNT_ROLE">Đổi vai trò tài khoản</option>
-                  <option value="ACTIVATE_ACCOUNT">Kích hoạt tài khoản</option>
-                  <option value="DEACTIVATE_ACCOUNT">Vô hiệu hóa tài khoản</option>
-                  <option value="DELETE_ACCOUNT">Xóa tài khoản</option>
-                  <option value="CREATE_ROLE">Tạo vai trò</option>
-                  <option value="UPDATE_ROLE">Cập nhật vai trò</option>
-                  <option value="DELETE_ROLE">Xóa vai trò</option>
-                  <option value="MODERATE_REVIEW">Kiểm duyệt đánh giá</option>
-                  <option value="DELETE_REVIEW">Xóa đánh giá</option>
-                </select>
+                  options={ACTION_OPTIONS}
+                  onChange={(e, val) => setActionFilter(val !== undefined ? val : e.target.value)}
+                  placeholder="Lọc theo hành động"
+                />
               </div>
               <div className="col-6 col-md-2">
-                <select
-                  className="form-select"
+                <CustomSelect
+                  id="target-type-filter-select"
                   value={targetTypeFilter}
-                  onChange={(e) => setTargetTypeFilter(e.target.value)}
-                  aria-label="Lọc theo đối tượng"
-                >
-                  <option value="all">Tất cả đối tượng</option>
-                  <option value="Account">Tài khoản</option>
-                  <option value="Role">Vai trò</option>
-                  <option value="Review">Đánh giá</option>
-                </select>
+                  options={TARGET_OPTIONS}
+                  onChange={(e, val) => setTargetTypeFilter(val !== undefined ? val : e.target.value)}
+                  placeholder="Lọc theo đối tượng"
+                />
               </div>
               <div className="col-12 col-md-2 text-md-end">
                 {(search || actionFilter !== 'all' || targetTypeFilter !== 'all') && (
@@ -248,37 +244,14 @@ function AdminActivityLogs() {
               </table>
             </div>
 
-            {totalPages > 1 && (
-              <div className="management-pagination-bar mt-4 pt-3 border-top">
-                <div className="small text-muted">
-                  Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong> (Tổng <strong>{total}</strong> hoạt động)
-                </div>
-                <nav aria-label="Phân trang nhật ký">
-                  <ul className="pagination pagination-sm mb-0">
-                    <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
-                      <button
-                        type="button"
-                        className="page-link"
-                        disabled={currentPage <= 1 || isLoading}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                      >
-                        <i className="bi bi-chevron-left me-1"></i>Trước
-                      </button>
-                    </li>
-                    <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
-                      <button
-                        type="button"
-                        className="page-link"
-                        disabled={currentPage >= totalPages || isLoading}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                      >
-                        Sau<i className="bi bi-chevron-right ms-1"></i>
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            )}
+            <ManagementPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              itemLabel="hoạt động"
+              isLoading={isLoading}
+              onPageChange={handlePageChange}
+            />
           </div>
         </div>
       </div>

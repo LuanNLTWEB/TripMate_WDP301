@@ -13,7 +13,6 @@ export default function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [audienceTab, setAudienceTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
@@ -28,7 +27,6 @@ export default function Announcements() {
       try {
         const response = await announcementApi.getAll({
           search: appliedSearch,
-          audience: audienceTab,
           page: currentPage,
           limit: 9
         });
@@ -52,7 +50,7 @@ export default function Announcements() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, audienceTab, currentPage]);
+  }, [appliedSearch, currentPage]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -63,11 +61,6 @@ export default function Announcements() {
   const handleClearSearch = () => {
     setSearchInput('');
     setAppliedSearch('');
-    setCurrentPage(1);
-  };
-
-  const handleTabChange = (newTab) => {
-    setAudienceTab(newTab);
     setCurrentPage(1);
   };
 
@@ -84,14 +77,14 @@ export default function Announcements() {
           <div className="row align-items-center justify-content-between g-4">
             <div className="col-lg-7">
               <span className="announcements-badge-kicker">
-                <i className="bi bi-megaphone-fill"></i>
+                <i className="bi bi-newspaper"></i>
                 Hệ thống TripMate
               </span>
               <h1 className="announcements-heading">
-                Thông báo & Tin tức Hệ thống
+                Tin tức & Bản tin Hệ thống
               </h1>
               <p className="announcements-subheading">
-                Theo dõi các thông tin quan trọng về dịch vụ, bảo trì định kỳ, nâng cấp hệ thống và chính sách mới nhất.
+                Theo dõi các tin tức mới nhất, sự kiện, cập nhật chính sách và thông tin hoạt động từ TripMate.
               </p>
             </div>
 
@@ -103,8 +96,8 @@ export default function Announcements() {
                   className="form-control border-0 shadow-none px-2 py-1"
                   value={searchInput}
                   maxLength={100}
-                  placeholder="Tìm kiếm thông báo..."
-                  aria-label="Tìm kiếm thông báo"
+                  placeholder="Tìm kiếm tin tức..."
+                  aria-label="Tìm kiếm tin tức"
                   onChange={(event) => setSearchInput(event.target.value)}
                 />
                 {searchInput && (
@@ -133,33 +126,27 @@ export default function Announcements() {
       {/* Main Content Area */}
       <main className="bg-light min-vh-100 py-5">
         <div className="container">
-          {/* Quick Filter Tabs & Counts */}
+          {/* Section Heading & Result Count */}
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-            <div className="d-flex flex-wrap gap-2 align-items-center">
-              <button
-                type="button"
-                className={`announcement-filter-pill ${audienceTab === 'all' ? 'active' : ''}`}
-                onClick={() => handleTabChange('all')}
-              >
-                <i className="bi bi-collection"></i>
-                Tất cả thông báo
-              </button>
-              <button
-                type="button"
-                className={`announcement-filter-pill ${audienceTab === 'customer' ? 'active' : ''}`}
-                onClick={() => handleTabChange('customer')}
-              >
-                <i className="bi bi-person"></i>
-                Khách du lịch
-              </button>
-              <button
-                type="button"
-                className={`announcement-filter-pill ${audienceTab === 'tourProvider' ? 'active' : ''}`}
-                onClick={() => handleTabChange('tourProvider')}
-              >
-                <i className="bi bi-building"></i>
-                Nhà cung cấp tour
-              </button>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge bg-primary bg-opacity-10 text-primary p-2 rounded-3 fs-6">
+                <i className="bi bi-bell-fill"></i>
+              </span>
+              <div>
+                <h4 className="fw-bold text-dark mb-0">Danh sách tin tức</h4>
+                {appliedSearch && (
+                  <div className="small text-muted mt-1">
+                    Kết quả tìm kiếm cho: <strong className="text-primary">"{appliedSearch}"</strong>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm text-danger p-0 ms-2 text-decoration-none"
+                      onClick={handleClearSearch}
+                    >
+                      <i className="bi bi-x-circle me-1"></i>Xóa tìm kiếm
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="small text-muted fw-semibold d-flex align-items-center gap-2">
@@ -168,7 +155,7 @@ export default function Announcements() {
                 <span>Đang tải dữ liệu...</span>
               ) : (
                 <span>
-                  Hiển thị <strong>{displayedAnnouncements.length}</strong> / <strong>{total}</strong> thông báo chính thức
+                  Hiển thị <strong>{displayedAnnouncements.length}</strong> / <strong>{total}</strong> bài viết tin tức
                 </span>
               )}
             </div>
@@ -186,7 +173,7 @@ export default function Announcements() {
               <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
                 <span className="visually-hidden">Đang tải...</span>
               </div>
-              <div className="text-muted mt-3 fw-semibold">Đang tải danh sách thông báo hệ thống...</div>
+              <div className="text-muted mt-3 fw-semibold">Đang tải danh sách tin tức hệ thống...</div>
             </div>
           ) : displayedAnnouncements.length === 0 ? (
             <section className="card border-0 shadow-sm text-center py-5 px-4 rounded-4 my-4">
@@ -194,13 +181,13 @@ export default function Announcements() {
                 className="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3"
                 style={{ width: '80px', height: '80px' }}
               >
-                <i className="bi bi-megaphone fs-1"></i>
+                <i className="bi bi-newspaper fs-1"></i>
               </div>
-              <h2 className="h4 fw-bold text-dark mb-2">Chưa có thông báo phù hợp</h2>
+              <h2 className="h4 fw-bold text-dark mb-2">Chưa có tin tức phù hợp</h2>
               <p className="text-muted mb-4" style={{ maxWidth: '480px', margin: '0 auto' }}>
                 {appliedSearch
-                  ? `Không tìm thấy thông báo nào chứa từ khóa "${appliedSearch}". Thử tìm kiếm với cụm từ khác.`
-                  : 'Hiện tại chưa có thông báo nào mới trong danh mục này. Hãy quay lại sau nhé!'}
+                  ? `Không tìm thấy tin tức nào chứa từ khóa "${appliedSearch}". Thử tìm kiếm với cụm từ khác.`
+                  : 'Hiện tại chưa có tin tức nào mới. Hãy quay lại sau nhé!'}
               </p>
               {appliedSearch && (
                 <div>
@@ -209,7 +196,7 @@ export default function Announcements() {
                     className="btn btn-outline-primary px-4 py-2 rounded-3"
                     onClick={handleClearSearch}
                   >
-                    <i className="bi bi-arrow-counterclockwise me-2"></i>Xem tất cả thông báo
+                    <i className="bi bi-arrow-counterclockwise me-2"></i>Xem tất cả tin tức
                   </button>
                 </div>
               )}
@@ -231,7 +218,7 @@ export default function Announcements() {
                         <div className="d-flex flex-wrap align-items-center gap-2">
                           <span className="announcement-featured-tag">
                             <i className="bi bi-broadcast"></i>
-                            Thông báo mới nhất
+                            Tin tức mới nhất
                           </span>
                           <span className={`management-badge ${featuredAudience.className}`}>
                             <i className={`bi ${featuredAudience.icon} me-1`}></i>
@@ -294,7 +281,7 @@ export default function Announcements() {
                         <div className="d-flex align-items-center justify-content-between mb-4">
                           <h2 className="h5 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                             <i className="bi bi-collection text-primary"></i>
-                            Các thông báo khác ({otherAnnouncements.length})
+                            Các tin tức khác ({otherAnnouncements.length})
                           </h2>
                         </div>
 
@@ -372,7 +359,7 @@ export default function Announcements() {
 
               {/* Pagination */}
               {!loading && totalPages > 1 && (
-                <nav className="d-flex justify-content-center mt-5" aria-label="Phân trang thông báo">
+                <nav className="d-flex justify-content-center mt-5" aria-label="Phân trang tin tức">
                   <ul className="pagination pagination-md shadow-sm mb-0">
                     <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
                       <button

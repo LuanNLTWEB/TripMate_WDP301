@@ -37,12 +37,18 @@ export default function CancelDepartureModal({ open, onClose, departure, tourTit
 
     const trimmedReason = reason.trim();
     if (!trimmedReason) {
-      setErrorMsg('Vui lòng nhập lý do hủy lịch khởi hành để thông báo cho khách hàng.');
+      const msg = 'Vui lòng nhập lý do hủy lịch khởi hành để thông báo cho khách hàng.';
+      setErrorMsg(msg);
+      toast.error(msg);
+      document.getElementById('cancel-departure-reason')?.focus();
       return;
     }
 
     if (trimmedReason.length > 500) {
-      setErrorMsg('Lý do hủy không được vượt quá 500 ký tự.');
+      const msg = 'Lý do hủy không được vượt quá 500 ký tự.';
+      setErrorMsg(msg);
+      toast.error(msg);
+      document.getElementById('cancel-departure-reason')?.focus();
       return;
     }
 

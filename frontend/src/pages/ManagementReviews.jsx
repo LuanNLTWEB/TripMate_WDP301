@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import ReviewDetailModal from '../components/ReviewDetailModal';
 import ReviewManagementTable from '../components/ReviewManagementTable';
+import ManagementPagination from '../components/management/ManagementPagination';
 import { useToast } from '../hooks/useToast';
 import { reviewApi } from '../services/api';
 
@@ -325,7 +326,6 @@ export default function ManagementReviews() {
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
-        <span className="management-page-kicker">Review Moderation</span>
         <h1>Quản Lý Đánh Giá</h1>
         <p>Xem báo cáo vi phạm và kiểm duyệt đánh giá tour trong cùng một quy trình.</p>
       </div>
@@ -412,32 +412,14 @@ export default function ManagementReviews() {
           onRestore={isDeletedView ? handleRestore : undefined}
         />
 
-        {!loading && totalPages > 1 && (
-          <div className="management-pagination-bar">
-            <div>
-              Trang <strong>{currentPage}</strong>/{totalPages} · Tổng <strong>{total}</strong>{' '}
-              {isReportedView ? 'báo cáo' : 'đánh giá'}
-            </div>
-            <div className="btn-group btn-group-sm">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                disabled={currentPage <= 1 || loading}
-                onClick={() => setCurrentPage((page) => page - 1)}
-              >
-                <i className="bi bi-chevron-left me-1"></i>Trước
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                disabled={currentPage >= totalPages || loading}
-                onClick={() => setCurrentPage((page) => page + 1)}
-              >
-                Sau<i className="bi bi-chevron-right ms-1"></i>
-              </button>
-            </div>
-          </div>
-        )}
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={total}
+          itemLabel={isReportedView ? 'báo cáo' : 'đánh giá'}
+          isLoading={loading}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <ReviewDetailModal

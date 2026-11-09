@@ -14,11 +14,17 @@ const ReportReviewModal = ({ review, onClose, onReported }) => {
   const toast = useToast();
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!reason) return;
+    if (!reason) {
+      setError('Vui lòng chọn lý do báo cáo.');
+      document.getElementById(`reason-${REPORT_REASONS[0]}`)?.focus();
+      toast.error('Vui lòng chọn lý do báo cáo.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -52,7 +58,7 @@ const ReportReviewModal = ({ review, onClose, onReported }) => {
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body">
                 <p className="text-muted small mb-3">
                   Chọn lý do báo cáo đánh giá này. Chúng tôi sẽ xem xét và xử lý trong thời gian sớm nhất.
@@ -64,19 +70,23 @@ const ReportReviewModal = ({ review, onClose, onReported }) => {
                     {REPORT_REASONS.map((r) => (
                       <div key={r} className="form-check">
                         <input
-                          className="form-check-input"
+                          className={`form-check-input ${error ? 'is-invalid' : ''}`}
                           type="radio"
                           id={`reason-${r}`}
                           name="reportReason"
                           value={r}
                           checked={reason === r}
-                          onChange={() => setReason(r)}
+                          onChange={() => {
+                            setReason(r);
+                            setError('');
+                          }}
                           disabled={isSubmitting}
                         />
                         <label className="form-check-label" htmlFor={`reason-${r}`}>{r}</label>
                       </div>
                     ))}
                   </div>
+                  {error && <div className="invalid-feedback d-block">{error}</div>}
                 </div>
 
                 <div className="mb-1">
@@ -107,7 +117,7 @@ const ReportReviewModal = ({ review, onClose, onReported }) => {
                 <button
                   type="submit"
                   className="btn btn-danger"
-                  disabled={!reason || isSubmitting}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>

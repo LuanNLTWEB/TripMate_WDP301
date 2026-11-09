@@ -63,7 +63,19 @@ function EditItineraryModal({ open, onClose, itinerary, onUpdated }) {
     event.preventDefault();
     const nextErrors = validate(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || saving) return;
+    if (Object.keys(nextErrors).length > 0) {
+      const fieldIdMap = {
+        title: 'itinerary-edit-title',
+        startDate: 'itinerary-edit-start',
+        endDate: 'itinerary-edit-end',
+        budget: 'itinerary-edit-budget'
+      };
+      const firstField = Object.keys(nextErrors)[0];
+      document.getElementById(fieldIdMap[firstField])?.focus();
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      return;
+    }
+    if (saving) return;
 
     setSaving(true);
     try {

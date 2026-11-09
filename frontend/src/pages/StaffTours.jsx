@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { tourApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   style: 'currency',
@@ -25,6 +26,7 @@ function StaffTours() {
   const [error, setError] = useState('');
   const [pendingTour, setPendingTour] = useState(null);
   const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const loadTours = async (searchTerm = search, selectedStatus = status, page = currentPage) => {
@@ -57,12 +59,14 @@ function StaffTours() {
   const openStatusDialog = (tour) => {
     setPendingTour(tour);
     setReason('');
+    setReasonError('');
   };
 
   const closeStatusDialog = () => {
     if (isSaving) return;
     setPendingTour(null);
     setReason('');
+    setReasonError('');
   };
 
   const handleStatusChange = async (event) => {
@@ -71,8 +75,16 @@ function StaffTours() {
 
     const isSuspending = pendingTour.status !== 'suspended';
     const cleanReason = reason.trim();
+    if (isSuspending && !cleanReason) {
+      setReasonError('Vui lòng nhập lý do tạm ngưng tour.');
+      document.getElementById('tour-suspension-reason')?.focus();
+      toast.error('Vui lòng nhập lý do tạm ngưng tour.');
+      return;
+    }
     if (isSuspending && cleanReason.length < 5) {
-      toast.warning('Vui lòng nhập lý do tạm ngưng có ít nhất 5 ký tự.');
+      setReasonError('Lý do tạm ngưng phải có ít nhất 5 ký tự.');
+      document.getElementById('tour-suspension-reason')?.focus();
+      toast.error('Lý do tạm ngưng phải có ít nhất 5 ký tự.');
       return;
     }
 
@@ -84,6 +96,7 @@ function StaffTours() {
       toast.success(response.message);
       setPendingTour(null);
       setReason('');
+      setReasonError('');
       await loadTours(search, status, currentPage);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể cập nhật trạng thái tour.');
@@ -100,7 +113,6 @@ function StaffTours() {
   return (
     <section className="management-page-section">
       <div className="management-page-heading staff-tour-heading">
-        <span className="management-page-kicker">Tour Operations</span>
         <h1>Quản lý tour</h1>
         <p>Theo dõi trạng thái và tạm ngưng những tour không còn đủ điều kiện hoạt động.</p>
       </div>
@@ -279,34 +291,13 @@ function StaffTours() {
           </table>
         </div>
 
-        {!isLoading && totalPages > 1 && (
-          <div className="management-pagination-bar">
-            <div>
-              Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong>
-            </div>
-            <nav aria-label="Phân trang">
-              <ul className="pagination pagination-sm mb-0">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}>
-                    <i className="bi bi-chevron-left me-1"></i>Trước
-                  </button>
-                </li>
-                {[...Array(totalPages)].map((_, idx) => (
-                  <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => setCurrentPage(idx + 1)}>
-                      {idx + 1}
-                    </button>
-                  </li>
-                ))}
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}>
-                    Sau<i className="bi bi-chevron-right ms-1"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        )}
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemLabel="tour"
+          isLoading={isLoading}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {pendingTour && (
@@ -314,7 +305,7 @@ function StaffTours() {
           <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content border-0 shadow">
-                <form onSubmit={handleStatusChange}>
+                <form onSubmit={handleStatusChange} noValidate>
                   <div className="modal-header">
                     <h2 className="modal-title h5 fw-bold">
                       {pendingTour.status === 'suspended' ? 'Kích hoạt lại tour' : 'Tạm ngưng tour'}
@@ -337,15 +328,18 @@ function StaffTours() {
                         <label className="form-label fw-semibold" htmlFor="tour-suspension-reason">Lý do tạm ngưng</label>
                         <textarea
                           id="tour-suspension-reason"
-                          className="form-control"
+                          className={`form-control ${reasonError ? 'is-invalid' : ''}`}
                           rows="4"
                           maxLength="500"
                           value={reason}
-                          onChange={(event) => setReason(event.target.value)}
+                          onChange={(event) => {
+                            setReason(event.target.value);
+                            if (reasonError) setReasonError('');
+                          }}
                           placeholder="Nhập lý do để người quản lý khác có thể theo dõi..."
-                          required
                           autoFocus
                         ></textarea>
+                        {reasonError && <div className="invalid-feedback d-block">{reasonError}</div>}
                         <div className="form-text text-end">{reason.length}/500</div>
                       </>
                     )}

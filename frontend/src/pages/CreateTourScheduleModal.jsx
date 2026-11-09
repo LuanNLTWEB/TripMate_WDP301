@@ -56,7 +56,13 @@ export default function CreateTourScheduleModal({
     e.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || submitting) return;
+    if (Object.keys(nextErrors).length > 0) {
+      const firstField = Object.keys(nextErrors)[0];
+      document.getElementById(`schedule-${firstField}`)?.focus();
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      return;
+    }
+    if (submitting) return;
 
     setSubmitting(true);
     try {
@@ -122,6 +128,7 @@ export default function CreateTourScheduleModal({
                         onChange={(e) => {
                           const val = e.target.value;
                           setDay(val);
+                          if (errors.day) setErrors((prev) => ({ ...prev, day: '' }));
                           if (title.startsWith('Ngày ')) {
                             setTitle(`Ngày ${val}: ${title.replace(/^Ngày \d+:\s*/, '')}`);
                           }
@@ -142,7 +149,10 @@ export default function CreateTourScheduleModal({
                       className={`form-control ${errors.title ? 'is-invalid' : ''}`}
                       placeholder="VD: Ngày 1: Đón sân bay Đà Nẵng - Bán đảo Sơn Trà - Phố cổ Hội An"
                       value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        if (errors.title) setErrors((prev) => ({ ...prev, title: '' }));
+                      }}
                       maxLength={150}
                       disabled={submitting}
                       autoFocus
@@ -160,7 +170,10 @@ export default function CreateTourScheduleModal({
                       className={`form-control ${errors.description ? 'is-invalid' : ''}`}
                       placeholder="Chi tiết lịch trình theo mốc thời gian:&#10;- 08:00: Xe và HDV đón quý khách tại điểm hẹn&#10;- 10:30: Khởi hành tham quan...&#10;- 12:00: Dùng cơm trưa tại nhà hàng&#10;- 14:30: Tự do khám phá, chụp ảnh check-in&#10;- 18:30: Thưởng thức bữa tối và nghỉ ngơi"
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+                      }}
                       maxLength={2000}
                       disabled={submitting}
                     ></textarea>

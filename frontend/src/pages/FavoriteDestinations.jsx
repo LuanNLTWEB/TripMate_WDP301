@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { destinationApi, tourApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -116,13 +114,12 @@ const FavoriteDestinations = () => {
 
   return (
     <>
-      <Navbar />
-      <main className="bg-light py-5 flex-grow-1" style={{ minHeight: '80vh' }}>
-        <div className="container">
-          <div className="mb-4">
+      <div className="management-page-section">
+        <div>
+          {/* Header Banner */}
+          <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
             <div>
-              <p className="text-primary text-uppercase fw-semibold small mb-2">Favorites</p>
-              <h1 className="fw-bold mb-2">Yêu thích của tôi</h1>
+              <h1 className="fw-bold mb-1 display-6">Yêu thích của tôi</h1>
               <p className="text-muted mb-0">Chọn một danh mục để xem lại những nội dung bạn quan tâm.</p>
             </div>
           </div>
@@ -355,8 +352,7 @@ const FavoriteDestinations = () => {
             </>
           )}
         </div>
-      </main>
-      <Footer />
+      </div>
     </>
   );
 };

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AnnouncementFormModal from '../components/AnnouncementFormModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import CustomSelect from '../components/CustomSelect';
+import ManagementPagination from '../components/management/ManagementPagination';
 import { useToast } from '../hooks/useToast';
 import { announcementApi } from '../services/api';
 import {
@@ -68,7 +69,7 @@ export default function StaffAnnouncements() {
         setAnnouncements([]);
         setTotal(0);
         setTotalPages(0);
-        setError(requestError.message || 'Không thể tải danh sách thông báo.');
+        setError(requestError.message || 'Không thể tải danh sách tin tức.');
       } finally {
         if (active) setLoading(false);
       }
@@ -122,10 +123,10 @@ export default function StaffAnnouncements() {
     try {
       if (isEditing) {
         const response = await announcementApi.update(formModalState.announcement._id, payload);
-        toast.success(response.message || 'Cập nhật thông báo hệ thống thành công.');
+        toast.success(response.message || 'Cập nhật tin tức hệ thống thành công.');
       } else {
         const response = await announcementApi.create(payload);
-        toast.success(response.message || 'Đã tạo thông báo hệ thống.');
+        toast.success(response.message || 'Đã tạo tin tức hệ thống.');
       }
 
       setFormModalState({ open: false, announcement: null });
@@ -134,7 +135,7 @@ export default function StaffAnnouncements() {
       }
       setReloadKey((value) => value + 1);
     } catch (requestError) {
-      setFormError(requestError.message || 'Không thể lưu thông báo hệ thống.');
+      setFormError(requestError.message || 'Không thể lưu tin tức hệ thống.');
     } finally {
       setSaving(false);
     }
@@ -146,7 +147,7 @@ export default function StaffAnnouncements() {
 
     try {
       const response = await announcementApi.delete(announcementToDelete._id);
-      toast.success(response.message || 'Đã xóa thông báo hệ thống thành công.');
+      toast.success(response.message || 'Đã xóa tin tức hệ thống thành công.');
 
       if (announcements.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1);
@@ -154,7 +155,7 @@ export default function StaffAnnouncements() {
       setAnnouncementToDelete(null);
       setReloadKey((value) => value + 1);
     } catch (requestError) {
-      toast.error(requestError.message || 'Không thể xóa thông báo hệ thống.');
+      toast.error(requestError.message || 'Không thể xóa tin tức hệ thống.');
     } finally {
       setIsDeleting(false);
     }
@@ -165,9 +166,8 @@ export default function StaffAnnouncements() {
       {/* Page Header */}
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <span className="management-page-kicker">System Announcements</span>
-          <h1>Quản lý thông báo hệ thống</h1>
-          <p>Tạo, cập nhật và phát hành thông báo chính thức tới khách hàng và đối tác du lịch TripMate.</p>
+          <h1>Quản lý tin tức hệ thống</h1>
+          <p>Tạo, cập nhật và phát hành tin tức, thông cáo chính thức tới khách hàng và đối tác du lịch TripMate.</p>
         </div>
         <button
           type="button"
@@ -175,7 +175,7 @@ export default function StaffAnnouncements() {
           onClick={openCreateModal}
         >
           <i className="bi bi-plus-lg fs-6"></i>
-          <span className="fw-semibold">Tạo thông báo mới</span>
+          <span className="fw-semibold">Tạo tin tức mới</span>
         </button>
       </div>
 
@@ -184,10 +184,10 @@ export default function StaffAnnouncements() {
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="announcement-stat-card">
             <div className="announcement-stat-icon bg-primary bg-opacity-10 text-primary">
-              <i className="bi bi-megaphone-fill"></i>
+              <i className="bi bi-newspaper"></i>
             </div>
             <div>
-              <div className="small text-muted fw-semibold">Tổng thông báo</div>
+              <div className="small text-muted fw-semibold">Tổng tin tức</div>
               <div className="h4 fw-bold text-dark mb-0">{total}</div>
             </div>
           </div>
@@ -255,8 +255,8 @@ export default function StaffAnnouncements() {
               type="search"
               value={searchInput}
               maxLength={100}
-              placeholder="Tìm theo tiêu đề hoặc nội dung thông báo..."
-              aria-label="Tìm kiếm thông báo"
+              placeholder="Tìm theo tiêu đề hoặc nội dung tin tức..."
+              aria-label="Tìm kiếm tin tức"
               onChange={(event) => setSearchInput(event.target.value)}
             />
             {searchInput && (
@@ -296,7 +296,7 @@ export default function StaffAnnouncements() {
           <table className="management-table">
             <thead>
               <tr>
-                <th className="ps-4" style={{ width: '42%' }}>Thông báo</th>
+                <th className="ps-4" style={{ width: '42%' }}>Tin tức / Bài viết</th>
                 <th style={{ width: '16%' }}>Đối tượng nhận</th>
                 <th style={{ width: '14%' }}>Trạng thái</th>
                 <th style={{ width: '16%' }}>Cập nhật lần cuối</th>
@@ -308,7 +308,7 @@ export default function StaffAnnouncements() {
                 <tr>
                   <td colSpan="5" className="text-center py-5">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    <span className="text-muted">Đang tải danh sách thông báo...</span>
+                    <span className="text-muted">Đang tải danh sách tin tức...</span>
                   </td>
                 </tr>
               ) : announcements.length === 0 ? (
@@ -316,13 +316,13 @@ export default function StaffAnnouncements() {
                   <td colSpan="5">
                     <div className="management-empty-state">
                       <div className="management-empty-icon">
-                        <i className="bi bi-megaphone fs-2"></i>
+                        <i className="bi bi-newspaper fs-2"></i>
                       </div>
-                      <h6 className="fw-bold text-dark mb-1">Không tìm thấy thông báo phù hợp</h6>
+                      <h6 className="fw-bold text-dark mb-1">Không tìm thấy tin tức phù hợp</h6>
                       <p className="small text-muted mb-3">
                         {appliedSearch || statusFilter !== 'all' || audienceFilter !== 'all'
                           ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm của bạn.'
-                          : 'Hiện chưa có thông báo nào trong hệ thống.'}
+                          : 'Hiện chưa có tin tức nào trong hệ thống.'}
                       </p>
                       {(appliedSearch || statusFilter !== 'all' || audienceFilter !== 'all') && (
                         <button
@@ -384,8 +384,8 @@ export default function StaffAnnouncements() {
                           <Link
                             to={`/management/announcements/${announcement._id}`}
                             className="management-action-btn btn-view"
-                            title="Xem chi tiết thông báo"
-                            aria-label={`Xem chi tiết thông báo ${announcement.title}`}
+                            title="Xem chi tiết tin tức"
+                            aria-label={`Xem chi tiết tin tức ${announcement.title}`}
                           >
                             <i className="bi bi-eye"></i>
                           </Link>
@@ -393,8 +393,8 @@ export default function StaffAnnouncements() {
                             type="button"
                             className="management-action-btn btn-edit"
                             onClick={() => openEditModal(announcement)}
-                            title="Chỉnh sửa thông báo"
-                            aria-label={`Chỉnh sửa thông báo ${announcement.title}`}
+                            title="Chỉnh sửa tin tức"
+                            aria-label={`Chỉnh sửa tin tức ${announcement.title}`}
                           >
                             <i className="bi bi-pencil"></i>
                           </button>
@@ -402,8 +402,8 @@ export default function StaffAnnouncements() {
                             type="button"
                             className="management-action-btn btn-delete"
                             onClick={() => setAnnouncementToDelete(announcement)}
-                            title="Xóa thông báo"
-                            aria-label={`Xóa thông báo ${announcement.title}`}
+                            title="Xóa tin tức"
+                            aria-label={`Xóa tin tức ${announcement.title}`}
                           >
                             <i className="bi bi-trash"></i>
                           </button>
@@ -418,65 +418,14 @@ export default function StaffAnnouncements() {
         </div>
 
         {/* Pagination Bar */}
-        {!loading && total > 0 && (
-          <div className="management-pagination-bar">
-            <div className="text-muted small">
-              Hiển thị <strong>{announcements.length}</strong> / <strong>{total}</strong> thông báo · Trang <strong>{currentPage}</strong> / {Math.max(totalPages, 1)}
-            </div>
-            {totalPages > 1 && (
-              <nav aria-label="Phân trang quản lý thông báo">
-                <ul className="pagination pagination-sm mb-0">
-                  <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
-                    <button
-                      type="button"
-                      className="page-link"
-                      disabled={currentPage <= 1}
-                      onClick={() => setCurrentPage((page) => page - 1)}
-                    >
-                      <i className="bi bi-chevron-left me-1"></i>Trước
-                    </button>
-                  </li>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1)
-                    .filter((pageNum) => {
-                      return (
-                        pageNum === 1 ||
-                        pageNum === totalPages ||
-                        Math.abs(pageNum - currentPage) <= 1
-                      );
-                    })
-                    .map((pageNum, index, arr) => {
-                      const prev = arr[index - 1];
-                      const hasGap = prev && pageNum - prev > 1;
-                      return (
-                        <span key={pageNum} className="d-inline-flex">
-                          {hasGap && <li className="page-item disabled"><span className="page-link">…</span></li>}
-                          <li className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
-                            <button
-                              type="button"
-                              className="page-link"
-                              onClick={() => setCurrentPage(pageNum)}
-                            >
-                              {pageNum}
-                            </button>
-                          </li>
-                        </span>
-                      );
-                    })}
-                  <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
-                    <button
-                      type="button"
-                      className="page-link"
-                      disabled={currentPage >= totalPages}
-                      onClick={() => setCurrentPage((page) => page + 1)}
-                    >
-                      Sau<i className="bi bi-chevron-right ms-1"></i>
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            )}
-          </div>
-        )}
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={total}
+          itemLabel="tin tức"
+          isLoading={loading}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
 
@@ -495,17 +444,17 @@ export default function StaffAnnouncements() {
       {/* Delete Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={Boolean(announcementToDelete)}
-        title="Xác nhận xóa thông báo"
+        title="Xác nhận xóa tin tức"
         message={
           <>
-            Bạn có chắc chắn muốn xóa vĩnh viễn thông báo{' '}
+            Bạn có chắc chắn muốn xóa vĩnh viễn tin tức{' '}
             <strong>"{announcementToDelete?.title}"</strong>?
             <div className="small text-muted mt-2">
-              Hành động này sẽ gỡ bỏ hoàn toàn thông báo khỏi hệ thống và không thể hoàn tác.
+              Hành động này sẽ gỡ bỏ hoàn toàn tin tức khỏi hệ thống và không thể hoàn tác.
             </div>
           </>
         }
-        confirmText="Xóa thông báo"
+        confirmText="Xóa tin tức"
         cancelText="Hủy"
         loading={isDeleting}
         onConfirm={handleDeleteConfirm}

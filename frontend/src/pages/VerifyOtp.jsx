@@ -79,6 +79,9 @@ function VerifyOtp() {
     e.preventDefault();
     if (fullOtp.length !== 6) {
       setError('Vui lòng nhập đầy đủ 6 chữ số mã OTP');
+      toast.error('Vui lòng nhập đầy đủ 6 chữ số mã OTP');
+      const firstEmptyIndex = otpDigits.findIndex((d) => !d);
+      inputRefs.current[firstEmptyIndex >= 0 ? firstEmptyIndex : 0]?.focus();
       return;
     }
 
@@ -180,7 +183,7 @@ function VerifyOtp() {
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} noValidate>
                       <div className="mb-4">
                         <label className="form-label small fw-medium text-center d-block mb-3">
                           Nhập mã OTP 6 chữ số (Hiệu lực 10 phút)
@@ -194,7 +197,7 @@ function VerifyOtp() {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               maxLength="1"
-                              className="form-control text-center fs-4 fw-bold p-0"
+                              className={`form-control text-center fs-4 fw-bold p-0 ${error ? 'is-invalid border-danger' : ''}`}
                               style={{ width: '46px', height: '52px' }}
                               value={digit}
                               onChange={(e) => handleDigitChange(index, e.target.value)}

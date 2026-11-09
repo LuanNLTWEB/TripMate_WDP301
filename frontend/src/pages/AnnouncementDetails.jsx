@@ -38,7 +38,7 @@ export default function AnnouncementDetails() {
         }
       } catch (err) {
         if (!active) return;
-        setError(err.message || 'Không thể tải thông tin bài viết thông báo.');
+        setError(err.message || 'Không thể tải thông tin bài viết tin tức.');
       } finally {
         if (active) setLoading(false);
       }
@@ -78,7 +78,7 @@ export default function AnnouncementDetails() {
               <ol className="breadcrumb mb-0 small">
                 <li className="breadcrumb-item">
                   <Link to="/announcements" className="text-decoration-none text-muted">
-                    Thông báo hệ thống
+                    Tin tức hệ thống
                   </Link>
                 </li>
                 <li className="breadcrumb-item active text-primary fw-semibold" aria-current="page">
@@ -103,7 +103,7 @@ export default function AnnouncementDetails() {
               <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
                 <span className="visually-hidden">Đang tải...</span>
               </div>
-              <div className="text-muted mt-3 fw-semibold">Đang tải chi tiết bài viết thông báo...</div>
+              <div className="text-muted mt-3 fw-semibold">Đang tải chi tiết bài viết tin tức...</div>
             </div>
           ) : error || !announcement ? (
             <div className="card border-0 shadow-sm text-center py-5 px-4 rounded-4 my-4">
@@ -113,13 +113,13 @@ export default function AnnouncementDetails() {
               >
                 <i className="bi bi-exclamation-triangle fs-1"></i>
               </div>
-              <h1 className="h4 fw-bold text-dark mb-2">Không tìm thấy bài viết thông báo</h1>
+              <h1 className="h4 fw-bold text-dark mb-2">Không tìm thấy bài viết tin tức</h1>
               <p className="text-muted mb-4" style={{ maxWidth: '480px', margin: '0 auto' }}>
-                {error || 'Bài viết thông báo này không tồn tại hoặc bạn không có quyền xem nội dung này.'}
+                {error || 'Bài viết tin tức này không tồn tại hoặc bạn không có quyền xem nội dung này.'}
               </p>
               <div>
                 <Link to="/announcements" className="btn btn-primary px-4 py-2 rounded-pill fw-semibold">
-                  <i className="bi bi-arrow-left me-2"></i>Quay lại trang thông báo
+                  <i className="bi bi-arrow-left me-2"></i>Quay lại trang tin tức
                 </Link>
               </div>
             </div>
@@ -137,7 +137,7 @@ export default function AnnouncementDetails() {
                       </span>
                       <span className="announcement-featured-tag">
                         <i className="bi bi-shield-check me-1"></i>
-                        Thông báo chính thức
+                        Tin tức chính thức
                       </span>
                     </div>
 
@@ -194,7 +194,7 @@ export default function AnnouncementDetails() {
                       <div className="d-flex align-items-center gap-2 text-muted small">
                         <i className="bi bi-shield-fill-check text-primary fs-5"></i>
                         <span>
-                          Văn bản thông báo có giá trị áp dụng trên toàn bộ hệ thống <strong>TripMate Việt Nam</strong>.
+                          Văn bản tin tức và thông cáo có giá trị áp dụng trên toàn bộ hệ thống <strong>TripMate Việt Nam</strong>.
                         </span>
                       </div>
 
@@ -252,7 +252,7 @@ export default function AnnouncementDetails() {
                       <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                         <h2 className="h6 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                           <i className="bi bi-clock-history text-primary"></i>
-                          Thông báo khác gần đây
+                          Tin tức khác gần đây
                         </h2>
                         <Link to="/announcements" className="text-primary small text-decoration-none fw-semibold">
                           Xem tất cả <i className="bi bi-chevron-right"></i>

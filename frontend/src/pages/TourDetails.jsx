@@ -91,8 +91,16 @@ const TourDetails = () => {
     if (isSubmittingReply) return;
 
     const normalizedComment = replyComment.trim();
+    if (!normalizedComment) {
+      setReplyError('Vui lòng nhập nội dung phản hồi.');
+      document.getElementById(`reply-input-${review._id}`)?.focus();
+      toast.error('Vui lòng nhập nội dung phản hồi.');
+      return;
+    }
     if (normalizedComment.length < 5) {
       setReplyError('Nội dung phản hồi phải có từ 5 đến 1000 ký tự.');
+      document.getElementById(`reply-input-${review._id}`)?.focus();
+      toast.error('Nội dung phản hồi phải có từ 5 đến 1000 ký tự.');
       return;
     }
 
@@ -302,6 +310,14 @@ const TourDetails = () => {
       isMounted = false;
     };
   }, [id, isAuthenticated, user?.role, user?.id, user?._id, eligibilityRefreshKey]);
+
+  useEffect(() => {
+    if (!currentReviewEligibility?.eligible) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('review') === 'true' || window.location.hash === '#reviews') {
+      setShowCreateReview(true);
+    }
+  }, [currentReviewEligibility?.eligible]);
 
   useEffect(() => {
     if (!id || !isAuthenticated || (user?.role !== 'customer' && !isTourOwner)) return;
@@ -892,7 +908,11 @@ const TourDetails = () => {
                   {isAuthenticated && user?.role === 'customer' && tour.availableSeats > 0 && (
                     <div className="mb-3">
                       <Link
-                        to={`/tours/${tour._id}/booking`}
+                        to={{
+                          pathname: `/tours/${tour._id}/booking`,
+                          search: selectedDate ? `?departureDate=${selectedDate}` : ''
+                        }}
+                        state={{ departureDate: selectedDate }}
                         className={`btn w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm ${
                           dateAvailability && !dateAvailability.isAvailable ? 'btn-secondary disabled' : 'btn-primary'
                         }`}
@@ -979,7 +999,7 @@ const TourDetails = () => {
           </div>
 
           {(user?.role === 'customer' || isTourOwner) && (
-          <div className="card border-0 shadow-sm rounded-4 mb-4">
+          <div className="card border-0 shadow-sm rounded-4 mb-4" id="reviews">
             <div className="card-body p-4 p-md-5">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
                 <h2 className="h4 fw-bold mb-0">Đánh giá từ khách hàng</h2>
@@ -1182,7 +1202,7 @@ const TourDetails = () => {
                             )}
 
                             {isTourOwner && replyingReviewId === review._id && (
-                              <form onSubmit={(e) => handleReplySubmit(e, review)} className="mt-3 p-3 rounded-3 bg-light border">
+                              <form onSubmit={(e) => handleReplySubmit(e, review)} noValidate className="mt-3 p-3 rounded-3 bg-light border">
                                 <div className="d-flex align-items-center justify-content-between mb-2">
                                   <label htmlFor={`reply-input-${review._id}`} className="form-label fw-semibold small text-dark mb-0">
                                     <i className="bi bi-reply-fill text-primary me-1"></i>
@@ -1193,7 +1213,6 @@ const TourDetails = () => {
                                   id={`reply-input-${review._id}`}
                                   className={`form-control form-control-sm ${replyError ? 'is-invalid' : ''}`}
                                   rows={3}
-                                  minLength={5}
                                   maxLength={1000}
                                   placeholder="Nhập nội dung phản hồi tới khách hàng (từ 5 đến 1000 ký tự)..."
                                   value={replyComment}
@@ -1203,15 +1222,13 @@ const TourDetails = () => {
                                     if (replyError) setReplyError('');
                                   }}
                                 />
+                                {replyError && (
+                                  <div className="invalid-feedback d-block mt-1">{replyError}</div>
+                                )}
                                 <div className="d-flex justify-content-between mt-1">
                                   <span className="text-muted" style={{ fontSize: '0.75rem' }}>Tối thiểu 5 ký tự</span>
                                   <span className="text-muted" style={{ fontSize: '0.75rem' }}>{replyComment.length}/1000</span>
                                 </div>
-                                {replyError && (
-                                  <div className="alert alert-danger py-1 px-2 small mt-2 mb-0" role="alert">
-                                    <i className="bi bi-exclamation-circle me-1"></i>{replyError}
-                                  </div>
-                                )}
                                 <div className="d-flex justify-content-end gap-2 mt-2">
                                   <button
                                     type="button"

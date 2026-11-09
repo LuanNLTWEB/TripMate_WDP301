@@ -117,7 +117,6 @@ function AdminDashboard() {
         {/* Header with Title and Quick Actions */}
         <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
           <div>
-            <span className="management-page-kicker">TripMate System Dashboard</span>
             <h1 className="h2 fw-bold mb-1">Tổng quan hệ thống</h1>
             <p className="text-muted mb-0">
               Theo dõi tình hình hoạt động của hệ thống thông qua các số liệu thống kê tài khoản và xu hướng đăng ký.

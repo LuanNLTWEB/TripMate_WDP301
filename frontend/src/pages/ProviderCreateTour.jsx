@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import CustomSelect from '../components/CustomSelect';
 import { tourApi, tourCategoryApi, uploadApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
@@ -11,6 +12,7 @@ export default function ProviderCreateTour() {
 
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [fileName, setFileName] = useState('Chưa có tệp nào được chọn');
@@ -43,11 +45,15 @@ export default function ProviderCreateTour() {
       }
       return updated;
     });
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    if (error) setError('');
   };
 
   const handlePriceChange = (e) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     setFormData((prev) => ({ ...prev, price: rawValue }));
+    if (errors.price) setErrors((prev) => ({ ...prev, price: '' }));
+    if (error) setError('');
   };
 
   const handleImageChange = (e) => {
@@ -57,10 +63,14 @@ export default function ProviderCreateTour() {
         setError('Kích thước ảnh không được vượt quá 5MB.');
         return;
       }
+      if (imageFile && formData.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.imageUrl);
+      }
       setImageFile(file);
       setFileName(file.name);
       const previewUrl = URL.createObjectURL(file);
       setFormData(prev => ({ ...prev, imageUrl: previewUrl }));
+      if (errors.image) setErrors((prev) => ({ ...prev, image: '' }));
       setError('');
     } else {
       setFileName('Chưa có tệp nào được chọn');
@@ -71,34 +81,32 @@ export default function ProviderCreateTour() {
     e.preventDefault();
     setError('');
 
-    if (!formData.title.trim()) {
-      setError('Vui lòng nhập tên tour.');
-      return;
-    }
-    if (!formData.departureLocation.trim()) {
-      setError('Vui lòng nhập điểm khởi hành.');
-      return;
-    }
-    if (!formData.destinationLocation.trim()) {
-      setError('Vui lòng nhập điểm đến.');
-      return;
-    }
+    const fieldErrors = {};
+    if (!formData.title.trim()) fieldErrors.title = 'Vui lòng nhập tên tour.';
+    if (!formData.duration.trim()) fieldErrors.duration = 'Vui lòng nhập thời lượng tour (VD: 3N2Đ).';
+    if (!formData.departureLocation.trim()) fieldErrors.departureLocation = 'Vui lòng nhập điểm khởi hành.';
+    if (!formData.destinationLocation.trim()) fieldErrors.destinationLocation = 'Vui lòng nhập điểm đến.';
+    
     const numPrice = Number(formData.price);
     if (!formData.price || isNaN(numPrice) || numPrice < 0) {
-      setError('Giá tour phải là một số hợp lệ lớn hơn hoặc bằng 0.');
-      return;
+      fieldErrors.price = 'Giá tour phải là một số hợp lệ lớn hơn hoặc bằng 0.';
     }
     const numSeats = Number(formData.availableSeats);
     if (!formData.availableSeats || isNaN(numSeats) || numSeats <= 0) {
-      setError('Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).');
-      return;
+      fieldErrors.availableSeats = 'Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).';
     }
     if (!formData.description.trim()) {
-      setError('Vui lòng nhập mô tả chi tiết tour.');
-      return;
+      fieldErrors.description = 'Vui lòng nhập mô tả chi tiết tour.';
     }
     if (!imageFile && !formData.imageUrl) {
-      setError('Vui lòng chọn hình ảnh đại diện.');
+      fieldErrors.image = 'Vui lòng chọn hình ảnh đại diện cho tour.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
       return;
     }
 
@@ -130,7 +138,9 @@ export default function ProviderCreateTour() {
       toast.success(response.message || 'Tạo tour thành công! Tour đã được gửi chờ kiểm duyệt.');
       navigate('/tours');
     } catch (err) {
-      setError(err.message || 'Không thể tạo tour. Vui lòng thử lại.');
+      const msg = err.message || 'Không thể tạo tour. Vui lòng thử lại.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
       if (imageFile && formData.imageUrl.startsWith('blob:')) {
@@ -164,7 +174,7 @@ export default function ProviderCreateTour() {
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-body p-4 p-md-5">
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} noValidate>
                 <h2 className="h5 fw-bold mb-3 text-primary">
                   <i className="bi bi-info-circle me-2"></i>Thông tin cơ bản
                 </h2>
@@ -178,13 +188,14 @@ export default function ProviderCreateTour() {
                       type="text"
                       id="title"
                       name="title"
-                      className="form-control"
+                      className={`form-control ${errors.title ? 'is-invalid' : ''}`}
                       placeholder="Ví dụ: Tour Đà Nẵng - Bà Nà Hills - Cầu Vàng - Phố Cổ Hội An"
                       value={formData.title}
                       onChange={handleChange}
                       maxLength="100"
                       required
                     />
+                    {errors.title && <div className="invalid-feedback">{errors.title}</div>}
                     <div className="form-text text-end">{formData.title.length}/100</div>
                   </div>
 
@@ -192,20 +203,20 @@ export default function ProviderCreateTour() {
                     <label className="form-label fw-semibold" htmlFor="categoryId">
                       Danh mục tour
                     </label>
-                    <select
+                    <CustomSelect
                       id="categoryId"
                       name="categoryId"
-                      className="form-select"
                       value={formData.categoryId}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn danh mục --</option>
-                      {categories.map((cat) => (
-                        <option key={cat._id} value={cat._id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={[
+                        { value: '', label: '-- Chọn danh mục --' },
+                        ...categories.map((cat) => ({ value: cat._id, label: cat.name }))
+                      ]}
+                      onChange={(e, val) => {
+                        const nextVal = val !== undefined ? val : e.target.value;
+                        setFormData((prev) => ({ ...prev, categoryId: nextVal }));
+                      }}
+                      placeholder="-- Chọn danh mục --"
+                    />
                   </div>
 
                   <div className="col-md-6">
@@ -216,12 +227,13 @@ export default function ProviderCreateTour() {
                       type="text"
                       id="duration"
                       name="duration"
-                      className="form-control"
+                      className={`form-control ${errors.duration ? 'is-invalid' : ''}`}
                       placeholder="Ví dụ: 3 ngày 2 đêm, 2 ngày 1 đêm..."
                       value={formData.duration}
                       onChange={handleChange}
                       required
                     />
+                    {errors.duration && <div className="invalid-feedback">{errors.duration}</div>}
                   </div>
                 </div>
 
@@ -240,12 +252,13 @@ export default function ProviderCreateTour() {
                       type="text"
                       id="departureLocation"
                       name="departureLocation"
-                      className="form-control"
+                      className={`form-control ${errors.departureLocation ? 'is-invalid' : ''}`}
                       placeholder="Ví dụ: Hà Nội, TP. Hồ Chí Minh..."
                       value={formData.departureLocation}
                       onChange={handleChange}
                       required
                     />
+                    {errors.departureLocation && <div className="invalid-feedback">{errors.departureLocation}</div>}
                   </div>
 
                   <div className="col-md-6">
@@ -256,12 +269,13 @@ export default function ProviderCreateTour() {
                       type="text"
                       id="destinationLocation"
                       name="destinationLocation"
-                      className="form-control"
+                      className={`form-control ${errors.destinationLocation ? 'is-invalid' : ''}`}
                       placeholder="Ví dụ: Đà Nẵng, Phú Quốc..."
                       value={formData.destinationLocation}
                       onChange={handleChange}
                       required
                     />
+                    {errors.destinationLocation && <div className="invalid-feedback">{errors.destinationLocation}</div>}
                   </div>
                 </div>
 
@@ -281,13 +295,14 @@ export default function ProviderCreateTour() {
                         type="text"
                         id="price"
                         name="price"
-                        className="form-control"
+                        className={`form-control ${errors.price ? 'is-invalid' : ''}`}
                         placeholder="Ví dụ: 3.500.000"
                         value={formData.price ? new Intl.NumberFormat('vi-VN').format(Number(formData.price)) : ''}
                         onChange={handlePriceChange}
                         required
                       />
                       <span className="input-group-text">₫</span>
+                      {errors.price && <div className="invalid-feedback">{errors.price}</div>}
                     </div>
                   </div>
 
@@ -299,13 +314,14 @@ export default function ProviderCreateTour() {
                       type="number"
                       id="availableSeats"
                       name="availableSeats"
-                      className="form-control"
+                      className={`form-control ${errors.availableSeats ? 'is-invalid' : ''}`}
                       placeholder="Ví dụ: 20"
                       min="1"
                       value={formData.availableSeats}
                       onChange={handleChange}
                       required
                     />
+                    {errors.availableSeats && <div className="invalid-feedback">{errors.availableSeats}</div>}
                   </div>
                 </div>
 
@@ -321,11 +337,12 @@ export default function ProviderCreateTour() {
                       Hình ảnh đại diện <span className="text-danger">*</span>
                     </label>
                     <div className="d-flex align-items-center gap-3">
-                      <label htmlFor="imageFile" className="btn btn-outline-primary mb-0">
+                      <label htmlFor="imageFile" className={`btn btn-outline-primary mb-0 ${errors.image ? 'border-danger text-danger' : ''}`}>
                         <i className="bi bi-upload me-2"></i>Chọn tệp
                       </label>
                       <span className="text-muted small">{fileName}</span>
                     </div>
+                    {errors.image && <div className="text-danger small mt-1.5">{errors.image}</div>}
                     <input
                       type="file"
                       id="imageFile"
@@ -357,13 +374,14 @@ export default function ProviderCreateTour() {
                     <textarea
                       id="description"
                       name="description"
-                      className="form-control"
+                      className={`form-control ${errors.description ? 'is-invalid' : ''}`}
                       rows="6"
                       placeholder="Giới thiệu điểm nổi bật của tour, lịch trình tóm tắt, chính sách dịch vụ bao gồm..."
                       value={formData.description}
                       onChange={handleChange}
                       required
                     ></textarea>
+                    {errors.description && <div className="invalid-feedback">{errors.description}</div>}
                   </div>
                 </div>
 

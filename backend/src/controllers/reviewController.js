@@ -59,33 +59,38 @@ const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
     };
   }
 
-  const confirmedBookings = await Booking.find({
+  const candidateBookings = await Booking.find({
     tourId,
     customerId: userId,
-    status: 'confirmed'
+    status: { $in: ['confirmed', 'paid', 'checked_in', 'completed'] }
   }).sort({ departureDate: -1 });
 
-  if (confirmedBookings.length === 0) {
+  if (candidateBookings.length === 0) {
     return { tour, ...buildEligibility(false, 'booking_not_confirmed') };
   }
 
-  const bookingsWithEndDate = confirmedBookings
-    .map((booking) => ({
-      booking,
-      tripEndDate: calculateTripEndDate(booking.departureDate, tour.duration)
-    }))
-    .filter((item) => item.tripEndDate);
-  const completedBooking = bookingsWithEndDate.find((item) => item.tripEndDate <= now);
+  const completedBooking = candidateBookings.find((booking) => {
+    if (booking.status === 'completed') return true;
+    const tripEndDate = calculateTripEndDate(booking.departureDate, tour.duration);
+    return tripEndDate && tripEndDate <= now;
+  });
 
   if (completedBooking) {
     return {
       tour,
       ...buildEligibility(true, 'eligible', {
-        bookingId: completedBooking.booking._id,
-        completedAt: completedBooking.tripEndDate
+        bookingId: completedBooking._id,
+        completedAt: completedBooking.completedAt || calculateTripEndDate(completedBooking.departureDate, tour.duration) || now
       })
     };
   }
+
+  const bookingsWithEndDate = candidateBookings
+    .map((booking) => ({
+      booking,
+      tripEndDate: calculateTripEndDate(booking.departureDate, tour.duration)
+    }))
+    .filter((item) => item.tripEndDate);
 
   const nextEligibleDate = bookingsWithEndDate
     .map((item) => item.tripEndDate)

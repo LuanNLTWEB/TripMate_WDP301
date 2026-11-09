@@ -3,8 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { authApi } from '../services/api';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import CustomSelect from '../components/CustomSelect';
 import CustomDatePicker from '../components/CustomDatePicker';
 
@@ -65,7 +63,15 @@ function ProfileForm({ user, onUpdateProfile }) {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Vui lòng kiểm tra và hoàn thiện các trường được báo đỏ.');
+      const firstField = Object.keys(newErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
+      return false;
+    }
+
+    return true;
   };
 
   const handleChange = (e) => {
@@ -124,11 +130,19 @@ function ProfileForm({ user, onUpdateProfile }) {
     : null;
 
   return (
-    <div className="container">
-      <div className="row justify-content-center">
-        <div className="col-12 col-lg-9 col-xl-8">
-          {/* Profile Header Card */}
-          <div className="card shadow-sm border-0 rounded-3 mb-4">
+    <div className="management-page-section">
+      {/* Header Banner */}
+      <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+          <h1 className="fw-bold mb-1 display-6">Hồ sơ cá nhân</h1>
+          <p className="text-muted mb-0">
+            Quản lý và cập nhật thông tin tài khoản của bạn trên TripMate.
+          </p>
+        </div>
+      </div>
+
+      {/* Profile Header Card */}
+      <div className="card shadow-sm border-0 rounded-4 mb-4 bg-white">
             <div className="card-body p-4 p-md-5">
               <div className="d-flex flex-column flex-sm-row align-items-center gap-4 text-center text-sm-start">
                 <div
@@ -349,10 +363,8 @@ function ProfileForm({ user, onUpdateProfile }) {
             </div>
           </div>
 
-          {/* Change Password Card */}
-          <ChangePasswordForm />
-        </div>
-      </div>
+      {/* Change Password Card */}
+      <ChangePasswordForm />
     </div>
   );
 }
@@ -408,7 +420,15 @@ function ChangePasswordForm() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Vui lòng kiểm tra và hoàn thiện các trường được báo đỏ.');
+      const firstField = Object.keys(newErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -597,13 +617,7 @@ function Profile() {
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="py-5 bg-light flex-grow-1">
-        <ProfileForm key={user.id || user.username} user={user} onUpdateProfile={updateProfile} />
-      </main>
-      <Footer />
-    </>
+    <ProfileForm key={user.id || user.username} user={user} onUpdateProfile={updateProfile} />
   );
 }
 

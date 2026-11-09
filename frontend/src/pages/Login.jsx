@@ -47,7 +47,17 @@ function Login() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Vui lòng kiểm tra và điền đầy đủ thông tin đăng nhập.');
+      const firstField = Object.keys(newErrors)[0];
+      if (firstField) {
+        document.getElementById(firstField)?.focus();
+      }
+      return false;
+    }
+
+    return true;
   };
 
   const handleChange = (e) => {

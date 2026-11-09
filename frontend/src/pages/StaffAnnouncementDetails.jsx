@@ -27,7 +27,7 @@ function StaffAnnouncementDetails() {
       setAnnouncement(response.data);
       setError('');
     } catch (err) {
-      setError(err.message || 'Không thể tải chi tiết thông báo.');
+      setError(err.message || 'Không thể tải chi tiết tin tức.');
     } finally {
       setIsLoading(false);
     }
@@ -41,11 +41,11 @@ function StaffAnnouncementDetails() {
     setIsSaving(true);
     try {
       const response = await announcementApi.update(id, payload);
-      toast.success(response.message || 'Đã cập nhật thông báo thành công.');
+      toast.success(response.message || 'Đã cập nhật tin tức thành công.');
       setIsEditOpen(false);
       await loadAnnouncement();
     } catch (err) {
-      toast.error(err.message || 'Không thể cập nhật thông báo.');
+      toast.error(err.message || 'Không thể cập nhật tin tức.');
     } finally {
       setIsSaving(false);
     }
@@ -55,10 +55,10 @@ function StaffAnnouncementDetails() {
     setIsDeleting(true);
     try {
       const response = await announcementApi.delete(id);
-      toast.success(response.message || 'Đã xóa thông báo thành công.');
+      toast.success(response.message || 'Đã xóa tin tức thành công.');
       navigate('/management/announcements');
     } catch (err) {
-      toast.error(err.message || 'Không thể xóa thông báo.');
+      toast.error(err.message || 'Không thể xóa tin tức.');
       setShowDeleteModal(false);
     } finally {
       setIsDeleting(false);
@@ -72,7 +72,7 @@ function StaffAnnouncementDetails() {
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Đang tải...</span>
           </div>
-          <p className="text-muted mt-2 mb-0">Đang tải thông tin thông báo...</p>
+          <p className="text-muted mt-2 mb-0">Đang tải thông tin tin tức...</p>
         </div>
       </section>
     );
@@ -81,10 +81,10 @@ function StaffAnnouncementDetails() {
   if (error || !announcement) {
     return (
       <section className="management-page-section">
-        <div className="alert alert-danger mb-4">{error || 'Không tìm thấy thông báo.'}</div>
+        <div className="alert alert-danger mb-4">{error || 'Không tìm thấy tin tức.'}</div>
         <Link to="/management/announcements" className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
           <i className="bi bi-arrow-left"></i>
-          <span>Quay lại danh sách thông báo</span>
+          <span>Quay lại danh sách tin tức</span>
         </Link>
       </section>
     );
@@ -101,11 +101,11 @@ function StaffAnnouncementDetails() {
             <ol className="breadcrumb small mb-0">
               <li className="breadcrumb-item">
                 <Link to="/management/announcements" className="text-decoration-none text-muted">
-                  Thông báo hệ thống
+                  Tin tức hệ thống
                 </Link>
               </li>
               <li className="breadcrumb-item active text-primary fw-semibold" aria-current="page">
-                Chi tiết thông báo
+                Chi tiết tin tức
               </li>
             </ol>
           </nav>
@@ -117,7 +117,7 @@ function StaffAnnouncementDetails() {
             </span>
             <span className="text-muted small">•</span>
             <span className="text-muted small">
-              Chi tiết thông báo hệ thống được lưu trữ và hiển thị cho người dùng.
+              Chi tiết tin tức hệ thống được lưu trữ và hiển thị cho người dùng.
             </span>
           </div>
         </div>
@@ -175,7 +175,7 @@ function StaffAnnouncementDetails() {
                   onClick={() => setIsEditOpen(true)}
                 >
                   <i className="bi bi-pencil-square"></i>
-                  <span>Chỉnh sửa thông báo</span>
+                  <span>Chỉnh sửa tin tức</span>
                 </button>
                 <button
                   type="button"
@@ -183,7 +183,7 @@ function StaffAnnouncementDetails() {
                   onClick={() => setShowDeleteModal(true)}
                 >
                   <i className="bi bi-trash"></i>
-                  <span>Xóa thông báo</span>
+                  <span>Xóa tin tức</span>
                 </button>
               </div>
             </div>
@@ -196,7 +196,7 @@ function StaffAnnouncementDetails() {
 
               <div className="d-flex flex-column gap-3 small">
                 <div>
-                  <span className="text-muted d-block mb-1">Mã thông báo</span>
+                  <span className="text-muted d-block mb-1">Mã tin tức</span>
                   <code className="text-dark bg-light px-2 py-0.5 rounded font-monospace">{announcement._id}</code>
                 </div>
 
@@ -273,13 +273,13 @@ function StaffAnnouncementDetails() {
       {/* Delete Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={showDeleteModal}
-        title="Xác nhận xóa thông báo"
+        title="Xác nhận xóa tin tức"
         message={
           <>
-            Bạn có chắc chắn muốn xóa thông báo <strong>{announcement.title}</strong>?
+            Bạn có chắc chắn muốn xóa tin tức <strong>{announcement.title}</strong>?
             <br />
             <small className="text-muted">
-              Thao tác này sẽ xóa vĩnh viễn thông báo khỏi hệ thống.
+              Thao tác này sẽ xóa vĩnh viễn tin tức khỏi hệ thống.
             </small>
           </>
         }

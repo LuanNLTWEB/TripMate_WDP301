@@ -169,7 +169,6 @@ export default function ProviderRevenueStats() {
     <section className="management-page-section">
       {/* Management Header */}
       <div className="management-page-heading">
-        <span className="management-page-kicker">Revenue & Analytics</span>
         <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div>
             <h1>Thống kê doanh thu</h1>

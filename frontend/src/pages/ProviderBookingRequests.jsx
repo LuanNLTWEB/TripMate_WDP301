@@ -4,6 +4,8 @@ import { bookingApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import CustomDatePicker from '../components/CustomDatePicker';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 const EMPTY_SUMMARY = {
   total: 0,
@@ -434,8 +436,16 @@ export default function ProviderBookingRequests() {
     e.preventDefault();
     const { booking, reason } = rejectModal;
     if (!booking) return;
+    if (!reason.trim()) {
+      setRejectModal((prev) => ({ ...prev, error: 'Vui lòng nhập lý do từ chối.' }));
+      document.getElementById('rejectionReasonInput')?.focus();
+      toast.error('Vui lòng nhập lý do từ chối.');
+      return;
+    }
     if (reason.trim().length < 5) {
       setRejectModal((prev) => ({ ...prev, error: 'Lý do từ chối phải có ít nhất 5 ký tự.' }));
+      document.getElementById('rejectionReasonInput')?.focus();
+      toast.error('Lý do từ chối phải có ít nhất 5 ký tự.');
       return;
     }
 
@@ -684,7 +694,6 @@ export default function ProviderBookingRequests() {
       {/* Page Heading & Nút Xuất Báo Cáo */}
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <span className="management-page-kicker">Tour Provider</span>
           <h1>Yêu cầu đặt tour</h1>
           <p>Xem danh sách, quản lý và phản hồi các yêu cầu đặt tour du lịch của khách hàng.</p>
         </div>
@@ -702,13 +711,25 @@ export default function ProviderBookingRequests() {
       {showExportBar && (
         <div className="card border-0 shadow-sm rounded-3 mb-4">
           <div className="card-body d-flex flex-wrap align-items-end gap-3">
-            <div>
+            <div style={{ minWidth: '160px' }}>
               <label className="form-label small fw-semibold mb-1" htmlFor="report-from">Từ ngày</label>
-              <input id="report-from" type="date" className="form-control form-control-sm" value={reportFrom} onChange={(event) => setReportFrom(event.target.value)} />
+              <CustomDatePicker
+                id="report-from"
+                name="reportFrom"
+                value={reportFrom}
+                placeholder="dd/mm/yyyy"
+                onChange={(event, val) => setReportFrom(val !== undefined ? val : event.target.value)}
+              />
             </div>
-            <div>
+            <div style={{ minWidth: '160px' }}>
               <label className="form-label small fw-semibold mb-1" htmlFor="report-to">Đến ngày</label>
-              <input id="report-to" type="date" className="form-control form-control-sm" value={reportTo} onChange={(event) => setReportTo(event.target.value)} />
+              <CustomDatePicker
+                id="report-to"
+                name="reportTo"
+                value={reportTo}
+                placeholder="dd/mm/yyyy"
+                onChange={(event, val) => setReportTo(val !== undefined ? val : event.target.value)}
+              />
             </div>
             <button type="button" className="btn btn-primary btn-sm" onClick={handleExportReport} disabled={isExporting}>
               {isExporting
@@ -976,40 +997,14 @@ export default function ProviderBookingRequests() {
           </table>
         </div>
 
-        {!loading && totalPages > 1 && (
-          <div className="management-pagination-bar">
-            <div>
-              Trang <strong>{currentPage}</strong>/{totalPages} · Tổng <strong>{total}</strong> yêu cầu
-            </div>
-            <nav aria-label="Phân trang yêu cầu đặt tour">
-              <ul className="pagination pagination-sm mb-0">
-                <li className={`page-item ${currentPage <= 1 ? 'disabled' : ''}`}>
-                  <button
-                    type="button"
-                    className="page-link"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-                  >
-                    <i className="bi bi-chevron-left me-1"></i>Trước
-                  </button>
-                </li>
-                <li className="page-item active" aria-current="page">
-                  <span className="page-link">{currentPage}</span>
-                </li>
-                <li className={`page-item ${currentPage >= totalPages ? 'disabled' : ''}`}>
-                  <button
-                    type="button"
-                    className="page-link"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
-                  >
-                    Sau<i className="bi bi-chevron-right ms-1"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        )}
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={total}
+          itemLabel="yêu cầu"
+          isLoading={loading}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {selectedBooking && (
@@ -1158,7 +1153,7 @@ export default function ProviderBookingRequests() {
           >
             <div className="modal-dialog modal-dialog-centered" style={{ overscrollBehavior: 'contain' }}>
               <div className="modal-content border-0 shadow">
-                <form onSubmit={handleConfirmReject}>
+                <form onSubmit={handleConfirmReject} noValidate>
                   <div className="modal-header">
                     <h5 className="modal-title fw-bold text-dark d-flex align-items-center mb-0">
                       <i className="bi bi-x-circle text-danger me-2"></i>
@@ -1182,10 +1177,8 @@ export default function ProviderBookingRequests() {
                       </label>
                       <textarea
                         id="rejectionReasonInput"
-                        className="form-control"
+                        className={`form-control ${rejectModal.error ? 'is-invalid' : ''}`}
                         rows="3"
-                        required
-                        minLength={5}
                         maxLength={500}
                         placeholder="Nhập lý do cụ thể (ví dụ: Hết xe vận chuyển, thời tiết xấu, quá tải...)"
                         value={rejectModal.reason}
@@ -1193,14 +1186,14 @@ export default function ProviderBookingRequests() {
                         disabled={rejectModal.submitting}
                         autoFocus
                       ></textarea>
+                      {rejectModal.error && (
+                        <div className="invalid-feedback d-block">{rejectModal.error}</div>
+                      )}
                       <div className="d-flex justify-content-between form-text small mt-1">
                         <span>Tối thiểu 5 ký tự. Lý do sẽ được thông báo tới khách hàng.</span>
                         <span>{rejectModal.reason.length}/500</span>
                       </div>
                     </div>
-                    {rejectModal.error && (
-                      <div className="alert alert-danger py-2 small mb-0">{rejectModal.error}</div>
-                    )}
                   </div>
                   <div className="modal-footer">
                     <button
@@ -1214,7 +1207,7 @@ export default function ProviderBookingRequests() {
                     <button
                       type="submit"
                       className="btn btn-danger d-inline-flex align-items-center gap-1"
-                      disabled={rejectModal.submitting || rejectModal.reason.trim().length < 5}
+                      disabled={rejectModal.submitting}
                     >
                       {rejectModal.submitting ? (
                         <>
@@ -1255,7 +1248,7 @@ export default function ProviderBookingRequests() {
           >
             <div className="modal-dialog modal-dialog-centered" style={{ overscrollBehavior: 'contain' }}>
               <div className="modal-content border-0 shadow">
-                <form onSubmit={handleConfirmNoShow}>
+                <form onSubmit={handleConfirmNoShow} noValidate>
                   <div className="modal-header">
                     <h5 className="modal-title fw-bold text-dark d-flex align-items-center mb-0">
                       <i className="bi bi-person-x text-warning me-2"></i>

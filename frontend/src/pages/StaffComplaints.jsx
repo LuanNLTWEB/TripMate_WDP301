@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { complaintApi, bookingApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
+import CustomSelect from '../components/CustomSelect';
 
 const STATUS_LABELS = { open: 'Mới', in_review: 'Đang xử lý', resolved: 'Đã giải quyết', rejected: 'Đã từ chối', cancelled: 'Đã hủy' };
 const STATUS_META = {
@@ -19,6 +20,10 @@ const CATEGORY_LABELS = {
   wrongful_no_show: 'No-Show oan',
   other: 'Khác'
 };
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả trạng thái' },
+  ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))
+];
 const BOOKING_STATUS_META = {
   pending: { label: 'Chờ xác nhận', className: 'badge-warning' },
   confirmed: { label: 'Đã xác nhận', className: 'badge-info' },
@@ -87,6 +92,7 @@ export default function StaffComplaints() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [note, setNote] = useState('');
+  const [noteError, setNoteError] = useState('');
   const [loading, setLoading] = useState(true);
   const [resettingNoShow, setResettingNoShow] = useState(false);
   const [detailTab, setDetailTab] = useState('complaint');
@@ -124,14 +130,17 @@ export default function StaffComplaints() {
 
   const resolve = async (nextStatus) => {
     if (!selected || note.trim().length < 5) {
+      setNoteError('Vui lòng nhập phản hồi xử lý ít nhất 5 ký tự.');
+      document.getElementById('complaint-resolution-note')?.focus();
       toast.error('Vui lòng nhập phản hồi xử lý ít nhất 5 ký tự.');
       return;
     }
     try {
-      await complaintApi.resolve(selected._id, { status: nextStatus, resolutionNote: note });
+      await complaintApi.resolve(selected._id, { status: nextStatus, resolutionNote: note.trim() });
       toast.success('Đã cập nhật khiếu nại.');
       setSelected(null);
       setNote('');
+      setNoteError('');
       await load();
     } catch (error) {
       toast.error(error.message || 'Không thể cập nhật khiếu nại.');
@@ -159,7 +168,6 @@ export default function StaffComplaints() {
   return (
     <section className="management-page-section">
       <div className="management-page-heading">
-        <span className="management-page-kicker">Complaint Handling</span>
         <h1>Quản lý khiếu nại khách hàng</h1>
         <p>Tra cứu, xem chi tiết và xử lý các khiếu nại liên quan đến đơn đặt tour.</p>
       </div>
@@ -169,10 +177,15 @@ export default function StaffComplaints() {
             <i className="bi bi-search"></i>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm khách, email, số điện thoại hoặc nội dung..." />
           </form>
-          <select className="form-select" style={{ maxWidth: 190 }} value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="all">Tất cả trạng thái</option>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          <CustomSelect
+            id="complaint-status-filter"
+            style={{ width: '190px' }}
+            triggerStyle={{ height: '40px', fontSize: '0.88rem' }}
+            value={status}
+            options={STATUS_OPTIONS}
+            onChange={(e, val) => setStatus(val !== undefined ? val : e.target.value)}
+            placeholder="Lọc trạng thái"
+          />
         </div>
         <div className="table-responsive">
           <table className="management-table align-middle">
@@ -332,14 +345,19 @@ export default function StaffComplaints() {
                   {/* END STT 156 Reset No-Show Count (Staff) */}
                   {['open', 'in_review'].includes(selected.status) && (
                     <div className="mb-3">
-                      <label className="form-label small fw-semibold text-muted mb-1">Kết quả / Phản hồi xử lý <span className="text-danger">*</span></label>
+                      <label className="form-label small fw-semibold text-muted mb-1" htmlFor="complaint-resolution-note">Kết quả / Phản hồi xử lý <span className="text-danger">*</span></label>
                       <textarea
-                        className="form-control"
+                        id="complaint-resolution-note"
+                        className={`form-control ${noteError ? 'is-invalid' : ''}`}
                         rows="4"
                         value={note}
-                        onChange={(e) => setNote(e.target.value)}
+                        onChange={(e) => {
+                          setNote(e.target.value);
+                          if (noteError) setNoteError('');
+                        }}
                         placeholder="Nhập nội dung phản hồi xử lý cho khách hàng (tối thiểu 5 ký tự)..."
                       ></textarea>
+                      {noteError && <div className="invalid-feedback d-block">{noteError}</div>}
                       <div className="d-flex justify-content-between align-items-center mt-1">
                         <small className={note.trim().length >= 5 ? 'text-success' : 'text-danger'}>
                           {note.trim().length >= 5 ? (

@@ -108,7 +108,6 @@ function StaffTourCategories() {
     <section className="management-page-section">
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <span className="management-page-kicker">Tour Categories</span>
           <h1>Quản lý danh mục tour</h1>
           <p>Xem, tạo mới và phân loại các danh mục tour du lịch trên hệ thống.</p>
         </div>

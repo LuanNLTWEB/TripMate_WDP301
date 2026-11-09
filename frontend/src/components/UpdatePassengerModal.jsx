@@ -15,6 +15,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
     address: '',
     note: ''
   });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,6 +33,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
         address: booking.address || '',
         note: booking.note || ''
       });
+      setErrors({});
       setError('');
     }
   }, [booking]);
@@ -41,13 +43,14 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     if (error) setError('');
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isLimitReached) {
-      setError(`Đơn đặt tour đã đạt giới hạn tối đa ${MAX_UPDATES} lần chỉnh sửa thông tin.`);
+      toast.error(`Đơn đặt tour đã đạt giới hạn tối đa ${MAX_UPDATES} lần chỉnh sửa thông tin.`);
       return;
     }
 
@@ -57,20 +60,27 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
     const address = formData.address.trim();
     const note = formData.note.trim();
 
+    const fieldErrors = {};
     if (!fullName || fullName.length < 2) {
-      setError('Họ và tên phải có ít nhất 2 ký tự.');
-      return;
+      fieldErrors.fullName = 'Họ và tên phải có ít nhất 2 ký tự.';
     }
     if (!phone || !/^(0)[35789][0-9]{8}$/.test(phone)) {
-      setError('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 03, 05, 07, 08, 09).');
-      return;
+      fieldErrors.phone = 'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 03, 05, 07, 08, 09).';
     }
     if (!email || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i.test(email)) {
-      setError('Email không hợp lệ.');
+      fieldErrors.email = 'Email không hợp lệ.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(`passenger-${firstField}`)?.focus();
       return;
     }
 
     setIsSubmitting(true);
+    setErrors({});
     setError('');
 
     try {
@@ -85,7 +95,9 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
       onUpdated(response.data);
       onClose();
     } catch (requestError) {
-      setError(requestError.message || 'Không thể cập nhật thông tin hành khách.');
+      const msg = requestError.message || 'Không thể cập nhật thông tin hành khách.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -133,7 +145,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4">
                 {error && (
                   <div className="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
@@ -160,7 +172,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
 
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold small text-dark">
+                    <label className="form-label fw-semibold small text-dark" htmlFor="passenger-fullName">
                       Họ và tên người liên hệ <span className="text-danger">*</span>
                     </label>
                     <div className="input-group">
@@ -168,9 +180,10 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
                         <i className="bi bi-person text-muted" />
                       </span>
                       <input
+                        id="passenger-fullName"
                         type="text"
                         name="fullName"
-                        className="form-control border-start-0 ps-1"
+                        className={`form-control border-start-0 ps-1 ${errors.fullName ? 'is-invalid' : ''}`}
                         placeholder="Nhập họ và tên đầy đủ"
                         value={formData.fullName}
                         onChange={handleChange}
@@ -178,11 +191,14 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
                         required
                         disabled={isSubmitting || isLimitReached}
                       />
+                      {errors.fullName && (
+                        <div className="invalid-feedback">{errors.fullName}</div>
+                      )}
                     </div>
                   </div>
 
                   <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold small text-dark">
+                    <label className="form-label fw-semibold small text-dark" htmlFor="passenger-phone">
                       Số điện thoại <span className="text-danger">*</span>
                     </label>
                     <div className="input-group">
@@ -190,20 +206,24 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
                         <i className="bi bi-telephone text-muted" />
                       </span>
                       <input
+                        id="passenger-phone"
                         type="tel"
                         name="phone"
-                        className="form-control border-start-0 ps-1"
+                        className={`form-control border-start-0 ps-1 ${errors.phone ? 'is-invalid' : ''}`}
                         placeholder="Ví dụ: 0912345678"
                         value={formData.phone}
                         onChange={handleChange}
                         required
                         disabled={isSubmitting || isLimitReached}
                       />
+                      {errors.phone && (
+                        <div className="invalid-feedback">{errors.phone}</div>
+                      )}
                     </div>
                   </div>
 
                   <div className="col-12">
-                    <label className="form-label fw-semibold small text-dark">
+                    <label className="form-label fw-semibold small text-dark" htmlFor="passenger-email">
                       Email nhận vé & thông báo <span className="text-danger">*</span>
                     </label>
                     <div className="input-group">
@@ -211,15 +231,19 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
                         <i className="bi bi-envelope text-muted" />
                       </span>
                       <input
+                        id="passenger-email"
                         type="email"
                         name="email"
-                        className="form-control border-start-0 ps-1"
+                        className={`form-control border-start-0 ps-1 ${errors.email ? 'is-invalid' : ''}`}
                         placeholder="example@gmail.com"
                         value={formData.email}
                         onChange={handleChange}
                         required
                         disabled={isSubmitting || isLimitReached}
                       />
+                      {errors.email && (
+                        <div className="invalid-feedback">{errors.email}</div>
+                      )}
                     </div>
                   </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { tourSubmissionApi } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import ManagementPagination from '../components/management/ManagementPagination';
 import TourSubmissionFormModal from './TourSubmissionFormModal';
 import TourSubmissionReviewModal from './TourSubmissionReviewModal';
 
@@ -164,7 +165,6 @@ export default function TourSubmissions() {
     <section className="management-page-section">
       <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
-          <span className="management-page-kicker">{isStaff ? 'Tour Approval' : 'Tour Provider'}</span>
           <h1>{isStaff ? 'Duyệt yêu cầu duyệt tour' : 'Yêu cầu duyệt tour'}</h1>
           <p>
             {isStaff
@@ -392,42 +392,13 @@ export default function TourSubmissions() {
           </table>
         </div>
 
-        {!isLoading && totalPages > 1 && (
-          <div className="management-pagination-bar">
-            <div>
-              Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong>
-            </div>
-            <nav aria-label="Phân trang">
-              <ul className="pagination pagination-sm mb-0">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <i className="bi bi-chevron-left me-1"></i>Trước
-                  </button>
-                </li>
-                {[...Array(totalPages)].map((_, idx) => (
-                  <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(idx + 1)}>
-                      {idx + 1}
-                    </button>
-                  </li>
-                ))}
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Sau<i className="bi bi-chevron-right ms-1"></i>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        )}
+        <ManagementPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemLabel="yêu cầu"
+          isLoading={isLoading}
+          onPageChange={handlePageChange}
+        />
       </div>
 
       <TourSubmissionFormModal

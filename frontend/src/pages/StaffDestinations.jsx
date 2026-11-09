@@ -5,6 +5,7 @@ import { useToast } from '../hooks/useToast';
 import { destinationApi, destinationCategoryApi } from '../services/api';
 import DestinationFormModal from '../components/DestinationFormModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import ManagementPagination from '../components/management/ManagementPagination';
 
 function StaffDestinations() {
   const { user } = useAuth();
@@ -145,7 +146,6 @@ function StaffDestinations() {
       <section className="management-page-section">
         <div className="management-page-heading d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
           <div>
-            <span className="management-page-kicker">Destinations Management</span>
             <h1>Quản lý điểm đến</h1>
             <p>Xem danh sách, thêm mới và quản lý các điểm đến du lịch trên hệ thống.</p>
           </div>
@@ -291,34 +291,13 @@ function StaffDestinations() {
             </table>
           </div>
 
-          {!isLoading && totalPages > 1 && (
-            <div className="management-pagination-bar">
-              <div>
-                Trang <strong>{currentPage}</strong> trên <strong>{totalPages}</strong>
-              </div>
-              <nav aria-label="Page navigation">
-                <ul className="pagination pagination-sm mb-0">
-                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>
-                      <i className="bi bi-chevron-left me-1"></i>Trước
-                    </button>
-                  </li>
-                  {[...Array(totalPages)].map((_, idx) => (
-                    <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                      <button className="page-link" onClick={() => handlePageChange(idx + 1)}>
-                        {idx + 1}
-                      </button>
-                    </li>
-                  ))}
-                  <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>
-                      Sau<i className="bi bi-chevron-right ms-1"></i>
-                    </button>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          )}
+          <ManagementPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemLabel="điểm đến"
+            isLoading={isLoading}
+            onPageChange={handlePageChange}
+          />
         </div>
       </section>
 

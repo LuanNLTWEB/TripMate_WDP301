@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import CustomSelect from '../components/CustomSelect';
 import { complaintApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
@@ -12,6 +11,8 @@ const CATEGORY_LABELS = {
   wrongful_no_show: 'Bị đánh dấu No-Show oan',
   other: 'Khác'
 };
+
+const COMPLAINT_CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }));
 
 const STATUS_META = {
   open: { label: 'Mới gửi', icon: 'bi-envelope-open', className: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' },
@@ -95,12 +96,22 @@ export default function MyComplaints() {
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     const trimmedDesc = editDescription.trim();
+    if (!trimmedDesc) {
+      setEditError('Vui lòng nhập nội dung khiếu nại.');
+      document.getElementById('edit-complaint-description')?.focus();
+      toast.error('Vui lòng nhập nội dung khiếu nại.');
+      return;
+    }
     if (trimmedDesc.length < 20) {
       setEditError('Nội dung khiếu nại phải có ít nhất 20 ký tự.');
+      document.getElementById('edit-complaint-description')?.focus();
+      toast.error('Nội dung khiếu nại phải có ít nhất 20 ký tự.');
       return;
     }
     if (trimmedDesc.length > 2000) {
       setEditError('Nội dung khiếu nại không được vượt quá 2000 ký tự.');
+      document.getElementById('edit-complaint-description')?.focus();
+      toast.error('Nội dung khiếu nại không được vượt quá 2000 ký tự.');
       return;
     }
 
@@ -124,6 +135,10 @@ export default function MyComplaints() {
   // END STT 68 Update Booking Complaint (Customer)
   const [complaintToCancel, setComplaintToCancel] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const counts = useMemo(() => {
     const result = { total: complaints.length, open: 0, in_review: 0, resolved: 0, rejected: 0, cancelled: 0 };
@@ -134,6 +149,35 @@ export default function MyComplaints() {
     });
     return result;
   }, [complaints]);
+
+  const filteredComplaints = useMemo(() => {
+    let result = [...complaints];
+    if (statusFilter !== 'all') {
+      result = result.filter((c) => c.status === statusFilter);
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      result = result.filter((c) => {
+        const code = complaintCode(c._id).toLowerCase();
+        const bCode = bookingCode(c.bookingId?._id).toLowerCase();
+        const tourTitle = (c.tourId?.title || '').toLowerCase();
+        const desc = (c.description || '').toLowerCase();
+        return code.includes(q) || bCode.includes(q) || tourTitle.includes(q) || desc.includes(q);
+      });
+    }
+    result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return result;
+  }, [complaints, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredComplaints.length / PAGE_SIZE));
+  const pagedComplaints = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredComplaints.slice(start, start + PAGE_SIZE);
+  }, [filteredComplaints, currentPage]);
 
   const load = async () => {
     setLoading(true);
@@ -170,41 +214,116 @@ export default function MyComplaints() {
 
   return (
     <>
-      <Navbar />
-      <main className="container py-5">
-        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+      <div className="management-page-section">
+        {/* Header Banner */}
+        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
           <div>
-            <h1 className="fw-bold">Khiếu nại của tôi</h1>
-            <p className="text-muted mb-0">Theo dõi trạng thái xử lý các khiếu nại liên quan đến đơn đặt tour đã xác nhận.</p>
+            <h1 className="fw-bold mb-1 display-6">Khiếu nại của tôi</h1>
+            <p className="text-muted mb-0">
+              Theo dõi trạng thái xử lý các khiếu nại liên quan đến đơn đặt tour đã xác nhận.
+            </p>
           </div>
-          <button
-            type="button"
-            className="btn btn-warning rounded-pill px-4 fw-semibold"
-            onClick={() => navigate('/my-bookings?complain=1')}
-          >
-            <i className="bi bi-flag me-2"></i>Gửi khiếu nại mới
-          </button>
+
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 shadow-sm"
+              onClick={() => navigate('/my-bookings?complain=1')}
+            >
+              <i className="bi bi-flag"></i>
+              <span className="small fw-semibold">Gửi khiếu nại mới</span>
+            </button>
+          </div>
         </div>
 
-        {complaints.length > 0 && (
-          <div className="d-flex flex-wrap gap-2 mb-4">
-            <span className="badge bg-light text-dark border rounded-pill px-3 py-2">
-              <i className="bi bi-list-ul me-1"></i>Tổng: {counts.total}
-            </span>
-            <span className={`badge rounded-pill px-3 py-2 ${STATUS_META.open.className}`}><i className={`bi ${STATUS_META.open.icon} me-1`}></i>{STATUS_META.open.label}: {counts.open}</span>
-            <span className={`badge rounded-pill px-3 py-2 ${STATUS_META.in_review.className}`}><i className={`bi ${STATUS_META.in_review.icon} me-1`}></i>{STATUS_META.in_review.label}: {counts.in_review}</span>
-            <span className={`badge rounded-pill px-3 py-2 ${STATUS_META.resolved.className}`}><i className={`bi ${STATUS_META.resolved.icon} me-1`}></i>{STATUS_META.resolved.label}: {counts.resolved}</span>
-            <span className={`badge rounded-pill px-3 py-2 ${STATUS_META.rejected.className}`}><i className={`bi ${STATUS_META.rejected.icon} me-1`}></i>{STATUS_META.rejected.label}: {counts.rejected}</span>
-            <span className={`badge rounded-pill px-3 py-2 ${STATUS_META.cancelled.className}`}><i className={`bi ${STATUS_META.cancelled.icon} me-1`}></i>{STATUS_META.cancelled.label}: {counts.cancelled}</span>
+        {/* Filters and Search Bar */}
+        <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+          <div className="d-flex flex-column gap-3">
+            {/* Status pills */}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              {[
+                { value: 'all', label: 'Tất cả', count: counts.total },
+                { value: 'open', label: 'Mới gửi', count: counts.open },
+                { value: 'in_review', label: 'Đang xử lý', count: counts.in_review },
+                { value: 'resolved', label: 'Đã giải quyết', count: counts.resolved },
+                { value: 'rejected', label: 'Đã từ chối', count: counts.rejected },
+                { value: 'cancelled', label: 'Đã hủy', count: counts.cancelled }
+              ].map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 fw-medium d-inline-flex align-items-center gap-1.5 ${
+                    statusFilter === tab.value
+                      ? 'btn-dark text-white shadow-xs'
+                      : 'btn-light border bg-white text-secondary'
+                  }`}
+                  onClick={() => setStatusFilter(tab.value)}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`badge rounded-pill ms-1 ${
+                      statusFilter === tab.value ? 'bg-secondary text-white' : 'bg-light text-muted border'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: '520px' }}>
+              <div className="input-group">
+                <span className="input-group-text bg-light border-end-0 text-muted">
+                  <i className="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  className="form-control bg-light border-start-0"
+                  placeholder="Tìm mã khiếu nại, tên tour, mã đơn..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="btn bg-light border-0 text-muted"
+                    onClick={() => setSearchTerm('')}
+                    title="Xóa tìm kiếm"
+                  >
+                    <i className="bi bi-x"></i>
+                  </button>
+                )}
+              </div>
+              {(searchTerm || statusFilter !== 'all') && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 text-nowrap d-inline-flex align-items-center gap-1"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                  }}
+                  title="Đặt lại bộ lọc về mặc định"
+                >
+                  <i className="bi bi-arrow-counterclockwise"></i>
+                  <span>Đặt lại</span>
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
 
         {loading ? (
-          <div className="text-center py-5"><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Đang tải...</span></div><p className="text-muted mt-2 mb-0">Đang tải khiếu nại...</p></div>
+          <div className="text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Đang tải...</span>
+            </div>
+            <p className="text-muted mt-2 mb-0">Đang tải khiếu nại...</p>
+          </div>
         ) : complaints.length === 0 ? (
-          <div className="card border-0 shadow-sm">
+          <div className="card border-0 shadow-sm rounded-4">
             <div className="card-body text-center py-5">
               <div className="mx-auto mb-3 bg-light text-muted rounded-circle d-flex align-items-center justify-content-center" style={{ width: 72, height: 72 }}>
                 <i className="bi bi-inbox fs-2"></i>
@@ -213,14 +332,34 @@ export default function MyComplaints() {
               <p className="text-muted mx-auto" style={{ maxWidth: 480 }}>
                 Khi đơn đặt tour của bạn gặp sự cố, bạn có thể gửi khiếu nại ngay tại lịch sử đặt tour — kèm ảnh minh chứng — và quay lại đây để theo dõi tiến trình xử lý.
               </p>
-              <button type="button" className="btn btn-warning rounded-pill px-4 fw-semibold" onClick={() => navigate('/my-bookings?complain=1')}>
+              <button type="button" className="btn btn-primary rounded-pill px-4 fw-semibold" onClick={() => navigate('/my-bookings?complain=1')}>
                 <i className="bi bi-flag me-2"></i>Gửi khiếu nại đầu tiên
               </button>
             </div>
           </div>
+        ) : filteredComplaints.length === 0 ? (
+          <div className="card border-0 shadow-sm rounded-4 p-5 text-center bg-white my-4">
+            <div className="mx-auto mb-3 bg-light text-muted rounded-circle d-flex align-items-center justify-content-center" style={{ width: 72, height: 72 }}>
+              <i className="bi bi-search fs-2"></i>
+            </div>
+            <h5 className="fw-bold mb-1">Không tìm thấy khiếu nại phù hợp</h5>
+            <p className="text-muted mb-4 mx-auto" style={{ maxWidth: 480 }}>
+              Không có khiếu nại nào trùng khớp với trạng thái hoặc từ khóa tìm kiếm của bạn. Hãy thử thay đổi bộ lọc.
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline-secondary rounded-pill px-4 py-2"
+              onClick={() => {
+                setStatusFilter('all');
+                setSearchTerm('');
+              }}
+            >
+              Đặt lại bộ lọc
+            </button>
+          </div>
         ) : (
           <div className="d-flex flex-column gap-3">
-            {complaints.map((complaint) => {
+            {pagedComplaints.map((complaint) => {
               const statusMeta = STATUS_META[complaint.status] || STATUS_META.open;
               const canCancel = ['open', 'in_review'].includes(complaint.status);
               return (
@@ -304,13 +443,55 @@ export default function MyComplaints() {
           </div>
         )}
 
+        {totalPages > 1 && (
+          <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-4 pt-3 border-top">
+            <div className="text-muted small">
+              Hiển thị {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredComplaints.length)} trên tổng số {filteredComplaints.length} khiếu nại
+            </div>
+            <nav aria-label="Phân trang khiếu nại">
+              <ul className="pagination pagination-sm mb-0">
+                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                  <button
+                    type="button"
+                    className="page-link"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <i className="bi bi-chevron-left me-1"></i>Trước
+                  </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                    <button
+                      type="button"
+                      className="page-link"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                  <button
+                    type="button"
+                    className="page-link"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Sau<i className="bi bi-chevron-right ms-1"></i>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
+
         {!loading && (
           <div className="text-muted small mt-4">
             <i className="bi bi-info-circle me-1"></i>
             Khiếu nại mới được gửi tại lịch sử đặt tour, ngay trên đơn đặt tour cần khiếu nại. Bạn sẽ thấy cập nhật xử lý ngay tại trang này.
           </div>
         )}
-        <Link className="btn btn-link px-0 mt-3" to="/my-bookings">Quay lại lịch sử đặt tour</Link>
 {/* START STT 68 Update Booking Complaint Modal */}
         {editingComplaint && (
           <>
@@ -318,7 +499,7 @@ export default function MyComplaints() {
             <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }} onClick={(e) => { if (e.target === e.currentTarget) handleCloseEdit(); }}>
               <div className="modal-dialog modal-dialog-centered modal-lg">
                 <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                  <form onSubmit={handleSaveEdit}>
+                  <form onSubmit={handleSaveEdit} noValidate>
                     <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
                       <div>
                         <span className="badge bg-primary-subtle text-primary font-monospace small mb-1">
@@ -350,17 +531,14 @@ export default function MyComplaints() {
                         <label htmlFor="edit-complaint-category" className="form-label fw-semibold small text-muted text-uppercase">
                           Loại khiếu nại <span className="text-danger">*</span>
                         </label>
-                        <select
+                        <CustomSelect
                           id="edit-complaint-category"
-                          className="form-select rounded-3"
                           value={editCategory}
-                          onChange={(e) => setEditCategory(e.target.value)}
+                          options={COMPLAINT_CATEGORY_OPTIONS}
+                          onChange={(e, val) => setEditCategory(val !== undefined ? val : e.target.value)}
                           disabled={editSubmitting}
-                        >
-                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                            <option key={key} value={key}>{label}</option>
-                          ))}
-                        </select>
+                          placeholder="Chọn loại khiếu nại"
+                        />
                       </div>
 
                       <div className="mb-3">
@@ -374,16 +552,18 @@ export default function MyComplaints() {
                         </div>
                         <textarea
                           id="edit-complaint-description"
-                          className="form-control rounded-3"
+                          className={`form-control rounded-3 ${editError ? 'is-invalid' : ''}`}
                           rows={5}
                           value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
+                          onChange={(e) => {
+                            setEditDescription(e.target.value);
+                            if (editError) setEditError('');
+                          }}
                           placeholder="Mô tả chi tiết sự cố bạn gặp phải..."
                           disabled={editSubmitting}
-                          minLength={20}
                           maxLength={2000}
-                          required
                         />
+                        {editError && <div className="invalid-feedback d-block">{editError}</div>}
                       </div>
 
                       <div>
@@ -469,8 +649,7 @@ export default function MyComplaints() {
             if (!cancelling) setComplaintToCancel(null);
           }}
         />
-      </main>
-      <Footer />
+      </div>
     </>
   );
 }

@@ -41,7 +41,6 @@ function byKey(entries, key, fallback = 0) {
     <section className="management-page-section">
       <div className="container-fluid px-0">
           <div className="mb-4">
-            <p className="text-primary text-uppercase fw-semibold small mb-2">Platform overview</p>
             <h1 className="fw-bold mb-2">Thống kê nền tảng</h1>
             <p className="text-muted mb-0">Tổng quan về người dùng, điểm đến, tour và lịch trình.</p>
           </div>

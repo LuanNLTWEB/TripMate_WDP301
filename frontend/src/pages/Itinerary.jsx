@@ -1,6 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import ItineraryPrintView from '../components/ItineraryPrintView';
 import CustomSelect from '../components/CustomSelect';
 import CustomTimePicker from '../components/CustomTimePicker';
@@ -671,12 +669,26 @@ function Itinerary() {
 
   const handleShareItinerary = async (e) => {
     e.preventDefault();
-    if (!selected || !shareModal.email.trim()) return;
+    if (!selected) return;
+
+    const emailTrim = shareModal.email?.trim();
+    if (!emailTrim) {
+      setShareModal((prev) => ({ ...prev, error: 'Vui lòng nhập địa chỉ email.' }));
+      document.getElementById('share-email')?.focus();
+      toast.error('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      setShareModal((prev) => ({ ...prev, error: 'Địa chỉ email không đúng định dạng.' }));
+      document.getElementById('share-email')?.focus();
+      toast.error('Địa chỉ email không đúng định dạng.');
+      return;
+    }
 
     setShareModal((prev) => ({ ...prev, submitting: true, error: '' }));
     try {
       const response = await itineraryApi.share(selected._id, {
-        email: shareModal.email.trim().toLowerCase(),
+        email: emailTrim.toLowerCase(),
         permission: shareModal.permission
       });
       applyItinerary(response.itinerary);
@@ -983,14 +995,15 @@ function Itinerary() {
 
   return (
     <>
-      <Navbar />
       <ItineraryPrintView itinerary={selected} />
-      <main className="bg-light py-5 flex-grow-1" style={{ minHeight: 'calc(100vh - 160px)' }}>
-        <div className="container">
-          <div className="mb-4">
-            <p className="text-primary text-uppercase fw-semibold small mb-2">Personal planning</p>
-            <h1 className="fw-bold mb-2">Lịch trình của tôi</h1>
-            <p className="text-muted mb-0">Tạo và quản lý lịch trình cá nhân, xem lịch trình được chia sẻ với bạn.</p>
+      <div className="management-page-section">
+        <div>
+          {/* Header Banner */}
+          <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 className="fw-bold mb-1 display-6">Lịch trình của tôi</h1>
+              <p className="text-muted mb-0">Tạo và quản lý lịch trình cá nhân, xem lịch trình được chia sẻ với bạn.</p>
+            </div>
           </div>
 
           {!isAuthenticated ? (
@@ -1620,7 +1633,7 @@ function Itinerary() {
                                     borderColor: item.isPacked ? undefined : '#e8edf5',
                                     transition: 'all 0.2s ease'
                                   }}
-                                  key={item._id || item.name}
+                                  key={item._id || `${item.name}-${index}`}
                                 >
                                   {editingPackingItemId === item._id ? (
                                     <form
@@ -1655,14 +1668,21 @@ function Itinerary() {
                                     </form>
                                   ) : (
                                     <>
-                                      <div className="d-flex align-items-center gap-2.5 flex-grow-1 text-truncate">
+                                      <div className="d-flex align-items-center gap-2 flex-grow-1 text-truncate">
                                         {/* START UC-151 Mark Item as Packed - Checkbox */}
                                         <button
                                           type="button"
                                           className={`btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0 ${
-                                            item.isPacked ? 'btn-success border-0 text-white' : 'btn-light border'
+                                            item.isPacked
+                                              ? 'btn-success border-0 text-white shadow-xs'
+                                              : 'bg-white border-2 text-secondary'
                                           }`}
-                                          style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                                          style={{
+                                            width: 26,
+                                            height: 26,
+                                            borderColor: item.isPacked ? undefined : '#cbd5e1',
+                                            transition: 'all 0.2s ease'
+                                          }}
                                           onClick={() => handleTogglePackingItemStatus(item)}
                                           disabled={!canMarkPacked || !item._id || isPackingItemUpdating(item._id)}
                                           title={
@@ -1676,20 +1696,17 @@ function Itinerary() {
                                           aria-label={item.isPacked ? `Bỏ đánh dấu ${item.name}` : `Đánh dấu ${item.name} đã chuẩn bị`}
                                         >
                                           {isPackingItemUpdating(item._id) ? (
-                                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            <span
+                                              className="spinner-border spinner-border-sm"
+                                              role="status"
+                                              aria-hidden="true"
+                                              style={{ width: 13, height: 13, borderWidth: 2 }}
+                                            ></span>
                                           ) : item.isPacked ? (
-                                            <i className="bi bi-check-lg"></i>
-                                          ) : (
-                                            <i className="bi bi-circle" style={{ fontSize: '0.6rem' }}></i>
-                                          )}
+                                            <i className="bi bi-check-lg" style={{ fontSize: '0.85rem' }}></i>
+                                          ) : null}
                                         </button>
                                         {/* END UC-151 Mark Item as Packed - Checkbox */}
-                                        <span
-                                          className="badge bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                          style={{ width: 24, height: 24, fontSize: '0.75rem', fontWeight: 600 }}
-                                        >
-                                          {index + 1}
-                                        </span>
                                         <span
                                           className={`fw-medium text-truncate ${item.isPacked ? 'text-muted text-decoration-line-through' : 'text-dark'}`}
                                           style={{ fontSize: '0.92rem' }}
@@ -1892,6 +1909,7 @@ function Itinerary() {
                       {canEditSelected && (
                         <form
                           ref={activityFormRef}
+                          noValidate
                           className={`card border-0 shadow-sm transition-all ${editingActivityId ? 'border border-2 border-primary shadow' : ''}`}
                           onSubmit={handleActivitySubmit}
                           noValidate
@@ -2267,8 +2285,7 @@ function Itinerary() {
             </>
           )}
         </div>
-      </main>
-      <Footer />
+      </div>
 
       <CreateItineraryModal
         open={createModalOpen}
@@ -2392,22 +2409,20 @@ function Itinerary() {
                     <label htmlFor="transfer-owner-select" className="form-label fw-semibold">
                       Người nhận quyền sở hữu <span className="text-danger">*</span>
                     </label>
-                    <select
+                    <CustomSelect
                       id="transfer-owner-select"
-                      className="form-select"
                       value={pendingTransferOwnerId || ''}
-                      onChange={(e) => setPendingTransferOwnerId(e.target.value)}
-                      disabled={leavingItinerary}
-                    >
-                      {(selected?.collaborators || []).map((c) => {
+                      options={(selected?.collaborators || []).map((c) => {
                         const cid = c.user?._id || c.user;
-                        return (
-                          <option key={cid} value={cid}>
-                            {c.user?.username || c.user?.email || cid} ({c.permission === 'edit' ? 'Sửa' : 'Xem'})
-                          </option>
-                        );
+                        return {
+                          value: String(cid),
+                          label: `${c.user?.username || c.user?.email || cid} (${c.permission === 'edit' ? 'Sửa' : 'Xem'})`
+                        };
                       })}
-                    </select>
+                      onChange={(e, val) => setPendingTransferOwnerId(val !== undefined ? val : e.target.value)}
+                      disabled={leavingItinerary}
+                      placeholder="Chọn người nhận quyền sở hữu"
+                    />
                   </div>
                   <div className="alert alert-light border small mt-3 mb-0">
                     <i className="bi bi-info-circle me-1"></i>
@@ -2544,12 +2559,12 @@ function Itinerary() {
                       <label className="form-label fw-semibold" htmlFor="duplicate-itinerary-start-date">
                         Ngày bắt đầu mới <span className="text-muted fw-normal small">(Tùy chọn)</span>
                       </label>
-                      <input
+                      <CustomDatePicker
                         id="duplicate-itinerary-start-date"
-                        type="date"
-                        className="form-control"
+                        name="startDate"
                         value={duplicateModal.startDate}
-                        onChange={(e) => setDuplicateModal((prev) => ({ ...prev, startDate: e.target.value }))}
+                        placeholder="dd/mm/yyyy"
+                        onChange={(e, val) => setDuplicateModal((prev) => ({ ...prev, startDate: val !== undefined ? val : e.target.value }))}
                       />
                       <div className="form-text small">
                         Nếu bạn chọn ngày bắt đầu mới, toàn bộ các hoạt động theo ngày của lịch trình sẽ tự động được tịnh tiến tương ứng.
@@ -2605,7 +2620,7 @@ function Itinerary() {
                     aria-label="Đóng"
                   ></button>
                 </div>
-                <form onSubmit={handleShareItinerary}>
+                <form onSubmit={handleShareItinerary} noValidate>
                   <div className="modal-body">
                     <p className="text-muted small mb-3">
                       Chia sẻ lịch trình <strong>{selected?.title}</strong> với người dùng khác qua địa chỉ email đã đăng ký trên hệ thống.
@@ -2650,13 +2665,6 @@ function Itinerary() {
                     </div>
                     {/* END UC-60 Share Personal Itinerary - Shareable Link */}
 
-                    {shareModal.error && (
-                      <div className="alert alert-danger py-2 small mb-3">
-                        <i className="bi bi-exclamation-circle me-1"></i>
-                        {shareModal.error}
-                      </div>
-                    )}
-
                     <div className="mb-3">
                       <label className="form-label fw-semibold" htmlFor="share-email">
                         Email người nhận <span className="text-danger">*</span>
@@ -2666,14 +2674,18 @@ function Itinerary() {
                         <input
                           id="share-email"
                           type="email"
-                          className="form-control"
+                          className={`form-control ${shareModal.error ? 'is-invalid' : ''}`}
                           placeholder="nguoidung@example.com"
                           value={shareModal.email}
                           onChange={(e) => setShareModal((prev) => ({ ...prev, email: e.target.value, error: '' }))}
-                          required
                           disabled={shareModal.submitting}
                         />
                       </div>
+                      {shareModal.error && (
+                        <div className="invalid-feedback d-block mt-1">
+                          <i className="bi bi-exclamation-circle me-1"></i>{shareModal.error}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mb-4">

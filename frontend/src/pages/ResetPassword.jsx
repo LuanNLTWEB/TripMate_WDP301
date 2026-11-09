@@ -19,6 +19,7 @@ function ResetPassword() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,6 +34,7 @@ function ResetPassword() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     if (error) setError('');
   };
 
@@ -47,13 +49,24 @@ function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!isLengthValid || !hasUpper || !hasLower || !hasNumber) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự, gồm 1 chữ hoa, 1 chữ thường và 1 chữ số');
-      return;
+    const fieldErrors = {};
+    if (!formData.newPassword) {
+      fieldErrors.newPassword = 'Vui lòng nhập mật khẩu mới';
+    } else if (!isLengthValid || !hasUpper || !hasLower || !hasNumber) {
+      fieldErrors.newPassword = 'Mật khẩu phải tối thiểu 6 ký tự, gồm 1 chữ hoa, 1 chữ thường và 1 chữ số';
     }
 
-    if (!isMatch) {
-      setError('Mật khẩu xác nhận không khớp');
+    if (!formData.confirmPassword) {
+      fieldErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
+    } else if (!isMatch) {
+      fieldErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra lại thông tin mật khẩu.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(firstField)?.focus();
       return;
     }
 
@@ -118,7 +131,7 @@ function ResetPassword() {
                         </span>
                         <input
                           type={showPassword ? 'text' : 'password'}
-                          className="form-control"
+                          className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
                           id="newPassword"
                           name="newPassword"
                           placeholder="Nhập mật khẩu mới"
@@ -137,6 +150,9 @@ function ResetPassword() {
                         >
                           <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                         </button>
+                        {errors.newPassword && (
+                          <div className="invalid-feedback">{errors.newPassword}</div>
+                        )}
                       </div>
                     </div>
 
@@ -151,7 +167,7 @@ function ResetPassword() {
                         </span>
                         <input
                           type={showConfirmPassword ? 'text' : 'password'}
-                          className="form-control"
+                          className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
                           id="confirmPassword"
                           name="confirmPassword"
                           placeholder="Nhập lại mật khẩu mới"
@@ -169,6 +185,9 @@ function ResetPassword() {
                         >
                           <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                         </button>
+                        {errors.confirmPassword && (
+                          <div className="invalid-feedback">{errors.confirmPassword}</div>
+                        )}
                       </div>
                     </div>
 

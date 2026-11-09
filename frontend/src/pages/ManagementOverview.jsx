@@ -17,7 +17,6 @@ function ManagementOverview() {
   return (
     <section className="management-overview">
       <div className="management-page-heading">
-        <span className="management-page-kicker">TripMate Management</span>
         <h1>Xin chào, {user?.username}</h1>
         <p>{roleLabel} có thể chọn một chức năng bên dưới để bắt đầu quản lý hệ thống.</p>
       </div>

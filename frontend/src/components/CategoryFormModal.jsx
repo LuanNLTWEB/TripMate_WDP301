@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../hooks/useToast';
 
 /**
  * CategoryFormModal - Standardized Create & Update Modal for Categories
@@ -13,6 +14,7 @@ export default function CategoryFormModal({
   onClose,
   onSubmit
 }) {
+  const toast = useToast();
   const isEditing = Boolean(category?._id);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [error, setError] = useState('');
@@ -56,11 +58,17 @@ export default function CategoryFormModal({
     const description = formData.description.trim();
 
     if (!name) {
-      setError('Vui lòng nhập tên danh mục.');
+      const msg = 'Vui lòng nhập tên danh mục.';
+      setError(msg);
+      toast.error(msg);
+      document.getElementById('category-modal-name')?.focus();
       return;
     }
     if (name.length > 100) {
-      setError('Tên danh mục không được vượt quá 100 ký tự.');
+      const msg = 'Tên danh mục không được vượt quá 100 ký tự.';
+      setError(msg);
+      toast.error(msg);
+      document.getElementById('category-modal-name')?.focus();
       return;
     }
 
@@ -147,7 +155,7 @@ export default function CategoryFormModal({
                     <input
                       id="category-modal-name"
                       name="name"
-                      className="form-control rounded-3"
+                      className={`form-control rounded-3 ${error ? 'is-invalid' : ''}`}
                       value={formData.name}
                       onChange={handleChange}
                       placeholder={placeholderName}
@@ -156,6 +164,7 @@ export default function CategoryFormModal({
                       autoFocus
                       required
                     />
+                    {error && <div className="invalid-feedback">{error}</div>}
                     <div className="d-flex justify-content-between form-text">
                       <span>Tối đa 100 ký tự</span>
                       <span>{formData.name.length}/100</span>

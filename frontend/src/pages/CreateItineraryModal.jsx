@@ -34,7 +34,18 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
     event.preventDefault();
     const nextErrors = validate(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || saving) return;
+    if (Object.keys(nextErrors).length > 0) {
+      const fieldIdMap = {
+        title: 'itinerary-create-title',
+        endDate: 'itinerary-create-end',
+        budget: 'itinerary-create-budget'
+      };
+      const firstField = Object.keys(nextErrors)[0];
+      document.getElementById(fieldIdMap[firstField])?.focus();
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      return;
+    }
+    if (saving) return;
 
     setSaving(true);
     try {

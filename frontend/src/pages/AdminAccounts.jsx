@@ -38,16 +38,51 @@ function AccountForm({ account, roles, onClose, onSaved }) {
     role: account.role === 'user' ? 'customer' : account.role
   } : emptyForm);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
     setError('');
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!isEditing) {
+      const errs = {};
+      if (!formData.username?.trim()) {
+        errs.username = 'Vui lòng nhập tên người dùng.';
+      }
+      if (!formData.email?.trim()) {
+        errs.email = 'Vui lòng nhập địa chỉ email.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        errs.email = 'Địa chỉ email không đúng định dạng.';
+      }
+      if (!formData.password) {
+        errs.password = 'Vui lòng nhập mật khẩu.';
+      } else if (formData.password.length < 6 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+        errs.password = 'Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường và số.';
+      }
+      if (!formData.phone?.trim()) {
+        errs.phone = 'Vui lòng nhập số điện thoại.';
+      } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
+        errs.phone = 'Số điện thoại không hợp lệ (10-11 số).';
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        const firstField = Object.keys(errs)[0];
+        const el = document.getElementById(`account-${firstField}`) || document.querySelector(`[name="${firstField}"]`);
+        el?.focus();
+        toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const data = isEditing ? { role: formData.role } : {
@@ -106,20 +141,55 @@ function AccountForm({ account, roles, onClose, onSaved }) {
                 ) : <>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-username">Tên người dùng</label>
-                  <input className="form-control" id="account-username" name="username" value={formData.username} onChange={handleChange} required disabled={isSaving} />
+                  <input
+                    className={`form-control ${fieldErrors.username ? 'is-invalid' : ''}`}
+                    id="account-username"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                  />
+                  {fieldErrors.username && <div className="invalid-feedback">{fieldErrors.username}</div>}
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-email">Email</label>
-                  <input type="email" className="form-control" id="account-email" name="email" value={formData.email} onChange={handleChange} required disabled={isSaving} />
+                  <input
+                    type="email"
+                    className={`form-control ${fieldErrors.email ? 'is-invalid' : ''}`}
+                    id="account-email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                  />
+                  {fieldErrors.email && <div className="invalid-feedback">{fieldErrors.email}</div>}
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-password">Mật khẩu {isEditing && '(để trống nếu không đổi)'}</label>
-                  <input type="password" className="form-control" id="account-password" name="password" value={formData.password} onChange={handleChange} required={!isEditing} minLength="6" disabled={isSaving} />
+                  <input
+                    type="password"
+                    className={`form-control ${fieldErrors.password ? 'is-invalid' : ''}`}
+                    id="account-password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                  />
+                  {fieldErrors.password && <div className="invalid-feedback">{fieldErrors.password}</div>}
                   <div className="form-text">Tối thiểu 6 ký tự, gồm chữ hoa, chữ thường và số.</div>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-phone">Số điện thoại</label>
-                  <input type="tel" className="form-control" id="account-phone" name="phone" value={formData.phone} onChange={handleChange} disabled={isSaving} required />
+                  <input
+                    type="tel"
+                    className={`form-control ${fieldErrors.phone ? 'is-invalid' : ''}`}
+                    id="account-phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                  />
+                  {fieldErrors.phone && <div className="invalid-feedback">{fieldErrors.phone}</div>}
                 </div>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-dob">Ngày sinh</label>

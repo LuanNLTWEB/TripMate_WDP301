@@ -19,11 +19,15 @@ function ForgotPassword() {
 
     if (!trimmedEmail) {
       setError('Vui lòng nhập địa chỉ email');
+      toast.error('Vui lòng nhập địa chỉ email');
+      document.getElementById('email')?.focus();
       return;
     }
 
     if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
       setError('Vui lòng nhập địa chỉ email hợp lệ');
+      toast.error('Vui lòng nhập địa chỉ email hợp lệ');
+      document.getElementById('email')?.focus();
       return;
     }
 
@@ -101,6 +105,7 @@ function ForgotPassword() {
                           autoFocus
                           required
                         />
+                        {error && <div className="invalid-feedback">{error}</div>}
                       </div>
                     </div>
 

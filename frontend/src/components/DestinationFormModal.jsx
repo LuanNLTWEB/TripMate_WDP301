@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import CustomSelect from './CustomSelect';
 import { uploadApi } from '../services/api';
+import { useToast } from '../hooks/useToast';
 
 /**
  * DestinationFormModal - Standardized Large Create & Update Modal for Destinations
@@ -14,6 +15,7 @@ export default function DestinationFormModal({
   onClose,
   onSubmit
 }) {
+  const toast = useToast();
   const isEditing = Boolean(destination?._id);
 
   const [formData, setFormData] = useState({
@@ -25,6 +27,7 @@ export default function DestinationFormModal({
     isPopular: false
   });
 
+  const [errors, setErrors] = useState({});
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [imageLoadError, setImageLoadError] = useState(false);
@@ -92,6 +95,7 @@ export default function DestinationFormModal({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     setError('');
   };
 
@@ -115,6 +119,7 @@ export default function DestinationFormModal({
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setImageLoadError(false);
+    if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }));
     setError('');
   };
 
@@ -127,6 +132,7 @@ export default function DestinationFormModal({
     setImagePreview(value);
     setImageLoadError(false);
     setFormData((prev) => ({ ...prev, imageUrl: value }));
+    if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }));
     setError('');
   };
 
@@ -138,24 +144,33 @@ export default function DestinationFormModal({
     const location = formData.location.trim();
     const description = formData.description.trim();
 
+    const fieldErrors = {};
     if (!name) {
-      setError('Vui lòng nhập tên điểm đến.');
-      return;
-    }
-    if (name.length > 100) {
-      setError('Tên điểm đến không được vượt quá 100 ký tự.');
-      return;
+      fieldErrors.name = 'Vui lòng nhập tên điểm đến.';
+    } else if (name.length > 100) {
+      fieldErrors.name = 'Tên điểm đến không được vượt quá 100 ký tự.';
     }
     if (!location) {
-      setError('Vui lòng nhập vị trí hoặc địa danh của điểm đến.');
-      return;
+      fieldErrors.location = 'Vui lòng nhập vị trí hoặc địa danh của điểm đến.';
     }
     if (!description || description.length < 10) {
-      setError('Mô tả điểm đến phải có ít nhất 10 ký tự.');
-      return;
+      fieldErrors.description = 'Mô tả điểm đến phải có ít nhất 10 ký tự.';
     }
 
     let finalImageUrl = formData.imageUrl.trim();
+    if (!imageFile && !finalImageUrl) {
+      fieldErrors.imageUrl = 'Vui lòng tải lên ảnh hoặc dán URL hình ảnh cho điểm đến.';
+    } else if (!imageFile && !finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://')) {
+      fieldErrors.imageUrl = 'URL hình ảnh phải bắt đầu bằng http:// hoặc https://.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      const firstField = Object.keys(fieldErrors)[0];
+      if (firstField) document.getElementById(`destination-modal-${firstField}`)?.focus();
+      return;
+    }
 
     if (imageFile) {
       try {
@@ -166,22 +181,17 @@ export default function DestinationFormModal({
         finalImageUrl = uploadResponse.url;
       } catch (uploadError) {
         setIsUploading(false);
-        setError(uploadError.message || 'Không thể tải lên hình ảnh. Vui lòng thử lại hoặc sử dụng URL trực tiếp.');
+        const msg = uploadError.message || 'Không thể tải lên hình ảnh. Vui lòng thử lại hoặc sử dụng URL trực tiếp.';
+        setError(msg);
+        toast.error(msg);
         return;
       } finally {
         setIsUploading(false);
       }
     }
 
-    if (!finalImageUrl) {
-      setError('Vui lòng tải lên ảnh hoặc dán URL hình ảnh cho điểm đến.');
-      return;
-    }
-
-    if (!finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://')) {
-      setError('URL hình ảnh phải bắt đầu bằng http:// hoặc https://.');
-      return;
-    }
+    setErrors({});
+    setError('');
 
     onSubmit({
       name,
@@ -266,7 +276,7 @@ export default function DestinationFormModal({
                         <input
                           id="destination-modal-name"
                           name="name"
-                          className="form-control rounded-3"
+                          className={`form-control rounded-3 ${errors.name ? 'is-invalid' : ''}`}
                           value={formData.name}
                           onChange={handleChange}
                           placeholder="Ví dụ: Phố cổ Hội An, Vịnh Hạ Long, Đảo Phú Quốc..."
@@ -275,6 +285,7 @@ export default function DestinationFormModal({
                           autoFocus
                           required
                         />
+                        {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                       </div>
 
                       <div className="row g-3 mb-3">
@@ -303,7 +314,7 @@ export default function DestinationFormModal({
                           <input
                             id="destination-modal-location"
                             name="location"
-                            className="form-control rounded-3"
+                            className={`form-control rounded-3 ${errors.location ? 'is-invalid' : ''}`}
                             value={formData.location}
                             onChange={handleChange}
                             placeholder="Ví dụ: TP. Hội An, Quảng Nam"
@@ -311,6 +322,7 @@ export default function DestinationFormModal({
                             disabled={isBusy}
                             required
                           />
+                          {errors.location && <div className="invalid-feedback">{errors.location}</div>}
                         </div>
                       </div>
 
@@ -332,15 +344,15 @@ export default function DestinationFormModal({
                       </div>
 
                       <div className="mb-0">
-                        <label className="form-label small fw-semibold text-secondary" htmlFor="destination-modal-desc">
+                        <label className="form-label small fw-semibold text-secondary" htmlFor="destination-modal-description">
                           Giới thiệu tổng quan điểm đến <span className="text-danger">*</span>
                         </label>
                         <textarea
-                          id="destination-modal-desc"
+                          id="destination-modal-description"
                           name="description"
                           rows={5}
                           maxLength={5000}
-                          className="form-control rounded-3"
+                          className={`form-control rounded-3 ${errors.description ? 'is-invalid' : ''}`}
                           style={{ resize: 'none' }}
                           placeholder="Mô tả tóm tắt nét đẹp, các hoạt động trải nghiệm đáng nhớ và nét đặc sắc của điểm đến này..."
                           value={formData.description}
@@ -348,6 +360,7 @@ export default function DestinationFormModal({
                           disabled={isBusy}
                           required
                         ></textarea>
+                        {errors.description && <div className="invalid-feedback">{errors.description}</div>}
                         <div className="form-text text-end">{formData.description.length}/5000</div>
                       </div>
                     </div>
