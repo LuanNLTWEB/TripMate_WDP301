@@ -14,6 +14,7 @@ import React, { useState, useRef, useEffect } from 'react';
  * - placeholder: string (default 'dd/mm/yyyy')
  * - disabled: boolean
  * - required: boolean
+ * - invalid: boolean (shows the red validation state)
  * - className: string
  */
 export default function CustomDatePicker({
@@ -26,6 +27,7 @@ export default function CustomDatePicker({
   placeholder = 'dd/mm/yyyy',
   disabled = false,
   required = false,
+  invalid = false,
   className = ''
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -247,7 +249,8 @@ export default function CustomDatePicker({
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
-        className={`tm-datepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''}`}
+        aria-invalid={invalid || undefined}
+        className={`tm-datepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''} ${invalid ? 'tm-input-invalid' : ''}`}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {

@@ -13,6 +13,7 @@ import React, { useState, useRef, useEffect } from 'react';
  * - placeholder: string (default 'Chọn giờ (--:--)')
  * - disabled: boolean
  * - required: boolean
+ * - invalid: boolean (shows the red validation state)
  * - className: string
  */
 export default function CustomTimePicker({
@@ -23,6 +24,7 @@ export default function CustomTimePicker({
   placeholder = '--:-- --',
   disabled = false,
   required = false,
+  invalid = false,
   className = ''
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -176,7 +178,8 @@ export default function CustomTimePicker({
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
-        className={`tm-timepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''}`}
+        aria-invalid={invalid || undefined}
+        className={`tm-timepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''} ${invalid ? 'tm-input-invalid' : ''}`}
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {

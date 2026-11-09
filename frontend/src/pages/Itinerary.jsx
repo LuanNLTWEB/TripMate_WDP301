@@ -38,6 +38,7 @@ function Itinerary() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activityForm, setActivityForm] = useState(initialActivity);
+  const [activityErrors, setActivityErrors] = useState({});
   const [editingActivityId, setEditingActivityId] = useState(null);
   const activityFormRef = useRef(null);
   const [destinations, setDestinations] = useState([]);
@@ -173,6 +174,7 @@ function Itinerary() {
 
   const handleStartEditActivity = (activity) => {
     setEditingActivityId(activity._id);
+    setActivityErrors({});
     const dateFormatted = activity.date ? new Date(activity.date).toISOString().split('T')[0] : '';
     setActivityForm({
       title: activity.title || '',
@@ -199,6 +201,7 @@ function Itinerary() {
   const handleCancelEditActivity = () => {
     setEditingActivityId(null);
     setActivityForm(initialActivity);
+    setActivityErrors({});
     setTimeConflictPreview(null);
   };
 
@@ -259,15 +262,49 @@ function Itinerary() {
 
   // END UC-58 Check Time Conflict
 
+  const clearActivityError = (field) => {
+    setActivityErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
+  };
+
   const handleActivitySubmit = async (event) => {
     event.preventDefault();
     if (!selected) return;
 
-    if (activityForm.endTime <= activityForm.startTime) {
-      toast.error('Giờ kết thúc phải sau giờ bắt đầu.');
+    const nextErrors = {};
+    if (!activityForm.title.trim()) {
+      nextErrors.title = 'Vui lòng nhập tên hoạt động.';
+    }
+    if (!activityForm.date) {
+      nextErrors.date = 'Vui lòng chọn ngày diễn ra hoạt động.';
+    }
+    if (!activityForm.startTime) {
+      nextErrors.startTime = 'Vui lòng chọn giờ bắt đầu.';
+    }
+    if (!activityForm.endTime) {
+      nextErrors.endTime = 'Vui lòng chọn giờ kết thúc.';
+    } else if (activityForm.startTime && activityForm.endTime <= activityForm.startTime) {
+      nextErrors.endTime = 'Giờ kết thúc phải sau giờ bắt đầu.';
+    }
+    if (activityForm.estimatedCost !== '' && Number(activityForm.estimatedCost) < 0) {
+      nextErrors.estimatedCost = 'Chi phí dự kiến không được âm.';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setActivityErrors(nextErrors);
+      const firstInvalidField = Object.keys(nextErrors)[0];
+      const activityFieldIds = {
+        title: 'activity-title',
+        date: 'activity-date',
+        startTime: 'activity-start',
+        endTime: 'activity-end',
+        estimatedCost: 'activity-cost'
+      };
+      const fieldElement = document.getElementById(activityFieldIds[firstInvalidField]);
+      if (fieldElement) fieldElement.focus();
       return;
     }
 
+    setActivityErrors({});
     setSaving(true);
     setError('');
     try {
@@ -286,6 +323,7 @@ function Itinerary() {
         applyItinerary(response.itinerary);
         setEditingActivityId(null);
         setActivityForm(initialActivity);
+        setActivityErrors({});
         toast.success(response.message || 'Đã cập nhật hoạt động thành công.');
       } else {
         // START UC-53 Add Activity to Itinerary
@@ -294,6 +332,7 @@ function Itinerary() {
         const response = await itineraryApi.addActivity(selected._id, payload);
         applyItinerary(response.itinerary);
         setActivityForm(initialActivity);
+        setActivityErrors({});
         toast.success('Đã thêm hoạt động vào lịch trình.');
         // END UC-53 Add Activity to Itinerary
       }
@@ -1855,6 +1894,7 @@ function Itinerary() {
                           ref={activityFormRef}
                           className={`card border-0 shadow-sm transition-all ${editingActivityId ? 'border border-2 border-primary shadow' : ''}`}
                           onSubmit={handleActivitySubmit}
+                          noValidate
                         >
                           <div className="card-body p-4">
                             <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1893,13 +1933,18 @@ function Itinerary() {
                                 </label>
                                 <input
                                   id="activity-title"
-                                  className="form-control"
+                                  className={`form-control ${activityErrors.title ? 'is-invalid' : ''}`}
                                   value={activityForm.title}
-                                  onChange={(event) => setActivityForm({ ...activityForm, title: event.target.value })}
+                                  onChange={(event) => {
+                                    setActivityForm({ ...activityForm, title: event.target.value });
+                                    clearActivityError('title');
+                                  }}
                                   placeholder="Ví dụ: Đi cáp treo Fansipan..."
-                                  required
                                   disabled={saving}
                                 />
+                                {activityErrors.title && (
+                                  <div className="invalid-feedback d-block">{activityErrors.title}</div>
+                                )}
                               </div>
                               <div className="col-md-6">
                                 <label className="form-label" htmlFor="activity-date">
@@ -1909,10 +1954,16 @@ function Itinerary() {
                                   id="activity-date"
                                   name="date"
                                   value={activityForm.date}
-                                  onChange={(event) => setActivityForm({ ...activityForm, date: event.target.value })}
-                                  required
+                                  onChange={(event) => {
+                                    setActivityForm({ ...activityForm, date: event.target.value });
+                                    clearActivityError('date');
+                                  }}
+                                  invalid={Boolean(activityErrors.date)}
                                   disabled={saving}
                                 />
+                                {activityErrors.date && (
+                                  <div className="invalid-feedback d-block">{activityErrors.date}</div>
+                                )}
                               </div>
                               <div className="col-md-6">
                                 <label className="form-label" htmlFor="activity-start">
@@ -1922,10 +1973,17 @@ function Itinerary() {
                                   id="activity-start"
                                   name="startTime"
                                   value={activityForm.startTime}
-                                  onChange={(event) => setActivityForm({ ...activityForm, startTime: event.target.value })}
-                                  required
+                                  onChange={(event) => {
+                                    setActivityForm({ ...activityForm, startTime: event.target.value });
+                                    clearActivityError('startTime');
+                                    clearActivityError('endTime');
+                                  }}
+                                  invalid={Boolean(activityErrors.startTime)}
                                   disabled={saving}
                                 />
+                                {activityErrors.startTime && (
+                                  <div className="invalid-feedback d-block">{activityErrors.startTime}</div>
+                                )}
                               </div>
                               <div className="col-md-6">
                                 <label className="form-label" htmlFor="activity-end">
@@ -1935,10 +1993,16 @@ function Itinerary() {
                                   id="activity-end"
                                   name="endTime"
                                   value={activityForm.endTime}
-                                  onChange={(event) => setActivityForm({ ...activityForm, endTime: event.target.value })}
-                                  required
+                                  onChange={(event) => {
+                                    setActivityForm({ ...activityForm, endTime: event.target.value });
+                                    clearActivityError('endTime');
+                                  }}
+                                  invalid={Boolean(activityErrors.endTime)}
                                   disabled={saving}
                                 />
+                                {activityErrors.endTime && (
+                                  <div className="invalid-feedback d-block">{activityErrors.endTime}</div>
+                                )}
                               </div>
                               <div className="col-md-6">
                                 <label className="form-label" htmlFor="activity-location">Địa điểm</label>
@@ -1958,12 +2022,18 @@ function Itinerary() {
                                   type="number"
                                   min="0"
                                   step="1000"
-                                  className="form-control"
+                                  className={`form-control ${activityErrors.estimatedCost ? 'is-invalid' : ''}`}
                                   value={activityForm.estimatedCost}
-                                  onChange={(event) => setActivityForm({ ...activityForm, estimatedCost: event.target.value })}
+                                  onChange={(event) => {
+                                    setActivityForm({ ...activityForm, estimatedCost: event.target.value });
+                                    clearActivityError('estimatedCost');
+                                  }}
                                   placeholder="Ví dụ: 150000"
                                   disabled={saving}
                                 />
+                                {activityErrors.estimatedCost && (
+                                  <div className="invalid-feedback d-block">{activityErrors.estimatedCost}</div>
+                                )}
                               </div>
                               <div className="col-12">
                                 <label className="form-label" htmlFor="activity-notes">Ghi chú</label>
