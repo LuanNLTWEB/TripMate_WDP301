@@ -18,6 +18,23 @@ const complaintPopulate = [
   { path: 'bookingId', select: 'fullName phone email departureDate numberOfPeople totalPrice status createdAt' }
 ];
 
+// UC-80 – staff cần thêm thông tin đặt tour/khách hàng/nhà cung cấp trong màn hình chi tiết.
+// Giữ populate gốc cho khách hàng để không trả về nhiều dữ liệu hơn mức cần thiết.
+const staffComplaintPopulate = [
+  { path: 'customerId', select: 'username email phone' },
+  { path: 'providerId', select: 'username email phone' },
+  { path: 'resolvedBy', select: 'username email' },
+  {
+    path: 'tourId',
+    select: 'title location departureLocation destinationLocation duration price providerId',
+    populate: { path: 'providerId', select: 'username email phone' }
+  },
+  {
+    path: 'bookingId',
+    select: 'fullName phone email address numberOfPeople departureDate totalPrice status paymentMethod paidAt checkedInAt completedAt note createdAt'
+  }
+];
+
 // UC-66 – Submit Booking Complaint (Customer).
 // Chỉ tạo khiếu nại; không xử lý/duyệt, không thay đổi booking gốc.
 // Ảnh minh chứng đã được upload trước qua POST /api/complaints/evidence,
@@ -129,7 +146,7 @@ export const getComplaints = async (req, res) => {
     const [total, complaints] = await Promise.all([
       Complaint.countDocuments(filters),
       Complaint.find(filters)
-        .populate(complaintPopulate)
+        .populate(staffComplaintPopulate)
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * pageSize)
         .limit(pageSize)
@@ -150,7 +167,7 @@ export const getComplaints = async (req, res) => {
 
 export const getComplaintById = async (req, res) => {
   try {
-    const complaint = await Complaint.findById(req.params.id).populate(complaintPopulate);
+    const complaint = await Complaint.findById(req.params.id).populate(staffComplaintPopulate);
     if (!complaint) return res.status(404).json({ success: false, message: 'Không tìm thấy khiếu nại' });
     return res.json({ success: true, data: complaint });
   } catch (error) {
