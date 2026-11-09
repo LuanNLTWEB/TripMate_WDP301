@@ -784,9 +784,35 @@ function Itinerary() {
 
   const visibleItineraries = activeTab === 'shared' ? sharedItineraries : itineraries;
   const displayedPackingItems = selected?.packingItems || [];
+  const [newPackingItemName, setNewPackingItemName] = useState('');
   const [editingPackingItemId, setEditingPackingItemId] = useState(null);
   const [editingPackingItemName, setEditingPackingItemName] = useState('');
   const [pendingDeletePackingItem, setPendingDeletePackingItem] = useState(null);
+
+  // START UC-147 Add Packing Item
+  const handleAddPackingItem = async (event) => {
+    event.preventDefault();
+    if (!selected) return;
+
+    const trimmedName = newPackingItemName.trim();
+    if (!trimmedName) {
+      toast.error('Vui lòng nhập tên vật dụng cần chuẩn bị');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await itineraryApi.addPackingItem(selected._id, { name: trimmedName });
+      applyItinerary(response.itinerary);
+      setNewPackingItemName('');
+      toast.success(response.message || 'Đã thêm vật dụng vào danh sách hành lý');
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể thêm vật dụng');
+    } finally {
+      setSaving(false);
+    }
+  };
+  // END UC-147 Add Packing Item
 
   const startEditPackingItem = (item) => {
     setEditingPackingItemId(item._id);
@@ -1404,27 +1430,64 @@ function Itinerary() {
                         </div>
                       </section>
 
-                      <section className="card border-0 shadow-sm mb-4">
+                      <section className="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden">
                         <div className="card-body p-4">
-                          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                          <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
                             <div>
-                              <h2 className="h5 fw-bold mb-1">Danh sách hành lý</h2>
-                              <p className="small text-muted mb-0">Kiểm tra những vật dụng cần chuẩn bị cho chuyến đi.</p>
+                              <h2 className="h5 fw-bold mb-1 d-flex align-items-center gap-2">
+                                <i className="bi bi-backpack2 text-primary"></i>
+                                <span>Danh sách hành lý cần mang</span>
+                              </h2>
+                              <p className="small text-muted mb-0">Các vật dụng cần chuẩn bị cho chuyến đi của bạn.</p>
                             </div>
-                            <span className="badge text-bg-light border text-secondary">
-                              {displayedPackingItems.filter((item) => item.isPacked).length}/{displayedPackingItems.length}
+                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1.5 fw-semibold small">
+                              {displayedPackingItems.length} vật dụng
                             </span>
                           </div>
+
+                          {/* START UC-147 Add Packing Item Form - Modern Soft Pill Design */}
+                          {canEditSelected && (
+                            <form onSubmit={handleAddPackingItem} className="mb-4">
+                              <div className="d-flex align-items-center gap-2 p-1.5 bg-light rounded-pill border shadow-xs" style={{ borderColor: '#e2e8f0' }}>
+                                <div className="d-flex align-items-center ps-3 text-primary">
+                                  <i className="bi bi-plus-circle-fill fs-5"></i>
+                                </div>
+                                <input
+                                  type="text"
+                                  className="form-control border-0 bg-transparent shadow-none ps-2"
+                                  value={newPackingItemName}
+                                  onChange={(e) => setNewPackingItemName(e.target.value)}
+                                  maxLength={160}
+                                  placeholder="Thêm vật dụng cần chuẩn bị (ví dụ: Áo ấm, Sạc dự phòng, Giấy tờ...)"
+                                  disabled={saving}
+                                  style={{ fontSize: '0.9rem' }}
+                                />
+                                <button
+                                  type="submit"
+                                  className="btn btn-primary rounded-pill px-4 text-nowrap fw-semibold shadow-sm"
+                                  disabled={saving || !newPackingItemName.trim()}
+                                >
+                                  <span>Thêm</span>
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                          {/* END UC-147 Add Packing Item Form */}
+
                           {displayedPackingItems.length === 0 ? (
-                            <div className="text-center text-muted border rounded p-4 bg-light">
-                              <i className="bi bi-backpack2 fs-2 d-block mb-2 text-primary"></i>
-                              <p className="mb-0">Chưa có vật dụng nào trong checklist.</p>
+                            <div className="text-center text-muted border border-dashed rounded-4 p-4 bg-light bg-opacity-50">
+                              <i className="bi bi-luggage fs-1 d-block mb-2 text-primary opacity-50"></i>
+                              <p className="mb-1 fw-medium text-dark">Chưa có vật dụng nào trong danh sách hành lý</p>
+                              <p className="small text-muted mb-0">Hãy thêm những món đồ cần mang để chuẩn bị chu đáo cho chuyến đi.</p>
                             </div>
                           ) : (
-                            <div className="list-group list-group-flush border rounded">
-                              {displayedPackingItems.map((item) => (
-                                <div className="list-group-item d-flex align-items-center gap-3 px-3 py-3" key={item._id || item.name}>
-                                  <i className={`bi ${item.isPacked ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} fs-5`} aria-hidden="true"></i>
+                            <div className="d-flex flex-column gap-2">
+                              {displayedPackingItems.map((item, index) => (
+                                <div
+                                  className="p-3 bg-white rounded-3 border d-flex align-items-center justify-content-between gap-3 shadow-xs"
+                                  style={{ borderColor: '#e8edf5', transition: 'all 0.2s ease' }}
+                                  key={item._id || item.name}
+                                >
                                   {editingPackingItemId === item._id ? (
                                     <form
                                       onSubmit={(e) => handleUpdatePackingItem(e, item._id)}
@@ -1432,7 +1495,7 @@ function Itinerary() {
                                     >
                                       <input
                                         type="text"
-                                        className="form-control form-control-sm"
+                                        className="form-control form-control-sm rounded-pill px-3"
                                         value={editingPackingItemName}
                                         onChange={(e) => setEditingPackingItemName(e.target.value)}
                                         maxLength={160}
@@ -1442,14 +1505,14 @@ function Itinerary() {
                                       />
                                       <button
                                         type="submit"
-                                        className="btn btn-sm btn-primary text-nowrap"
+                                        className="btn btn-sm btn-primary rounded-pill px-3 fw-medium text-nowrap"
                                         disabled={saving}
                                       >
                                         Lưu
                                       </button>
                                       <button
                                         type="button"
-                                        className="btn btn-sm btn-outline-secondary text-nowrap"
+                                        className="btn btn-sm btn-light border rounded-pill px-3 fw-medium text-nowrap"
                                         onClick={cancelEditPackingItem}
                                         disabled={saving}
                                       >
@@ -1457,31 +1520,44 @@ function Itinerary() {
                                       </button>
                                     </form>
                                   ) : (
-                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-grow-1">
-                                      <span className={item.isPacked ? 'text-decoration-line-through text-muted' : ''}>{item.name}</span>
+                                    <>
+                                      <div className="d-flex align-items-center gap-2.5 flex-grow-1 text-truncate">
+                                        <span
+                                          className="badge bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                          style={{ width: 24, height: 24, fontSize: '0.75rem', fontWeight: 600 }}
+                                        >
+                                          {index + 1}
+                                        </span>
+                                        <span className="fw-medium text-dark text-truncate" style={{ fontSize: '0.92rem' }}>
+                                          {item.name}
+                                        </span>
+                                      </div>
+
                                       {canEditSelected && item._id && (
-                                        <div className="d-flex align-items-center gap-1 ms-2">
+                                        <div className="d-flex align-items-center gap-1 flex-shrink-0">
                                           <button
                                             type="button"
-                                            className="btn btn-sm btn-outline-primary border-0 p-1"
+                                            className="btn btn-sm btn-light text-primary rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                            style={{ width: 32, height: 32 }}
                                             onClick={() => startEditPackingItem(item)}
                                             disabled={saving}
                                             title="Chỉnh sửa vật dụng"
                                           >
-                                            <i className="bi bi-pencil-square"></i>
+                                            <i className="bi bi-pencil small"></i>
                                           </button>
                                           <button
                                             type="button"
-                                            className="btn btn-sm btn-outline-danger border-0 p-1"
+                                            className="btn btn-sm btn-light text-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                            style={{ width: 32, height: 32 }}
                                             onClick={() => setPendingDeletePackingItem(item)}
                                             disabled={saving}
                                             title="Xóa vật dụng"
                                           >
-                                            <i className="bi bi-trash"></i>
+                                            <i className="bi bi-trash small"></i>
                                           </button>
                                         </div>
                                       )}
-                                    </div>
+                                    </>
                                   )}
                                 </div>
                               ))}

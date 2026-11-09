@@ -26,6 +26,7 @@ import {
   transferOwnership,
   addComment,
   deleteComment,
+  addPackingItem,
   updatePackingItem,
   removePackingItem
 } from '../controllers/itineraryController.js';
@@ -59,6 +60,7 @@ import {
   transferOwnershipValidation,
   addCommentValidation,
   deleteCommentValidation,
+  addPackingItemValidation,
   updatePackingItemValidation,
   removePackingItemValidation,
   checkTimeConflictValidation
@@ -120,6 +122,9 @@ router.post('/:id/tours', ...customerAccess, itineraryTourValidation, addTour);
 router.delete('/:id/tours/:tourId', ...customerAccess, removeTourFromItineraryValidation, removeTour);
 router.post('/:id/comments', ...customerAccess, addCommentValidation, addComment);
 router.delete('/:id/comments/:commentId', ...customerAccess, deleteCommentValidation, deleteComment);
+// START UC-147 Add Packing Item
+router.post('/:id/packing-items', ...customerAccess, addPackingItemValidation, addPackingItem);
+// END UC-147 Add Packing Item
 router.put('/:id/packing-items/:itemId', ...customerAccess, updatePackingItemValidation, updatePackingItem);
 router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItemValidation, removePackingItem);
 

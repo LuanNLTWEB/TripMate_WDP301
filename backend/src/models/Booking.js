@@ -94,7 +94,7 @@ const bookingSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  // START UC-78 Respond to Booking (Provider)
+// START UC-78 Respond to Booking (Provider)
   rejectionReason: {
     type: String,
     trim: true,
@@ -126,8 +126,15 @@ const bookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
-  }
+  },
   // END UC-86 Mark Booking as No-Show (Provider)
+  // START UC-152 Update Booking Passenger Info
+  passengerUpdateCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
+  // END UC-152 Update Booking Passenger Info
 }, {
   timestamps: true
 });

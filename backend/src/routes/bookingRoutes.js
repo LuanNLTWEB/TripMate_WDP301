@@ -15,7 +15,8 @@ import {
 
   exportProviderBookingReport,
   cancelBooking,
-  resetNoShowCount
+  resetNoShowCount,
+  updateBookingPassengerInfo
 } from '../controllers/bookingController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { ACCESS_ROLES } from '../config/accessControl.js';
@@ -28,8 +29,8 @@ import {
 ,
   confirmBookingPaymentValidation,
   checkInBookingValidation,
-  completeBookingValidation
-
+  completeBookingValidation,
+  updateBookingPassengerInfoValidation
 } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -72,6 +73,10 @@ router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), c
 // PATCH /api/bookings/users/:userId/reset-no-show - Staff/Admin reset số lần vắng mặt của khách
 router.patch('/users/:userId/reset-no-show', protect, authorize('staff', 'admin'), resetNoShowCount);
 // END STT 156 Reset No-Show Count (Staff)
+
+// START UC-152 Update Booking Passenger Info
+router.patch('/:id/passenger-info', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateBookingPassengerInfoValidation, updateBookingPassengerInfo);
+// END UC-152 Update Booking Passenger Info
 
 router.get('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingById);
 

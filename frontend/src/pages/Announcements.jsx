@@ -8,6 +8,7 @@ import {
   getAnnouncementAudience
 } from '../utils/announcementFormatters';
 
+// START UC-83 Search & Filter Platform Announcements
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
   const [searchInput, setSearchInput] = useState('');
@@ -27,6 +28,7 @@ export default function Announcements() {
       try {
         const response = await announcementApi.getAll({
           search: appliedSearch,
+          audience: audienceTab,
           page: currentPage,
           limit: 9
         });
@@ -50,7 +52,7 @@ export default function Announcements() {
     return () => {
       active = false;
     };
-  }, [appliedSearch, currentPage]);
+  }, [appliedSearch, audienceTab, currentPage]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -64,10 +66,13 @@ export default function Announcements() {
     setCurrentPage(1);
   };
 
-  // Client-side quick filter by audience tab if user clicks a tab
-  const displayedAnnouncements = audienceTab === 'all'
-    ? announcements
-    : announcements.filter((a) => a.audience === 'all' || a.audience === audienceTab);
+  const handleTabChange = (newTab) => {
+    setAudienceTab(newTab);
+    setCurrentPage(1);
+  };
+
+  const displayedAnnouncements = announcements;
+// END UC-83 Search & Filter Platform Announcements
 
   return (
     <>
@@ -134,35 +139,26 @@ export default function Announcements() {
               <button
                 type="button"
                 className={`announcement-filter-pill ${audienceTab === 'all' ? 'active' : ''}`}
-                onClick={() => setAudienceTab('all')}
+                onClick={() => handleTabChange('all')}
               >
                 <i className="bi bi-collection"></i>
                 Tất cả thông báo
-                <span className={`badge rounded-pill ms-1 ${audienceTab === 'all' ? 'bg-white text-primary' : 'bg-light text-secondary border'}`}>
-                  {announcements.length}
-                </span>
               </button>
               <button
                 type="button"
                 className={`announcement-filter-pill ${audienceTab === 'customer' ? 'active' : ''}`}
-                onClick={() => setAudienceTab('customer')}
+                onClick={() => handleTabChange('customer')}
               >
                 <i className="bi bi-person"></i>
                 Khách du lịch
-                <span className={`badge rounded-pill ms-1 ${audienceTab === 'customer' ? 'bg-white text-primary' : 'bg-light text-secondary border'}`}>
-                  {announcements.filter((a) => a.audience === 'all' || a.audience === 'customer').length}
-                </span>
               </button>
               <button
                 type="button"
                 className={`announcement-filter-pill ${audienceTab === 'tourProvider' ? 'active' : ''}`}
-                onClick={() => setAudienceTab('tourProvider')}
+                onClick={() => handleTabChange('tourProvider')}
               >
                 <i className="bi bi-building"></i>
                 Nhà cung cấp tour
-                <span className={`badge rounded-pill ms-1 ${audienceTab === 'tourProvider' ? 'bg-white text-primary' : 'bg-light text-secondary border'}`}>
-                  {announcements.filter((a) => a.audience === 'all' || a.audience === 'tourProvider').length}
-                </span>
               </button>
             </div>
 

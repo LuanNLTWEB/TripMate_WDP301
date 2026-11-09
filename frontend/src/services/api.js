@@ -322,6 +322,12 @@ export const itineraryApi = {
   deleteComment: (id, commentId) => apiRequest(`/itineraries/${id}/comments/${commentId}`, {
     method: 'DELETE'
   }),
+  // START UC-147 Add Packing Item
+  addPackingItem: (id, payload) => apiRequest(`/itineraries/${id}/packing-items`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  // END UC-147 Add Packing Item
   updatePackingItem: (id, itemId, payload) => apiRequest(`/itineraries/${id}/packing-items/${itemId}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
@@ -347,13 +353,26 @@ export const statsApi = {
     if (params.months) query.append('months', params.months);
     const queryString = query.toString() ? '?' + query.toString() : '';
     return apiRequest('/stats/admin' + queryString, { method: 'GET' });
+  },
+  // START UC-70 View Provider Revenue Statistics
+  getProviderRevenue: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.timeRange) query.append('timeRange', params.timeRange);
+    if (params.tourId) query.append('tourId', params.tourId);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    const queryString = query.toString() ? '?' + query.toString() : '';
+    return apiRequest('/stats/provider-revenue' + queryString, { method: 'GET' });
   }
+  // END UC-70 View Provider Revenue Statistics
 };
 
+// START UC-83 Search & Filter Platform Announcements
 export const announcementApi = {
   getAll: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
+    if (params.audience && params.audience !== 'all') query.append('audience', params.audience);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
@@ -370,6 +389,7 @@ export const announcementApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/announcements/management${queryString}`, { method: 'GET' });
   },
+// END UC-83 Search & Filter Platform Announcements
   create: (announcement) => apiRequest('/announcements', {
     method: 'POST',
     body: JSON.stringify(announcement)
@@ -453,6 +473,12 @@ export const tourApi = {
   // START UC-25 View Tour Details
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
+  // START UC-64 Compare Tours
+  compare: (tourIds) => apiRequest('/tours/compare', {
+    method: 'POST',
+    body: JSON.stringify({ tourIds })
+  }),
+  // END UC-64 Compare Tours
   checkAvailability: (id, date = '') => {
     const queryString = date ? `?date=${encodeURIComponent(date)}` : '';
     return apiRequest(`/tours/${id}/availability${queryString}`, { method: 'GET' });
@@ -663,12 +689,18 @@ export const bookingApi = {
     body: JSON.stringify({ reason })
   }),
   // END UC-74 Cancel Booking
-  // START STT 156 Reset No-Show Count (Staff)
+// START STT 156 Reset No-Show Count (Staff)
   resetNoShow: (userId, reason) => apiRequest(`/bookings/users/${userId}/reset-no-show`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
-  })
+  }),
   // END STT 156 Reset No-Show Count (Staff)
+  // START UC-152 Update Booking Passenger Info
+  updatePassengerInfo: (id, payload) => apiRequest(`/bookings/${id}/passenger-info`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
+  // END UC-152 Update Booking Passenger Info
 };
 
 // START UC-66 Submit Booking Complaint

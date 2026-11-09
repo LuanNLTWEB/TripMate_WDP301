@@ -1402,6 +1402,46 @@ export const deleteComment = async (req, res) => {
 };
 
 
+// START UC-147 Add Packing Item
+/**
+ * Add a new packing item to an owned or edit-enabled shared itinerary.
+ * @route POST /api/itineraries/:id/packing-items
+ * @access Customer
+ */
+export const addPackingItem = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+
+  try {
+    const itinerary = await Itinerary.findById(req.params.id);
+    if (!itinerary || !canEdit(itinerary, req.user._id)) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
+    }
+
+    const newItem = {
+      name: req.body.name.trim(),
+      isPacked: false
+    };
+
+    itinerary.packingItems.push(newItem);
+    await itinerary.save();
+
+    const populated = await findByIdPopulated(itinerary._id);
+    return res.status(201).json({
+      success: true,
+      message: 'Đã thêm vật dụng vào danh sách hành lý thành công',
+      itinerary: hydrateItinerary(populated),
+      packingItem: itinerary.packingItems[itinerary.packingItems.length - 1]
+    });
+  } catch (error) {
+    console.error('Add packing item error:', error);
+    return res.status(500).json({ success: false, message: 'Không thể thêm vật dụng vào hành lý' });
+  }
+};
+// END UC-147 Add Packing Item
+
 /**
  * Update a packing item in an owned or edit-enabled shared itinerary.
  * @route PUT /api/itineraries/:id/packing-items/:itemId

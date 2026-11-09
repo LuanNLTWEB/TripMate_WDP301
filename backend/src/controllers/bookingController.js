@@ -6,6 +6,7 @@
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -771,7 +772,6 @@ export const cancelBooking = async (req, res) => {
 };
 // END UC-74 Cancel Booking
 
-
 // START UC-78 Respond to Booking (Provider)
 /**
  * UC-78 - Respond to Booking (Provider duyệt hoặc từ chối đặt tour).
@@ -861,11 +861,10 @@ export const respondProviderBooking = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Hành động phản hồi không hợp lệ' });
   } catch (error) {
     console.error('Error responding to booking:', error);
-    return res.status(500).json({ success: false, message: error?.message || 'Không thể phản hồi yêu cầu đặt tour' });
+    return res.status(500).json({ success: false, message: error?.message || 'Không thể phản hồi đơn đặt tour' });
   }
 };
 // END UC-78 Respond to Booking (Provider)
-
 // START UC-82 Download Booking Voucher (Customer)
 /**
  * UC-82 - Download Booking Voucher (Xuất phiếu xác nhận đặt chỗ kèm mã QR).
@@ -1012,6 +1011,7 @@ export const markBookingAsNoShow = async (req, res) => {
   }
 };
 // END UC-86 Mark Booking as No-Show (Provider)
+export const markBookingNoShow = markBookingAsNoShow;
 
 // START STT 156 / UC-156 Reset No-Show Count (Staff)
 /**
@@ -1058,3 +1058,86 @@ export const resetNoShowCount = async (req, res) => {
   }
 };
 // END STT 156 / UC-156 Reset No-Show Count (Staff)
+
+// START UC-152 Update Booking Passenger Info
+/**
+ * Customer updates contact/passenger information for an active booking.
+ * Allowed when status is pending, confirmed, or paid (before check-in, completion, or cancellation).
+ * @route PATCH /api/bookings/:id/passenger-info
+ * @access Customer
+ */
+export const updateBookingPassengerInfo = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: errors.array()[0]?.msg || 'Dữ liệu thông tin hành khách không hợp lệ',
+      errors: errors.array()
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const { fullName, phone, email, address, note } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn đặt tour'
+      });
+    }
+
+    if (booking.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền chỉnh sửa đơn đặt tour này'
+      });
+    }
+
+    const nonEditableStatuses = ['checked_in', 'completed', 'cancelled'];
+    if (nonEditableStatuses.includes(booking.status)) {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể cập nhật thông tin hành khách khi đơn đã điểm danh, hoàn thành hoặc đã hủy'
+      });
+    }
+
+    const MAX_PASSENGER_UPDATES = 3;
+    if ((booking.passengerUpdateCount || 0) >= MAX_PASSENGER_UPDATES) {
+      return res.status(409).json({
+        success: false,
+        message: `Bạn đã đạt giới hạn tối đa ${MAX_PASSENGER_UPDATES} lần chỉnh sửa thông tin hành khách cho đơn này`
+      });
+    }
+
+    booking.fullName = fullName.trim();
+    booking.phone = phone.trim();
+    booking.email = email.trim().toLowerCase();
+    if (address !== undefined) {
+      booking.address = address.trim();
+    }
+    if (note !== undefined) {
+      booking.note = note.trim();
+    }
+
+    booking.passengerUpdateCount = (booking.passengerUpdateCount || 0) + 1;
+    await booking.save();
+
+    const populated = await Booking.findById(id)
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation');
+
+    return res.status(200).json({
+      success: true,
+      message: `Cập nhật thông tin hành khách thành công (${booking.passengerUpdateCount}/${MAX_PASSENGER_UPDATES})`,
+      data: populated
+    });
+  } catch (error) {
+    console.error('Error updating booking passenger info:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật thông tin hành khách'
+    });
+  }
+};
+// END UC-152 Update Booking Passenger Info

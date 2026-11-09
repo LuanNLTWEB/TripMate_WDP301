@@ -960,11 +960,15 @@ export const createAnnouncementValidation = [
     .isBoolean().withMessage('Trạng thái phát hành phải là true hoặc false')
 ];
 
+// START UC-83 Search & Filter Platform Announcements
 export const announcementListValidation = [
   query('search')
     .optional()
     .trim()
     .isLength({ max: 100 }).withMessage('Từ khóa tìm kiếm không được vượt quá 100 ký tự'),
+  query('audience')
+    .optional()
+    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ'),
   query('page')
     .optional()
     .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
@@ -979,11 +983,9 @@ export const managedAnnouncementListValidation = [
   ...announcementListValidation,
   query('status')
     .optional()
-    .isIn(['all', 'active', 'draft']).withMessage('Trạng thái thông báo không hợp lệ'),
-  query('audience')
-    .optional()
-    .isIn(['all', 'customer', 'tourProvider']).withMessage('Đối tượng nhận thông báo không hợp lệ')
+    .isIn(['all', 'active', 'draft']).withMessage('Trạng thái thông báo không hợp lệ')
 ];
+// END UC-83 Search & Filter Platform Announcements
 
 export const updateAnnouncementValidation = [
   ...announcementIdValidation,
@@ -1133,6 +1135,16 @@ export const deleteNotificationValidation = [
   param('id').isMongoId().withMessage('Mã thông báo không hợp lệ')
 ];
 
+// START UC-147 Add Packing Item
+export const addPackingItemValidation = [
+  param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên vật dụng')
+    .isLength({ max: 160 }).withMessage('Tên vật dụng không được vượt quá 160 ký tự')
+];
+// END UC-147 Add Packing Item
+
 export const updatePackingItemValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ'),
@@ -1146,6 +1158,32 @@ export const removePackingItemValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
   param('itemId').isMongoId().withMessage('Mã vật dụng không hợp lệ')
 ];
+
+// START UC-152 Update Booking Passenger Info
+export const updateBookingPassengerInfoValidation = [
+  param('id').isMongoId().withMessage('Mã đặt tour không hợp lệ'),
+  body('fullName')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập họ và tên')
+    .isLength({ min: 2, max: 100 }).withMessage('Họ và tên phải từ 2 đến 100 ký tự'),
+  body('phone')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập số điện thoại')
+    .matches(/^(0)[35789][0-9]{8}$/).withMessage('Số điện thoại không hợp lệ'),
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập email')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i).withMessage('Email không hợp lệ'),
+  body('address')
+    .optional({ checkFalsy: false })
+    .trim()
+    .isLength({ max: 200 }).withMessage('Địa chỉ không được vượt quá 200 ký tự'),
+  body('note')
+    .optional({ checkFalsy: false })
+    .trim()
+    .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
+];
+// END UC-152 Update Booking Passenger Info
 
 // START UC-128 Create Tour Submission
 // Yêu cầu duyệt gắn với một tour nháp đã có: bắt buộc tourId hợp lệ, ghi chú tùy chọn.
@@ -1204,7 +1242,6 @@ export const tourSubmissionIdValidation = [
 ];
 // END UC-131 Delete Tour Submission
 
-
 // START UC-58 Check Time Conflict
 export const checkTimeConflictValidation = [
   param('id').isMongoId().withMessage('Mã lịch trình không hợp lệ'),
@@ -1245,3 +1282,14 @@ export const markNoShowValidation = [
     .isLength({ max: 500 }).withMessage('Ghi chú vắng mặt không được vượt quá 500 ký tự')
 ];
 // END UC-86 Mark Booking as No-Show (Provider)
+
+// START UC-64 Compare Tours
+export const compareToursValidation = [
+  body('tourIds')
+    .isArray({ min: 2, max: 4 })
+    .withMessage('Vui lòng chọn từ 2 đến 4 tour để so sánh'),
+  body('tourIds.*')
+    .isMongoId()
+    .withMessage('Mã tour không hợp lệ')
+];
+// END UC-64 Compare Tours
