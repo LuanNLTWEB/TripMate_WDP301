@@ -754,7 +754,8 @@ export const createTour = async (req, res) => {
  *  - Kiểm tra quyền sở hữu ở backend (không chỉ ẩn nút ở frontend); tour không tồn tại
  *    hoặc đã xóa mềm trả 404, tour của provider khác trả 403.
  *  - Chỉ sao chép dữ liệu mô tả/cấu hình + lịch trình khung. KHÔNG sao chép dữ liệu
- *    giao dịch: Departure, Booking, Review, Favorite, averageRating hay lịch sử duyệt.
+ *    giao dịch: Departure, Booking, Review, Favorite, averageRating, availableSeats
+ *    hay lịch sử duyệt — số chỗ và điểm đánh giá của bản sao bắt đầu lại từ 0.
  *  - Tour mới luôn ở trạng thái 'draft' theo đúng quy trình UC-31 Create Tour, không tự
  *    động gửi duyệt/công khai.
  *  - Tour và lịch trình nằm chung một document nên Tour.create là một insert duy nhất:
@@ -796,7 +797,11 @@ export const duplicateTour = async (req, res) => {
       price: sourceTour.price,
       duration: sourceTour.duration,
       images: [...(sourceTour.images || [])],
-      availableSeats: sourceTour.availableSeats,
+      // Không kế thừa sức chứa đang bán của tour gốc: tour nhân bản chưa mở bán chỗ nào,
+      // provider phải cấu hình lại số chỗ (UC-45) trước khi gửi duyệt.
+      availableSeats: 0,
+      // Điểm đánh giá của tour gốc gắn với Review của tour đó, không thuộc bản sao.
+      averageRating: 0,
       itinerary: cloneTourSchedule(sourceTour.itinerary),
       includedServices: [...(sourceTour.includedServices || [])],
       excludedServices: [...(sourceTour.excludedServices || [])],

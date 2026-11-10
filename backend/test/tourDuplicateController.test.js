@@ -160,7 +160,8 @@ test('creates a draft tour owned by the acting provider and copies descriptive d
   assert.equal(payload.price, source.price);
   assert.equal(payload.duration, source.duration);
   assert.deepEqual(payload.images, source.images);
-  assert.equal(payload.availableSeats, source.availableSeats);
+  // Số chỗ và điểm đánh giá là dữ liệu của tour gốc, bản sao bắt đầu lại từ 0.
+  assert.equal(payload.availableSeats, 0);
   assert.deepEqual(payload.includedServices, source.includedServices);
   assert.deepEqual(payload.excludedServices, source.excludedServices);
   assert.equal(payload.cancellationPolicy, source.cancellationPolicy);
@@ -170,7 +171,7 @@ test('creates a draft tour owned by the acting provider and copies descriptive d
   // UC-31: tour mới là bản nháp, không kế thừa trạng thái duyệt của tour gốc.
   assert.equal(payload.status, 'draft');
   assert.equal(payload.providerId, 'provider-1');
-  assert.equal(payload.averageRating, undefined);
+  assert.equal(payload.averageRating, 0);
 });
 
 test('copies only active schedule days without reusing their ids', async () => {

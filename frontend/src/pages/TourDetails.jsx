@@ -463,6 +463,10 @@ const TourDetails = () => {
   const images = Array.isArray(tour.images) ? tour.images.filter(Boolean) : [];
   const currentImage = images[selectedImageIdx] || images[0] || '';
 
+  // Đánh giá là dữ liệu riêng của từng tour nên tour mới (kể cả tour nhân bản) bắt đầu
+  // từ 0. Không hiển thị giá trị mặc định 5.0 gây hiểu nhầm.
+  const tourRating = Number(tour.averageRating) || 0;
+
   const tourContent = (
     <>
       {error && <div className="alert alert-danger">{error}</div>}
@@ -513,11 +517,9 @@ const TourDetails = () => {
                     <span className="badge text-bg-light border px-3 py-2">
                       <i className="bi bi-clock me-2"></i>{tour.duration}
                     </span>
-                    <span className="badge text-bg-light border px-3 py-2 text-warning">
-                      <i className="bi bi-star-fill me-2"></i>{tour.averageRating || '5.0'}
-                    </span>
-                    <span className="badge text-bg-light border px-3 py-2">
-                      <i className="bi bi-person-check me-2"></i>Còn {tour.availableSeats} chỗ
+                    <span className={`badge text-bg-light border px-3 py-2 ${tourRating > 0 ? 'text-warning' : 'text-muted'}`}>
+                      <i className={`bi ${tourRating > 0 ? 'bi-star-fill' : 'bi-star'} me-2`}></i>
+                      {tourRating > 0 ? tourRating.toFixed(1) : 'Chưa có đánh giá'}
                     </span>
                     {tour.categoryId?.name && (
                       <span className="badge text-bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
