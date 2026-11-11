@@ -130,7 +130,8 @@ router.post('/:id/packing-items', ...customerAccess, addPackingItemValidation, a
 router.put('/:id/packing-items/:itemId', ...customerAccess, updatePackingItemValidation, updatePackingItem);
 router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItemValidation, removePackingItem);
 // START UC-151 Mark Item as Packed
-// PATCH /api/itineraries/:id/packing-items/:itemId/status - đánh dấu/bỏ đánh dấu vật dụng.
+// PATCH /api/itineraries/:id/packing-items/:itemId/status - đánh dấu/bỏ đánh dấu vật dụng
+// (chỉ owner và collaborator quyền 'edit'; collaborator quyền 'view' bị từ chối 403).
 router.patch('/:id/packing-items/:itemId/status', ...customerAccess, updatePackingItemStatusValidation, updatePackingItemStatus);
 // END UC-151 Mark Item as Packed
 

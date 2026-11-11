@@ -172,11 +172,12 @@ test('UC-151 - packed state is independent for each member', async () => {
   assert.equal(ownerRes.body.packingItem.isPacked, true);
   assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
 
-  // Viewer chưa tick thì gọi bỏ tick cũng không ảnh hưởng owner
-  const viewerRes = createResponse();
-  await updatePackingItemStatus(buildRequest('incomplete', VIEWER_ID), viewerRes.response);
-  assert.equal(viewerRes.body.packingItem.isPacked, false);
-  assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
+  // Viewer chỉ có quyền xem nên bị chặn, không ảnh hưởng owner
+  const viewerRes = createResponse();
+  await updatePackingItemStatus(buildRequest('completed', VIEWER_ID), viewerRes.response);
+  assert.equal(viewerRes.statusCode, 403);
+  assert.match(viewerRes.body.message, /Chỉ có quyền xem/);
+  assert.deepEqual(item.packedBy.map(String), [OWNER_ID]);
 
   // Editor tick độc lập
   const editorRes = createResponse();

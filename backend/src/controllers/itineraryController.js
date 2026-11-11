@@ -1541,9 +1541,10 @@ export const removePackingItem = async (req, res) => {
 // START UC-151 Mark Item as Packed
 /**
  * Mark a packing item as packed or not packed.
- * Any member of the itinerary (owner or collaborator, including view-only)
- * may mark the item as packed for themselves. The state is stored per user
- * in `packedBy` so each member has an independent checklist progress.
+ * Only the owner and collaborators with the 'edit' permission may mark the
+ * item as packed for themselves. Collaborators with the 'view' permission can
+ * only view the checklist. The state is stored per user in `packedBy` so each
+ * member has an independent checklist progress.
  * @route PATCH /api/itineraries/:id/packing-items/:itemId/status
  * @access Customer
  */
@@ -1571,12 +1572,19 @@ export const updatePackingItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
     }
 
-    // Xem được lịch trình là được tự đánh dấu tiến độ của mình,
-    // kể cả collaborator chỉ có quyền 'view'.
+    // Chỉ owner và collaborator quyền 'edit' được tự đánh dấu tiến độ của mình;
+    // collaborator quyền 'view' chỉ được xem danh sách hành lý (BR: chức năng Xem).
     if (!canView(itinerary, req.user._id)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật trạng thái vật dụng trong lịch trình này'
+      });
+    }
+
+    if (!canEdit(itinerary, req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Chỉ có quyền xem lịch trình này nên không thể cập nhật trạng thái vật dụng'
       });
     }
 
