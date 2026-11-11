@@ -33,7 +33,7 @@ export default function TripBudgetModal({ open, itinerary, onClose }) {
     <>
       <div className="modal-backdrop fade show"></div>
       <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true">
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow">
             <div className="modal-header">
               <h5 className="modal-title fw-bold d-flex align-items-center gap-2">

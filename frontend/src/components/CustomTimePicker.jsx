@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * CustomTimePicker - Modern, sleek time picker component for TripMate
@@ -28,7 +29,9 @@ export default function CustomTimePicker({
   className = ''
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState(null);
   const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
   const hourListRef = useRef(null);
   const minuteListRef = useRef(null);
 
@@ -100,29 +103,97 @@ export default function CustomTimePicker({
     emitChange(`${h}:${m}`);
   };
 
-  // Close on outside click or Escape
+  // Compute popover bounding coordinates
+  const getCoords = useCallback(() => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      return null;
+    }
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const spaceBelow = viewportHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    const pickerWidth = Math.min(290, viewportWidth - 16);
+    const shouldOpenUp = spaceBelow < 300 && spaceAbove > spaceBelow;
+
+    let left = rect.left;
+    if (left + pickerWidth > viewportWidth - 8) {
+      left = Math.max(8, viewportWidth - pickerWidth - 8);
+    }
+    if (left < 8) {
+      left = 8;
+    }
+
+    return {
+      top: shouldOpenUp ? undefined : Math.round(rect.bottom + 6),
+      bottom: shouldOpenUp ? Math.round(viewportHeight - rect.top + 6) : undefined,
+      left: Math.round(left),
+      width: Math.round(pickerWidth),
+      isDropup: shouldOpenUp
+    };
+  }, []);
+
+  const updateCoords = useCallback(() => {
+    const nextCoords = getCoords();
+    if (!nextCoords) {
+      setIsOpen(false);
+      return;
+    }
+    setCoords(nextCoords);
+  }, [getCoords]);
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateCoords();
+    }
+  }, [isOpen, updateCoords]);
+
+  // Outside click, Escape, Scroll, Resize handlers
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleOutsideClick = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    const handleScroll = (event) => {
+      if (dropdownRef.current && dropdownRef.current.contains(event.target)) {
+        return;
+      }
+      updateCoords();
+    };
+
+    const handleResize = () => {
+      updateCoords();
+    };
+
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true, passive: true });
+      window.removeEventListener('resize', handleResize, { passive: true });
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updateCoords]);
 
   // Scroll selected items into view when opened
   useEffect(() => {
@@ -160,6 +231,17 @@ export default function CustomTimePicker({
     );
   };
 
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      const nextCoords = getCoords();
+      if (nextCoords) setCoords(nextCoords);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -180,11 +262,11 @@ export default function CustomTimePicker({
         tabIndex={disabled ? -1 : 0}
         aria-invalid={invalid || undefined}
         className={`tm-timepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''} ${invalid ? 'tm-input-invalid' : ''}`}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={toggleOpen}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            !disabled && setIsOpen((prev) => !prev);
+            toggleOpen();
           }
         }}
       >
@@ -212,8 +294,23 @@ export default function CustomTimePicker({
       </div>
 
       {/* Dropdown Popover */}
-      {isOpen && (
-        <div className="tm-timepicker-dropdown" role="dialog" aria-modal="true">
+      {isOpen && coords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          className={`tm-timepicker-dropdown ${coords.isDropup ? 'is-dropup' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: coords.top !== undefined ? `${coords.top}px` : 'auto',
+            bottom: coords.bottom !== undefined ? `${coords.bottom}px` : 'auto',
+            left: `${coords.left}px`,
+            right: 'auto',
+            width: `${coords.width}px`,
+            boxSizing: 'border-box',
+            zIndex: 99999
+          }}
+        >
           {/* Header */}
           <div className="tm-timepicker-header">
             <div className="tm-timepicker-title">
@@ -312,7 +409,8 @@ export default function CustomTimePicker({
               Xác nhận
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

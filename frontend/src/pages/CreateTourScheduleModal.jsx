@@ -94,7 +94,7 @@ export default function CreateTourScheduleModal({
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1060 }}></div>
       <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1065 }}>
-        <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow">
             <div className="modal-header">
               <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">

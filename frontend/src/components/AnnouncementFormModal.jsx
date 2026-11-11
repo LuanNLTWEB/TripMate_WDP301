@@ -89,8 +89,8 @@ export default function AnnouncementFormModal({
           }
         }}
       >
-        <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'visible' }}>
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+          <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
             <div
               className="modal-header border-bottom py-3 px-4 bg-light"
               style={{ borderTopLeftRadius: '16px', borderTopRightRadius: '16px' }}
@@ -123,7 +123,7 @@ export default function AnnouncementFormModal({
             </div>
 
             <form onSubmit={handleSubmit} noValidate>
-              <div className="modal-body p-4" style={{ overflow: 'visible' }}>
+              <div className="modal-body p-4">
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <label className="form-label fw-semibold text-dark mb-0" htmlFor="announcement-title">

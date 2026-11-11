@@ -120,7 +120,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
           if (e.target === e.currentTarget && !isSubmitting) onClose();
         }}
       >
-        <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             {/* Header */}
             <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
