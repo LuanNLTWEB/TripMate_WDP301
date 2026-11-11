@@ -11,6 +11,17 @@ const STAFF_REVIEW_STATUSES = ['approved', 'rejected', 'needs_revision'];
 
 const PROVIDER_EDITABLE_STATUSES = ['pending', 'needs_revision', 'rejected'];
 
+// Tour phải còn ít nhất 1 chỗ trống mới được gửi duyệt/duyệt mở bán. Nếu không, tour
+// vẫn hiện cho khách nhưng createBooking chặn mọi đơn (availableSeats < numberOfPeople).
+const MIN_TOUR_SEATS = 1;
+
+const SEATS_NOT_READY_SUBMIT_MESSAGE = 'Tour chưa có chỗ trống. Vui lòng cập nhật số chỗ trước khi gửi duyệt.';
+
+const SEATS_NOT_READY_APPROVE_MESSAGE = 'Tour chưa có chỗ trống. Vui lòng yêu cầu nhà cung cấp cập nhật số chỗ trước khi duyệt.';
+
+// availableSeats có thể thiếu ở dữ liệu cũ: coi như 0 chỗ để không mở bán tour không đặt được.
+const hasSellableSeats = (tour) => Number(tour?.availableSeats || 0) >= MIN_TOUR_SEATS;
+
 // Dữ liệu tour cần cho danh sách/màn duyệt, tránh trả cả document tour nặng.
 const TOUR_POPULATE = {
   path: 'tourId',
@@ -94,6 +105,8 @@ const clearTourReviewFlags = (tour) => {
  *  - Chỉ nhận tour thuộc sở hữu của provider và đang ở trạng thái được phép gửi
  *    ('draft'/'needs_revision'/'rejected'); tour đang active/pending bị chặn 409.
  *  - Chặn gửi trùng: một tour chỉ có tối đa một bài 'pending' tại một thời điểm.
+ *  - Tour chưa có chỗ trống (availableSeats < 1, ví dụ tour vừa nhân bản ở UC-24) bị
+ *    chặn 409: mở bán tour 0 chỗ chỉ khiến khách thấy tour mà không đặt được.
  *  - Đổi tour.status và tạo submission không nằm trong transaction (Mongo standalone),
  *    nên nếu bước lưu tour lỗi thì submission vừa tạo được xóa bù để tránh trạng thái lửng.
  */
@@ -127,6 +140,13 @@ export const createTourSubmission = async (req, res) => {
         message: tour.status === 'pending'
           ? 'Tour này đang chờ duyệt, vui lòng chờ phản hồi từ nhân viên'
           : 'Chỉ có thể gửi duyệt tour nháp hoặc tour vừa được yêu cầu chỉnh sửa'
+      });
+    }
+
+    if (!hasSellableSeats(tour)) {
+      return res.status(409).json({
+        success: false,
+        message: SEATS_NOT_READY_SUBMIT_MESSAGE
       });
     }
 
@@ -329,6 +349,8 @@ export const getTourSubmissionById = async (req, res) => {
  *  - Khi duyệt, các cờ từ chối/tạm ngưng cũ trên tour được dọn sạch để tour không
  *    còn hiển thị lý do cũ ở màn quản lý.
  *  - reviewNote của bài gửi được giữ lại sau khi provider gửi lại để họ đọc lý do cũ.
+ *  - Cả lúc provider gửi lại lẫn lúc staff duyệt đều kiểm tra availableSeats >= MIN_TOUR_SEATS
+ *    để không mở bán tour mà createBooking sẽ chặn mọi đơn.
  */
 export const updateTourSubmission = async (req, res) => {
   const errors = validationResult(req);
@@ -398,6 +420,14 @@ export const updateTourSubmission = async (req, res) => {
             message: 'Tour đang ở trạng thái không thể gửi duyệt lại'
           });
         }
+
+        if (!hasSellableSeats(tour)) {
+          return res.status(409).json({
+            success: false,
+            message: SEATS_NOT_READY_SUBMIT_MESSAGE
+          });
+        }
+
         submission.status = 'pending';
         submission.reviewedAt = null;
         submission.reviewedBy = null;
@@ -456,6 +486,14 @@ export const updateTourSubmission = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Tour gắn với bài gửi không còn tồn tại'
+      });
+    }
+
+    // Duyệt là chốt cuối: chặn tour không còn chỗ trống trước khi mở bán.
+    if (nextStatus === 'approved' && !hasSellableSeats(tour)) {
+      return res.status(409).json({
+        success: false,
+        message: SEATS_NOT_READY_APPROVE_MESSAGE
       });
     }
 

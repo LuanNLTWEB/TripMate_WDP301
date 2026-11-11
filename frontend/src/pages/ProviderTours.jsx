@@ -16,6 +16,10 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(value || 0);
 
+// Khớp MIN_TOUR_SEATS ở backend: tour 0 chỗ không gửi duyệt được.
+const MIN_TOUR_SEATS = 1;
+const SEATS_MISSING_MESSAGE = 'Tour chưa có chỗ trống. Vui lòng cập nhật số chỗ trước khi gửi duyệt.';
+
 // START UC-35 View Approval Status
 /**
  * Ánh xạ trạng thái duyệt của tour sang nhãn + màu badge.
@@ -330,6 +334,7 @@ export default function ProviderTours() {
               ) : (
                 tours.map((tour) => {
                   const badge = getStatusBadge(tour.status);
+                  const seatsMissing = Number(tour.availableSeats || 0) < MIN_TOUR_SEATS;
 
                   return (
                     <tr key={tour._id}>
@@ -370,6 +375,12 @@ export default function ProviderTours() {
                           <i className="bi bi-people me-1"></i>
                           Còn {tour.availableSeats || 0} chỗ
                         </div>
+                        {seatsMissing && (
+                          <div className="small text-warning fw-semibold">
+                            <i className="bi bi-exclamation-triangle me-1"></i>
+                            Chưa có chỗ trống
+                          </div>
+                        )}
                       </td>
 
                       <td>
@@ -399,8 +410,10 @@ export default function ProviderTours() {
                             <button
                               type="button"
                               className="management-action-btn text-primary border-0 bg-transparent px-2"
-                              title="Gửi duyệt tour để mở bán"
+                              title={seatsMissing ? SEATS_MISSING_MESSAGE : 'Gửi duyệt tour để mở bán'}
                               aria-label={`Gửi duyệt ${tour.title}`}
+                              disabled={seatsMissing}
+                              style={seatsMissing ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
                               onClick={() => navigate(`/management/my-submissions?tour=${tour._id}`)}
                             >
                               <i className="bi bi-send fs-5"></i>

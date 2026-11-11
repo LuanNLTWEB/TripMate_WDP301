@@ -13,6 +13,10 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
 // Chỉ tour nháp hoặc tour vừa được trả lại mới gửi duyệt được.
 const SUBMITTABLE_STATUSES = ['draft', 'needs_revision', 'rejected'];
 
+// Khớp MIN_TOUR_SEATS ở backend: tour 0 chỗ gửi duyệt sẽ bị 409.
+const MIN_TOUR_SEATS = 1;
+const SEATS_MISSING_MESSAGE = 'Tour chưa có chỗ trống. Vui lòng cập nhật số chỗ trước khi gửi duyệt.';
+
 const statusHint = (status) => {
   switch (status) {
     case 'needs_revision':
@@ -78,6 +82,10 @@ export default function TourSubmissionFormModal({
 
   if (!open) return null;
 
+  // Chặn ngay từ UI thay vì để backend trả 409 sau khi bấm gửi.
+  const seatsMissing = Boolean(selectedTour)
+    && Number(selectedTour.availableSeats || 0) < MIN_TOUR_SEATS;
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -86,6 +94,12 @@ export default function TourSubmissionFormModal({
       setError('Vui lòng chọn tour cần gửi duyệt.');
       document.getElementById('submission-tour')?.focus();
       toast.error('Vui lòng chọn tour cần gửi duyệt.');
+      return;
+    }
+
+    if (seatsMissing) {
+      setError(SEATS_MISSING_MESSAGE);
+      toast.error(SEATS_MISSING_MESSAGE);
       return;
     }
 
@@ -232,6 +246,13 @@ export default function TourSubmissionFormModal({
                   </div>
                 )}
 
+                {seatsMissing && (
+                  <div className="alert alert-warning py-2 small mb-3" role="alert">
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    {SEATS_MISSING_MESSAGE}
+                  </div>
+                )}
+
                 <div className="mb-2">
                   <label className="form-label small fw-semibold text-secondary" htmlFor="submission-note">
                     Ghi chú gửi nhân viên kiểm duyệt
@@ -258,7 +279,8 @@ export default function TourSubmissionFormModal({
                 <button
                   type="submit"
                   className="btn btn-primary rounded-pill px-4 d-inline-flex align-items-center gap-2"
-                  disabled={isSubmitting || (!isEdit && (isLoadingTours || tours.length === 0))}
+                  disabled={isSubmitting || (!isEdit && (isLoadingTours || tours.length === 0)) || seatsMissing}
+                  title={seatsMissing ? SEATS_MISSING_MESSAGE : undefined}
                 >
                   {isSubmitting ? (
                     <>
