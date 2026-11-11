@@ -3,16 +3,19 @@ import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
 import TourCategory from '../src/models/TourCategory.js';
+import Notification from '../src/models/Notification.js';
 import { restoreTour, updateProviderTour } from '../src/controllers/tourController.js';
 
 const originalTourFindById = Tour.findById;
 const originalBookingAggregate = Booking.aggregate;
 const originalCategoryFindById = TourCategory.findById;
+const originalNotificationCreate = Notification.create;
 
 afterEach(() => {
   Tour.findById = originalTourFindById;
   Booking.aggregate = originalBookingAggregate;
   TourCategory.findById = originalCategoryFindById;
+  Notification.create = originalNotificationCreate;
 });
 
 const createResponse = () => {
@@ -186,9 +189,19 @@ test('restores only a suspended tour and clears suspension audit fields', async 
   const tour = Object.assign(makeTour('suspended'), {
     suspensionReason: 'Cần kiểm tra thông tin tour',
     suspendedAt: new Date(),
-    suspendedBy: 'staff-1'
+    suspendedBy: 'staff-1',
+    // UC-101: tour còn cờ chỉnh sửa/từ chối cũ hoặc hết chỗ thì không được khôi phục,
+    // nên fixture của luồng hợp lệ phải là tour sạch cờ và còn chỗ.
+    availableSeats: 10,
+    revisionNote: '',
+    revisionRequestedAt: null,
+    revisionRequestedBy: null,
+    rejectionReason: '',
+    rejectedAt: null,
+    rejectedBy: null
   });
   Tour.findById = async () => tour;
+  Notification.create = async (payload) => payload;
   const result = createResponse();
 
   await restoreTour({ params: { id: 'tour-1' } }, result.response);
