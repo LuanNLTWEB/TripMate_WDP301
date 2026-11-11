@@ -48,8 +48,8 @@ function MonthlyRegistrationChart({ data = [], monthsCount = 12, onMonthsChange,
   const growthRate = currentMonthData.growth ?? 0;
 
   return (
-    <div className="card border-0 shadow-sm h-100">
-      <div className="card-body p-4">
+    <div className="management-table-card h-100">
+      <div className="p-4">
         {/* Card Header & Controls */}
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-3">
           <div>
@@ -318,13 +318,14 @@ function MonthlyRegistrationChart({ data = [], monthsCount = 12, onMonthsChange,
             {/* Hover Tooltip Overlay */}
             {hoveredIndex !== null && points[hoveredIndex] && (
               <div
-                className="position-absolute bg-dark text-white p-2 rounded shadow-sm small pointer-events-none"
+                className="position-absolute bg-dark text-white p-2 rounded shadow-sm small pe-none"
                 style={{
                   top: '10px',
                   right: '16px',
                   zIndex: 5,
                   fontSize: '0.8rem',
-                  minWidth: '150px'
+                  minWidth: '150px',
+                  pointerEvents: 'none'
                 }}
               >
                 <div className="fw-semibold text-warning">{points[hoveredIndex].fullLabel}</div>

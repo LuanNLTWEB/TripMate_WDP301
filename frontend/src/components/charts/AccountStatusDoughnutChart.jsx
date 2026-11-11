@@ -65,16 +65,16 @@ function AccountStatusDoughnutChart({ summary }) {
     : '';
 
   return (
-    <div className="card border-0 shadow-sm h-100">
-      <div className="card-body p-4 d-flex flex-column justify-content-between">
+    <div className="management-table-card h-100">
+      <div className="p-4 d-flex flex-column justify-content-between h-100">
         <div>
           {/* Card Header & Controls */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <div>
               <span className="badge bg-success-subtle text-success mb-1">
-                <i className="bi bi-shield-check me-1"></i> Trạng thái
+                <i className="bi bi-shield-check me-1"></i>Trạng thái
               </span>
-              <h2 className="h5 fw-bold mb-0">Tỷ lệ Active / Disabled</h2>
+              <h2 className="h5 fw-bold mb-0">Tỷ lệ trạng thái tài khoản</h2>
             </div>
 
             <div className="btn-group btn-group-sm" role="group" aria-label="Kiểu biểu đồ tròn">
@@ -202,7 +202,7 @@ function AccountStatusDoughnutChart({ summary }) {
                 className="d-inline-block rounded-circle"
                 style={{ width: '12px', height: '12px', backgroundColor: '#198754' }}
               ></span>
-              <span className="fw-medium small">Đang hoạt động (Active)</span>
+              <span className="fw-medium small">Đang hoạt động</span>
             </div>
             <div className="text-end">
               <span className="fw-bold text-success me-2">{active}</span>
@@ -224,7 +224,7 @@ function AccountStatusDoughnutChart({ summary }) {
                 className="d-inline-block rounded-circle"
                 style={{ width: '12px', height: '12px', backgroundColor: '#dc3545' }}
               ></span>
-              <span className="fw-medium small">Đã vô hiệu hóa (Disabled)</span>
+              <span className="fw-medium small">Đã vô hiệu hóa</span>
             </div>
             <div className="text-end">
               <span className="fw-bold text-danger me-2">{disabled}</span>

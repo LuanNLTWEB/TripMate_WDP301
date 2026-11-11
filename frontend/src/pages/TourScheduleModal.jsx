@@ -113,7 +113,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
                 </h6>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-1.5 shadow-sm"
+                  className="btn btn-primary btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-2 shadow-sm"
                   onClick={() => setScheduleForm({ open: true, schedule: null })}
                 >
                   <i className="bi bi-calendar-plus"></i>
