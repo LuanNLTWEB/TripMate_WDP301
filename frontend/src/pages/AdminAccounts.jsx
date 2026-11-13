@@ -31,7 +31,13 @@ const roleBadgeClasses = {
 function AccountForm({ account, roles, onClose, onSaved }) {
   const toast = useToast();
   const isEditing = Boolean(account);
+  const isStaffOrProvider = Boolean(
+    account && (account.role === 'staff' || account.role === 'tourProvider')
+  );
+
   const [formData, setFormData] = useState(account ? {
+    username: account.username || '',
+    email: account.email || '',
     phone: account.phone || '',
     dateOfBirth: account.dateOfBirth?.substring(0, 10) || '',
     gender: account.gender || 'other',
@@ -52,48 +58,106 @@ function AccountForm({ account, roles, onClose, onSaved }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const errs = {};
+
     if (!isEditing) {
-      const errs = {};
       if (!formData.username?.trim()) {
         errs.username = 'Vui lòng nhập tên người dùng.';
+      } else if (formData.username.trim().length < 3 || formData.username.trim().length > 30) {
+        errs.username = 'Tên người dùng phải từ 3 đến 30 ký tự.';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username.trim())) {
+        errs.username = 'Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới.';
       }
+
       if (!formData.email?.trim()) {
         errs.email = 'Vui lòng nhập địa chỉ email.';
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
         errs.email = 'Địa chỉ email không đúng định dạng.';
       }
+
       if (!formData.password) {
         errs.password = 'Vui lòng nhập mật khẩu.';
       } else if (formData.password.length < 6 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
         errs.password = 'Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường và số.';
       }
+
       if (!formData.phone?.trim()) {
         errs.phone = 'Vui lòng nhập số điện thoại.';
       } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
         errs.phone = 'Số điện thoại không hợp lệ (10-11 số).';
       }
 
-      if (Object.keys(errs).length > 0) {
-        setFieldErrors(errs);
-        const firstField = Object.keys(errs)[0];
-        const el = document.getElementById(`account-${firstField}`) || document.querySelector(`[name="${firstField}"]`);
-        el?.focus();
-        toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
-        return;
+      if (formData.dateOfBirth) {
+        const dob = new Date(formData.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (dob > today) {
+          errs.dateOfBirth = 'Ngày sinh không thể ở tương lai.';
+        } else if (age < 12) {
+          errs.dateOfBirth = 'Bạn phải đủ ít nhất 12 tuổi.';
+        }
       }
+    } else if (isStaffOrProvider) {
+      if (!formData.username?.trim()) {
+        errs.username = 'Vui lòng nhập tên người dùng.';
+      } else if (formData.username.trim().length < 3 || formData.username.trim().length > 30) {
+        errs.username = 'Tên người dùng phải từ 3 đến 30 ký tự.';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username.trim())) {
+        errs.username = 'Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới.';
+      }
+
+      if (!formData.phone?.trim()) {
+        errs.phone = 'Vui lòng nhập số điện thoại.';
+      } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
+        errs.phone = 'Số điện thoại không hợp lệ (10-11 số).';
+      }
+
+      if (formData.dateOfBirth) {
+        const dob = new Date(formData.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (dob > today) {
+          errs.dateOfBirth = 'Ngày sinh không thể ở tương lai.';
+        } else if (age < 12) {
+          errs.dateOfBirth = 'Bạn phải đủ ít nhất 12 tuổi.';
+        }
+      }
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      const firstField = Object.keys(errs)[0];
+      const el = document.getElementById(`account-${firstField}`) || document.querySelector(`[name="${firstField}"]`);
+      el?.focus();
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      return;
     }
 
     setIsSaving(true);
     try {
-      const data = isEditing ? { role: formData.role } : {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        phone: formData.phone.trim(),
-        dateOfBirth: formData.dateOfBirth || undefined,
-        gender: formData.gender,
-        role: formData.role
-      };
+      const data = isEditing
+        ? (isStaffOrProvider
+            ? {
+                username: formData.username.trim(),
+                phone: formData.phone.trim(),
+                dateOfBirth: formData.dateOfBirth || null,
+                gender: formData.gender,
+                role: formData.role
+              }
+            : { role: formData.role })
+        : {
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            password: formData.password,
+            phone: formData.phone.trim(),
+            dateOfBirth: formData.dateOfBirth || undefined,
+            gender: formData.gender,
+            role: formData.role
+          };
       const response = isEditing
         ? await accountApi.update(account.id, data)
         : await accountApi.create(data);
@@ -111,33 +175,119 @@ function AccountForm({ account, roles, onClose, onSaved }) {
         <div className="modal-content">
           <form onSubmit={handleSubmit} noValidate>
             <div className="modal-header">
-              <h5 className="modal-title">{isEditing ? 'Thay đổi vai trò' : 'Tạo tài khoản'}</h5>
+              <h5 className="modal-title">
+                {isEditing ? (isStaffOrProvider ? 'Cập nhật tài khoản' : 'Thay đổi vai trò') : 'Tạo tài khoản'}
+              </h5>
               <button type="button" className="btn-close" onClick={onClose} disabled={isSaving} aria-label="Đóng"></button>
             </div>
             <div className="modal-body">
               {error && <div className="alert alert-danger small mb-3">{error}</div>}
               <div className="row g-3">
                 {isEditing ? (
-                  <div className="col-12">
-                    <p className="mb-3"><span className="fw-semibold">{account.username}</span><br /><span className="small text-muted">{account.email}</span></p>
-                    <div className="row g-3 mb-3 small">
-                      <div className="col-md-4"><span className="text-muted d-block">Số điện thoại</span>{account.phone || 'Chưa cập nhật'}</div>
-                      <div className="col-md-4"><span className="text-muted d-block">Ngày sinh</span>{formatDate(account.dateOfBirth)}</div>
-                      <div className="col-md-4"><span className="text-muted d-block">Giới tính</span>{genderLabels[account.gender] || 'Chưa cập nhật'}</div>
+                  isStaffOrProvider ? (
+                    <>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-email">Email</label>
+                        <input
+                          type="email"
+                          className="form-control bg-light text-muted"
+                          id="account-email"
+                          name="email"
+                          value={formData.email}
+                          readOnly
+                          disabled
+                        />
+                        <div className="form-text small">Email là định danh tài khoản và không thể chỉnh sửa.</div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-username">Tên người dùng</label>
+                        <input
+                          className={`form-control ${fieldErrors.username ? 'is-invalid' : ''}`}
+                          id="account-username"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.username && <div className="invalid-feedback">{fieldErrors.username}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-phone">Số điện thoại</label>
+                        <input
+                          type="tel"
+                          className={`form-control ${fieldErrors.phone ? 'is-invalid' : ''}`}
+                          id="account-phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.phone && <div className="invalid-feedback">{fieldErrors.phone}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-dob">Ngày sinh</label>
+                        <CustomDatePicker
+                          id="account-dob"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                          max={new Date().toISOString().split('T')[0]}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.dateOfBirth && <div className="invalid-feedback d-block">{fieldErrors.dateOfBirth}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-gender">Giới tính</label>
+                        <CustomSelect
+                          id="account-gender"
+                          name="gender"
+                          value={formData.gender}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                          options={[
+                            { value: 'male', label: 'Nam' },
+                            { value: 'female', label: 'Nữ' },
+                            { value: 'other', label: 'Khác' }
+                          ]}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
+                        <CustomSelect
+                          id="account-role"
+                          name="role"
+                          value={formData.role}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                          options={roles.map((r) => ({
+                            value: r.name,
+                            label: defaultRoleLabels[r.name] || r.name
+                          }))}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-12">
+                      <p className="mb-3"><span className="fw-semibold">{account.username}</span><br /><span className="small text-muted">{account.email}</span></p>
+                      <div className="row g-3 mb-3 small">
+                        <div className="col-md-4"><span className="text-muted d-block">Số điện thoại</span>{account.phone || 'Chưa cập nhật'}</div>
+                        <div className="col-md-4"><span className="text-muted d-block">Ngày sinh</span>{formatDate(account.dateOfBirth)}</div>
+                        <div className="col-md-4"><span className="text-muted d-block">Giới tính</span>{genderLabels[account.gender] || 'Chưa cập nhật'}</div>
+                      </div>
+                      <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
+                      <CustomSelect
+                        id="account-role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        disabled={isSaving}
+                        options={roles.map((r) => ({
+                          value: r.name,
+                          label: defaultRoleLabels[r.name] || r.name
+                        }))}
+                      />
                     </div>
-                    <label className="form-label small fw-medium" htmlFor="account-role">Vai trò</label>
-                    <CustomSelect
-                      id="account-role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      disabled={isSaving}
-                      options={roles.map((r) => ({
-                        value: r.name,
-                        label: defaultRoleLabels[r.name] || r.name
-                      }))}
-                    />
-                  </div>
+                  )
                 ) : <>
                 <div className="col-md-6">
                   <label className="form-label small fw-medium" htmlFor="account-username">Tên người dùng</label>
@@ -394,7 +544,14 @@ function AdminAccounts() {
                         <td><span className={`badge ${account.isActive ? 'bg-success' : 'bg-danger'}`}>{account.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}</span></td>
                         <td className="small text-muted">{formatDate(account.createdAt)}</td>
                         <td><div className="d-flex justify-content-end gap-2 flex-wrap">
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openRoleForm(account)} disabled={processingId === account.id || account.id === user.id}>Role</button>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openRoleForm(account)}
+                            disabled={processingId === account.id || account.id === user.id}
+                            title={account.role === 'staff' || account.role === 'tourProvider' ? 'Cập nhật tài khoản' : 'Thay đổi vai trò'}
+                          >
+                            {account.role === 'staff' || account.role === 'tourProvider' ? 'Sửa' : 'Role'}
+                          </button>
                           <button className={`btn btn-sm ${account.isActive ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleStatus(account)} disabled={processingId === account.id || account.id === user.id}>{account.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}</button>
                           <button className="btn btn-sm btn-outline-danger" onClick={() => setAccountToDelete(account)} disabled={processingId === account.id || account.id === user.id}>Xóa</button>
                         </div></td>

@@ -5,14 +5,12 @@ import { roleApi } from '../services/api';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import ManagementPagination from '../components/management/ManagementPagination';
 
-const emptyForm = { name: '', description: '' };
-
 function RoleForm({ role, onClose, onSaved }) {
   const toast = useToast();
-  const isEditing = Boolean(role);
-  const [formData, setFormData] = useState(
-    role ? { name: role.name, description: role.description || '' } : emptyForm
-  );
+  const [formData, setFormData] = useState({
+    name: role?.name || '',
+    description: role?.description || ''
+  });
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -36,9 +34,7 @@ function RoleForm({ role, onClose, onSaved }) {
     setIsSaving(true);
     try {
       const data = { name: formData.name.trim(), description: formData.description.trim() };
-      const response = isEditing
-        ? await roleApi.update(role._id, data)
-        : await roleApi.create(data);
+      const response = await roleApi.update(role._id, data);
       onSaved(response.message);
     } catch (requestError) {
       toast.error(requestError.message || 'Không thể lưu vai trò.');
@@ -53,7 +49,7 @@ function RoleForm({ role, onClose, onSaved }) {
         <div className="modal-content">
           <form onSubmit={handleSubmit} noValidate>
             <div className="modal-header">
-              <h5 className="modal-title">{isEditing ? 'Sửa vai trò' : 'Tạo vai trò'}</h5>
+              <h5 className="modal-title">Sửa vai trò</h5>
               <button type="button" className="btn-close" onClick={onClose} disabled={isSaving} aria-label="Đóng"></button>
             </div>
             <div className="modal-body">
@@ -134,11 +130,6 @@ function AdminRoles() {
     setCurrentPage(1);
   };
 
-  const openCreateForm = () => {
-    setSelectedRole(null);
-    setIsFormOpen(true);
-  };
-
   const openEditForm = (role) => {
     setSelectedRole(role);
     setIsFormOpen(true);
@@ -181,7 +172,6 @@ function AdminRoles() {
             <div>
               <h1 className="h3 fw-bold mb-1">Quản lý vai trò</h1>
             </div>
-            <button className="btn btn-primary" onClick={openCreateForm}><i className="bi bi-plus-lg me-2"></i>Tạo vai trò</button>
           </div>
           {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">{error}<button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button></div>}
           <div className="card shadow-sm border-0">
