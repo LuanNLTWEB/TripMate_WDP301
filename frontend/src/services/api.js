@@ -122,7 +122,6 @@ export const accountApi = {
 
 export const roleApi = {
   getAll: () => apiRequest('/admin/roles', { method: 'GET' }),
-  create: (roleData) => apiRequest('/admin/roles', { method: 'POST', body: JSON.stringify(roleData) }),
   update: (id, roleData) => apiRequest(`/admin/roles/${id}`, { method: 'PUT', body: JSON.stringify(roleData) }),
   remove: (id) => apiRequest(`/admin/roles/${id}`, { method: 'DELETE' })
 };

@@ -307,7 +307,7 @@ export const accountValidation = [
     })
 ];
 
-export const updateAccountRoleValidation = [
+export const updateAccountValidation = [
   body('role')
     .trim()
     .notEmpty().withMessage('Vui lòng chọn vai trò')
@@ -315,8 +315,37 @@ export const updateAccountRoleValidation = [
       const roleExists = await Role.findOne({ name: value });
       if (!roleExists) throw new Error('Vai trò không hợp lệ');
       return true;
-    })
+    }),
+  body('username')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên người dùng')
+    .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
+    .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
+  body('phone')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập số điện thoại')
+    .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại không hợp lệ (10-11 số)'),
+  body('dateOfBirth')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
+    .custom((value) => {
+      const dateOfBirth = new Date(value);
+      const today = new Date();
+      let age = today.getFullYear() - dateOfBirth.getFullYear();
+      const monthDifference = today.getMonth() - dateOfBirth.getMonth();
+      if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())) age--;
+      if (dateOfBirth > today) throw new Error('Ngày sinh không thể ở tương lai');
+      if (age < 12) throw new Error('Bạn phải đủ ít nhất 12 tuổi');
+      return true;
+    }),
+  body('gender')
+    .optional()
+    .isIn(['male', 'female', 'other']).withMessage('Giới tính không hợp lệ')
 ];
+
+export const updateAccountRoleValidation = updateAccountValidation;
 
 export const itineraryValidation = [
   body('title')
