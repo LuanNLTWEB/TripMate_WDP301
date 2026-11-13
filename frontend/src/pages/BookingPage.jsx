@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import CustomDatePicker from '../components/CustomDatePicker';
 import { tourApi, bookingApi } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -18,6 +17,16 @@ const formatDate = (dateString) => new Date(dateString).toLocaleDateString('vi-V
   year: 'numeric'
 });
 
+const formatFullDate = (dateString) => {
+  const d = new Date(dateString);
+  return d.toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
 const isValidVietnamesePhone = (value) => {
   return /^0[35789][0-9]{8}$/.test(value.trim());
 };
@@ -26,7 +35,7 @@ const isValidEmail = (value) => {
   return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|vn|edu|edu\.vn)$/i.test(value.trim());
 };
 
-const validateForm = (fields, availableSeats) => {
+const validateForm = (fields, selectedDeparture, availableSeats, departuresCount) => {
   const newErrors = {};
 
   if (!fields.fullName.trim()) {
@@ -56,24 +65,21 @@ const validateForm = (fields, availableSeats) => {
     }
   }
 
+  if (departuresCount === 0) {
+    newErrors.departureDate = 'Tour này hiện chưa mở lịch khởi hành, chưa thể đặt tour';
+  } else if (!selectedDeparture) {
+    newErrors.departureDate = 'Vui lòng chọn một trong các đợt khởi hành của tour bên dưới';
+  } else if (!selectedDeparture.isAvailable) {
+    newErrors.departureDate = 'Lịch khởi hành này đã hết chỗ, vui lòng chọn đợt khởi hành khác';
+  }
+
   const peopleCount = Number(fields.numberOfPeople);
   if (!fields.numberOfPeople || isNaN(peopleCount) || !Number.isInteger(peopleCount)) {
     newErrors.numberOfPeople = 'Vui lòng nhập số lượng người hợp lệ';
   } else if (peopleCount < 1) {
     newErrors.numberOfPeople = 'Số lượng người phải ít nhất là 1';
-  } else if (peopleCount > availableSeats) {
-    newErrors.numberOfPeople = `Tour chỉ còn ${availableSeats} chỗ trống`;
-  }
-
-  if (!fields.departureDate) {
-    newErrors.departureDate = 'Vui lòng chọn ngày khởi hành';
-  } else {
-    const selected = new Date(fields.departureDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selected < today) {
-      newErrors.departureDate = 'Ngày khởi hành phải là ngày trong tương lai';
-    }
+  } else if (availableSeats > 0 && peopleCount > availableSeats) {
+    newErrors.numberOfPeople = `Lịch khởi hành này chỉ còn ${availableSeats} chỗ trống`;
   }
 
   if (!fields.agreePolicy) {
@@ -89,6 +95,7 @@ const BookingPage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const initialDepartureDate = location.state?.departureDate || searchParams.get('departureDate') || '';
+  const initialDepartureId = location.state?.departureId || searchParams.get('departureId') || '';
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
 
@@ -102,6 +109,7 @@ const BookingPage = () => {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [numberOfPeople, setNumberOfPeople] = useState(1);
+  const [selectedDepartureId, setSelectedDepartureId] = useState(initialDepartureId);
   const [departureDate, setDepartureDate] = useState(() => initialDepartureDate);
   const [note, setNote] = useState('');
   const [agreePolicy, setAgreePolicy] = useState(false);
@@ -136,7 +144,27 @@ const BookingPage = () => {
     tourApi.checkAvailability(tourId)
       .then((res) => {
         if (isMounted && res.data?.departures) {
-          setDepartures(res.data.departures);
+          const deps = res.data.departures;
+          setDepartures(deps);
+
+          // Tự động đồng bộ lịch khởi hành khi vào trang
+          if (initialDepartureId) {
+            const found = deps.find((d) => d._id === initialDepartureId);
+            if (found) {
+              setSelectedDepartureId(found._id);
+              setDepartureDate(found.dateKey);
+            }
+          } else if (initialDepartureDate) {
+            const found = deps.find((d) => d.dateKey === initialDepartureDate);
+            if (found) {
+              setSelectedDepartureId(found._id);
+              setDepartureDate(found.dateKey);
+            }
+          } else if (deps.length > 0) {
+            const firstAvail = deps.find((d) => d.isAvailable) || deps[0];
+            setSelectedDepartureId(firstAvail._id);
+            setDepartureDate(firstAvail.dateKey);
+          }
         }
       })
       .catch(() => {});
@@ -144,7 +172,7 @@ const BookingPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [tourId, user]);
+  }, [tourId, user, initialDepartureId, initialDepartureDate]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -154,11 +182,38 @@ const BookingPage = () => {
     }
   }, [isAuthenticated, user, navigate, tourId]);
 
-  const totalPrice = tour ? tour.price * Number(numberOfPeople) : 0;
+  // Xác định lịch khởi hành đang được chọn
+  const selectedDeparture = departures.find(
+    (d) => (selectedDepartureId && d._id === selectedDepartureId) || (departureDate && d.dateKey === departureDate)
+  ) || null;
+
+  // Số chỗ trống tối đa của lịch khởi hành đã chọn
+  const availableSeats = selectedDeparture
+    ? (selectedDeparture.remainingSeats ?? selectedDeparture.capacity ?? 0)
+    : (tour ? tour.availableSeats : 0);
+
+  // Đơn giá tính theo lịch khởi hành (nếu có giá riêng) hoặc giá gốc của tour
+  const unitPrice = (selectedDeparture && selectedDeparture.price && selectedDeparture.price > 0)
+    ? selectedDeparture.price
+    : (tour ? tour.price : 0);
+
+  const totalPrice = unitPrice * Number(numberOfPeople);
 
   const clearError = (fieldName) => {
     if (errors[fieldName]) {
       setErrors((prev) => ({ ...prev, [fieldName]: '' }));
+    }
+  };
+
+  const handleSelectDeparture = (dep) => {
+    setSelectedDepartureId(dep._id);
+    setDepartureDate(dep.dateKey);
+    clearError('departureDate');
+
+    const maxSeats = dep.remainingSeats ?? dep.capacity ?? 0;
+    if (maxSeats > 0 && numberOfPeople > maxSeats) {
+      setNumberOfPeople(maxSeats);
+      clearError('numberOfPeople');
     }
   };
 
@@ -168,7 +223,9 @@ const BookingPage = () => {
 
     const formErrors = validateForm(
       { fullName, phone, email, address, numberOfPeople, departureDate, agreePolicy },
-      tour.availableSeats
+      selectedDeparture,
+      availableSeats,
+      departures.length
     );
 
     if (Object.keys(formErrors).length > 0) {
@@ -189,7 +246,8 @@ const BookingPage = () => {
         email: email.trim(),
         address: address.trim(),
         numberOfPeople: Number(numberOfPeople),
-        departureDate,
+        departureId: selectedDeparture?._id || undefined,
+        departureDate: selectedDeparture?.departureDate || departureDate,
         note: note.trim()
       });
 
@@ -255,7 +313,7 @@ const BookingPage = () => {
               <div className="card border-0 shadow-sm rounded-4">
                 <div className="card-body p-4 p-md-5">
                   <h1 className="h3 fw-bold mb-1">Thông tin đặt tour</h1>
-                  <p className="text-muted mb-4">Vui lòng điền đầy đủ thông tin để đặt tour</p>
+                  <p className="text-muted mb-4">Vui lòng chọn lịch khởi hành và điền thông tin để đặt tour</p>
 
                   {apiError && (
                     <div className="alert alert-danger d-flex align-items-center gap-2 mb-4">
@@ -265,6 +323,141 @@ const BookingPage = () => {
                   )}
 
                   <form onSubmit={handleSubmit} noValidate>
+                    {/* Phần 1: Chọn lịch khởi hành tour (Bắt buộc theo nghiệp vụ) */}
+                    <div className="mb-4 p-3 p-md-4 bg-white border rounded-4 shadow-sm">
+                      <div className="mb-3">
+                        <label className="form-label fw-bold text-dark mb-0 fs-6">
+                          Lịch khởi hành tour <span className="text-danger">(*)</span>
+                        </label>
+                        <div className="text-muted small mt-1" style={{ fontSize: '0.8rem' }}>
+                          Quý khách vui lòng chọn một trong các đợt khởi hành bên dưới:
+                        </div>
+                      </div>
+
+                      {departures.length === 0 ? (
+                        <div className="alert alert-warning border-0 rounded-3 p-3 mb-0 d-flex align-items-center gap-2">
+                          <i className="bi bi-exclamation-triangle-fill text-warning fs-5 flex-shrink-0"></i>
+                          <span className="small">Tour này hiện chưa mở lịch khởi hành mới. Quý khách vui lòng chọn tour khác hoặc quay lại sau.</span>
+                        </div>
+                      ) : (
+                        <div className="d-flex flex-column gap-2.5">
+                          {departures.map((dep) => {
+                            const isSelected = selectedDeparture && (selectedDeparture._id === dep._id || selectedDeparture.dateKey === dep.dateKey);
+                            const isAvail = dep.isAvailable && (dep.remainingSeats > 0);
+                            const isLowSeats = isAvail && dep.remainingSeats <= 5;
+
+                            return (
+                              <div
+                                key={dep._id || dep.dateKey}
+                                role="button"
+                                tabIndex={isAvail ? 0 : -1}
+                                onClick={() => {
+                                  if (isAvail) handleSelectDeparture(dep);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (isAvail && (e.key === 'Enter' || e.key === ' ')) {
+                                    handleSelectDeparture(dep);
+                                  }
+                                }}
+                                className={`p-3 rounded-3 transition-all d-flex align-items-center justify-content-between position-relative ${
+                                  isSelected
+                                    ? 'shadow-xs'
+                                    : isAvail
+                                      ? 'cursor-pointer'
+                                      : 'opacity-60 cursor-not-allowed'
+                                }`}
+                                style={{
+                                  border: isSelected ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                                  backgroundColor: isSelected ? '#f0f9ff' : isAvail ? '#ffffff' : '#f8fafc',
+                                  cursor: isAvail ? 'pointer' : 'not-allowed',
+                                  transition: 'all 0.2s ease-in-out'
+                                }}
+                              >
+                                {/* Cột trái: Radio checkmark & Thông tin ngày */}
+                                <div className="d-flex align-items-center gap-3">
+                                  <div
+                                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style={{
+                                      width: '24px',
+                                      height: '24px',
+                                      backgroundColor: isSelected ? '#0284c7' : '#ffffff',
+                                      border: isSelected ? '2px solid #0284c7' : '2px solid #cbd5e1',
+                                      color: '#ffffff',
+                                      transition: 'all 0.2s ease-in-out'
+                                    }}
+                                  >
+                                    {isSelected ? (
+                                      <i className="bi bi-check-lg" style={{ fontSize: '0.85rem' }}></i>
+                                    ) : (
+                                      <div className="rounded-circle" style={{ width: '8px', height: '8px', backgroundColor: '#e2e8f0' }}></div>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                                      <span
+                                        className={`fw-bold ${isSelected ? 'text-primary' : 'text-dark'}`}
+                                        style={{ fontSize: '0.96rem' }}
+                                      >
+                                        {formatFullDate(dep.departureDate)}
+                                      </span>
+                                      {dep.note && (
+                                        <span
+                                          className="badge bg-light text-secondary border px-2 py-0.5 fw-normal d-inline-flex align-items-center gap-1"
+                                          style={{ fontSize: '0.74rem' }}
+                                        >
+                                          <i className="bi bi-clock"></i>
+                                          <span>{dep.note}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-muted small mt-0.5" style={{ fontSize: '0.78rem' }}>
+                                      Khởi hành: {formatDate(dep.departureDate)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Cột phải: Đơn giá & Badge chỗ trống */}
+                                <div className="d-flex align-items-center gap-3 text-end">
+                                  <div>
+                                    {dep.price && dep.price !== tour.price && (
+                                      <div className="small text-muted text-decoration-line-through" style={{ fontSize: '0.76rem' }}>
+                                        {formatPrice(tour.price)}
+                                      </div>
+                                    )}
+                                    <div className="fw-bold" style={{ color: '#0284c7', fontSize: '0.98rem' }}>
+                                      {formatPrice(dep.price || tour.price)}
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    className={`badge rounded-pill px-2.5 py-1.5 fw-semibold ${
+                                      !isAvail
+                                        ? 'bg-danger-subtle text-danger border border-danger-subtle'
+                                        : isLowSeats
+                                          ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+                                          : 'bg-success-subtle text-success border border-success-subtle'
+                                    }`}
+                                    style={{ fontSize: '0.76rem', minWidth: '78px', textAlign: 'center' }}
+                                  >
+                                    {!isAvail ? 'Hết chỗ' : isLowSeats ? `Còn ${dep.remainingSeats} chỗ` : `Còn ${dep.remainingSeats} chỗ`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {errors.departureDate && (
+                        <div className="text-danger small mt-2 d-flex align-items-center gap-1">
+                          <i className="bi bi-exclamation-circle-fill"></i>
+                          <span>{errors.departureDate}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Phần 2: Thông tin hành khách & Số lượng người */}
                     <div className="row g-3 mb-3">
                       <div className="col-md-6">
                         <label htmlFor="fullName" className="form-label fw-medium text-dark">
@@ -346,22 +539,24 @@ const BookingPage = () => {
                       </div>
                     </div>
 
-                    <div className="row g-3 mb-3">
+                    <div className="row g-3 mb-4">
                       <div className="col-md-6">
                         <label className="form-label fw-medium text-dark">
-                          Hành khách <span className="text-danger">(*)</span>
+                          Số lượng người đặt <span className="text-danger">(*)</span>
                         </label>
                         <div
                           className={`d-flex align-items-center justify-content-between rounded-pill px-3 py-1.5 ${errors.numberOfPeople ? 'border-danger' : ''}`}
                           style={{
                             backgroundColor: '#f8f9fa',
                             border: errors.numberOfPeople ? '1px solid #dc3545' : '1px solid #eef0f3',
-                            minHeight: '42px'
+                            minHeight: '44px'
                           }}
                         >
                           <div>
-                            <div className="fw-bold text-dark" style={{ fontSize: '0.95rem', lineHeight: '1.2' }}>Số lượng người</div>
-                            <div className="text-secondary" style={{ fontSize: '0.72rem', marginTop: '2px', lineHeight: '1' }}>Còn {tour.availableSeats} chỗ trống</div>
+                            <div className="fw-bold text-dark" style={{ fontSize: '0.92rem', lineHeight: '1.2' }}>Hành khách</div>
+                            <div className="text-secondary" style={{ fontSize: '0.72rem', marginTop: '2px', lineHeight: '1' }}>
+                              {selectedDeparture ? `Lịch này còn ${availableSeats} chỗ` : `Tour còn ${tour.availableSeats} chỗ`}
+                            </div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
                             <button
@@ -375,6 +570,7 @@ const BookingPage = () => {
                                 }
                               }}
                               disabled={submitting || numberOfPeople <= 1}
+                              aria-label="Giảm số người"
                             >
                               <i className="bi bi-dash"></i>
                             </button>
@@ -386,12 +582,13 @@ const BookingPage = () => {
                               className="btn btn-outline-primary rounded-circle d-flex align-items-center justify-content-center p-0"
                               style={{ width: '28px', height: '28px', fontSize: '0.9rem' }}
                               onClick={() => {
-                                if (numberOfPeople < tour.availableSeats) {
+                                if (availableSeats > 0 && numberOfPeople < availableSeats) {
                                   setNumberOfPeople(numberOfPeople + 1);
                                   clearError('numberOfPeople');
                                 }
                               }}
-                              disabled={submitting || numberOfPeople >= tour.availableSeats}
+                              disabled={submitting || availableSeats <= 0 || numberOfPeople >= availableSeats}
+                              aria-label="Tăng số người"
                             >
                               <i className="bi bi-plus"></i>
                             </button>
@@ -399,70 +596,6 @@ const BookingPage = () => {
                         </div>
                         {errors.numberOfPeople && (
                           <div className="text-danger small mt-1">{errors.numberOfPeople}</div>
-                        )}
-                      </div>
-
-                      <div className="col-md-6">
-                        <label htmlFor="departureDate" className="form-label fw-medium text-dark">
-                          Ngày khởi hành <span className="text-danger">(*)</span>
-                        </label>
-                        <CustomDatePicker
-                          id="departureDate"
-                          name="departureDate"
-                          value={departureDate}
-                          min={today}
-                          placeholder="dd/mm/yyyy"
-                          onChange={(e, val) => {
-                            const selected = val !== undefined ? val : e.target.value;
-                            setDepartureDate(selected);
-                            clearError('departureDate');
-                          }}
-                          disabled={submitting}
-                          className={errors.departureDate ? 'is-invalid' : ''}
-                        />
-                        {errors.departureDate && (
-                          <div className="text-danger small mt-1">{errors.departureDate}</div>
-                        )}
-
-                        {departures.length > 0 && (
-                          <div className="mt-2.5">
-                            <div className="small text-muted mb-1.5 d-flex align-items-center gap-1.5">
-                              <i className="bi bi-calendar2-check text-primary"></i>
-                              <span className="fw-medium">Lịch khởi hành có sẵn:</span>
-                            </div>
-                            <div className="d-flex flex-wrap gap-1.5">
-                              {departures.map((dep) => (
-                                <button
-                                  key={dep._id || dep.dateKey}
-                                  type="button"
-                                  className={`btn btn-sm py-1 px-2.5 rounded-pill d-inline-flex align-items-center gap-1.5 transition-all ${
-                                    departureDate === dep.dateKey
-                                      ? 'btn-primary shadow-xs'
-                                      : 'btn-outline-secondary bg-white'
-                                  }`}
-                                  style={{ fontSize: '0.8rem' }}
-                                  onClick={() => {
-                                    setDepartureDate(dep.dateKey);
-                                    clearError('departureDate');
-                                  }}
-                                  disabled={submitting || !dep.isAvailable}
-                                >
-                                  <span>{new Date(dep.departureDate).toLocaleDateString('vi-VN')}</span>
-                                  <span
-                                    className={`badge rounded-pill ${
-                                      dep.isAvailable
-                                        ? departureDate === dep.dateKey
-                                          ? 'bg-white text-primary'
-                                          : 'bg-success-subtle text-success'
-                                        : 'bg-danger-subtle text-danger'
-                                    }`}
-                                  >
-                                    {dep.isAvailable ? `Còn ${dep.remainingSeats} chỗ` : 'Hết chỗ'}
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -478,8 +611,8 @@ const BookingPage = () => {
                         id="note"
                         className="form-control rounded-4 p-3"
                         style={{ backgroundColor: '#f8f9fa', border: '1px solid #eef0f3' }}
-                        rows={4}
-                        placeholder="Ví dụ: Bữa ăn chay, đến muộn, ..."
+                        rows={3}
+                        placeholder="Ví dụ: Bữa ăn chay, đón tại điểm hẹn, ..."
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         maxLength={500}
@@ -497,7 +630,7 @@ const BookingPage = () => {
                           <p className="mb-0" style={{ whiteSpace: 'pre-line' }}>{tour.cancellationPolicy}</p>
                         ) : (
                           <ul className="mb-0 ps-3">
-                            <li>Đơn đặt sẽ được chuyển tới nhà cung cấp để xác nhận giữ chỗ.</li>
+                            <li>Đơn đặt sẽ được chuyển tới nhà cung cấp để xác nhận giữ chỗ theo lịch khởi hành.</li>
                             <li>Quý khách có thể tự hủy đặt tour miễn phí trước thời điểm khởi hành tối thiểu 48 giờ.</li>
                             <li>Hủy trong vòng 48 giờ trước ngày khởi hành: Vui lòng liên hệ trực tiếp nhà cung cấp để được hỗ trợ.</li>
                           </ul>
@@ -528,7 +661,7 @@ const BookingPage = () => {
                       <button
                         type="submit"
                         className="btn btn-primary rounded-pill w-100 py-2.5 fw-semibold shadow-sm d-flex align-items-center justify-content-center gap-2"
-                        disabled={submitting}
+                        disabled={submitting || departures.length === 0}
                       >
                         {submitting ? (
                           <>
@@ -548,8 +681,9 @@ const BookingPage = () => {
               </div>
             </div>
 
+            {/* Cột phải: Tóm tắt đơn đặt */}
             <div className="col-lg-5">
-              <div className="card border-0 shadow-sm rounded-4">
+              <div className="card border-0 shadow-sm rounded-4 sticky-sidebar" style={{ top: '88px', zIndex: 10 }}>
                 <div className="card-body p-4">
                   <h2 className="h5 fw-bold mb-3">Tóm tắt đơn đặt</h2>
 
@@ -573,31 +707,47 @@ const BookingPage = () => {
                   <hr />
 
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-muted small">Giá mỗi người</span>
-                    <span className="fw-medium">{formatPrice(tour.price)}</span>
+                    <span className="text-muted small">Đơn giá / người</span>
+                    <span className="fw-medium text-dark">
+                      {formatPrice(unitPrice)}
+                      {selectedDeparture && selectedDeparture.price && selectedDeparture.price !== tour.price && (
+                        <span className="badge bg-info-subtle text-info ms-1 small">Giá lịch</span>
+                      )}
+                    </span>
                   </div>
+
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-muted small">Số lượng người</span>
-                    <span className="fw-medium">{numberOfPeople} người</span>
+                    <span className="text-muted small">Số lượng hành khách</span>
+                    <span className="fw-medium text-dark">{numberOfPeople} người</span>
                   </div>
-                  {departureDate && (
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="text-muted small">Ngày khởi hành</span>
-                      <span className="fw-medium">{formatDate(departureDate)}</span>
-                    </div>
-                  )}
+
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted small">Lịch khởi hành</span>
+                    <span className="fw-semibold text-primary">
+                      {selectedDeparture
+                        ? formatDate(selectedDeparture.departureDate)
+                        : (departureDate ? formatDate(departureDate) : 'Chưa chọn')}
+                    </span>
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-muted small">Số chỗ còn trống</span>
+                    <span className={`fw-medium ${availableSeats > 0 ? 'text-success' : 'text-danger'}`}>
+                      {selectedDeparture ? `${availableSeats} chỗ` : 'Chưa chọn'}
+                    </span>
+                  </div>
 
                   <hr />
 
                   <div className="d-flex justify-content-between align-items-center">
-                    <span className="fw-bold">Tổng cộng</span>
+                    <span className="fw-bold fs-6">Tổng cộng</span>
                     <span className="fw-bold text-primary fs-5">{formatPrice(totalPrice)}</span>
                   </div>
 
                   <div className="mt-3 p-3 bg-light rounded-3">
                     <p className="small text-muted mb-0">
-                      <i className="bi bi-info-circle me-1"></i>
-                      Đây là đơn đặt chỗ. Nhân viên sẽ liên hệ xác nhận và hướng dẫn thanh toán trong thời gian sớm nhất.
+                      <i className="bi bi-info-circle me-1 text-primary"></i>
+                      Đơn đặt sẽ được giữ chỗ theo đợt khởi hành đã chọn. Nhà cung cấp sẽ liên hệ xác nhận trong thời gian sớm nhất.
                     </p>
                   </div>
                 </div>

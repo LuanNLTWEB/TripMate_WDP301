@@ -11,6 +11,11 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'Customer ID là bắt buộc']
   },
+  departureId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Departure',
+    default: null
+  },
   fullName: {
     type: String,
     required: [true, 'Vui lòng nhập họ và tên'],
@@ -141,6 +146,7 @@ const bookingSchema = new mongoose.Schema({
 
 bookingSchema.index({ tourId: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ customerId: 1, createdAt: -1 });
+bookingSchema.index({ departureId: 1, status: 1 });
 bookingSchema.index({ tourId: 1, customerId: 1, status: 1, departureDate: -1 });
 
 const Booking = mongoose.model('Booking', bookingSchema);

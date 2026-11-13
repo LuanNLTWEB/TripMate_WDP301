@@ -6,13 +6,14 @@
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
+import Departure from '../models/Departure.js';
 import Notification from '../models/Notification.js';
 import { validationResult } from 'express-validator';
 import ExcelJS from 'exceljs';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Nhận thông tin đặt tour từ customer, kiểm tra tour còn chỗ, tính tổng tiền rồi tạo booking
+// Nhận thông tin đặt tour từ customer theo lịch khởi hành, kiểm tra chỗ trống, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -24,7 +25,7 @@ export const createBooking = async (req, res) => {
   }
 
   try {
-    const { fullName, phone, email, address, numberOfPeople, departureDate, note } = req.body;
+    const { fullName, phone, email, address, numberOfPeople, departureDate, departureId, note } = req.body;
     const tourId = req.params.tourId;
 
     const customer = await User.findById(req.user._id).select('isBookingRestricted noShowCount');
@@ -43,24 +44,94 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    if (tour.availableSeats < numberOfPeople) {
+    // 1. Tìm lịch khởi hành (Departure) theo departureId hoặc departureDate
+    let departure = null;
+    if (departureId) {
+      departure = await Departure.findOne({ _id: departureId, tourId: tour._id });
+    }
+
+    if (!departure && departureDate) {
+      const selected = new Date(departureDate);
+      if (!Number.isNaN(selected.getTime())) {
+        const startOfDay = new Date(selected);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        departure = await Departure.findOne({
+          tourId: tour._id,
+          departureDate: { $gte: startOfDay, $lt: endOfDay }
+        });
+      }
+    }
+
+    // 2. Nghiệp vụ: Tour phải có lịch khởi hành mở bán
+    if (!departure) {
       return res.status(400).json({
         success: false,
-        message: `Tour hiện chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${numberOfPeople} người`
+        message: 'Tour chưa có lịch khởi hành cho ngày đã chọn. Vui lòng chọn một ngày trong lịch khởi hành có sẵn của tour.'
       });
     }
 
-    const totalPrice = tour.price * numberOfPeople;
+    // 3. Nghiệp vụ: Lịch khởi hành phải ở trạng thái hoạt động (scheduled)
+    if (departure.status !== 'scheduled') {
+      return res.status(400).json({
+        success: false,
+        message: 'Lịch khởi hành này đã bị hủy, vui lòng chọn một lịch khởi hành khác.'
+      });
+    }
 
+    // 4. Nghiệp vụ: Ngày khởi hành phải trong tương lai
+    const depDate = new Date(departure.departureDate);
+    if (depDate.getTime() < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể đặt tour cho lịch khởi hành trong quá khứ hoặc đã xuất phát.'
+      });
+    }
+
+    // 5. Nghiệp vụ: Kiểm tra số chỗ trống còn lại của lịch khởi hành
+    const startOfDay = new Date(depDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const confirmedBookings = await Booking.find({
+      $or: [
+        { departureId: departure._id },
+        { tourId: tour._id, departureDate: { $gte: startOfDay, $lt: endOfDay } }
+      ],
+      status: { $in: ['confirmed', 'paid', 'checked_in'] }
+    });
+
+    const bookedSeats = confirmedBookings.reduce((sum, b) => sum + (Number(b.numberOfPeople) || 0), 0);
+    const remainingSeats = Math.max(0, Number(departure.availableSeats || 0) - bookedSeats);
+
+    if (remainingSeats < Number(numberOfPeople)) {
+      return res.status(400).json({
+        success: false,
+        message: `Lịch khởi hành ngày ${startOfDay.toLocaleDateString('vi-VN')} chỉ còn ${remainingSeats} chỗ trống, không đủ cho ${numberOfPeople} người.`
+      });
+    }
+
+    // 6. Tính tổng tiền: Ưu tiên đơn giá của lịch khởi hành (nếu có giá ưu đãi/điều chỉnh)
+    const unitPrice = (departure.price !== null && departure.price !== undefined && Number(departure.price) > 0)
+      ? Number(departure.price)
+      : Number(tour.price);
+
+    const totalPrice = unitPrice * Number(numberOfPeople);
+
+    // 7. Tạo đơn đặt tour liên kết với lịch khởi hành
     const booking = await Booking.create({
       tourId: tour._id,
       customerId: req.user._id,
+      departureId: departure._id,
       fullName,
       phone,
       email,
       address: address || '',
-      numberOfPeople,
-      departureDate,
+      numberOfPeople: Number(numberOfPeople),
+      departureDate: departure.departureDate,
       note: note || '',
       totalPrice,
       status: 'pending'
@@ -68,7 +139,8 @@ export const createBooking = async (req, res) => {
 
     await booking.populate([
       { path: 'tourId', select: 'title location duration price images' },
-      { path: 'customerId', select: 'username email phone' }
+      { path: 'customerId', select: 'username email phone' },
+      { path: 'departureId', select: 'departureDate availableSeats price status' }
     ]);
 
     res.status(201).json({
@@ -104,6 +176,7 @@ export const getMyBookings = async (req, res) => {
           select: 'username email phone'
         }
       })
+      .populate('departureId', 'departureDate availableSeats price status note')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -924,7 +997,7 @@ export const getBookingById = async (req, res) => {
         path: 'providerId',
         select: 'username email phone'
       }
-    });
+    }).populate('departureId', 'departureDate availableSeats price status note');
 
     if (!booking) {
       return res.status(404).json({

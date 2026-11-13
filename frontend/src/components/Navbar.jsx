@@ -449,7 +449,7 @@ function Navbar() {
   );
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark shadow-sm sticky-top navbar-glass tripmate-navbar py-2">
+    <nav className="navbar navbar-expand-lg navbar-dark shadow-sm sticky-top navbar-glass tripmate-navbar py-2" style={{ zIndex: 1040 }}>
       <div className="container">
         <Link className="navbar-brand d-flex align-items-center gap-2 text-decoration-none" to="/">
           <img src={TRIPMATE_LOGO_URL} alt="TripMate" className="tripmate-navbar-logo" />
