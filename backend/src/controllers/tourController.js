@@ -16,6 +16,9 @@ import Review from '../models/Review.js';
 import { ensurePendingTourSubmission, repairOrphanPendingTourSubmissions } from '../utils/tourSubmissionSync.js';
 import { validationResult } from 'express-validator';
 
+// Booking còn giữ chỗ của tour: mọi trạng thái trừ cancelled/rejected.
+const COMMITTED_BOOKING_STATUSES = ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'];
+
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // START UC-24 Duplicate Tour
@@ -1039,8 +1042,16 @@ export const getProviderTourById = async (req, res) => {
     // UC39 - ẩn các ngày lịch trình đã xóa mềm khỏi màn hình chi tiết tour của provider.
     tour.itinerary = (tour.itinerary || []).filter((item) => !item.isDeleted);
 
+    // Trả kèm số chỗ đã được xác nhận để UI hiển thị ngưỡng tối thiểu ngay khi mở trang.
+    const [confirmedAgg] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
+      { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
+    ]);
+    const confirmedSeats = confirmedAgg?.seats || 0;
+
     res.status(200).json({
       success: true,
+      confirmedSeats,
       data: tour
     });
   } catch (error) {
@@ -1100,7 +1111,11 @@ export const updateProviderTour = async (req, res) => {
     };
     const currentCategoryId = String(tour.categoryId?._id || tour.categoryId || '');
     const nextCategoryId = String(categoryId || '');
-    const hasChanges = [
+    const requestedSeats = normalized.availableSeats;
+    const seatChanged = Number(tour.availableSeats) !== requestedSeats;
+    // Số chỗ là dữ liệu vận hành (thay đổi theo từng đơn đặt), không phải nội dung
+    // công khai của tour — nên chỉ sửa số chỗ không kéo tour về trạng thái chờ duyệt.
+    const hasContentChanges = [
       'title',
       'description',
       'location',
@@ -1109,11 +1124,10 @@ export const updateProviderTour = async (req, res) => {
       'duration'
     ].some((field) => String(tour[field] || '') !== normalized[field])
       || Number(tour.price) !== normalized.price
-      || Number(tour.availableSeats) !== normalized.availableSeats
       || currentCategoryId !== nextCategoryId
       || JSON.stringify(tour.images || []) !== JSON.stringify(normalized.images);
 
-    if (!hasChanges) {
+    if (!hasContentChanges && !seatChanged) {
       await tour.populate('categoryId', 'name');
       return res.status(200).json({
         success: true,
@@ -1123,13 +1137,12 @@ export const updateProviderTour = async (req, res) => {
       });
     }
 
-    const requestedSeats = normalized.availableSeats;
-    const [confirmedSeatsResult] = await Booking.aggregate([
-      { $match: { tourId: tour._id, status: 'confirmed' } },
+    const [confirmedAgg] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
     ]);
-    const confirmedSeats = confirmedSeatsResult?.seats || 0;
-    if (requestedSeats < confirmedSeats) {
+    const confirmedSeats = confirmedAgg?.seats || 0;
+    if (seatChanged && requestedSeats < confirmedSeats) {
       return res.status(409).json({
         success: false,
         message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
@@ -1141,7 +1154,8 @@ export const updateProviderTour = async (req, res) => {
 
     Object.assign(tour, normalized);
 
-    const shouldResubmit = ['active', 'needs_revision', 'rejected'].includes(previousStatus);
+    const shouldResubmit = hasContentChanges
+      && ['active', 'needs_revision', 'rejected'].includes(previousStatus);
     if (shouldResubmit) {
       tour.status = 'pending';
       tour.revisionNote = '';
@@ -1154,7 +1168,8 @@ export const updateProviderTour = async (req, res) => {
 
     // Đồng bộ TourSubmission cho tour cần duyệt: tour vừa gửi lại (shouldResubmit)
     // hoặc tour đã 'pending' nhưng chưa có bài gửi.
-    const needsPendingSubmission = shouldResubmit || previousStatus === 'pending';
+    const needsPendingSubmission = hasContentChanges
+      && (shouldResubmit || previousStatus === 'pending');
     let submissionSynced = false;
 
     if (needsPendingSubmission) {
@@ -1623,10 +1638,7 @@ export const deleteTour = async (req, res) => {
  * UC-45 – Update Tour Capacity (provider thay đổi tổng số chỗ nhận khách).
  *
  * Phần phức tạp:
- *  - BR-51: aggregate tổng numberOfPeople của các booking 'confirmed' trước khi ghi,
- *    không cho hạ số chỗ xuống dưới số chỗ đã bán.
- *  - Chỉ tính booking 'confirmed' (không tính pending/cancelled) để khớp với
- *    nghiệp vụ giữ chỗ thực tế (BR-50).
+ *  - Không cho hạ số chỗ xuống dưới số chỗ đã bán (mọi booking chưa hủy/chưa bị từ chối).
  *  - Nếu số chỗ mới trùng số cũ thì trả 200 "không thay đổi" và bỏ qua save,
  *    tránh cập nhật updatedAt vô ích.
  */
@@ -1659,9 +1671,8 @@ export const updateTourCapacity = async (req, res) => {
 
     const requestedSeats = Number(req.body.availableSeats);
 
-    // Số chỗ đã bị cam kết trong các booking đã xác nhận
     const [confirmedAgg] = await Booking.aggregate([
-      { $match: { tourId: tour._id, status: 'confirmed' } },
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
     ]);
     const confirmedSeats = confirmedAgg?.seats || 0;
@@ -1671,6 +1682,15 @@ export const updateTourCapacity = async (req, res) => {
         success: false,
         message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
         confirmedSeats
+      });
+    }
+
+    // Tour đang mở bán không được đặt số chỗ về 0 thủ công: trạng thái phải đi qua
+    // tạm ngưng (BR-48) để tránh tour active nhưng không đặt được.
+    if (tour.status === 'active' && requestedSeats === 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour đang hoạt động. Vui lòng tạm ngưng tour trước khi đặt số chỗ về 0.'
       });
     }
 
@@ -1973,7 +1993,7 @@ export const checkTourAvailability = async (req, res) => {
 
     const confirmedBookings = await Booking.find({
       tourId: tour._id,
-      status: 'confirmed'
+      status: { $in: COMMITTED_BOOKING_STATUSES }
     }).select('departureDate numberOfPeople status');
 
     const toDateKey = (value) => {

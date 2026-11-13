@@ -9,6 +9,11 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(Number(value) || 0);
 
+// Format number to Vietnamese style without currency symbol (1.000.000)
+const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
+  maximumFractionDigits: 0
+}).format(Number(value) || 0);
+
 // START UC-40 Create Tour Departure
 /**
  * UC-40 – Create Tour Departure (modal tạo lịch khởi hành cho tour của provider).
@@ -187,8 +192,16 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
                       step="1000"
                       className={`form-control ${errors.price ? 'is-invalid' : ''}`}
                       placeholder={String(tourPrice)}
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
+                      // Text input for full control over Vietnamese number formatting
+                      // Raw numeric value stored in price state
+// Display formatted value in input, onChange strips non-digits for API
+                      value={formatVnd(Number(price))}
+                      onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
+                      // Allow only digits input, formatted display
+                      // onInput maintains formatted display
+                      type="text"
+                      inputMode="numeric"
+                      // Allow empty (for using tour price)
                       disabled={submitting}
                     />
                     {errors.price

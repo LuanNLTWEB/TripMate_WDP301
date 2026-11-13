@@ -587,7 +587,7 @@ export const createTourValidation = [
     .notEmpty().withMessage('Vui lòng nhập thời lượng tour (ví dụ: 3 ngày 2 đêm)'),
   body('availableSeats')
     .optional({ values: 'falsy' })
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm'),
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0'),
   body('categoryId')
     .optional({ values: 'falsy' })
     .isMongoId().withMessage('Mã danh mục không hợp lệ'),
@@ -726,7 +726,7 @@ export const updateProviderTourValidation = [
     .isFloat({ min: 0 }).withMessage('Giá tour phải là số không âm')
     .toFloat(),
   body('availableSeats')
-    .isInt({ min: 0, max: 10000 }).withMessage('Số chỗ phải là số nguyên từ 0 đến 10000')
+    .isInt({ min: 1, max: 10000 }).withMessage('Số chỗ phải là số nguyên lớn hơn 0')
     .toInt(),
   body('categoryId')
     .optional({ values: 'falsy' })
@@ -765,12 +765,11 @@ export const deleteTourScheduleValidation = [
 ];
 
 // START UC-45 Update Tour Capacity
-// Số chỗ phải là số nguyên không âm (BR-50).
 export const updateTourCapacityValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('availableSeats')
     .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0')
     .toInt()
 ];
 // END UC-45 Update Tour Capacity

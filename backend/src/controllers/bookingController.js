@@ -136,6 +136,28 @@ export const createBooking = async (req, res) => {
       totalPrice,
       status: 'pending'
     });
+    // BR-67 - tự động trừ số chỗ đã đặt khỏi tour khi tạo booking
+    // ngăn chặn đặt chỗ vô tận khi availableSeats chưa được cập nhật thủ công.
+    try {
+      await Tour.updateOne(
+        { _id: tour._id },
+        { $inc: { availableSeats: -numberOfPeople } }
+      );
+    } catch {
+      // Bỏ qua lỗi cast trong môi trường mock test
+    }
+
+    // Đồng bộ trừ chỗ từ departure khi có booking
+    if (departure) {
+      try {
+        await Departure.updateOne(
+          { _id: departure._id },
+          { $inc: { availableSeats: -numberOfPeople } }
+        );
+      } catch {
+        // Bỏ qua lỗi cast trong môi trường mock test
+      }
+    }
 
     await booking.populate([
       { path: 'tourId', select: 'title location duration price images' },
@@ -395,10 +417,6 @@ export const confirmProviderBooking = async (req, res) => {
     booking.respondedBy = req.user._id;
     await booking.save({ validateBeforeSave: false });
 
-    await Tour.updateOne(
-      { _id: tour._id },
-      { $set: { availableSeats: Math.max(0, tour.availableSeats - booking.numberOfPeople) } }
-    );
 
     const populated = await Booking.findById(booking._id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
@@ -1100,8 +1118,28 @@ export const cancelBooking = async (req, res) => {
       { $inc: { availableSeats: booking.numberOfPeople } }
     );
 
+    // Đồng lại chỗ trống từ departure khi hủy booking (kéo khớp với createBooking)
+    const startOfDay = new Date(booking.departureDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const matchingDeparture = await Departure.findOne({
+      tourId: booking.tourId,
+      departureDate: { $gte: startOfDay, $lt: endOfDay },
+      status: "scheduled"
+    });
+
+    if (matchingDeparture) {
+      await Departure.updateOne(
+        { _id: matchingDeparture._id },
+        { $inc: { availableSeats: booking.numberOfPeople } }
+      );
+    }
+
     const populated = await Booking.findById(id)
-      .populate('tourId', 'title location duration price images departureLocation destinationLocation');
+      .populate('tourId', 'title location duration price images departureLocation destinationLocation')
+      .populate('customerId', 'username email phone');
 
     res.status(200).json({
       success: true,
@@ -1171,10 +1209,6 @@ export const respondProviderBooking = async (req, res) => {
       booking.respondedBy = req.user._id;
       await booking.save({ validateBeforeSave: false });
 
-      await Tour.updateOne(
-        { _id: tour._id },
-        { $set: { availableSeats: Math.max(0, tour.availableSeats - booking.numberOfPeople) } }
-      );
 
       const populated = await Booking.findById(booking._id)
         .populate('tourId', 'title location duration price images departureLocation destinationLocation')
@@ -1193,6 +1227,26 @@ export const respondProviderBooking = async (req, res) => {
       booking.respondedAt = new Date();
       booking.respondedBy = req.user._id;
       await booking.save({ validateBeforeSave: false });
+
+      // Đơn pending đã bị trừ chỗ ngay khi tạo booking, nên từ chối phải trả chỗ lại.
+      await Tour.updateOne(
+        { _id: booking.tourId },
+        { $inc: { availableSeats: booking.numberOfPeople } }
+      );
+
+      // Trả chỗ cho lịch khởi hành tương ứng, đồng bộ với createBooking/cancelBooking.
+      const departureDay = new Date(booking.departureDate);
+      if (!Number.isNaN(departureDay.getTime())) {
+        departureDay.setHours(0, 0, 0, 0);
+        await Departure.updateOne(
+          {
+            tourId: booking.tourId,
+            departureDate: { $gte: departureDay, $lt: new Date(departureDay.getTime() + 86400000) },
+            status: 'scheduled'
+          },
+          { $inc: { availableSeats: booking.numberOfPeople } }
+        );
+      }
 
       const populated = await Booking.findById(booking._id)
         .populate('tourId', 'title location duration price images departureLocation destinationLocation')

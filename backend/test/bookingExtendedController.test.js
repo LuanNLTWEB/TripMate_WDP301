@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
-import User from '../src/models/User.js';
 import Departure from '../src/models/Departure.js';
+import User from '../src/models/User.js';
 import {
   createBooking,
   respondProviderBooking,
@@ -17,6 +17,8 @@ const originalBookingFindOne = Booking.findOne;
 const originalBookingCreate = Booking.create;
 const originalTourFindById = Tour.findById;
 const originalTourFindOne = Tour.findOne;
+const originalTourUpdateOne = Tour.updateOne;
+const originalDepartureUpdateOne = Departure.updateOne;
 const originalUserFindById = User.findById;
 const originalDepartureFindOne = Departure.findOne;
 const originalBookingFind = Booking.find;
@@ -28,6 +30,8 @@ afterEach(() => {
   Booking.create = originalBookingCreate;
   Tour.findById = originalTourFindById;
   Tour.findOne = originalTourFindOne;
+  Tour.updateOne = originalTourUpdateOne;
+  Departure.updateOne = originalDepartureUpdateOne;
   User.findById = originalUserFindById;
   Departure.findOne = originalDepartureFindOne;
 });
@@ -55,6 +59,7 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
     tourId: 'tour-1',
     status: 'pending',
     numberOfPeople: 2,
+    departureDate: '2026-11-22T00:00:00.000Z',
     async save() { savedBooking = true; return this; }
   };
   bookingDoc.populate = () => ({ populate: async () => bookingDoc });
@@ -69,6 +74,16 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
     providerId: 'provider-1',
     availableSeats: 10
   });
+  const tourUpdates = [];
+  Tour.updateOne = async (filter, update) => {
+    tourUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
+  const departureUpdates = [];
+  Departure.updateOne = async (filter, update) => {
+    departureUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
 
   const res = createResponse();
   await respondProviderBooking({
@@ -87,6 +102,11 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
   assert.equal(bookingDoc.rejectionReason, 'Hiện tại thời tiết xấu không thể khởi hành đoàn.');
   assert.ok(bookingDoc.respondedAt);
   assert.equal(bookingDoc.respondedBy, 'provider-1');
+  // Đơn pending đã bị trừ chỗ khi tạo, nên từ chối phải hoàn lại 2 chỗ.
+  assert.equal(tourUpdates.length, 1);
+  assert.equal(tourUpdates[0].update.$inc.availableSeats, 2);
+  assert.equal(departureUpdates.length, 1);
+  assert.equal(departureUpdates[0].update.$inc.availableSeats, 2);
 });
 
 test('UC-78: rejects response when booking is already confirmed or cancelled (409)', async () => {
@@ -366,6 +386,8 @@ test('UC-71: createBooking rejects when selected departure has fewer available s
     status: 'scheduled'
   });
   Booking.find = async () => [];
+  Tour.updateOne = async () => ({ modifiedCount: 1 });
+  Departure.updateOne = async () => ({ modifiedCount: 1 });
 
   const res = createResponse();
   await createBooking({
@@ -408,6 +430,8 @@ test('UC-71: createBooking successfully creates booking linking departureId and 
     status: 'scheduled'
   });
   Booking.find = async () => [];
+  Tour.updateOne = async () => ({ modifiedCount: 1 });
+  Departure.updateOne = async () => ({ modifiedCount: 1 });
 
   let createdBookingData = null;
   Booking.create = async (doc) => {
