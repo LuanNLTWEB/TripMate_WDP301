@@ -43,6 +43,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
 
   if (!open) return null;
 
+  // Kiểm tra các trường của form chuyến khởi hành và trả về lỗi từng trường.
   const validate = () => {
     const errs = {};
     if (!departureDate) {
@@ -71,6 +72,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
     return errs;
   };
 
+  // Gửi chuyến khởi hành mới và đóng hộp thoại khi thành công.
   const handleSubmit = async (e) => {
     e.preventDefault();
     const nextErrors = validate();

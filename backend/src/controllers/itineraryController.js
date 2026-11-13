@@ -44,6 +44,7 @@ const timeToMinutes = (hhmm) => {
   return h * 60 + m;
 };
 
+// Đổi số phút tính từ nửa đêm về lại chuỗi HH:mm.
 const minutesToTime = (totalMin) => {
   const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMin));
   const h = String(Math.floor(clamped / 60)).padStart(2, '0');
@@ -51,6 +52,7 @@ const minutesToTime = (totalMin) => {
   return `${h}:${m}`;
 };
 
+// Tìm khung giờ trống đầu tiên trong ngày vừa đủ độ dài hoạt động yêu cầu.
 const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) => {
   const duration = Math.max(15, timeToMinutes(requestedEnd) - timeToMinutes(requestedStart));
   const sorted = [...sameDayActivities]
@@ -100,6 +102,7 @@ const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) 
   return null;
 };
 
+// Trả về mọi cặp hoạt động bị trùng giờ trong cùng một ngày.
 const detectScheduleConflicts = (itinerary) => {
   const conflicts = [];
   const activities = itinerary.activities || [];
@@ -1108,9 +1111,9 @@ export const leaveItinerary = async (req, res) => {
 
       const currentUserId = String(req.user._id);
 
-      // BR-72 - Sole Ownership Rule: owner cannot leave without transferring
-      // ownership first. They must use the separate transfer ownership flow,
-      // or delete the entire itinerary.
+      // BR-72 - Quy tắc sở hữu duy nhất: chủ sở hữu không thể rời lịch trình
+      // khi chưa chuyển quyền. Họ phải dùng luồng chuyển quyền riêng,
+      // hoặc xoá toàn bộ lịch trình.
       if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
         return res.status(403).json({
           success: false,
@@ -1136,8 +1139,8 @@ export const leaveItinerary = async (req, res) => {
       itinerary.markModified('collaborators');
       await itinerary.save();
 
-      // the leaver is the authenticated user; collaborators are raw ObjectIds here
-      // because the itinerary was not populated
+      // người rời là người dùng đang đăng nhập; cộng tác viên ở đây còn là ObjectId thô
+      // vì lịch trình chưa được populate
       const leaverName = req.user.username || req.user.email || 'Một thành viên';
       const remainingRecipients = collaborators
         .map((c) => c.user?._id || c.user)
@@ -1270,13 +1273,13 @@ export const transferOwnership = async (req, res) => {
       });
     }
 
-    // Transfer: collaborator becomes owner, old owner becomes collaborator (edit)
+    // Chuyển quyền: cộng tác viên thành chủ sở hữu, chủ cũ thành cộng tác viên (quyền sửa)
     const oldOwnerId = itinerary.owner;
     itinerary.owner = newOwnerId;
     itinerary.collaborators = itinerary.collaborators.filter(
       (c) => String(c.user?._id || c.user) !== String(newOwnerId)
     );
-    // Old owner becomes a collaborator with edit permission
+    // Chủ cũ trở thành cộng tác viên với quyền chỉnh sửa
     itinerary.collaborators.push({
       user: oldOwnerId,
       permission: 'edit'
@@ -1286,7 +1289,7 @@ export const transferOwnership = async (req, res) => {
 
     const populated = await findByIdPopulated(itinerary._id);
 
-    // Notify all collaborators about the ownership transfer
+    // Thông báo cho toàn bộ cộng tác viên về việc chuyển quyền sở hữu
     const recipients = itinerary.collaborators
       .map((c) => c.user?._id || c.user)
       .filter((id) => String(id) !== String(newOwnerId));

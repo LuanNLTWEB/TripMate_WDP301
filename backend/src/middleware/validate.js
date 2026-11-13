@@ -82,8 +82,8 @@ export const registerValidation = [
 ];
 
 // START UC-66 Submit Booking Complaint
-// Customer submits a booking-linked complaint with optional evidence images;
-// staff resolves it (UC-81/153/154).
+// Khách hàng gửi khiếu nại gắn với một đơn đặt tour, kèm ảnh minh chứng tuỳ chọn;
+// nhân viên xử lý khiếu nại đó (UC-81/153/154).
 export const createComplaintValidation = [
   body('bookingId').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
   body('category')
@@ -135,6 +135,7 @@ export const confirmBookingPaymentValidation = [
     .withMessage('Phương thức thanh toán phải là cash hoặc bank_transfer')
 ];
 
+// Kiểm tra mã đơn đặt tour dùng khi điểm danh.
 export const checkInBookingValidation = [
   param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
 ];
@@ -145,6 +146,7 @@ export const completeBookingValidation = [
 ];
 
 
+// Kiểm tra từ khoá, trạng thái, trang và số dòng của danh sách khiếu nại.
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -834,6 +836,7 @@ export const voteHelpfulValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
 
+// Kiểm tra mã đánh giá khi khôi phục đánh giá đã xoá.
 export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
@@ -1219,14 +1222,24 @@ export const updateTourSubmissionValidation = [
   body('status')
     .optional()
     .isIn(['pending', 'approved', 'rejected', 'needs_revision']).withMessage('Trạng thái duyệt không hợp lệ'),
+  // BR-63: yêu cầu chỉnh sửa phải kèm ghi chú từ 10 đến 1000 ký tự; từ chối chỉ
+  // cần ghi chú khác rỗng (controller trả 400 khi thiếu).
   body('reviewNote')
     .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 1000 }).withMessage('Nội dung phản hồi không được vượt quá 1000 ký tự')
+    .custom((value, { req }) => {
+      const note = typeof value === 'string' ? value.trim() : '';
+      if (req.body.status === 'needs_revision' && note.length < 10) {
+        throw new Error('Nội dung cần chỉnh sửa phải có ít nhất 10 ký tự');
+      }
+      return true;
+    })
 ];
 // END UC-129 Update Tour Submission
 
 // START UC-130 View Tour Submission List
+// Kiểm tra từ khoá, trạng thái, trang và số dòng của danh sách bài gửi.
 export const tourSubmissionListValidation = [
   query('search')
     .optional()
@@ -1247,6 +1260,7 @@ export const tourSubmissionListValidation = [
 // END UC-130 View Tour Submission List
 
 // START UC-131 Delete Tour Submission
+// Kiểm tra tham số mã bài gửi trên đường dẫn.
 export const tourSubmissionIdValidation = [
   param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
 ];

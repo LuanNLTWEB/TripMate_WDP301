@@ -86,6 +86,7 @@ export default function TourSubmissionFormModal({
   const seatsMissing = Boolean(selectedTour)
     && Number(selectedTour.availableSeats || 0) < MIN_TOUR_SEATS;
 
+  // Kiểm tra form rồi gửi yêu cầu tạo mới hoặc cập nhật.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSubmitting) return;

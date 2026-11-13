@@ -82,6 +82,7 @@ const tourSubmissionSchema = new mongoose.Schema({
 tourSubmissionSchema.index({ tourId: 1, status: 1 });
 tourSubmissionSchema.index({ providerId: 1, status: 1 });
 
+// Model Mongoose dùng cho module bài gửi duyệt tour.
 const TourSubmission = mongoose.model('TourSubmission', tourSubmissionSchema);
 
 export default TourSubmission;

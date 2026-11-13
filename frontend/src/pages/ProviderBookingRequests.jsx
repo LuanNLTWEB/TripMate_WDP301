@@ -321,9 +321,9 @@ export default function ProviderBookingRequests() {
   // START UC-86 Mark Booking as No-Show (Provider)
   const [noShowModal, setNoShowModal] = useState({ open: false, booking: null, reason: '', submitting: false, error: '' });
   // END UC-86 Mark Booking as No-Show (Provider)
-  // START UC-85 Confirm Payment & Check-in actions (shared confirmation popup)
+  // START UC-85 Confirm Payment & Check-in
   const [actionModal, setActionModal] = useState({ open: false, type: null, booking: null, error: '' });
-  // END UC-85 Confirm Payment & Check-in actions (shared confirmation popup)
+  // END UC-85 Confirm Payment & Check-in
 
   // Khóa cuộn trang nền an toàn và bắt phím Escape khi có bất kỳ modal nào mở
   useEffect(() => {
@@ -503,6 +503,7 @@ export default function ProviderBookingRequests() {
     setActionModal({ open: true, type, booking, error: '' });
   };
 
+  // Đóng hộp thoại xác nhận mà không thay đổi đơn đặt tour.
   const closeActionModal = () => {
     setActionModal({ open: false, type: null, booking: null, error: '' });
   };
@@ -559,6 +560,7 @@ export default function ProviderBookingRequests() {
     }
   };
 
+  // Đánh dấu đơn đặt tour đang chọn là đã hoàn thành sau chuyến đi.
   const handleCompleteBooking = async (booking) => {
     if (!booking || !['paid', 'checked_in'].includes(booking.status)) return false;
 
@@ -583,6 +585,7 @@ export default function ProviderBookingRequests() {
     }
   };
 
+  // Thực hiện thao tác đang lưu trong hộp thoại xác nhận.
   const handleActionConfirm = async () => {
     const { type, booking } = actionModal;
     if (!booking) return;
@@ -1322,7 +1325,7 @@ export default function ProviderBookingRequests() {
       )}
       {/* END UC-86 Mark Booking as No-Show Modal */}
 
-      {/* START UC-85 Shared confirmation popup for payment, check-in and completion */}
+      {/* START UC-85 Confirm Payment & Check-in */}
       <ConfirmDeleteModal
         isOpen={actionModal.open && Boolean(actionModal.booking) && Boolean(actionModalContent)}
         title={actionModalContent?.title}
@@ -1336,7 +1339,7 @@ export default function ProviderBookingRequests() {
         onConfirm={handleActionConfirm}
         onClose={closeActionModal}
       />
-      {/* END UC-85 Shared confirmation popup for payment, check-in and completion */}
+      {/* END UC-85 Confirm Payment & Check-in */}
     </section>
   );
 }

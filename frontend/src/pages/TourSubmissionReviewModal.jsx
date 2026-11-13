@@ -52,6 +52,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
   const providerName = provider?.username || provider?.email || 'Nhà cung cấp';
   const requiresNote = decision !== 'approved';
 
+  // Gửi quyết định duyệt kèm ghi chú.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSubmitting || !isPending) return;

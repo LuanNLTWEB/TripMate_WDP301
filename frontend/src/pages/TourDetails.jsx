@@ -229,6 +229,7 @@ const TourDetails = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // Tải tour hiển thị trên trang chi tiết.
     const loadTour = async () => {
       try {
         const response = await tourApi.getById(id);

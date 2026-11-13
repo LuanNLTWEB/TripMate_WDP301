@@ -21,6 +21,7 @@ function byKey(entries, key, fallback = 0) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Tải số liệu thống kê toàn hệ thống hiển thị trên trang.
     const loadStats = async () => {
       setLoading(true);
       setError('');

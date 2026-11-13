@@ -369,6 +369,7 @@ const loadProviderBooking = async (bookingId, providerId) => {
   return { booking };
 };
 
+// Trả một đơn đặt tour về cho client theo cấu trúc phản hồi chung của provider.
 const respondWithBooking = async (res, booking, message, extra = {}) => {
   const populated = await Booking.findById(booking._id)
     .populate('tourId', 'title location duration price images departureLocation destinationLocation')
@@ -626,7 +627,7 @@ export const exportProviderBookingReport = async (req, res) => {
       { key: 'note', width: 38 }
     ];
 
-    // 2. Brand Name / Logo
+    // 2. Tên thương hiệu / Logo
     worksheet.mergeCells('B2:E2');
     const brandCell = worksheet.getCell('B2');
     brandCell.value = 'TRIPMATE TRAVEL - SLIM CRM';

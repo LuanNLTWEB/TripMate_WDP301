@@ -119,6 +119,8 @@ export const createComplaint = async (req, res) => {
   }
 };
 
+// START UC-67 View My Complaints
+// Trả về toàn bộ khiếu nại của khách hàng đang đăng nhập, mới nhất trước.
 export const getMyComplaints = async (req, res) => {
   try {
     const complaints = await Complaint.find({ customerId: req.user._id })
@@ -130,9 +132,14 @@ export const getMyComplaints = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải danh sách khiếu nại' });
   }
 };
+// END UC-67 View My Complaints
 
+// START UC-154 View Customer Complaints
+// Liệt kê khiếu nại cho nhân viên kèm tìm từ khoá, lọc trạng thái và phân trang.
 export const getComplaints = async (req, res) => {
   try {
+    // START UC-153 Search & Filter Customer Complaints
+    // Dựng bộ lọc từ khoá và trạng thái cho danh sách khiếu nại của nhân viên.
     const { search = '', status = 'all', page = 1, limit = 10 } = req.query;
     const filters = {};
     if (status !== 'all') filters.status = status;
@@ -147,6 +154,7 @@ export const getComplaints = async (req, res) => {
         { bookingId: { $in: matchingBookings.map((booking) => booking._id) } }
       ];
     }
+    // END UC-153 Search & Filter Customer Complaints
 
     const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
     const pageSize = Math.min(Math.max(Number.parseInt(limit, 10) || 10, 1), 50);
@@ -172,6 +180,7 @@ export const getComplaints = async (req, res) => {
   }
 };
 
+// Trả về một khiếu nại kèm thông tin đơn đặt, khách hàng và nhà cung cấp cho nhân viên.
 export const getComplaintById = async (req, res) => {
   try {
     const complaint = await Complaint.findById(req.params.id).populate(staffComplaintPopulate);
@@ -182,7 +191,10 @@ export const getComplaintById = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải thông tin khiếu nại' });
   }
 };
+// END UC-154 View Customer Complaints
 
+// START UC-81 Resolve Customer Complaint
+// Lưu quyết định xử lý và ghi chú của nhân viên cho khiếu nại còn đang mở.
 export const resolveComplaint = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return badRequest(res, errors);
@@ -212,6 +224,8 @@ export const resolveComplaint = async (req, res) => {
   }
 };
 
+
+// END UC-81 Resolve Customer Complaint
 
 // START STT 68 / UC-68 Update Booking Complaint (Customer)
 /**

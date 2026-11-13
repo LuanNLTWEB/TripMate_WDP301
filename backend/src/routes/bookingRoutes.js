@@ -58,6 +58,7 @@ router.patch('/provider/:id/check-in', protect, authorize(...ACCESS_ROLES.PROVID
 router.patch('/provider/:id/complete', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), completeBookingValidation, completeBooking);
 
 // START UC-123 Export Provider Booking Report
+// GET /api/bookings/provider/report - tải báo cáo đơn đặt tour dạng Excel.
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report
 // START UC-82 Download Booking Voucher (Customer)

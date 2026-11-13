@@ -68,6 +68,7 @@ router.get(
 router.get('/', getAllDestinations);
 
 // START UC-17 Create Destination
+// POST /api/destinations - nhân viên thêm điểm đến vào danh mục.
 // POST /api/destinations - chỉ staff được tạo điểm đến mới.
 router.post(
 	'/',
