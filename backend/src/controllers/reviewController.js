@@ -433,6 +433,13 @@ export const moderateReview = async (req, res) => {
       });
     }
 
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị ẩn. Dùng chức năng "Khôi phục" nếu muốn hiển thị lại.'
+      });
+    }
+
     review.status = status;
     review.moderatedBy = req.user._id;
     review.moderationReason = ['rejected', 'flagged'].includes(status)

@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Review from '../src/models/Review.js';
-import { getReportedReviews } from '../src/controllers/reviewController.js';
+import {
+  getReportedReviews,
+  moderateReview
+} from '../src/controllers/reviewController.js';
 
 const originalCountDocuments = Review.countDocuments;
 const originalAggregate = Review.aggregate;
 const originalFind = Review.find;
+const originalFindById = Review.findById;
 
 afterEach(() => {
   Review.countDocuments = originalCountDocuments;
   Review.aggregate = originalAggregate;
   Review.find = originalFind;
+  Review.findById = originalFindById;
 });
 
 const createResponse = () => {
@@ -103,4 +108,28 @@ test('escapes search text and clamps an out-of-range page', async () => {
   assert.equal(capture.skip, 0);
   assert.equal(result.body.currentPage, 1);
   assert.equal(result.body.totalPages, 1);
+});
+
+test('rejects moderating a review that is already hidden', async () => {
+  let saveCalled = false;
+  Review.findById = async () => ({
+    isDeleted: true,
+    status: 'flagged',
+    moderationReason: 'Ngôn từ xúc phạm',
+    async save() {
+      saveCalled = true;
+    }
+  });
+
+  const result = createResponse();
+  await moderateReview({
+    params: { id: 'review-1' },
+    body: { status: 'approved', moderationReason: '' },
+    user: { _id: 'staff-1' }
+  }, result.response);
+
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.match(result.body.message, /đã bị ẩn/);
+  assert.equal(saveCalled, false);
 });

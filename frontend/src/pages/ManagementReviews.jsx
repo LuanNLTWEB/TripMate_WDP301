@@ -405,10 +405,10 @@ export default function ManagementReviews() {
           loading={loading}
           actionLoading={actionLoading}
           onView={setSelectedReview}
-          onApprove={handleApprove}
-          onReject={openRejectModal}
-          onFlag={handleFlag}
-          onDelete={openDeleteModal}
+          onApprove={isDeletedView ? undefined : handleApprove}
+          onReject={isDeletedView ? undefined : openRejectModal}
+          onFlag={isDeletedView ? undefined : handleFlag}
+          onDelete={isDeletedView ? undefined : openDeleteModal}
           onRestore={isDeletedView ? handleRestore : undefined}
         />
 
@@ -426,10 +426,11 @@ export default function ManagementReviews() {
         review={selectedReview}
         actionLoading={actionLoading}
         onClose={() => setSelectedReview(null)}
-        onApprove={handleApprove}
-        onReject={openRejectModal}
-        onFlag={handleFlag}
-        onDelete={openDeleteModal}
+        onApprove={isDeletedView ? undefined : handleApprove}
+        onReject={isDeletedView ? undefined : openRejectModal}
+        onFlag={isDeletedView ? undefined : handleFlag}
+        onDelete={isDeletedView ? undefined : openDeleteModal}
+        onRestore={isDeletedView ? handleRestore : undefined}
       />
 
       <RejectReviewModal

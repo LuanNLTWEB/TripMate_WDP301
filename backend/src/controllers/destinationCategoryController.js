@@ -6,9 +6,11 @@ import { logActivity } from '../utils/activityLogger.js';
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // So khớp tên danh mục không phân biệt hoa/thường và bỏ khoảng trắng đầu/cuối.
+// Bỏ qua danh mục đã xóa mềm: xóa "Biển đảo" rồi tạo lại cùng tên phải được phép.
 const buildCategoryNameQuery = (name, excludeId = null) => {
   const query = {
-    name: new RegExp(`^${escapeRegex(String(name || '').trim())}$`, 'i')
+    name: new RegExp(`^${escapeRegex(String(name || '').trim())}$`, 'i'),
+    isDeleted: { $ne: true }
   };
   if (excludeId) query._id = { $ne: excludeId };
   return query;
@@ -21,7 +23,10 @@ const buildCategoryNameQuery = (name, excludeId = null) => {
  */
 export const getAllCategories = async (req, res) => {
   try {
-    const categories = await DestinationCategory.find().sort({ createdAt: -1 });
+    // Chỉ trả danh mục đang sống: danh mục đã xóa mềm không được xuất hiện
+    // trong dropdown lọc của khách (UC-118) hay bảng quản lý của staff.
+    const categories = await DestinationCategory.find({ isDeleted: { $ne: true } })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -119,7 +124,7 @@ export const updateCategory = async (req, res) => {
 
   try {
     const category = await DestinationCategory.findById(req.params.id);
-    if (!category) {
+    if (!category || category.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy danh mục'
@@ -172,14 +177,26 @@ export const updateCategory = async (req, res) => {
 };
 // END UC-117 Update Destination Category
 
+// START UC-119 Delete Destination Category
 /**
- * Delete a destination category.
- * @route DELETE /api/destination-categories/:id
- * @access Staff
+ * UC-119 – Delete Destination Category (staff xóa danh mục điểm đến).
+ *
+ * Xóa mềm thay vì xóa cứng:
+ *  - giữ document để nhật ký hoạt động còn đối chiếu được và có thể khôi phục;
+ *  - điểm đến đã xóa mềm vẫn giữ categoryId, nếu xóa cứng danh mục thì lúc khôi
+ *    phục điểm đến sẽ trỏ tới một danh mục không còn tồn tại.
+ *
+ * Phần phức tạp:
+ *  - Kiểm tra tham chiếu trên CẢ điểm đến đã xóa mềm (không chỉ điểm đến đang sống)
+ *    để không tạo ra tham chiếu treo; thông báo tổng số điểm đến đang tham chiếu.
+ *  - Ghi log SAU khi lưu thành công, dùng tên đã chụp trước đó.
  */
 export const deleteCategory = async (req, res) => {
   try {
-    const category = await DestinationCategory.findById(req.params.id);
+    const category = await DestinationCategory.findOne({
+      _id: req.params.id,
+      isDeleted: { $ne: true }
+    });
     if (!category) {
       return res.status(404).json({
         success: false,
@@ -188,22 +205,34 @@ export const deleteCategory = async (req, res) => {
     }
 
     const destinationCount = await Destination.countDocuments({
-      categoryId: req.params.id,
-      isDeleted: { $ne: true }
+      categoryId: category._id
     });
+
     if (destinationCount > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Không thể xóa danh mục đang được sử dụng bởi điểm đến'
+        message: `Không thể xóa danh mục vì đang được tham chiếu bởi ${destinationCount} điểm đến`
       });
     }
 
-    await DestinationCategory.findByIdAndDelete(req.params.id);
+    category.isDeleted = true;
+    category.deletedAt = new Date();
+    category.deletedBy = req.user._id;
+    await category.save();
+
+    await logActivity({
+      admin: req.user,
+      action: 'DELETE_DESTINATION_CATEGORY',
+      targetType: 'DestinationCategory',
+      targetId: category._id,
+      details: `Xóa danh mục điểm đến "${category.name}"`,
+      req
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Xóa danh mục thành công',
-      data: {}
+      data: { _id: category._id, isDeleted: category.isDeleted }
     });
   } catch (error) {
     console.error('Error deleting category:', error);
@@ -213,3 +242,4 @@ export const deleteCategory = async (req, res) => {
     });
   }
 };
+// END UC-119 Delete Destination Category
