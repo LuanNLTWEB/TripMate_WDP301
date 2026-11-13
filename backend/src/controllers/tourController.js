@@ -13,6 +13,7 @@ import Booking from '../models/Booking.js';
 import Departure from '../models/Departure.js';
 import TourSubmission from '../models/TourSubmission.js';
 import Review from '../models/Review.js';
+import { ensurePendingTourSubmission, repairOrphanPendingTourSubmissions } from '../utils/tourSubmissionSync.js';
 import { validationResult } from 'express-validator';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -400,11 +401,16 @@ export const getManagedTours = async (req, res) => {
     } else if (status === 'active') {
       filters.push({ status: 'active' });
     } else if (status === 'pending') {
-      const pendingSubmissionTourIds = await TourSubmission.distinct('tourId', {
-        status: 'pending',
-        isDeleted: { $ne: true }
+      // Phục hồi các tour 'pending' chưa có bài gửi để không bị bỏ sót trong hàng đợi duyệt.
+      const pendingSubmissionTourIds = await repairOrphanPendingTourSubmissions();
+
+      // Gồm cả tour 'pending' lẫn tour có bài gửi chờ duyệt nhưng trạng thái chưa đồng bộ.
+      filters.push({
+        $or: [
+          { status: 'pending' },
+          { _id: { $in: pendingSubmissionTourIds } }
+        ]
       });
-      filters.push({ _id: { $in: pendingSubmissionTourIds } });
     } else if (status === 'needs_revision') {
       filters.push({ status: 'needs_revision' });
     } else if (status === 'rejected') {
@@ -1146,15 +1152,53 @@ export const updateProviderTour = async (req, res) => {
       tour.rejectedBy = null;
     }
 
+    // Đồng bộ TourSubmission cho tour cần duyệt: tour vừa gửi lại (shouldResubmit)
+    // hoặc tour đã 'pending' nhưng chưa có bài gửi.
+    const needsPendingSubmission = shouldResubmit || previousStatus === 'pending';
+    let submissionSynced = false;
+
+    if (needsPendingSubmission) {
+      submissionSynced = await ensurePendingTourSubmission(tour, req.user._id);
+
+      // Chỉ gửi thông báo khi có bài gửi mới cần duyệt, tránh lặp lại mỗi lần provider lưu.
+      if (submissionSynced) {
+        try {
+          const staffUsers = await User.find({
+            role: 'staff',
+            isActive: { $ne: false },
+            isDeleted: { $ne: true }
+          }).select('_id').lean();
+
+          await Promise.all(
+            staffUsers.map((staff) =>
+              Notification.create({
+                recipient: staff._id,
+                notificationType: 'tour_moderation',
+                title: 'Có tour gửi duyệt lại',
+                message: `Nhà cung cấp vừa cập nhật và gửi duyệt lại tour "${tour.title}". Vui lòng kiểm tra và phản hồi.`,
+                sender: req.user._id
+              })
+            )
+          );
+        } catch (notifyError) {
+          console.error('Thông báo staff về tour gửi duyệt lại thất bại:', notifyError);
+        }
+      }
+    }
+
     await tour.save();
     await tour.populate('categoryId', 'name');
+
+    const tourIsPending = tour.status === 'pending';
 
     return res.status(200).json({
       success: true,
       message: shouldResubmit
         ? 'Cập nhật tour thành công. Tour đã được gửi lại để kiểm duyệt.'
-        : 'Cập nhật thông tin tour thành công.',
-      requiresReview: shouldResubmit,
+        : tourIsPending
+          ? 'Cập nhật tour thành công. Tour đang chờ kiểm duyệt.'
+          : 'Cập nhật thông tin tour thành công.',
+      requiresReview: tourIsPending,
       confirmedSeats,
       data: tour
     });

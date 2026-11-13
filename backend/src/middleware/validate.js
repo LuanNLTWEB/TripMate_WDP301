@@ -1248,6 +1248,9 @@ export const tourSubmissionListValidation = [
   query('status')
     .optional()
     .isIn(['all', 'pending', 'needs_revision', 'approved', 'rejected']).withMessage('Trạng thái bài gửi không hợp lệ'),
+  query('tourId')
+    .optional()
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
   query('page')
     .optional()
     .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')

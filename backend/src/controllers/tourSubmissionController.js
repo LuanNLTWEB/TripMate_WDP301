@@ -3,6 +3,7 @@ import TourSubmission from '../models/TourSubmission.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
+import { repairOrphanPendingTourSubmissions } from '../utils/tourSubmissionSync.js';
 
 // Tour được phép gửi duyệt: tour nháp hoặc tour vừa bị trả lại để sửa.
 const SUBMITTABLE_TOUR_STATUSES = ['draft', 'needs_revision', 'rejected'];
@@ -224,6 +225,7 @@ export const getTourSubmissions = async (req, res) => {
     const {
       search,
       status = 'all',
+      tourId,
       page = 1,
       limit = 10
     } = req.query;
@@ -232,6 +234,15 @@ export const getTourSubmissions = async (req, res) => {
 
     if (req.user.role === 'tourProvider') {
       filters.push({ providerId: req.user._id });
+    } else {
+      // Staff: phục hồi các tour 'pending' chưa có bài gửi trước khi liệt kê.
+      await repairOrphanPendingTourSubmissions();
+    }
+
+    // Lọc theo tour cụ thể: dùng cho màn duyệt tour khi chỉ có tourId mà chưa biết
+    // mã bài gửi tương ứng.
+    if (tourId) {
+      filters.push({ tourId });
     }
 
     if (search) {

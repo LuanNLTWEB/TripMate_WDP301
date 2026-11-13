@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
-import { tourApi } from '../services/api';
+import { tourApi, tourSubmissionApi } from '../services/api';
 import ManagementPagination from '../components/management/ManagementPagination';
 
 const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
@@ -68,7 +68,21 @@ export default function StaffPendingTours() {
 
     setIsSubmitting(true);
     try {
-      const response = await tourApi.setStatus(approvingTour._id, 'active');
+      // UC-129: duyệt tour thông qua bài gửi duyệt (tour chuyển sang 'active');
+      // PATCH /tours/:id/status không cho phép đặt 'active' trực tiếp.
+      const submissionResponse = await tourSubmissionApi.list({
+        tourId: approvingTour._id,
+        status: 'pending',
+        limit: 1
+      });
+      const submission = submissionResponse.data?.[0];
+
+      if (!submission) {
+        toast.error('Tour này chưa có bài gửi duyệt đang chờ xử lý. Vui lòng yêu cầu nhà cung cấp gửi duyệt lại.');
+        return;
+      }
+
+      const response = await tourSubmissionApi.update(submission._id, { status: 'approved' });
       toast.success(response.message || 'Đã phê duyệt tour thành công.');
       setApprovingTour(null);
       await loadPendingTours(search, currentPage);

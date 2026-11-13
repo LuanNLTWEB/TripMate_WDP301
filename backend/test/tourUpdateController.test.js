@@ -3,20 +3,41 @@ import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
 import TourCategory from '../src/models/TourCategory.js';
+import TourSubmission from '../src/models/TourSubmission.js';
+import User from '../src/models/User.js';
 import Notification from '../src/models/Notification.js';
 import { restoreTour, updateProviderTour } from '../src/controllers/tourController.js';
 
 const originalTourFindById = Tour.findById;
 const originalBookingAggregate = Booking.aggregate;
 const originalCategoryFindById = TourCategory.findById;
+const originalSubmissionFindOne = TourSubmission.findOne;
+const originalSubmissionCreate = TourSubmission.create;
+const originalUserFind = User.find;
 const originalNotificationCreate = Notification.create;
 
 afterEach(() => {
   Tour.findById = originalTourFindById;
   Booking.aggregate = originalBookingAggregate;
   TourCategory.findById = originalCategoryFindById;
+  TourSubmission.findOne = originalSubmissionFindOne;
+  TourSubmission.create = originalSubmissionCreate;
+  User.find = originalUserFind;
   Notification.create = originalNotificationCreate;
 });
+
+// Stub các truy vấn TourSubmission/User dùng trong updateProviderTour để test không cần MongoDB.
+const stubSubmissionSync = ({ latestSubmission = null, onCreated } = {}) => {
+  TourSubmission.findOne = () => ({
+    sort: async () => latestSubmission
+  });
+  TourSubmission.create = async (payload) => {
+    onCreated?.(payload);
+    return { ...payload, _id: 'submission-new' };
+  };
+  User.find = () => ({ select: () => ({ lean: async () => [] }) });
+  Notification.create = async (payload) => payload;
+};
 
 const createResponse = () => {
   const output = { statusCode: 200, body: null };
@@ -75,6 +96,8 @@ test('updates an active tour and sends it back to pending review', async () => {
   const tour = makeTour('active');
   Tour.findById = async () => tour;
   Booking.aggregate = async () => [{ _id: null, seats: 4 }];
+  let createdSubmission = null;
+  stubSubmissionSync({ onCreated: (payload) => { createdSubmission = payload; } });
   const result = createResponse();
 
   await updateProviderTour({
@@ -91,6 +114,38 @@ test('updates an active tour and sends it back to pending review', async () => {
   assert.equal(tour.revisionNote, '');
   assert.equal(tour.rejectionReason, '');
   assert.equal(tour.saved, true);
+  assert.deepEqual(createdSubmission, {
+    tourId: 'tour-1',
+    providerId: 'provider-1',
+    status: 'pending'
+  });
+});
+
+test('repairs a pending tour that has no pending submission', async () => {
+  const tour = makeTour('pending');
+  Tour.findById = async () => tour;
+  Booking.aggregate = async () => [{ _id: null, seats: 0 }];
+  let createdSubmission = null;
+  stubSubmissionSync({ onCreated: (payload) => { createdSubmission = payload; } });
+  const result = createResponse();
+
+  await updateProviderTour({
+    params: { id: 'tour-1' },
+    user: { _id: 'provider-1' },
+    body: validPayload()
+  }, result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(tour.status, 'pending');
+  assert.equal(result.body.requiresReview, true);
+  assert.equal(result.body.message, 'Cập nhật tour thành công. Tour đang chờ kiểm duyệt.');
+  // Tour đã 'pending' từ trước nhưng thiếu bài gửi vẫn phải được tạo bài gửi mới để
+  // staff thấy trong hàng đợi kiểm duyệt.
+  assert.deepEqual(createdSubmission, {
+    tourId: 'tour-1',
+    providerId: 'provider-1',
+    status: 'pending'
+  });
 });
 
 test('keeps a suspended tour suspended after its information is updated', async () => {
