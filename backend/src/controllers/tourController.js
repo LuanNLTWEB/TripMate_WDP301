@@ -776,6 +776,20 @@ export const requestTourRevision = async (req, res) => {
     await tour.save();
     await tour.populate('revisionRequestedBy', 'username email');
 
+    if (tour.providerId) {
+      try {
+        await Notification.create({
+          recipient: tour.providerId,
+          title: 'Tour của bạn cần chỉnh sửa',
+          message: `Tour "${tour.title}": ${tour.revisionNote}`,
+          notificationType: 'tour_submission_result',
+          sender: req.user._id
+        });
+      } catch (notifyErr) {
+        console.error('Error notifying provider for tour revision:', notifyErr);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Đã gửi yêu cầu chỉnh sửa tour',
@@ -2020,10 +2034,13 @@ export const checkTourAvailability = async (req, res) => {
       const bookedSeats = bookedByDate[dateKey] || 0;
       const capacity = Math.min(Number(dep.availableSeats || 0), tourSeats + bookedSeats);
       const remainingSeats = Math.min(Math.max(0, capacity - bookedSeats), tourSeats);
-      const price = tour.price;
+      const price = (dep.price !== null && dep.price !== undefined && Number(dep.price) > 0)
+        ? Number(dep.price)
+        : tour.price;
 
       return {
         _id: dep._id,
+        hasDeparture: true,
         dateKey,
         departureDate: dep.departureDate,
         capacity,
@@ -2050,18 +2067,16 @@ export const checkTourAvailability = async (req, res) => {
       if (matchedDeparture) {
         selectedDateAvailability = matchedDeparture;
       } else {
-        const bookedSeats = bookedByDate[reqDateKey] || 0;
-        const remainingSeats = tourSeats;
-        const capacity = remainingSeats + bookedSeats;
         selectedDateAvailability = {
           _id: null,
+          hasDeparture: false,
           dateKey: reqDateKey,
           departureDate: new Date(requestedDate),
-          capacity,
-          bookedSeats,
-          remainingSeats,
-          isAvailable: remainingSeats > 0,
-          price: tour.price,
+          capacity: 0,
+          bookedSeats: 0,
+          remainingSeats: 0,
+          isAvailable: false,
+          price: null,
           note: ''
         };
       }

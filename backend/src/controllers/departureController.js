@@ -7,6 +7,13 @@ import Notification from '../models/Notification.js';
 
 const LEAD_TIME_MS = 24 * 60 * 60 * 1000;
 
+// Chống Excel formula injection cho dữ liệu người dùng khi xuất file .xlsx.
+const sanitizeExcelCell = (value) => {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+};
+
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -159,38 +166,75 @@ export const updateDeparture = async (req, res) => {
       });
     }
 
+    const origStart = new Date(departure.departureDate);
+    origStart.setHours(0, 0, 0, 0);
+    const origEnd = new Date(origStart);
+    origEnd.setDate(origEnd.getDate() + 1);
+
+    const activeBookings = await Booking.find({
+      tourId: departure.tourId,
+      status: { $in: ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'] },
+      $or: [
+        { departureId: departure._id },
+        { departureDate: { $gte: origStart, $lt: origEnd } }
+      ]
+    }).select('customerId numberOfPeople status');
+
+    const bookedSeats = (activeBookings || []).reduce(
+      (sum, b) => sum + Number(b.numberOfPeople || 0),
+      0
+    );
+
     if (req.body.departureDate) {
       const newDate = new Date(req.body.departureDate);
-      if (newDate.getTime() - Date.now() < LEAD_TIME_MS) {
-        return res.status(400).json({
-          success: false,
-          message: 'Ngày khởi hành phải cách thời điểm hiện tại ít nhất 24 giờ'
+      const isDateChanged = newDate < origStart || newDate >= origEnd;
+
+      if (isDateChanged) {
+        if ((activeBookings || []).length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: 'Không thể đổi ngày khởi hành khi đã có khách đặt tour. Vui lòng liên hệ hỗ trợ'
+          });
+        }
+
+        if (newDate.getTime() - Date.now() < LEAD_TIME_MS) {
+          return res.status(400).json({
+            success: false,
+            message: 'Ngày khởi hành phải cách thời điểm hiện tại ít nhất 24 giờ'
+          });
+        }
+
+        const startOfDay = new Date(newDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        const existing = await Departure.findOne({
+          _id: { $ne: departure._id },
+          tourId: departure.tourId,
+          status: 'scheduled',
+          departureDate: { $gte: startOfDay, $lt: endOfDay }
         });
+        if (existing) {
+          return res.status(409).json({
+            success: false,
+            message: 'Tour này đã có lịch khởi hành trong ngày đã chọn'
+          });
+        }
+
+        departure.departureDate = newDate;
       }
-
-      const startOfDay = new Date(newDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
-
-      const existing = await Departure.findOne({
-        _id: { $ne: departure._id },
-        tourId: departure.tourId,
-        status: 'scheduled',
-        departureDate: { $gte: startOfDay, $lt: endOfDay }
-      });
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: 'Tour này đã có lịch khởi hành trong ngày đã chọn'
-        });
-      }
-
-      departure.departureDate = newDate;
     }
 
     if (req.body.availableSeats !== undefined) {
-      departure.availableSeats = Number(req.body.availableSeats);
+      const nextSeats = Number(req.body.availableSeats);
+      if (nextSeats < bookedSeats) {
+        return res.status(400).json({
+          success: false,
+          message: `Số chỗ không thể nhỏ hơn số chỗ đã có khách đặt (${bookedSeats} chỗ)`
+        });
+      }
+      departure.availableSeats = nextSeats;
     }
 
     if (req.body.price !== undefined) {
@@ -198,8 +242,11 @@ export const updateDeparture = async (req, res) => {
       departure.price = (priceRaw === null || priceRaw === '' || isNaN(priceRaw)) ? null : Number(priceRaw);
     }
 
+    let noteChanged = false;
     if (req.body.note !== undefined) {
-      departure.note = req.body.note ? req.body.note.trim() : '';
+      const nextNote = req.body.note ? req.body.note.trim() : '';
+      noteChanged = nextNote !== (departure.note || '');
+      departure.note = nextNote;
     }
 
     if (req.body.status !== undefined) {
@@ -207,6 +254,29 @@ export const updateDeparture = async (req, res) => {
     }
 
     await departure.save();
+
+    if (noteChanged && (activeBookings || []).length > 0) {
+      const recipientIds = [...new Set(
+        activeBookings
+          .filter((b) => ['pending', 'confirmed', 'paid', 'checked_in'].includes(b.status) && b.customerId)
+          .map((b) => String(b.customerId))
+      )];
+
+      if (recipientIds.length > 0) {
+        try {
+          const dateLabel = new Date(departure.departureDate).toLocaleDateString('vi-VN');
+          await Notification.insertMany(recipientIds.map((recipient) => ({
+            recipient,
+            title: 'Cập nhật thông tin lịch khởi hành',
+            message: `Lịch khởi hành ngày ${dateLabel} đã cập nhật ghi chú: ${departure.note || 'Đã cập nhật'}`,
+            notificationType: 'departure_updated',
+            sender: req.user._id
+          })));
+        } catch (notifyErr) {
+          console.error('Error notifying booked customers on departure update:', notifyErr);
+        }
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -338,27 +408,27 @@ export const exportPassengerManifest = async (req, res) => {
     const infoFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4F8' } };
 
     worksheet.mergeCells('A6:F6');
-    worksheet.getCell('A6').value = `Tour: ${tour?.title || 'Tour du lịch'}`;
+    worksheet.getCell('A6').value = sanitizeExcelCell(`Tour: ${tour?.title || 'Tour du lịch'}`);
     worksheet.getCell('A6').font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1A237E' } };
 
     worksheet.mergeCells('G6:L6');
-    worksheet.getCell('G6').value = `Loại tour: ${tour?.categoryId?.name || 'Tour Du Lịch Trọn Gói'}`;
+    worksheet.getCell('G6').value = sanitizeExcelCell(`Loại tour: ${tour?.categoryId?.name || 'Tour Du Lịch Trọn Gói'}`);
     worksheet.getCell('G6').font = { name: 'Segoe UI', size: 10, bold: true };
 
     worksheet.mergeCells('A7:F7');
     const route = tour?.departureLocation
       ? `${tour.departureLocation} → ${tour.destinationLocation || tour.location}`
       : (tour?.destinationLocation || tour?.location || 'Việt Nam');
-    worksheet.getCell('A7').value = `Lộ trình: ${route}`;
+    worksheet.getCell('A7').value = sanitizeExcelCell(`Lộ trình: ${route}`);
     worksheet.getCell('A7').font = { name: 'Segoe UI', size: 10 };
 
     worksheet.mergeCells('G7:L7');
-    worksheet.getCell('G7').value = `Thời gian: ${departureDateText} - ${returnDateText} (${tour?.duration || 'Theo lịch trình'})`;
+    worksheet.getCell('G7').value = sanitizeExcelCell(`Thời gian: ${departureDateText} - ${returnDateText} (${tour?.duration || 'Theo lịch trình'})`);
     worksheet.getCell('G7').font = { name: 'Segoe UI', size: 10 };
 
     worksheet.mergeCells('A8:F8');
     const providerContact = req.user.phone ? ` (Hotline: ${req.user.phone})` : '';
-    worksheet.getCell('A8').value = `Nhà cung cấp / HDV: ${req.user.username || 'TripMate Partner'}${providerContact}`;
+    worksheet.getCell('A8').value = sanitizeExcelCell(`Nhà cung cấp / HDV: ${req.user.username || 'TripMate Partner'}${providerContact}`);
     worksheet.getCell('A8').font = { name: 'Segoe UI', size: 10 };
 
     worksheet.mergeCells('G8:L8');
@@ -442,16 +512,16 @@ export const exportPassengerManifest = async (req, res) => {
       row.values = [
         index + 1,
         bookingCode,
-        booking.fullName,
-        booking.phone,
-        booking.email,
-        tour?.categoryId?.name || 'Tour Du Lịch Trọn Gói',
+        sanitizeExcelCell(booking.fullName),
+        sanitizeExcelCell(booking.phone),
+        sanitizeExcelCell(booking.email),
+        sanitizeExcelCell(tour?.categoryId?.name || 'Tour Du Lịch Trọn Gói'),
         departureDateText,
         returnDateText,
         booking.numberOfPeople,
         booking.totalPrice || 0,
         statusText,
-        noteText
+        sanitizeExcelCell(noteText)
       ];
 
       for (let c = 1; c <= 12; c++) {

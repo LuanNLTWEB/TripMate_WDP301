@@ -139,9 +139,25 @@ export const updateDestination = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến' });
     }
 
-    destination.name = req.body.name ?? destination.name;
+    const nextName = req.body.name !== undefined ? String(req.body.name).trim() : destination.name;
+    const nextLocation = req.body.location !== undefined ? String(req.body.location).trim() : destination.location;
+
+    const duplicate = await Destination.findOne({
+      _id: { $ne: destination._id },
+      isDeleted: { $ne: true },
+      name: new RegExp(`^${escapeRegex(nextName)}$`, 'i'),
+      location: new RegExp(`^${escapeRegex(nextLocation)}$`, 'i')
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Điểm đến với tên này đã tồn tại tại tỉnh/thành phố được chọn'
+      });
+    }
+
+    destination.name = nextName;
     destination.description = req.body.description ?? destination.description;
-    destination.location = req.body.location ?? destination.location;
+    destination.location = nextLocation;
     destination.images = req.body.images ?? destination.images;
     destination.categoryId = req.body.categoryId !== undefined ? (req.body.categoryId || null) : destination.categoryId;
     destination.isPopular = req.body.isPopular !== undefined

@@ -419,15 +419,8 @@ const BookingPage = () => {
 
                                 {/* Cột phải: Đơn giá & Badge chỗ trống */}
                                 <div className="d-flex align-items-center gap-3 text-end">
-                                  <div>
-                                    {dep.price && dep.price !== tour.price && (
-                                      <div className="small text-muted text-decoration-line-through" style={{ fontSize: '0.76rem' }}>
-                                        {formatPrice(tour.price)}
-                                      </div>
-                                    )}
-                                    <div className="fw-bold" style={{ color: '#0284c7', fontSize: '0.98rem' }}>
-                                      {formatPrice(dep.price || tour.price)}
-                                    </div>
+                                  <div className="fw-bold" style={{ color: '#0284c7', fontSize: '0.98rem' }}>
+                                    {formatPrice(dep.price || tour.price)}
                                   </div>
 
                                   <span
