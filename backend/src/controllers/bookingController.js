@@ -101,11 +101,13 @@ export const createBooking = async (req, res) => {
         { departureId: departure._id },
         { tourId: tour._id, departureDate: { $gte: startOfDay, $lt: endOfDay } }
       ],
-      status: { $in: ['confirmed', 'paid', 'checked_in'] }
+      status: { $in: ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'] }
     });
 
     const bookedSeats = confirmedBookings.reduce((sum, b) => sum + (Number(b.numberOfPeople) || 0), 0);
-    const remainingSeats = Math.max(0, Number(departure.availableSeats || 0) - bookedSeats);
+    const departureRemaining = Math.max(0, Number(departure.availableSeats || 0) - bookedSeats);
+    const tourRemaining = Math.max(0, Number(tour.availableSeats || 0));
+    const remainingSeats = Math.min(departureRemaining, tourRemaining);
 
     if (remainingSeats < Number(numberOfPeople)) {
       return res.status(400).json({
@@ -138,6 +140,8 @@ export const createBooking = async (req, res) => {
     });
     // BR-67 - tự động trừ số chỗ đã đặt khỏi tour khi tạo booking
     // ngăn chặn đặt chỗ vô tận khi availableSeats chưa được cập nhật thủ công.
+    // Lưu ý: Không trừ trực tiếp vào Departure.availableSeats vì trường này lưu tổng sức chứa
+    // của đợt khởi hành và số chỗ còn lại được tính động qua tổng số booking đang hoạt động.
     try {
       await Tour.updateOne(
         { _id: tour._id },
@@ -145,18 +149,6 @@ export const createBooking = async (req, res) => {
       );
     } catch {
       // Bỏ qua lỗi cast trong môi trường mock test
-    }
-
-    // Đồng bộ trừ chỗ từ departure khi có booking
-    if (departure) {
-      try {
-        await Departure.updateOne(
-          { _id: departure._id },
-          { $inc: { availableSeats: -numberOfPeople } }
-        );
-      } catch {
-        // Bỏ qua lỗi cast trong môi trường mock test
-      }
     }
 
     await booking.populate([
@@ -405,13 +397,7 @@ export const confirmProviderBooking = async (req, res) => {
       });
     }
 
-    if (tour.availableSeats < booking.numberOfPeople) {
-      return res.status(400).json({
-        success: false,
-        message: `Tour chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${booking.numberOfPeople} người`
-      });
-    }
-
+    // Chỗ đã được giữ và trừ vào tour.availableSeats ngay khi tạo đơn pending trong createBooking.
     booking.status = 'confirmed';
     booking.respondedAt = new Date();
     booking.respondedBy = req.user._id;
@@ -1118,25 +1104,6 @@ export const cancelBooking = async (req, res) => {
       { $inc: { availableSeats: booking.numberOfPeople } }
     );
 
-    // Đồng lại chỗ trống từ departure khi hủy booking (kéo khớp với createBooking)
-    const startOfDay = new Date(booking.departureDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
-
-    const matchingDeparture = await Departure.findOne({
-      tourId: booking.tourId,
-      departureDate: { $gte: startOfDay, $lt: endOfDay },
-      status: "scheduled"
-    });
-
-    if (matchingDeparture) {
-      await Departure.updateOne(
-        { _id: matchingDeparture._id },
-        { $inc: { availableSeats: booking.numberOfPeople } }
-      );
-    }
-
     const populated = await Booking.findById(id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
       .populate('customerId', 'username email phone');
@@ -1197,13 +1164,7 @@ export const respondProviderBooking = async (req, res) => {
     }
 
     if (action === 'confirm') {
-      if (tour.availableSeats < booking.numberOfPeople) {
-        return res.status(400).json({
-          success: false,
-          message: `Tour chỉ còn ${tour.availableSeats} chỗ trống, không đủ cho ${booking.numberOfPeople} người`
-        });
-      }
-
+      // Chỗ đã được giữ và trừ vào tour.availableSeats ngay khi tạo đơn pending trong createBooking.
       booking.status = 'confirmed';
       booking.respondedAt = new Date();
       booking.respondedBy = req.user._id;
@@ -1228,25 +1189,12 @@ export const respondProviderBooking = async (req, res) => {
       booking.respondedBy = req.user._id;
       await booking.save({ validateBeforeSave: false });
 
-      // Đơn pending đã bị trừ chỗ ngay khi tạo booking, nên từ chối phải trả chỗ lại.
+      // Đơn pending đã bị trừ chỗ ngay khi tạo booking, nên từ chối phải trả chỗ lại cho tour.
+      // Departure.availableSeats giữ nguyên tổng sức chứa; số chỗ còn lại tự khôi phục khi booking chuyển rejected.
       await Tour.updateOne(
         { _id: booking.tourId },
         { $inc: { availableSeats: booking.numberOfPeople } }
       );
-
-      // Trả chỗ cho lịch khởi hành tương ứng, đồng bộ với createBooking/cancelBooking.
-      const departureDay = new Date(booking.departureDate);
-      if (!Number.isNaN(departureDay.getTime())) {
-        departureDay.setHours(0, 0, 0, 0);
-        await Departure.updateOne(
-          {
-            tourId: booking.tourId,
-            departureDate: { $gte: departureDay, $lt: new Date(departureDay.getTime() + 86400000) },
-            status: 'scheduled'
-          },
-          { $inc: { availableSeats: booking.numberOfPeople } }
-        );
-      }
 
       const populated = await Booking.findById(booking._id)
         .populate('tourId', 'title location duration price images departureLocation destinationLocation')
