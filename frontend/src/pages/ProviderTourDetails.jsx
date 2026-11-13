@@ -837,7 +837,7 @@ export default function ProviderTourDetails() {
                     <thead>
                       <tr className="text-muted small">
                         <th scope="col">Ngày khởi hành</th>
-                        <th scope="col">Số chỗ</th>
+                        <th scope="col">Số chỗ (đã đặt/tổng)</th>
                         <th scope="col">Giá</th>
                         <th scope="col">Trạng thái</th>
                         <th scope="col">Ghi chú</th>
@@ -848,7 +848,7 @@ export default function ProviderTourDetails() {
                       {departures.map((d) => (
                         <tr key={d._id}>
                           <td className="fw-medium">{formatDate(d.departureDate)}</td>
-                          <td>{d.availableSeats}</td>
+                          <td>{d.bookedSeats ?? 0}/{d.totalSeats ?? (d.availableSeats ?? 0)}</td>
                           <td>{d.price != null ? formatCurrency(d.price) : <span className="text-muted">Theo giá tour</span>}</td>
                           <td>
                             <span className={`management-badge ${d.status === 'scheduled' ? 'badge-success' : 'badge-danger'}`}>

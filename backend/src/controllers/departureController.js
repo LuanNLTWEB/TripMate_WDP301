@@ -77,6 +77,7 @@ export const createDeparture = async (req, res) => {
       providerId: tour.providerId,
       departureDate,
       availableSeats: Number(req.body.availableSeats),
+      totalSeats: Number(req.body.availableSeats),
       price,
       note: req.body.note || ''
     });
@@ -124,11 +125,43 @@ export const getDeparturesByTour = async (req, res) => {
 
     const departures = await Departure.find({ tourId: tour._id }).sort({ departureDate: 1 });
 
+    // Tính số chỗ đã đặt cho từng lịch khởi hành để UI hiển thị dạng booked/total.
+    const committedStatuses = ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'];
+    const committedBookings = await Booking.find({
+      tourId: tour._id,
+      status: { $in: committedStatuses }
+    }).select('departureDate numberOfPeople');
+
+    const toDateKey = (value) => {
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const bookedByDate = {};
+    committedBookings.forEach((booking) => {
+      const key = toDateKey(booking.departureDate);
+      if (key) {
+        bookedByDate[key] = (bookedByDate[key] || 0) + Number(booking.numberOfPeople || 0);
+      }
+    });
+
+    const data = departures.map((departure) => {
+      const plain = departure.toObject();
+      const booked = bookedByDate[toDateKey(departure.departureDate)] || 0;
+      const total = departure.totalSeats || departure.availableSeats;
+      plain.totalSeats = total;
+      plain.bookedSeats = departure.totalSeats
+        ? Math.max(total - departure.availableSeats, booked)
+        : booked;
+      return plain;
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Lấy danh sách lịch khởi hành thành công',
-      count: departures.length,
-      data: departures
+      count: data.length,
+      data
     });
   } catch (error) {
     console.error('Error fetching departures:', error);
@@ -236,6 +269,7 @@ export const updateDeparture = async (req, res) => {
         });
       }
       departure.availableSeats = nextSeats;
+      departure.totalSeats = nextSeats;
     }
 
     if (req.body.price !== undefined) {
