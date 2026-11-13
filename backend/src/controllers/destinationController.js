@@ -105,6 +105,7 @@ export const createDestination = async (req, res) => {
 
 // END UC-17 Create Destination
 
+// START UC-19 Update Destination
 /**
  * Update a destination.
  * @route PUT /api/destinations/:id
@@ -188,6 +189,7 @@ export const updateDestination = async (req, res) => {
     });
   }
 };
+// END UC-19 Update Destination
 
 /**
  * Activate or deactivate a destination in the catalogue.
@@ -284,6 +286,7 @@ export const updateDestinationStatus = async (req, res) => {
 
 // END UC-121 Update Destination Status
 
+// START UC-11 View Destination List
 // @desc    Get all destinations
 // @route   GET /api/destinations
 // @access  Public (Guest)
@@ -356,6 +359,7 @@ export const getAllDestinations = async (req, res) => {
     });
   }
 };
+// END UC-11 View Destination List
 
 /**
  * List every non-deleted destination for Staff moderation, including inactive ones.
@@ -492,6 +496,7 @@ export const getDestinationById = async (req, res) => {
   }
 };
 
+// START UC-14 Save / Unsave Destination
 /**
  * Toggle save/unsave a destination for the current customer.
  * @route POST /api/destinations/:id/favorite
@@ -543,6 +548,7 @@ export const toggleFavorite = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể cập nhật yêu thích' });
   }
 };
+// END UC-14 Save / Unsave Destination
 
 /**
  * Remove a destination from the current customer's favorites.

@@ -15,11 +15,14 @@ import {
 
 const router = express.Router();
 
+// START UC-140 View Tour Category List
 // @route   GET /api/tour-categories
 // @desc    Get all tour categories
 // @access  Public
 router.get('/', getAllCategories);
+// END UC-140 View Tour Category List
 
+// START UC-138 Create Tour Category
 // @route   POST /api/tour-categories
 // @desc    Create a tour category
 // @access  Staff
@@ -30,7 +33,9 @@ router.post(
   createCategoryValidation,
   createCategory
 );
+// END UC-138 Create Tour Category
 
+// START UC-139 Update Tour Category
 // @route   PUT /api/tour-categories/:id
 // @desc    Update a tour category
 // @access  Staff
@@ -41,7 +46,9 @@ router.put(
   updateCategoryValidation,
   updateCategory
 );
+// END UC-139 Update Tour Category
 
+// START UC-141 Delete Tour Category
 // @route   DELETE /api/tour-categories/:id
 // @desc    Delete a tour category
 // @access  Staff
@@ -52,5 +59,6 @@ router.delete(
   categoryIdValidation,
   deleteCategory
 );
+// END UC-141 Delete Tour Category
 
 export default router;

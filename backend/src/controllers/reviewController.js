@@ -204,6 +204,7 @@ export const createReview = async (req, res) => {
   }
 };
 
+// START UC-91 Report Inappropriate Review
 export const reportReview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,6 +242,7 @@ export const reportReview = async (req, res) => {
     res.status(500).json({ success: false, message: 'Không thể gửi báo cáo vi phạm' });
   }
 };
+// END UC-91 Report Inappropriate Review
 
 export const getReviewsByTour = async (req, res) => {
   try {

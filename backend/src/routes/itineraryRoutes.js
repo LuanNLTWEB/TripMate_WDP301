@@ -87,7 +87,9 @@ router.get('/:id/conflicts', ...customerAccess, itineraryIdValidation, getActivi
 // POST /api/itineraries/:id/conflicts/check - kiểm tra trùng giờ cho khung giờ dự kiến và gợi ý giờ trống.
 router.post('/:id/conflicts/check', ...customerAccess, checkTimeConflictValidation, checkTimeConflict);
 // END UC-58 Check Time Conflict
+// START UC-59 Calculate Trip Budget
 router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTripBudget);
+// END UC-59 Calculate Trip Budget
 // START UC-48 View Personal Itinerary
 // GET /api/itineraries/:id - owner hoặc collaborator được xem chi tiết.
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
@@ -96,7 +98,9 @@ router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary
 // START UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account (BR-73)
 router.post('/:id/duplicate', ...customerAccess, duplicateItineraryValidation, duplicateItinerary);
 // END UC-62 Duplicate Itinerary / Save Shared Itinerary to My Account
+// START UC-50 Delete Itinerary
 router.delete('/:id', ...customerAccess, itineraryIdValidation, deleteItinerary);
+// END UC-50 Delete Itinerary
 router.post('/:id/share', ...customerAccess, shareItineraryValidation, shareItinerary);
 // START UC-120 Transfer Itinerary Ownership
 // PUT /api/itineraries/:id/owner - owner chuyển quyền cho một collaborator (BR-72).
@@ -120,15 +124,23 @@ router.put('/:id/activities/:activityId', ...customerAccess, updateActivityValid
 router.delete('/:id/activities/:activityId', ...customerAccess, removeActivityFromItineraryValidation, removeActivity);
 router.post('/:id/destinations', ...customerAccess, itineraryDestinationValidation, addDestination);
 router.delete('/:id/destinations/:destinationId', ...customerAccess, removeDestinationValidation, removeDestination);
+// START UC-55 Add Tour to Itinerary
 router.post('/:id/tours', ...customerAccess, itineraryTourValidation, addTour);
+// END UC-55 Add Tour to Itinerary
 router.delete('/:id/tours/:tourId', ...customerAccess, removeTourFromItineraryValidation, removeTour);
 router.post('/:id/comments', ...customerAccess, addCommentValidation, addComment);
+// START UC-158 Delete Itinerary Comment
 router.delete('/:id/comments/:commentId', ...customerAccess, deleteCommentValidation, deleteComment);
+// END UC-158 Delete Itinerary Comment
 // START UC-147 Add Packing Item
 router.post('/:id/packing-items', ...customerAccess, addPackingItemValidation, addPackingItem);
 // END UC-147 Add Packing Item
+// START UC-149 Update Packing Item
 router.put('/:id/packing-items/:itemId', ...customerAccess, updatePackingItemValidation, updatePackingItem);
+// END UC-149 Update Packing Item
+// START UC-150 Remove Packing Item
 router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItemValidation, removePackingItem);
+// END UC-150 Remove Packing Item
 // START UC-151 Mark Item as Packed
 // PATCH /api/itineraries/:id/packing-items/:itemId/status - đánh dấu/bỏ đánh dấu vật dụng
 // (chỉ owner và collaborator quyền 'edit'; collaborator quyền 'view' bị từ chối 403).

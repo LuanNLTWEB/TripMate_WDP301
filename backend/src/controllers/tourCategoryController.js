@@ -13,6 +13,7 @@ const buildCategoryNameQuery = (name, excludeId = null) => {
   return query;
 };
 
+// START UC-140 View Tour Category List
 /**
  * Get all tour categories.
  * @route GET /api/tour-categories
@@ -35,7 +36,9 @@ export const getAllCategories = async (req, res) => {
     });
   }
 };
+// END UC-140 View Tour Category List
 
+// START UC-138 Create Tour Category
 /**
  * Create a new tour category.
  * @route POST /api/tour-categories
@@ -79,7 +82,9 @@ export const createCategory = async (req, res) => {
     });
   }
 };
+// END UC-138 Create Tour Category
 
+// START UC-139 Update Tour Category
 /**
  * Update a tour category.
  * @route PUT /api/tour-categories/:id
@@ -130,7 +135,9 @@ export const updateCategory = async (req, res) => {
     });
   }
 };
+// END UC-139 Update Tour Category
 
+// START UC-141 Delete Tour Category
 /**
  * Delete a tour category.
  * @route DELETE /api/tour-categories/:id
@@ -172,3 +179,4 @@ export const deleteCategory = async (req, res) => {
     });
   }
 };
+// END UC-141 Delete Tour Category

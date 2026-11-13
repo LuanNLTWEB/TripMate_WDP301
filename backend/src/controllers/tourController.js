@@ -195,6 +195,7 @@ export const saveFavoriteTour = async (req, res) => {
   }
 };
 
+// START UC-22 Browse & Filter Tours
 export const getAllTours = async (req, res) => {
   try {
     const {
@@ -285,6 +286,7 @@ export const getAllTours = async (req, res) => {
     });
   }
 };
+// END UC-22 Browse & Filter Tours
 
 // START UC-25 View Tour Details
 /**
@@ -741,6 +743,7 @@ export const restoreTour = async (req, res) => {
 
 // END UC-101 Restore Tour
 
+// START UC-99 Request Tour Revision
 export const requestTourRevision = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -803,6 +806,7 @@ export const requestTourRevision = async (req, res) => {
     });
   }
 };
+// END UC-99 Request Tour Revision
 
 export const createTour = async (req, res) => {
   const errors = validationResult(req);
@@ -948,6 +952,7 @@ export const duplicateTour = async (req, res) => {
 };
 // END UC-24 Duplicate Tour
 
+// START UC-32 View My Provider Tours
 // START UC-35 View Approval Status
 /**
  * UC-35 – View Approval Status (provider xem trạng thái duyệt tour của mình).
@@ -1023,6 +1028,7 @@ export const getProviderTours = async (req, res) => {
 };
 
 // END UC-35 View Approval Status
+// END UC-32 View My Provider Tours
 
 export const getProviderTourById = async (req, res) => {
   const errors = validationResult(req);
@@ -1743,6 +1749,7 @@ export const updateTourCapacity = async (req, res) => {
 
 // END UC-45 Update Tour Capacity
 
+// START UC-46 Update Tour Price
 /**
  * Update the owning provider's tour price.
  * @route PUT /api/tours/:id/price
@@ -1802,7 +1809,9 @@ export const updateTourPrice = async (req, res) => {
     });
   }
 };
+// END UC-46 Update Tour Price
 
+// START UC-37 View Tour Schedule
 /**
  * Get tour schedule (itinerary)
  * @route GET /api/tours/:id/schedule
@@ -1869,6 +1878,7 @@ export const getTourSchedule = async (req, res) => {
     });
   }
 };
+// END UC-37 View Tour Schedule
 
 /**
  * Cập nhật điểm & thông tin khởi hành của tour (UC-42 - Update Tour Departure)
@@ -1972,6 +1982,7 @@ export const updateTourDeparture = async (req, res) => {
 };
 
 
+// START UC-27 Check Tour Availability
 /**
  * Kiểm tra chỗ trống và giá theo lịch khởi hành của tour (UC-27)
  * @route GET /api/tours/:id/availability
@@ -2101,6 +2112,7 @@ export const checkTourAvailability = async (req, res) => {
     });
   }
 };
+// END UC-27 Check Tour Availability
 
 // START UC-64 Compare Tours
 /**

@@ -139,6 +139,7 @@ export const getDeparturesByTour = async (req, res) => {
   }
 };
 
+// START UC-42 Update Tour Departure
 export const updateDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -291,7 +292,9 @@ export const updateDeparture = async (req, res) => {
     });
   }
 };
+// END UC-42 Update Tour Departure
 
+// START UC-122 Export Passenger Manifest
 /**
  * Xuất danh sách đoàn khách của một lịch khởi hành ra file Excel (.xlsx)
  * để hướng dẫn viên điểm danh. Chỉ lấy các đơn đã xác nhận trong đúng ngày khởi hành.
@@ -632,6 +635,7 @@ export const exportPassengerManifest = async (req, res) => {
     });
   }
 };
+// END UC-122 Export Passenger Manifest
 
 // START UC-43 Cancel Tour Departure
 /**

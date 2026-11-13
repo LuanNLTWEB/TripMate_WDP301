@@ -95,8 +95,10 @@ router.post('/', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createCompla
 router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyComplaints);
 // END UC-67 View My Complaints
 
+// START UC-69 Cancel Complaint
 // UC-69 - khách hàng huỷ một khiếu nại của chính mình.
 router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), complaintIdValidation, cancelComplaint);
+// END UC-69 Cancel Complaint
 
 // START UC-153 Search & Filter Customer Complaints
 // GET /api/complaints/management - danh sách khiếu nại cho nhân viên kèm tìm kiếm và phân trang.

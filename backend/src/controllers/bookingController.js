@@ -13,6 +13,7 @@ import ExcelJS from 'exceljs';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// START UC-71 Create Booking
 // Nhận thông tin đặt tour từ customer theo lịch khởi hành, kiểm tra chỗ trống, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
   const errors = validationResult(req);
@@ -170,7 +171,9 @@ export const createBooking = async (req, res) => {
     });
   }
 };
+// END UC-71 Create Booking
 
+// START UC-75 View Booking History & Detail (getMyBookings)
 // Lấy toàn bộ danh sách booking của customer đang đăng nhập, sắp xếp mới nhất trước
 export const getMyBookings = async (req, res) => {
   try {
@@ -206,6 +209,7 @@ export const getMyBookings = async (req, res) => {
     });
   }
 };
+// END UC-75 View Booking History & Detail (getMyBookings)
 
 // Provider chỉ được xem booking của các tour do chính mình sở hữu.
 export const getProviderBookingRequests = async (req, res) => {
@@ -579,6 +583,7 @@ export const checkInBooking = async (req, res) => {
 };
 // END UC-85 Confirm Payment & Check-in
 
+// START UC-79 Complete Booking
 export const completeBooking = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -633,6 +638,7 @@ export const completeBooking = async (req, res) => {
     });
   }
 };
+// END UC-79 Complete Booking
 
 // START UC-123 Export Provider Booking Report
 /**
@@ -988,6 +994,7 @@ export const exportProviderBookingReport = async (req, res) => {
 };
 // END UC-123 Export Provider Booking Report
 
+// START UC-75 View Booking History & Detail (getBookingById)
 // Lấy thông tin chi tiết một đơn đặt tour cụ thể của customer (chỉ view của chính mình)
 export const getBookingById = async (req, res) => {
   try {
@@ -1022,6 +1029,7 @@ export const getBookingById = async (req, res) => {
       });
     }
   };
+// END UC-75 View Booking History & Detail (getBookingById)
 
 // BR-88 - khung thời gian miễn phí: chỉ được tự hủy khi còn tối thiểu 48 giờ
 // trước ngày khởi hành. Không tính hoàn tiền ở đây vì hệ thống chưa có module
