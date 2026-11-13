@@ -1674,6 +1674,15 @@ export const updateTourCapacity = async (req, res) => {
       });
     }
 
+    // Tour đang mở bán không được đặt số chỗ về 0 thủ công: trạng thái phải đi qua
+    // tạm ngưng (BR-48) để tránh tour active nhưng không đặt được.
+    if (tour.status === 'active' && requestedSeats === 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour đang hoạt động. Vui lòng tạm ngưng tour trước khi đặt số chỗ về 0.'
+      });
+    }
+
     if (requestedSeats === tour.availableSeats) {
       return res.status(200).json({
         success: true,

@@ -29,11 +29,8 @@ const validateTourFields = (formData, imageFile, mode) => {
   }
 
   const availableSeats = Number(formData.availableSeats);
-  const minimumSeats = mode === 'create' ? 1 : 0;
-  if (!Number.isInteger(availableSeats) || availableSeats < minimumSeats) {
-    errs.availableSeats = mode === 'create'
-      ? 'Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).'
-      : 'Số lượng chỗ phải là số nguyên không âm.';
+  if (!Number.isInteger(availableSeats) || availableSeats < 1) {
+    errs.availableSeats = 'Vui lòng nhập số lượng chỗ hợp lệ (lớn hơn 0).'
   }
 
   const descriptionLength = formData.description.trim().length;

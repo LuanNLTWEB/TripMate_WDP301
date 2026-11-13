@@ -65,6 +65,12 @@ export const createBooking = async (req, res) => {
       totalPrice,
       status: 'pending'
     });
+    // BR-67 - tự động trừ số chỗ đã đặt khỏi tour khi tạo booking
+    // ngăn chặn đặt chỗ vô tận khi availableSeats chưa được cập nhật thủ công.
+    await Tour.updateOne(
+      { _id: tour._id },
+      { $inc: { availableSeats: -numberOfPeople } }
+    );
 
     await booking.populate([
       { path: 'tourId', select: 'title location duration price images' },
