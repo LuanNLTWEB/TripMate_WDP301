@@ -909,7 +909,7 @@ export const createDepartureValidation = [
     .toDate(),
   body('availableSeats')
     .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0')
     .toInt(),
   body('price')
     .optional({ nullable: true, checkFalsy: true })
@@ -1032,7 +1032,7 @@ export const updateDepartureValidation = [
     .toDate(),
   body('availableSeats')
     .optional()
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớn hơn 0')
     .toInt(),
   body('price')
     .optional({ nullable: true, checkFalsy: true })

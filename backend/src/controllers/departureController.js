@@ -656,7 +656,15 @@ export const cancelDeparture = async (req, res) => {
       ? `Đợt khởi hành bị hủy bởi nhà cung cấp. Lý do: ${reason} (Được hoàn tiền 100%)`
       : 'Đợt khởi hành bị hủy bởi nhà cung cấp (Được hoàn tiền 100%)';
 
+    // Chỉ đơn đã chiếm chỗ (confirmed/paid) mới hoàn lại chỗ cho tour;
+    // đơn pending chưa trừ chỗ nên không hoàn.
+    let releasedSeats = 0;
+
     for (const booking of activeBookings) {
+      if (booking.status === 'confirmed' || booking.status === 'paid') {
+        releasedSeats += Number(booking.numberOfPeople || 0);
+      }
+
       booking.status = 'cancelled';
       booking.cancelReason = bookingCancelReason;
       booking.cancelledAt = new Date();
@@ -677,12 +685,21 @@ export const cancelDeparture = async (req, res) => {
       }
     }
 
+    // Trả lại chỗ đã chiếm cho tour, đồng bộ với luồng khách tự hủy đơn (UC-74).
+    if (releasedSeats > 0) {
+      await Tour.updateOne(
+        { _id: departure.tourId },
+        { $inc: { availableSeats: releasedSeats } }
+      );
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Hủy lịch khởi hành thành công. Toàn bộ đơn đặt liên quan đã được hủy và khách hàng đã được thông báo hoàn tiền 100%.',
       data: {
         departure,
-        affectedBookingsCount: activeBookings.length
+        affectedBookingsCount: activeBookings.length,
+        releasedSeats
       }
     });
   } catch (error) {

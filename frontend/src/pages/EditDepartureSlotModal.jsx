@@ -48,8 +48,8 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
 
     if (availableSeats === '') {
       errs.availableSeats = 'Vui lòng nhập số chỗ';
-    } else if (!Number.isInteger(Number(availableSeats)) || Number(availableSeats) < 0) {
-      errs.availableSeats = 'Số chỗ phải là số nguyên không âm';
+    } else if (!Number.isInteger(Number(availableSeats)) || Number(availableSeats) <= 0) {
+      errs.availableSeats = 'Số chỗ phải lớn hơn 0';
     }
 
     if (price !== '') {
@@ -149,7 +149,7 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
                     <input
                       id="slot-seats"
                       type="number"
-                      min="0"
+                      min="1"
                       step="1"
                       className={`form-control ${errors.availableSeats ? 'is-invalid' : ''}`}
                       value={availableSeats}
