@@ -313,6 +313,7 @@ export const listItineraries = async (req, res) => {
 
 // END UC-48 View Personal Itinerary
 
+// START UC-50 Delete Itinerary
 /**
  * Delete a personal itinerary (owner only).
  * @route DELETE /api/itineraries/:id
@@ -346,6 +347,7 @@ export const deleteItinerary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa lịch trình' });
   }
 };
+// END UC-50 Delete Itinerary
 
 /**
  * List itineraries shared with the authenticated customer.
@@ -390,6 +392,7 @@ export const getItinerary = async (req, res) => {
 
 // END UC-48 View Personal Itinerary
 
+// START UC-59 Calculate Trip Budget
 /**
  * Calculate the trip budget of an itinerary: total cost = activity costs + tour prices.
  * @route GET /api/itineraries/:id/budget
@@ -433,6 +436,7 @@ export const calculateTripBudget = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tính toán ngân sách chuyến đi' });
   }
 };
+// END UC-59 Calculate Trip Budget
 
 /**
  * Return detected schedule conflicts for an itinerary.
@@ -814,6 +818,7 @@ export const removeDestination = async (req, res) => {
   }
 };
 
+// START UC-55 Add Tour to Itinerary
 /**
  * Add an active tour to an owned itinerary (owner only).
  * @route POST /api/itineraries/:id/tours
@@ -857,6 +862,7 @@ export const addTour = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể thêm tour vào lịch trình' });
   }
 };
+// END UC-55 Add Tour to Itinerary
 
 /**
  * Remove a tour from an owned itinerary (owner only).
@@ -1383,6 +1389,7 @@ export const addComment = async (req, res) => {
   }
 };
 
+// START UC-158 Delete Itinerary Comment
 /**
  * UC-61: Delete Comment on Itinerary
  * Delete a comment (author of the comment or owner of the itinerary).
@@ -1434,6 +1441,7 @@ export const deleteComment = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa bình luận' });
   }
 };
+// END UC-158 Delete Itinerary Comment
 
 
 // START UC-147 Add Packing Item
@@ -1476,6 +1484,7 @@ export const addPackingItem = async (req, res) => {
 };
 // END UC-147 Add Packing Item
 
+// START UC-149 Update Packing Item
 /**
  * Update a packing item in an owned or edit-enabled shared itinerary.
  * @route PUT /api/itineraries/:id/packing-items/:itemId
@@ -1512,7 +1521,9 @@ export const updatePackingItem = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể cập nhật vật dụng' });
   }
 };
+// END UC-149 Update Packing Item
 
+// START UC-150 Remove Packing Item
 /**
  * Remove a packing item from an owned or edit-enabled shared itinerary.
  * @route DELETE /api/itineraries/:id/packing-items/:itemId
@@ -1549,6 +1560,7 @@ export const removePackingItem = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa vật dụng' });
   }
 };
+// END UC-150 Remove Packing Item
 
 // START UC-151 Mark Item as Packed
 /**

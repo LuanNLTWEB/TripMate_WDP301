@@ -45,7 +45,9 @@ router.delete('/:id/reply', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), d
 // END Reply to Tour Review
 router.get('/moderation', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), getAllReviewsForModeration);
 router.get('/reported', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), reportedReviewListValidation, getReportedReviews);
+// START UC-91 Report Inappropriate Review
 router.post('/:id/report', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), reportReview);
+// END UC-91 Report Inappropriate Review
 router.post('/:id/vote-helpful', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), voteHelpfulValidation, voteHelpfulReview);
 router.patch('/:id/moderate', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), moderateReviewValidation, moderateReview);
 router.patch('/:id/hide', protect, authorize(...ACCESS_ROLES.STAFF_ONLY), hideReviewValidation, hideReview);
