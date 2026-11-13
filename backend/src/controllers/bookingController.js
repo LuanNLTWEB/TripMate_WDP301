@@ -356,10 +356,6 @@ export const confirmProviderBooking = async (req, res) => {
     booking.respondedBy = req.user._id;
     await booking.save({ validateBeforeSave: false });
 
-    // BR-57: Không trừ chỗ trống lần nữa - đã được trừ khi tạo booking (createBooking line 92)
-    // Chỉ giữ lại current availableSeats (chưa trừ lại được tour tour.createBooking đã làm)
-    // Việc này đảm bảo seats luôn khớp với danh sách booking thực tế
-    // Không cần updateTourAvailableSeats nữa - seats đã được quản lý ở createBooking
 
     const populated = await Booking.findById(booking._id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
@@ -1152,10 +1148,6 @@ export const respondProviderBooking = async (req, res) => {
       booking.respondedBy = req.user._id;
       await booking.save({ validateBeforeSave: false });
 
-      // BR-57: Không trừ chỗ trống lần nữa - đã được trừ khi tạo booking (createBooking line 92)
-      // Chỉ giữ lại current availableSeats - seats đã được quản lý ở createBooking
-      // Việc này đảm bảo seats luôn khớp với danh sách booking thực tế
-      // Không cần updateTourAvailableSeats nữa
 
       const populated = await Booking.findById(booking._id)
         .populate('tourId', 'title location duration price images departureLocation destinationLocation')
