@@ -4,12 +4,15 @@ import DestinationCategory from '../src/models/DestinationCategory.js';
 import ActivityLog from '../src/models/ActivityLog.js';
 import {
   createCategory,
-  updateCategory
+  updateCategory,
+  deleteCategory
 } from '../src/controllers/destinationCategoryController.js';
+import Destination from '../src/models/Destination.js';
 
 const originalFindOne = DestinationCategory.findOne;
 const originalFindById = DestinationCategory.findById;
 const originalCreate = DestinationCategory.create;
+const originalCountDocuments = Destination.countDocuments;
 const originalActivityLogCreate = ActivityLog.create;
 const originalConsoleError = console.error;
 
@@ -17,6 +20,7 @@ afterEach(() => {
   DestinationCategory.findOne = originalFindOne;
   DestinationCategory.findById = originalFindById;
   DestinationCategory.create = originalCreate;
+  Destination.countDocuments = originalCountDocuments;
   ActivityLog.create = originalActivityLogCreate;
   console.error = originalConsoleError;
 });
@@ -58,10 +62,20 @@ const buildUpdateRequest = (name, description = '') => ({
   socket: { remoteAddress: '127.0.0.1' }
 });
 
+const buildDeleteRequest = () => ({
+  params: { id: CATEGORY_ID },
+  user: STAFF,
+  headers: {},
+  socket: { remoteAddress: '127.0.0.1' }
+});
+
 const createFakeCategory = () => ({
   _id: CATEGORY_ID,
   name: 'Danh mục cũ',
   description: 'Mô tả cũ',
+  isDeleted: false,
+  deletedAt: null,
+  deletedBy: null,
   saveCalls: 0,
   async save() {
     this.saveCalls += 1;
@@ -224,3 +238,51 @@ test('UC-117 - keeps the 404 response when the category does not exist', async (
   assert.equal(result.body.message, 'Không tìm thấy danh mục');
 });
 // END UC-117 Update Destination Category
+
+// START UC-119 Delete Destination Category
+test('UC-119 - soft-deletes an unused category and writes an activity log', async () => {
+  const category = createFakeCategory();
+  let logPayload;
+
+  DestinationCategory.findOne = async () => category;
+  Destination.countDocuments = async () => 0;
+  ActivityLog.create = async (payload) => {
+    logPayload = payload;
+    return payload;
+  };
+
+  const result = createResponse();
+  await deleteCategory(buildDeleteRequest(), result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(category.isDeleted, true);
+  assert.equal(category.deletedBy, STAFF._id);
+  assert.ok(category.deletedAt instanceof Date);
+  assert.equal(category.saveCalls, 1);
+  assert.equal(logPayload.action, 'DELETE_DESTINATION_CATEGORY');
+  assert.equal(logPayload.targetType, 'DestinationCategory');
+  assert.equal(logPayload.targetId, CATEGORY_ID);
+  assert.match(logPayload.details, /Danh mục cũ/);
+});
+
+test('UC-119 - refuses deletion when a soft-deleted destination still references the category', async () => {
+  const category = createFakeCategory();
+  let countQuery;
+
+  DestinationCategory.findOne = async () => category;
+  Destination.countDocuments = async (query) => {
+    countQuery = query;
+    return 2;
+  };
+
+  const result = createResponse();
+  await deleteCategory(buildDeleteRequest(), result.response);
+
+  assert.equal(result.statusCode, 400);
+  assert.equal(result.body.success, false);
+  assert.match(result.body.message, /2 điểm đến/);
+  assert.equal(category.saveCalls, 0);
+  assert.deepEqual(countQuery, { categoryId: CATEGORY_ID });
+});
+// END UC-119 Delete Destination Category
