@@ -913,9 +913,12 @@ const TourDetails = () => {
                       <Link
                         to={{
                           pathname: `/tours/${tour._id}/booking`,
-                          search: selectedDate ? `?departureDate=${selectedDate}` : ''
+                          search: selectedDate ? `?departureDate=${selectedDate}${dateAvailability?._id ? `&departureId=${dateAvailability._id}` : ''}` : ''
                         }}
-                        state={{ departureDate: selectedDate }}
+                        state={{
+                          departureDate: selectedDate,
+                          departureId: dateAvailability?._id || ''
+                        }}
                         className={`btn w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-2 shadow-sm ${
                           dateAvailability && !dateAvailability.isAvailable ? 'btn-secondary disabled' : 'btn-primary'
                         }`}

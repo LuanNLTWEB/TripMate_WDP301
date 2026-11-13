@@ -669,6 +669,9 @@ export const createBookingValidation = [
       }
       return true;
     }),
+  body('departureId')
+    .optional({ checkFalsy: true })
+    .isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
   body('note')
     .optional()
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
