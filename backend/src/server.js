@@ -21,13 +21,18 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import tourSubmissionRoutes from './routes/tourSubmissionRoutes.js';
 import complaintRoutes from './routes/complaintRoutes.js';
 import { seedDefaultRoles } from './models/Role.js';
+import { syncDestinationCategoryIndexes } from './models/DestinationCategory.js';
 
 dotenv.config();
 
 const app = express();
 
 // Connect to MongoDB
-connectDB().then(() => seedDefaultRoles());
+connectDB().then(async () => {
+  await seedDefaultRoles();
+  // UC-119: backfill isDeleted cho danh mục cũ và đồng bộ index unique dạng partial.
+  await syncDestinationCategoryIndexes();
+});
 
 // Middleware
 app.use(cors({

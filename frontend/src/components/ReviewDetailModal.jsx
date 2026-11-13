@@ -12,7 +12,8 @@ export default function ReviewDetailModal({
   onApprove,
   onReject,
   onFlag,
-  onDelete
+  onDelete,
+  onRestore
 }) {
   if (!review) return null;
 
@@ -143,6 +144,7 @@ export default function ReviewDetailModal({
                 onReject={onReject}
                 onFlag={onFlag}
                 onDelete={onDelete}
+                onRestore={onRestore}
               />
               <button type="button" className="btn btn-outline-secondary" disabled={actionLoading} onClick={onClose}>
                 Đóng

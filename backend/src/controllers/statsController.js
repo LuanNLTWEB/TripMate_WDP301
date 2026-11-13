@@ -42,7 +42,7 @@ const getPlatformStats = async (req, res) => {
         { $match: { isDeleted: { $ne: true } } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
-      DestinationCategory.countDocuments(),
+      DestinationCategory.countDocuments({ isDeleted: { $ne: true } }),
       Tour.countDocuments({ isDeleted: { $ne: true } }),
       Itinerary.countDocuments(),
       Itinerary.aggregate([{ $unwind: '$activities' }, { $count: 'total' }]),

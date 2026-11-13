@@ -4,6 +4,7 @@
  *  - UC-121 Update Destination Status
  */
 import Destination from '../models/Destination.js';
+import DestinationCategory from '../models/DestinationCategory.js';
 import User from '../models/User.js';
 import Itinerary from '../models/Itinerary.js';
 import { validationResult } from 'express-validator';
@@ -11,6 +12,23 @@ import mongoose from 'mongoose';
 import { logActivity } from '../utils/activityLogger.js';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * UC-119 – Danh mục đã xóa mềm không được gán cho điểm đến nữa.
+ * Trả về null nếu hợp lệ, ngược lại trả về { status, message } để controller phản hồi.
+ */
+const validateAssignableCategory = async (categoryId) => {
+  if (!categoryId) return null;
+
+  const category = await DestinationCategory.findOne({
+    _id: categoryId,
+    isDeleted: { $ne: true }
+  });
+  if (!category) {
+    return { status: 404, message: 'Không tìm thấy danh mục đang hoạt động' };
+  }
+  return null;
+};
 
 const DESTINATION_STATUS_VALUES = ['active', 'inactive'];
 
@@ -44,6 +62,14 @@ export const createDestination = async (req, res) => {
   }
 
   try {
+    const categoryError = await validateAssignableCategory(req.body.categoryId);
+    if (categoryError) {
+      return res.status(categoryError.status).json({
+        success: false,
+        message: categoryError.message
+      });
+    }
+
     const destination = await Destination.create({
       name: req.body.name,
       description: req.body.description,
@@ -95,6 +121,16 @@ export const updateDestination = async (req, res) => {
   }
 
   try {
+    if (req.body.categoryId !== undefined) {
+      const categoryError = await validateAssignableCategory(req.body.categoryId);
+      if (categoryError) {
+        return res.status(categoryError.status).json({
+          success: false,
+          message: categoryError.message
+        });
+      }
+    }
+
     const destination = await Destination.findOne({
       _id: req.params.id,
       isDeleted: { $ne: true }

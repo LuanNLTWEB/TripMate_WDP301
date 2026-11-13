@@ -12,39 +12,6 @@ export const getRoles = async (req, res) => {
   }
 };
 
-export const createRole = async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: 'Tên vai trò là bắt buộc' });
-    }
-
-    const existing = await Role.findOne({ name: name.trim() });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Tên vai trò đã tồn tại' });
-    }
-
-    const role = await Role.create({
-      name: name.trim(),
-      description: description?.trim() || ''
-    });
-
-    await logActivity({
-      admin: req.user,
-      action: 'CREATE_ROLE',
-      targetType: 'Role',
-      targetId: role._id,
-      details: `Tạo vai trò mới "${role.name}"`,
-      req
-    });
-
-    res.status(201).json({ success: true, message: 'Tạo vai trò thành công', role });
-  } catch (error) {
-    console.error('Create role error:', error);
-    res.status(500).json({ success: false, message: 'Không thể tạo vai trò' });
-  }
-};
-
 export const updateRole = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);

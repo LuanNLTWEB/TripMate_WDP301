@@ -121,27 +121,101 @@ export const updateAccount = async (req, res) => {
     const account = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!account) return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
 
-    const { role } = req.body;
-    if (String(account._id) === String(req.user._id)) {
-      return res.status(400).json({ success: false, message: 'Không thể thay đổi vai trò của chính bạn' });
+    const { role, username, phone, dateOfBirth, gender } = req.body;
+
+    const isStaffOrProvider = account.role === 'staff' || account.role === 'tourProvider';
+    const oldUsername = account.username;
+    const oldRole = account.role;
+    const updates = {};
+    const logDetails = [];
+
+    // Đối với tài khoản Nhân viên (Staff) và Đối tác Tour (Tour Provider), Admin có quyền can thiệp sâu: username, phone, dateOfBirth
+    if (isStaffOrProvider) {
+      if (username !== undefined) {
+        const trimmedUsername = username.trim();
+        if (!trimmedUsername) {
+          return res.status(400).json({ success: false, message: 'Tên người dùng không được để trống' });
+        }
+        if (trimmedUsername !== account.username) {
+          const duplicate = await User.findOne({
+            _id: { $ne: account._id },
+            username: trimmedUsername
+          });
+          if (duplicate) {
+            return res.status(400).json({ success: false, message: 'Tên người dùng đã được sử dụng' });
+          }
+          updates.username = trimmedUsername;
+          logDetails.push(`tên người dùng từ "${account.username}" thành "${trimmedUsername}"`);
+        }
+      }
+
+      if (phone !== undefined) {
+        const trimmedPhone = phone.trim();
+        if (!trimmedPhone) {
+          return res.status(400).json({ success: false, message: 'Vui lòng nhập số điện thoại' });
+        }
+        if (trimmedPhone !== account.phone) {
+          updates.phone = trimmedPhone;
+          logDetails.push(`số điện thoại thành "${trimmedPhone}"`);
+        }
+      }
+
+      if (dateOfBirth !== undefined) {
+        const newDob = dateOfBirth ? new Date(dateOfBirth) : null;
+        const currentDobTime = account.dateOfBirth ? new Date(account.dateOfBirth).getTime() : null;
+        const newDobTime = newDob ? newDob.getTime() : null;
+        if (currentDobTime !== newDobTime) {
+          updates.dateOfBirth = newDob || undefined;
+          logDetails.push('ngày sinh');
+        }
+      }
+
+      if (gender !== undefined && ['male', 'female', 'other'].includes(gender)) {
+        if (gender !== account.gender) {
+          updates.gender = gender;
+        }
+      }
     }
 
-    const updatedAccount = await User.findByIdAndUpdate(
-      account._id,
-      { $set: { role } },
-      { new: true }
-    );
+    // Cập nhật vai trò (áp dụng khi role thay đổi)
+    if (role && role !== account.role) {
+      if (String(account._id) === String(req.user._id)) {
+        return res.status(400).json({ success: false, message: 'Không thể thay đổi vai trò của chính bạn' });
+      }
+      updates.role = role;
+      logDetails.push(`đổi vai trò từ "${oldRole}" sang "${role}"`);
+    }
 
-    await logActivity({
-      admin: req.user,
-      action: 'UPDATE_ACCOUNT_ROLE',
-      targetType: 'Account',
-      targetId: account._id,
-      details: `Đổi vai trò tài khoản "${account.username}" từ "${account.role}" sang "${role}"`,
-      req
+    if (Object.keys(updates).length > 0) {
+      const updatedAccount = await User.findByIdAndUpdate(
+        account._id,
+        { $set: updates },
+        { new: true }
+      );
+
+      await logActivity({
+        admin: req.user,
+        action: 'UPDATE_ACCOUNT_ROLE',
+        targetType: 'Account',
+        targetId: account._id,
+        details: logDetails.length > 0
+          ? `Cập nhật tài khoản "${oldUsername}": ${logDetails.join(', ')}`
+          : `Cập nhật tài khoản "${oldUsername}"`,
+        req
+      });
+
+      return res.json({
+        success: true,
+        message: 'Cập nhật tài khoản thành công',
+        account: toAccountDetailResponse(updatedAccount)
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Không có thay đổi nào được thực hiện',
+      account: toAccountDetailResponse(account)
     });
-
-    res.json({ success: true, message: 'Cập nhật tài khoản thành công', account: toAccountResponse(updatedAccount) });
   } catch (error) {
     console.error('Update account error:', error);
     res.status(500).json({ success: false, message: error.message || 'Không thể cập nhật tài khoản' });
