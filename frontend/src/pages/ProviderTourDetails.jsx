@@ -98,6 +98,7 @@ export default function ProviderTourDetails() {
         setCancellationPolicy(data.cancellationPolicy || '');
         setNotes(data.notes || '');
         setCapacityInput(String(data.availableSeats ?? 0));
+        setConfirmedSeats(res.confirmedSeats ?? 0);
       })
       .catch((err) => {
         setError(err.message || 'Không thể tải thông tin tour.');
