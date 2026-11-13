@@ -602,6 +602,14 @@ function Itinerary() {
   const duplicateItinerary = async () => {
     if (!duplicateModal.itinerary || saving) return;
 
+    if (duplicateModal.startDate) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (duplicateModal.startDate < todayStr) {
+        toast.error('Ngày bắt đầu lịch trình mới phải ở tương lai');
+        return;
+      }
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -2563,6 +2571,7 @@ function Itinerary() {
                       <CustomDatePicker
                         id="duplicate-itinerary-start-date"
                         name="startDate"
+                        min={new Date().toISOString().split('T')[0]}
                         value={duplicateModal.startDate}
                         placeholder="dd/mm/yyyy"
                         onChange={(e, val) => setDuplicateModal((prev) => ({ ...prev, startDate: val !== undefined ? val : e.target.value }))}

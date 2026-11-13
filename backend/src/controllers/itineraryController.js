@@ -930,6 +930,15 @@ export const duplicateItinerary = async (req, res) => {
     if (req.body.startDate) {
       const parsedStart = new Date(req.body.startDate);
       if (!isNaN(parsedStart.getTime())) {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        if (parsedStart < startOfToday) {
+          return res.status(400).json({
+            success: false,
+            message: 'Ngày bắt đầu lịch trình mới phải ở tương lai'
+          });
+        }
+
         if (source.startDate) {
           const originalStart = new Date(source.startDate);
           dateShiftMs = parsedStart.getTime() - originalStart.getTime();
