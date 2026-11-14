@@ -759,9 +759,10 @@ function Itinerary() {
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
-  // UC-151 – chỉ owner và collaborator quyền 'edit' được đánh dấu tiến độ;
-  // collaborator quyền 'view' chỉ được xem danh sách hành lý.
-  const canMarkPacked = Boolean(isOwner || myPermission === 'edit');
+  // UC-151 – owner và mọi collaborator (kể cả quyền 'view') đều được đánh dấu
+  // tiến độ đóng gói của chính mình theo BR-95; quyền 'view' chỉ không được
+  // thêm/sửa/xóa vật dụng trong danh sách.
+  const canMarkPacked = Boolean(isOwner || myPermission);
   const isCollaborator = Boolean(!isOwner && myPermission);
 
   // START UC-137 Leave Itinerary
@@ -1696,7 +1697,7 @@ function Itinerary() {
                                           disabled={!canMarkPacked || !item._id || isPackingItemUpdating(item._id)}
                                           title={
                                             !canMarkPacked
-                                              ? 'Bạn chỉ có quyền xem nên không thể đánh dấu vật dụng'
+                                              ? 'Bạn không có quyền đánh dấu vật dụng'
                                               : item.isPacked
                                                 ? 'Bỏ đánh dấu vật dụng'
                                                 : 'Đánh dấu vật dụng đã chuẩn bị'

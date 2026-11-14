@@ -143,7 +143,7 @@ router.delete('/:id/packing-items/:itemId', ...customerAccess, removePackingItem
 // END UC-150 Remove Packing Item
 // START UC-151 Mark Item as Packed
 // PATCH /api/itineraries/:id/packing-items/:itemId/status - đánh dấu/bỏ đánh dấu vật dụng
-// (chỉ owner và collaborator quyền 'edit'; collaborator quyền 'view' bị từ chối 403).
+// (mọi thành viên, kể cả collaborator quyền 'view', được tick tiến độ của chính mình theo BR-95).
 router.patch('/:id/packing-items/:itemId/status', ...customerAccess, updatePackingItemStatusValidation, updatePackingItemStatus);
 // END UC-151 Mark Item as Packed
 

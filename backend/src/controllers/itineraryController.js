@@ -1558,10 +1558,13 @@ export const removePackingItem = async (req, res) => {
 // START UC-151 Mark Item as Packed
 /**
  * Mark a packing item as packed or not packed.
- * Only the owner and collaborators with the 'edit' permission may mark the
- * item as packed for themselves. Collaborators with the 'view' permission can
- * only view the checklist. The state is stored per user in `packedBy` so each
- * member has an independent checklist progress.
+ *
+ * BR-95: every itinerary member — owner, edit-collaborator and view-collaborator
+ * — may check/uncheck packing items for themselves. A 'view' collaborator keeps
+ * read-only access to the itinerary content but still owns their personal
+ * checklist progress. The state is stored per user in `packedBy`, so a member's
+ * action never alters another member's progress.
+ *
  * @route PATCH /api/itineraries/:id/packing-items/:itemId/status
  * @access Customer
  */
@@ -1589,19 +1592,14 @@ export const updatePackingItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
     }
 
-    // Chỉ owner và collaborator quyền 'edit' được tự đánh dấu tiến độ của mình;
-    // collaborator quyền 'view' chỉ được xem danh sách hành lý (BR: chức năng Xem).
+    // BR-95: mọi thành viên của lịch trình — kể cả collaborator chỉ có quyền
+    // 'view' — đều được tự đánh dấu tiến độ đóng gói của chính mình. Thao tác
+    // chỉ sửa `packedBy` của người gọi nên không ảnh hưởng tiến độ thành viên
+    // khác; quyền 'view' chỉ giới hạn việc sửa nội dung lịch trình.
     if (!canView(itinerary, req.user._id)) {
       return res.status(403).json({
         success: false,
         message: 'Bạn không có quyền cập nhật trạng thái vật dụng trong lịch trình này'
-      });
-    }
-
-    if (!canEdit(itinerary, req.user._id)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ có quyền xem lịch trình này nên không thể cập nhật trạng thái vật dụng'
       });
     }
 
