@@ -35,8 +35,6 @@ const FavoriteDestinations = () => {
       const [destinationResult, tourResult] = await Promise.allSettled([
         destinationApi.getFavorites(),
         // START UC-30 View Favorite Tours
-        // Tải song song danh sách tour đã lưu; dùng allSettled để lỗi một bên
-        // không làm mất dữ liệu của bên còn lại.
         tourApi.getFavorites(),
         // END UC-30 View Favorite Tours
       ]);

@@ -215,8 +215,8 @@ export const tourCategoryApi = {
 
 export const itineraryApi = {
   listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
-  // START UC-48 View Personal Itinerary
-  // Tải các lịch trình khách sở hữu hoặc được chia sẻ.
+  // START UC-48 View Personal Itinerary (Personal)
+  // Tải các lịch trình khách sở hữu.
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   // END UC-48 View Personal Itinerary
   getBudget: (id) => apiRequest(`/itineraries/${id}/budget`, { method: 'GET' }),
@@ -269,8 +269,8 @@ export const itineraryApi = {
   removeTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours/${tourId}`, {
   method: 'DELETE'
 }),
-  // START UC-48 View Personal Itinerary
-  // Tải một lịch trình kèm các ngày và hoạt động.
+  // START UC-48 View Personal Itinerary (Shared)
+  // Tải lịch trình được chia sẽ
   getById: (id) => apiRequest(`/itineraries/${id}`, {
     method: 'GET'
   }),
@@ -756,7 +756,6 @@ export const complaintApi = {
   // END UC-67 View My Complaints
   cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
   // START UC-153 Search & Filter Customer Complaints
-  // Tải danh sách khiếu nại cho nhân viên theo từ khoá, trạng thái và trang.
   // Tải danh sách khiếu nại cho nhân viên theo từ khoá, trạng thái và trang.
   getManaged: (params = {}) => {
     const query = new URLSearchParams();

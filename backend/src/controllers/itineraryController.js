@@ -8,30 +8,6 @@ import Notification from '../models/Notification.js';
 const destinationFields = 'name location images status';
 const tourFields = 'title price images departureLocation destinationLocation location duration status';
 
-/**
- * Detect overlapping activities within an itinerary (same date, time overlap).
- * @param {Object} itinerary
- * @returns {Array<{first:{_id,title,startTime,endTime}, second:{_id,title,startTime,endTime}}>}
- */
-// START UC-53 Add Activity to Itinerary
-/**
- * UC-53 – phát hiện trùng lịch giữa các hoạt động (BR-62).
- *
- * So từng cặp hoạt động (O(n^2) vì số hoạt động trong một lịch trình nhỏ):
- * hai hoạt động bị coi là trùng khi CÙNG NGÀY và các khoảng [startTime, endTime)
- * giao nhau.
- *
- * Phần phức tạp:
- *  - date lưu dạng Date nhưng startTime/endTime lưu dạng chuỗi "HH:mm"; vì cùng
- *    định dạng 24 giờ, so sánh chuỗi cho kết quả đúng thứ tự thời gian mà không
- *    phải parse lại thành Date.
- *  - toDateString() chuẩn hóa phần giờ của date, nên hai hoạt động khác giờ trong
- *    cùng một ngày vẫn được coi là cùng ngày.
- *  - Điều kiện giao nhau dùng dạng a.start < b.end && b.start < a.end (nửa mở),
- *    nhờ vậy hai hoạt động nối tiếp nhau (kết thúc = bắt đầu) KHÔNG bị báo trùng.
- *  - Chỉ trả về cặp id/tên/khung giờ, không trả cả document, để response nhẹ và
- *    không lộ dữ liệu chi phí của hoạt động.
- */
 const timeToMinutes = (hhmm) => {
   const [h, m] = String(hhmm || '00:00').split(':').map(Number);
   return h * 60 + m;
@@ -94,7 +70,6 @@ const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) 
 
   return null;
 };
-
 // Trả về mọi cặp hoạt động bị trùng giờ trong cùng một ngày.
 const detectScheduleConflicts = (itinerary) => {
   const conflicts = [];
@@ -108,6 +83,7 @@ const detectScheduleConflicts = (itinerary) => {
         const overlapStart = a.startTime > b.startTime ? a.startTime : b.startTime;
         const overlapEnd = a.endTime < b.endTime ? a.endTime : b.endTime;
         const overlapMinutes = Math.max(0, timeToMinutes(overlapEnd) - timeToMinutes(overlapStart));
+        // Ghi nhận cặp hoạt động trùng giờ vào danh sách xung đột.
         conflicts.push({
           date: a.date,
           overlapStart,
@@ -121,8 +97,6 @@ const detectScheduleConflicts = (itinerary) => {
   }
   return conflicts;
 };
-
-// END UC-53 Add Activity to Itinerary
 
 /**
  * Return a plain-object itinerary with a computed `conflicts` field.
@@ -281,19 +255,7 @@ const findByIdPopulated = (id) => Itinerary.findById(id)
   .populate('collaborators.user', 'username email')
   .populate('comments.user', 'username email');
 
-/**
- * List personal itineraries owned by the authenticated customer.
- * @route GET /api/itineraries
- * @access Customer
- */
-// START UC-48 View Personal Itinerary
-/**
- * UC-48 – View Personal Itinerary (khách xem danh sách lịch trình của mình).
- *
- * Chỉ lấy lịch trình có owner là user đang đăng nhập (BR-67 – owner only), sắp
- * xếp theo updatedAt giảm dần, và map qua hydrateItinerary để mỗi item có sẵn
- * mảng conflicts (BR-62) cho UI cảnh báo trùng lịch ngay ở danh sách.
- */
+// START UC-48 View Personal Itinerary (Personal)
 export const listItineraries = async (req, res) => {
   try {
     const itineraries = await findAllPopulated({ owner: req.user._id }).sort({ updatedAt: -1 });
@@ -357,19 +319,7 @@ export const listSharedItineraries = async (req, res) => {
   }
 };
 
-/**
- * View an owned or shared personal itinerary.
- * @route GET /api/itineraries/:id
- * @access Customer
- */
-// START UC-48 View Personal Itinerary
-/**
- * UC-48 – View Personal Itinerary (xem chi tiết một lịch trình).
- *
- * canView cho phép owner hoặc collaborator đã được chấp nhận (BR-69); người
- * không có quyền nhận 404 thay vì 403 để không lộ id lịch trình.
- * Kết quả được hydrate để kèm danh sách conflicts mới nhất.
- */
+// START UC-48 View Personal Itinerary (Shared)
 export const getItinerary = async (req, res) => {
   try {
     const itinerary = await findByIdPopulated(req.params.id);
@@ -431,18 +381,7 @@ export const calculateTripBudget = async (req, res) => {
 };
 // END UC-59 Calculate Trip Budget
 
-/**
- * Return detected schedule conflicts for an itinerary.
- * @route GET /api/itineraries/:id/conflicts
- * @access Customer
- */
-// START UC-53 Add Activity to Itinerary
-/**
- * UC-53 – trả về danh sách trùng lịch hiện tại của một lịch trình.
- *
- * Dùng chung detectScheduleConflicts với addActivity, nhưng trả riêng để UI có
- * thể refresh cảnh báo mà không phải tải lại toàn bộ lịch trình.
- */
+// START UC-53 Add Activity to Itinerary - Check Conflict
 export const getActivityConflicts = async (req, res) => {
   try {
     const itinerary = await Itinerary.findById(req.params.id);
@@ -462,7 +401,7 @@ export const getActivityConflicts = async (req, res) => {
   }
 };
 
-// END UC-53 Add Activity to Itinerary
+// END UC-53 Add Activity to Itinerary  - Check Conflict
 
 // START UC-58 Check Time Conflict
 /**
@@ -535,25 +474,8 @@ export const checkTimeConflict = async (req, res) => {
 };
 // END UC-58 Check Time Conflict
 
-/**
- * Add an activity to an owned or edit-enabled shared itinerary.
- * @route POST /api/itineraries/:id/activities
- * @access Customer
- */
 // START UC-53 Add Activity to Itinerary
-/**
- * UC-53 – Add Activity to Itinerary (thêm hoạt động vào lịch trình).
- *
- * Luồng: validate -> tìm lịch trình + kiểm tra quyền sửa -> kiểm tra giờ hợp lệ
- * -> push hoạt động -> lưu -> trả lại lịch trình đã populate kèm conflicts.
- *
- * Phần phức tạp:
- *  - canEdit: owner luôn được sửa, collaborator chỉ khi permission = 'edit'
- *    (BR-69); người chỉ xem không thêm được hoạt động.
- *  - Chặn endTime <= startTime ngay tại server vì UI có thể bị bỏ qua.
- *  - Sau khi lưu phải đọc lại bằng findByIdPopulated rồi hydrate, nhờ vậy
- *    conflicts trong response đã tính cả hoạt động vừa thêm (BR-62).
- */
+
 export const addActivity = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -563,11 +485,11 @@ export const addActivity = async (req, res) => {
   try {
     const itinerary = await Itinerary.findById(req.params.id);
     if (!itinerary || !canEdit(itinerary, req.user._id)) {
-      return res.status(404).json({ success: false, message: 'Editable itinerary not found' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình có thể chỉnh sửa' });
     }
 
     if (req.body.endTime <= req.body.startTime) {
-      return res.status(400).json({ success: false, message: 'End time must be after start time' });
+      return res.status(400).json({ success: false, message: 'Giờ kết thúc phải sau giờ bắt đầu' });
     }
 
     itinerary.activities.push(req.body);
@@ -577,7 +499,7 @@ export const addActivity = async (req, res) => {
     return res.status(201).json({ success: true, itinerary: hydrateItinerary(populated, req.user._id) });
   } catch (error) {
     console.error('Add itinerary activity error:', error);
-    return res.status(500).json({ success: false, message: 'Unable to add activity' });
+    return res.status(500).json({ success: false, message: 'Không thể thêm hoạt động' });
   }
 };
 
@@ -1076,27 +998,8 @@ export const shareItinerary = async (req, res) => {
   }
 };
 
-/**
- * Leave a shared itinerary that the authenticated customer collaborates on.
- * The owner keeps ownership and uses removeCollaborator instead.
- * @route DELETE /api/itineraries/:id/leave
- * @access Customer (collaborator only)
- */
 // START UC-137 Leave Itinerary
-/**
- * UC-137 – Leave Itinerary (collaborator tự rời lịch trình được chia sẻ).
- *
- * Phần phức tạp:
- *  - BR-72 Sole Ownership: owner không được "rời" — phải chuyển quyền hoặc xóa
- *    lịch trình; response kèm reason 'owner_must_transfer_or_delete' để UI mở
- *    đúng luồng chuyển quyền.
- *  - Tìm collaborator theo cả hai dạng c.user (ObjectId thô hoặc đã populate)
- *    rồi splice theo index, thay vì filter, để giữ nguyên các phần tử khác.
- *  - markModified('collaborators') là bắt buộc vì mảng con bị sửa tại chỗ, nếu
- *    không Mongoose sẽ không phát hiện thay đổi.
- *  - Sau khi rời, gửi thông báo (Notification.insertMany) cho các thành viên còn
- *    lại; người rời lấy tên từ token nên không cần populate.
- */
+
 export const leaveItinerary = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -1119,9 +1022,7 @@ export const leaveItinerary = async (req, res) => {
 
       const currentUserId = String(req.user._id);
 
-      // BR-72 - Quy tắc sở hữu duy nhất: chủ sở hữu không thể rời lịch trình
-      // khi chưa chuyển quyền. Họ phải dùng luồng chuyển quyền riêng,
-      // hoặc xoá toàn bộ lịch trình.
+      // BR-72 - Chủ sở hữu không thể rời lịch trình khi chưa chuyển quyền
       if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
         return res.status(403).json({
           success: false,
@@ -1130,7 +1031,9 @@ export const leaveItinerary = async (req, res) => {
         });
       }
 
+      // Lấy danh sách cộng tác viên (mặc định rỗng nếu chưa có).
       const collaborators = Array.isArray(itinerary.collaborators) ? itinerary.collaborators : [];
+      // Tìm vị trí của người dùng hiện tại trong danh sách cộng tác viên.
       const index = collaborators.findIndex(
         (c) => String(c.user?._id || c.user) === currentUserId
       );
@@ -1142,13 +1045,13 @@ export const leaveItinerary = async (req, res) => {
         });
       }
 
+      // Xóa cộng tác viên hiện tại khỏi danh sách (xóa 1 phần tử tại vị trí index).
       collaborators.splice(index, 1);
       itinerary.collaborators = collaborators;
       itinerary.markModified('collaborators');
       await itinerary.save();
 
-      // người rời là người dùng đang đăng nhập; cộng tác viên ở đây còn là ObjectId thô
-      // vì lịch trình chưa được populate
+      // người rời là người dùng đang đăng nhập
       const leaverName = req.user.username || req.user.email || 'Một thành viên';
       const remainingRecipients = collaborators
         .map((c) => c.user?._id || c.user)
@@ -1223,25 +1126,8 @@ export const removeCollaborator = async (req, res) => {
 };
 
 
-/**
- * Chuyển quyền sở hữu lịch trình cho một cộng tác viên (BR-72)
- * @route PUT /api/itineraries/:id/owner
- * @access Customer (owner only)
- */
 // START UC-120 Transfer Itinerary Ownership
-/**
- * UC-120 – Transfer Itinerary Ownership (owner chuyển quyền sở hữu – BR-72).
- *
- * Phần phức tạp:
- *  - Chỉ owner hiện tại được chuyển quyền; người nhận phải đang là collaborator,
- *    nếu không trả 400 kèm eligibleOwners để UI hiện danh sách chọn hợp lệ.
- *  - Hoán đổi vai trò trong một lần lưu: owner mới bị bỏ khỏi collaborators,
- *    owner cũ được push lại với permission 'edit' — nhờ vậy lịch trình luôn có
- *    đúng một owner và không mất quyền của người chuyển.
- *  - markModified('collaborators') vì mảng bị thay đổi tại chỗ.
- *  - Thông báo chỉ gửi cho các thành viên còn lại (trừ owner mới) để tránh tự
- *    thông báo cho chính người vừa nhận quyền.
- */
+
 export const transferOwnership = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1262,7 +1148,7 @@ export const transferOwnership = async (req, res) => {
     if (!itinerary.collaborators) {
       itinerary.collaborators = [];
     }
-
+    // Chỉ những cộng tác viên hiện tại mới có thể được nâng lên thành chủ sở hữu.
     const newOwnerId = req.body.newOwnerId;
     const newOwnerCollab = itinerary.collaborators.find(
       (c) => String(c.user?._id || c.user) === String(newOwnerId)

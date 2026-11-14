@@ -504,7 +504,6 @@ export default function ProviderBookingRequests() {
   // END UC-86 Mark Booking as No-Show (Provider)
 
   // START UC-85 Payment & check-in handlers
-  // Mở popup xác nhận dùng chung thay cho window.confirm mặc định của trình duyệt.
   const openActionModal = (type, booking) => {
     if (!booking) return;
     setActionModal({ open: true, type, booking, error: '' });

@@ -19,17 +19,7 @@ const DECISIONS = [
   { value: 'rejected', label: 'Từ chối', icon: 'bi-x-circle', variant: 'danger' }
 ];
 
-// START UC-129 Update Tour Submission
-/**
- * Modal staff kiểm duyệt một yêu cầu duyệt tour.
- *
- * Phức tạp:
- *  - Nội dung cần duyệt nằm trên tour được populate trong `submission.tourId`, không
- *    phải bản snapshot trên bài gửi; tour đã bị xóa thì modal báo rõ để staff không
- *    duyệt nhầm một yêu cầu mồ côi.
- *  - Chỉ bài 'pending' mới hiện bộ nút quyết định; bài đã xử lý chỉ còn chế độ xem lại.
- *  - Duyệt sẽ đổi tour sang 'active' (mở bán) nên nút được gắn nhãn rõ "Duyệt & mở bán".
- */
+// START UC-129 Update Tour Submission (Staff)
 export default function TourSubmissionReviewModal({ open, submission, onClose, onReviewed }) {
   const toast = useToast();
   const [decision, setDecision] = useState('approved');
@@ -71,6 +61,7 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
     setError('');
 
     try {
+      // Staff Check tour submission
       const response = await tourSubmissionApi.update(submission._id, {
         status: decision,
         reviewNote: note.trim()
@@ -294,4 +285,4 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
     </>
   );
 }
-// END UC-129 Update Tour Submission
+// END UC-129 Update Tour Submission  (Staff)

@@ -31,12 +31,9 @@ const REPORTED_STATUS_OPTIONS = [
   { value: 'rejected', label: 'Đã từ chối' }
 ];
 
-// START UC-95 Restore Review
-// Các đánh giá đã xóa mềm: danh sách không lọc theo trạng thái kiểm duyệt.
 const DELETED_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả đã xóa' }
 ];
-// END UC-95 Restore Review
 
 function ReportSummary({ summary }) {
   const cards = [
@@ -300,11 +297,6 @@ export default function ManagementReviews() {
   };
 
   // START UC-95 Restore Review
-  /**
-   * Khôi phục một đánh giá đã bị xóa mềm.
-   * Phức tạp: nếu bản ghi vừa khôi phục là bản cuối của trang hiện tại thì lùi
-   * một trang, còn không thì refresh tại chỗ để danh sách "đã xóa" và số đếm khớp.
-   */
   const handleRestore = async (review) => {
     setActionLoading(true);
     try {

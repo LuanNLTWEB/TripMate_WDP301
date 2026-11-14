@@ -34,19 +34,6 @@ const getStatusMeta = (status) => {
 };
 
 // START UC-130 View Tour Submission List
-/**
- * Trang danh sách yêu cầu duyệt tour dùng chung cho provider và staff.
- *
- * Phức tạp:
- *  - Một yêu cầu chỉ trỏ tới tour (`submission.tourId` đã populate), nên mọi cột nội
- *    dung (tên, ảnh, giá, hành trình) đọc từ tour; tour bị xóa thì hiện cảnh báo thay
- *    vì làm vỡ bảng.
- *  - Phạm vi dữ liệu do server quyết định theo token (provider: của mình, staff: tất cả);
- *    UI chỉ khác cột "Nhà cung cấp" và bộ thao tác.
- *  - Mở từ nút "Gửi duyệt" ở trang quản lý tour (`?tour=<id>`) sẽ bật form gửi duyệt
- *    với tour đó được chọn sẵn.
- *  - Ô tìm kiếm debounce 300ms; sau mỗi thao tác đều tải lại đúng trang hiện tại.
- */
 export default function TourSubmissions() {
   const { user } = useAuth();
   const toast = useToast();
@@ -84,6 +71,7 @@ export default function TourSubmissions() {
   const loadSubmissions = async (searchTerm = search, selectedStatus = status, page = currentPage) => {
     setIsLoading(true);
     try {
+      // UC-130 View Tour Submission List
       const response = await tourSubmissionApi.list({
         search: searchTerm,
         status: selectedStatus,
@@ -149,6 +137,7 @@ export default function TourSubmissions() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      // UC-131 Delete Tour Submission
       const response = await tourSubmissionApi.remove(deleteTarget._id);
       toast.success(response.message || 'Đã thu hồi yêu cầu duyệt tour.');
       setDeleteTarget(null);
@@ -356,7 +345,7 @@ export default function TourSubmissions() {
                                   <i className="bi bi-box-arrow-up-right"></i>
                                 </Link>
                               )}
-                              {/* START UC-129 Update Tour Submission */}
+                              {/*UC-129 Update Tour Submission Button*/}
                               <button
                                 type="button"
                                 className="management-action-btn btn-edit"
@@ -367,8 +356,7 @@ export default function TourSubmissions() {
                               >
                                 <i className="bi bi-pencil-square"></i>
                               </button>
-                              {/* END UC-129 Update Tour Submission */}
-                              {/* START UC-131 Delete Tour Submission */}
+                              {/*UC-131 Delete Tour Submission Button*/}
                               <button
                                 type="button"
                                 className="management-action-btn text-danger border-0 bg-transparent px-2"

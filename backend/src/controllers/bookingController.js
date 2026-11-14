@@ -685,13 +685,6 @@ export const completeBooking = async (req, res) => {
 // END UC-79 Complete Booking
 
 // START UC-123 Export Provider Booking Report
-/**
- * UC-123 - Export Provider Booking Report.
- *
- * Xuất danh sách đơn đặt tour của nhà cung cấp ra file Excel (.xlsx) chuyên nghiệp,
- * đồng bộ định dạng bảng biểu, màu sắc thương hiệu và thống kê tổng kết tương tự
- * mẫu Quản lý khách hàng du lịch (Passenger Manifest).
- */
 export const exportProviderBookingReport = async (req, res) => {
   const { from, to } = req.query;
   const query = {};
@@ -1081,21 +1074,6 @@ export const getBookingById = async (req, res) => {
 const FREE_CANCEL_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 // START UC-74 Cancel Booking
-/**
- * UC-74 – Cancel Booking (khách hàng tự hủy đơn đặt tour của mình).
- *
- * Luồng: kiểm tra dữ liệu đầu vào -> tìm booking -> chặn hủy đơn của người khác
- * -> chặn hủy lần hai -> kiểm tra còn đủ 48 giờ trước ngày khởi hành -> đánh dấu
- * cancelled, lưu lý do/thời điểm hủy -> trả lại số chỗ cho tour.
- *
- * Phần phức tạp:
- *  - FREE_CANCEL_WINDOW_MS (BR-88): so sánh hiệu số giữa departureDate và hiện tại
- *    theo mili-giây thay vì theo ngày, để mốc 48 giờ chính xác đến giờ/phút.
- *  - Trả lại chỗ (BR-57): cộng numberOfPeople vào availableSeats của tour ngay sau
- *    khi lưu booking, nhờ vậy sức chứa của tour không bị lệch với danh sách đơn.
- *  - Không tính hoàn tiền ở đây: hệ thống chưa có module thanh toán tách riêng,
- *    totalPrice chỉ được đọc lại từ booking để đối soát sau này.
- */
 export const cancelBooking = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1133,15 +1111,14 @@ export const cancelBooking = async (req, res) => {
       });
     }
 
-    // Đơn đã bị từ chối (provider reject) không còn hiệu lực, không được hủy thêm
-    // (và tránh việc trả chỗ hai lần: reject đã trả chỗ, cancel lại trả chỗ).
+    // Đơn đã bị từ chối không còn hiệu lực, không được hủy thêm
     if (booking.status === 'rejected') {
       return res.status(409).json({
         success: false,
         message: 'Đơn đặt tour này đã bị từ chối, không thể hủy'
       });
     }
-
+    // tính số giờ còn lại cho đến ngày khởi hành của đơn
     const hoursToDeparture =
       (new Date(booking.departureDate).getTime() - Date.now()) / (60 * 60 * 1000);
 
@@ -1158,7 +1135,6 @@ export const cancelBooking = async (req, res) => {
     booking.cancelledAt = new Date();
     await booking.save({ validateBeforeSave: false });
 
-    // Số chỗ còn lại được tính động từ các booking, không cần cập nhật tour.availableSeats.
     const populated = await Booking.findById(id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
       .populate('customerId', 'username email phone');

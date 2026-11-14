@@ -72,8 +72,8 @@ const router = Router();
 const customerAccess = [protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY)];
 
 router.post('/', ...customerAccess, itineraryValidation, createItinerary);
-// START UC-48 View Personal Itinerary
-// GET /api/itineraries - danh sách lịch trình thuộc sở hữu của khách đang đăng nhập.
+// START UC-48 View Personal Itinerary (Personal)
+// GET /api/itineraries - danh sách lịch trình (personal).
 router.get('/', ...customerAccess, listItineraries);
 // END UC-48 View Personal Itinerary
 router.get('/shared', ...customerAccess, listSharedItineraries);
@@ -90,8 +90,8 @@ router.post('/:id/conflicts/check', ...customerAccess, checkTimeConflictValidati
 // START UC-59 Calculate Trip Budget
 router.get('/:id/budget', ...customerAccess, itineraryIdValidation, calculateTripBudget);
 // END UC-59 Calculate Trip Budget
-// START UC-48 View Personal Itinerary
-// GET /api/itineraries/:id - owner hoặc collaborator được xem chi tiết.
+// START UC-48 View Personal Itinerary (Shared)
+// GET /api/itineraries/:id - xem chi tiết một lịch trình (shared).
 router.get('/:id', ...customerAccess, itineraryIdValidation, getItinerary);
 // END UC-48 View Personal Itinerary
 router.put('/:id', ...customerAccess, updateItineraryValidation, updateItinerary);

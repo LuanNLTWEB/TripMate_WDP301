@@ -186,6 +186,7 @@ export default function MyComplaints() {
     return filteredComplaints.slice(start, start + PAGE_SIZE);
   }, [filteredComplaints, currentPage]);
 
+  // UC-67 View My Complaints
   // Tải khiếu nại của khách hàng đang đăng nhập.
   const load = async () => {
     setLoading(true);

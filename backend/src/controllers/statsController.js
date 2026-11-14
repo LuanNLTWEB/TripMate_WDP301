@@ -12,52 +12,38 @@ import Booking from '../models/Booking.js';
  * @access Staff
  */
 // START UC-102 View Platform Statistics
-/**
- * UC-102 – View Platform Statistics (staff xem số liệu tổng hợp của nền tảng).
- *
- * Phần phức tạp:
- *  - Toàn bộ truy vấn đếm/aggregate chạy song song bằng Promise.all để giảm thời
- *    gian chờ; mỗi truy vấn là một phép đếm độc lập nên không phụ thuộc nhau.
- *  - Các số liệu điểm đến đều lọc isDeleted: { $ne: true } để khớp với danh mục
- *    đang hiển thị (BR-36); riêng tour/itinerary đếm toàn bộ vì phục vụ thống kê.
- *  - Số hoạt động dùng aggregate $unwind + $count vì activities là mảng con,
- *    countDocuments không đếm được phần tử bên trong.
- *  - Ba danh sách "recent" bị giới hạn 5 bản ghi và chỉ select các field cần cho
- *    bảng tổng quan, tránh trả cả document nặng.
- *  - popularCount là truy vấn bổ sung chạy sau Promise.all (phụ thuộc dữ liệu đã
- *    có, không thể gộp vào cùng batch).
- */
 const getPlatformStats = async (req, res) => {
   try {
+    // Chạy song song tất cả truy vấn thống kê để giảm thời gian phản hồi.
     const [totalUsers, usersByRole, totalDestinations, destinationsByStatus, totalCategories,
       totalTours, totalItineraries, activitiesTotal, recentUsers, recentDestinations, recentItineraries] = await Promise.all([
-      User.countDocuments(),
-      User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]),
-      Destination.countDocuments({ isDeleted: { $ne: true } }),
+      User.countDocuments(), // Tổng số người dùng.
+      User.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }]), // Phân bố người dùng theo vai trò.
+      Destination.countDocuments({ isDeleted: { $ne: true } }), // Tổng số điểm đến chưa xóa.
       Destination.aggregate([
         { $match: { isDeleted: { $ne: true } } },
-        { $group: { _id: '$status', count: { $sum: 1 } } }
+        { $group: { _id: '$status', count: { $sum: 1 } } } // Phân bố điểm đến theo trạng thái.
       ]),
-      DestinationCategory.countDocuments({ isDeleted: { $ne: true } }),
-      Tour.countDocuments({ isDeleted: { $ne: true } }),
-      Itinerary.countDocuments(),
-      Itinerary.aggregate([{ $unwind: '$activities' }, { $count: 'total' }]),
-      User.find().sort({ createdAt: -1 }).limit(5).select('username email role createdAt'),
-      Destination.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).limit(5).select('name location status isPopular averageRating createdAt'),
-      Itinerary.find().sort({ updatedAt: -1 }).limit(5).populate('owner', 'username email').select('title owner startDate endDate budget updatedAt')
+      DestinationCategory.countDocuments({ isDeleted: { $ne: true } }), // Tổng số danh mục điểm đến.
+      Tour.countDocuments({ isDeleted: { $ne: true } }), // Tổng số tour chưa xóa.
+      Itinerary.countDocuments(), // Tổng số lịch trình.
+      Itinerary.aggregate([{ $unwind: '$activities' }, { $count: 'total' }]), // Tổng số hoạt động trong các lịch trình.
+      User.find().sort({ createdAt: -1 }).limit(5).select('username email role createdAt'), // 5 người dùng mới nhất.
+      Destination.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).limit(5).select('name location status isPopular averageRating createdAt'), // 5 điểm đến mới nhất.
+      Itinerary.find().sort({ updatedAt: -1 }).limit(5).populate('owner', 'username email').select('title owner startDate endDate budget updatedAt') // 5 lịch trình mới cập nhật.
     ]);
 
     return res.json({
       success: true,
       stats: {
-        users: {
+        users: { // Thống kê người dùng.
           total: totalUsers,
           byRole: usersByRole
         },
-        destinations: {
+        destinations: { // Thống kê điểm đến.
           total: totalDestinations,
           byStatus: destinationsByStatus,
-          popularCount: await Destination.countDocuments({
+          popularCount: await Destination.countDocuments({ // Số điểm đến nổi bật.
             isPopular: true,
             isDeleted: { $ne: true }
           })
@@ -66,11 +52,11 @@ const getPlatformStats = async (req, res) => {
         tours: {
           total: totalTours
         },
-        itineraries: {
+        itineraries: { // Thống kê lịch trình.
           total: totalItineraries,
-          activitiesTotal: activitiesTotal[0]?.total || 0
+          activitiesTotal: activitiesTotal[0]?.total || 0 // Tổng số hoạt động.
         },
-        recent: {
+        recent: { // Dữ liệu mới nhất để hiển thị.
           users: recentUsers,
           destinations: recentDestinations,
           itineraries: recentItineraries

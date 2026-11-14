@@ -15,16 +15,7 @@ const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
 }).format(Number(value) || 0);
 
 // START UC-40 Create Tour Departure
-/**
- * UC-40 – Create Tour Departure (modal tạo lịch khởi hành cho tour của provider).
- *
- * Phần phức tạp:
- *  - validate() lặp lại kiểm tra lead time 24 giờ (BR-47) và số chỗ/giá giống
- *    createDepartureValidation để báo lỗi ngay tại ô nhập.
- *  - availableSeats mặc định lấy theo sức chứa hiện tại của tour; useEffect nạp
- *    lại toàn bộ form mỗi lần mở modal để không dính dữ liệu của tour trước.
- *  - price để trống nghĩa là dùng giá tour: payload gửi null thay vì chuỗi rỗng.
- */export default function CreateTourDepartureModal({ open, onClose, tour, onCreated }) {
+export default function CreateTourDepartureModal({ open, onClose, tour, onCreated }) {
   const toast = useToast();
   const [departureDate, setDepartureDate] = useState('');
   const [availableSeats, setAvailableSeats] = useState('');
@@ -36,6 +27,7 @@ const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
   const tourId = tour?._id;
   const tourPrice = tour?.price ?? 0;
 
+  // Reset toàn bộ form mỗi lần mở modal để không dính dữ liệu của tour trước.
   useEffect(() => {
     if (open) {
       setDepartureDate('');
@@ -101,7 +93,7 @@ const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
         price: price === '' ? undefined : Number(price),
         note: note.trim()
       };
-
+      // UC-40 Create Tour Departure
       const res = await departureApi.create(payload);
       toast.success(res.message || 'Tạo lịch khởi hành thành công!');
       if (onCreated) onCreated(res.data);
@@ -187,21 +179,13 @@ const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
                     </label>
                     <input
                       id="departure-price"
-                      type="number"
-                      min="0"
-                      step="1000"
                       className={`form-control ${errors.price ? 'is-invalid' : ''}`}
                       placeholder={String(tourPrice)}
-                      // Text input for full control over Vietnamese number formatting
-                      // Raw numeric value stored in price state
-// Display formatted value in input, onChange strips non-digits for API
                       value={formatVnd(Number(price))}
                       onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
-                      // Allow only digits input, formatted display
-                      // onInput maintains formatted display
                       type="text"
                       inputMode="numeric"
-                      // Allow empty (for using tour price)
+                      // Để trống để dùng giá tour
                       disabled={submitting}
                     />
                     {errors.price

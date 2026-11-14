@@ -114,13 +114,6 @@ function Itinerary() {
   const { setReceivedInvites, openMembersModal, removingCollaboratorId, handleRemoveCollaborator } = collab;
 
   // START UC-48 View Personal Itinerary
-  /**
-   * Tải song song lịch trình của mình, lịch trình được chia sẻ, danh mục điểm đến,
-   * tour đang active và lời mời đang chờ.
-   * Phức tạp: chọn sẵn lịch trình đầu tiên của chính mình làm mặc định; điểm đến
-   * inactive và tour bị tạm ngưng bị loại khỏi danh sách chọn để không thêm vào
-   * lịch trình được (BR-32).
-   */
   const loadItineraries = async () => {
     if (!isAuthenticated || user?.role !== 'customer') {
       setLoading(false);
@@ -774,12 +767,6 @@ function Itinerary() {
   const isCollaborator = Boolean(!isOwner && myPermission);
 
   // START UC-137 Leave Itinerary
-  /**
-   * Collaborator tự rời lịch trình được chia sẻ.
-   * Phức tạp: phải xóa lịch trình khỏi cả hai danh sách (của tôi / được chia sẻ)
-   * rồi bỏ chọn, vì sau khi rời người dùng không còn quyền xem lịch trình đó nữa;
-   * nút chỉ hiện với collaborator, owner bị backend chặn (BR-72).
-   */
   const handleLeaveItinerary = async () => {
     if (!selected) return;
 
@@ -802,12 +789,6 @@ function Itinerary() {
   // END UC-137 Leave Itinerary
 
   // START UC-120 Transfer Itinerary Ownership
-  /**
-   * UC-120 (BR-72) - owner chọn một collaborator làm chủ sở hữu mới; chủ cũ trở
-   * thành collaborator quyền 'edit'.
-   * Phức tạp: sau khi chuyển phải loadItineraries() để vai trò của cả hai người
-   * được tính lại từ dữ liệu server (nút chuyển quyền biến mất với chủ cũ).
-   */
   const handleTransferOwnership = async () => {
     if (!selected || !pendingTransferOwnerId) return;
     try {
@@ -1928,7 +1909,6 @@ function Itinerary() {
                           noValidate
                           className={`card border-0 shadow-sm transition-all ${editingActivityId ? 'border border-2 border-primary shadow' : ''}`}
                           onSubmit={handleActivitySubmit}
-                          noValidate
                         >
                           <div className="card-body p-4">
                             <div className="d-flex align-items-center justify-content-between mb-3">

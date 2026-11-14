@@ -178,19 +178,6 @@ export const updateCategory = async (req, res) => {
 // END UC-117 Update Destination Category
 
 // START UC-119 Delete Destination Category
-/**
- * UC-119 – Delete Destination Category (staff xóa danh mục điểm đến).
- *
- * Xóa mềm thay vì xóa cứng:
- *  - giữ document để nhật ký hoạt động còn đối chiếu được và có thể khôi phục;
- *  - điểm đến đã xóa mềm vẫn giữ categoryId, nếu xóa cứng danh mục thì lúc khôi
- *    phục điểm đến sẽ trỏ tới một danh mục không còn tồn tại.
- *
- * Phần phức tạp:
- *  - Kiểm tra tham chiếu trên CẢ điểm đến đã xóa mềm (không chỉ điểm đến đang sống)
- *    để không tạo ra tham chiếu treo; thông báo tổng số điểm đến đang tham chiếu.
- *  - Ghi log SAU khi lưu thành công, dùng tên đã chụp trước đó.
- */
 export const deleteCategory = async (req, res) => {
   try {
     const category = await DestinationCategory.findOne({

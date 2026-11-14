@@ -99,12 +99,6 @@ function StaffDestinations() {
   };
 
   // START UC-121 Update Destination Status
-  /**
-   * Đảo trạng thái active/inactive của một điểm đến.
-   * Phần phức tạp: trạng thái gửi đi được suy ra từ trạng thái hiện tại (toggle),
-   * nên UI không cần biết trước giá trị đích; sau khi server trả về thì tải lại
-   * danh sách để badge và bộ lọc luôn khớp dữ liệu mới.
-   */
   const handleStatusChange = async (destination) => {
     try {
       const response = await destinationApi.updateStatus(

@@ -30,15 +30,6 @@ const statusHint = (status) => {
 };
 
 // START UC-128 Create Tour Submission
-/**
- * Modal gửi yêu cầu duyệt cho một tour nháp (UC-128) và cập nhật ghi chú gửi lại (UC-129).
- *
- * Phức tạp:
- *  - Nội dung tour nằm ở collection Tour, nên form chỉ chọn tour + ghi chú; danh sách
- *    tour được lọc client-side về các trạng thái còn gửi duyệt được (draft/needs_revision/rejected).
- *  - Nếu mở từ nút "Gửi duyệt" ở trang quản lý tour (`?tour=<id>`), tour đó được chọn sẵn.
- *  - Chế độ sửa chỉ cho đổi ghi chú; tour đã duyệt thì nút gửi đã bị vô hiệu ở danh sách.
- */
 export default function TourSubmissionFormModal({
   open,
   mode = 'create',
@@ -109,6 +100,8 @@ export default function TourSubmissionFormModal({
     setError('');
 
     try {
+      // UC-128 Create Tour Submission
+      // UC-129 Update Tour Submission
       const response = isEdit
         ? await tourSubmissionApi.update(submission._id, { providerNote: providerNote.trim() })
         : await tourSubmissionApi.create({ tourId, providerNote: providerNote.trim() });

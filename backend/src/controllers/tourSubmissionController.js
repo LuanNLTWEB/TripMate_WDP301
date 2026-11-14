@@ -95,22 +95,6 @@ const clearTourReviewFlags = (tour) => {
 };
 
 // START UC-128 Create Tour Submission
-/**
- * UC-128 – Create Tour Submission (provider gửi yêu cầu xuất bản một tour nháp).
- *
- * Tour do provider tạo ra nằm ở trạng thái 'draft' và chưa hiển thị cho khách.
- * Endpoint này tạo một TourSubmission 'pending' trỏ tới tour và đẩy tour sang
- * 'pending' để staff thấy trong hàng đợi kiểm duyệt.
- *
- * Phần phức tạp:
- *  - Chỉ nhận tour thuộc sở hữu của provider và đang ở trạng thái được phép gửi
- *    ('draft'/'needs_revision'/'rejected'); tour đang active/pending bị chặn 409.
- *  - Chặn gửi trùng: một tour chỉ có tối đa một bài 'pending' tại một thời điểm.
- *  - Tour chưa có chỗ trống (availableSeats < 1, ví dụ tour vừa nhân bản ở UC-24) bị
- *    chặn 409: mở bán tour 0 chỗ chỉ khiến khách thấy tour mà không đặt được.
- *  - Đổi tour.status và tạo submission không nằm trong transaction (Mongo standalone),
- *    nên nếu bước lưu tour lỗi thì submission vừa tạo được xóa bù để tránh trạng thái lửng.
- */
 export const createTourSubmission = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -207,21 +191,9 @@ export const createTourSubmission = async (req, res) => {
 // END UC-128 Create Tour Submission
 
 // START UC-130 View Tour Submission List
-/**
- * UC-130 – View Tour Submission List (staff và provider xem danh sách bài gửi).
- *
- * Cùng một endpoint nhưng phạm vi dữ liệu phụ thuộc vai trò:
- *  - provider chỉ thấy bài gửi của chính mình,
- *  - staff thấy toàn bộ để kiểm duyệt.
- *
- * Phần phức tạp:
- *  - Tìm kiếm theo tên/địa điểm của tour nên phải lọc gián tiếp: query trước các tour
- *    khớp từ khóa rồi dùng `tourId: { $in: [...] }` (không search được field populate).
- *  - Các điều kiện gom vào $and để filter tìm kiếm/trạng thái không ghi đè providerId.
- *  - Từ khóa được escape trước khi đưa vào RegExp để tránh lỗi regex từ input.
- */
 export const getTourSubmissions = async (req, res) => {
   try {
+    // Lấy tham số truy vấn: tìm kiếm, trạng thái, mã tour, phân trang.
     const {
       search,
       status = 'all',
@@ -230,22 +202,24 @@ export const getTourSubmissions = async (req, res) => {
       limit = 10
     } = req.query;
 
+    // Bắt đầu bộ lọc: chỉ lấy bài gửi chưa bị xóa mềm.
     const filters = [{ isDeleted: { $ne: true } }];
 
     if (req.user.role === 'tourProvider') {
+      // Nhà cung cấp chỉ xem bài gửi của chính mình.
       filters.push({ providerId: req.user._id });
     } else {
       // Staff: phục hồi các tour 'pending' chưa có bài gửi trước khi liệt kê.
       await repairOrphanPendingTourSubmissions();
     }
 
-    // Lọc theo tour cụ thể: dùng cho màn duyệt tour khi chỉ có tourId mà chưa biết
-    // mã bài gửi tương ứng.
+    // Lọc theo tour cụ thể nếu có tourId.
     if (tourId) {
       filters.push({ tourId });
     }
 
     if (search) {
+      // Tìm kiếm theo tên tour/điểm đến/điểm khởi hành (không phân biệt hoa thường).
       const safeSearch = escapeRegex(search);
       const matchedTours = await Tour.find({
         ...(req.user.role === 'tourProvider' ? { providerId: req.user._id } : {}),
@@ -260,22 +234,23 @@ export const getTourSubmissions = async (req, res) => {
     }
 
     if (status && status !== 'all') {
+      // Lọc theo trạng thái bài gửi (pending/approved/rejected/...).
       filters.push({ status });
     }
 
     const query = { $and: filters };
-    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1); // Trang hiện tại (tối thiểu 1).
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100); // Số bản ghi mỗi trang (1-100).
 
     const [total, submissions] = await Promise.all([
-      TourSubmission.countDocuments(query),
+      TourSubmission.countDocuments(query), // Tổng số bài gửi khớp bộ lọc.
       TourSubmission.find(query)
         .populate(TOUR_POPULATE)
         .populate('providerId', 'username email phone')
         .populate('reviewedBy', 'username email')
-        .sort({ createdAt: -1 })
-        .skip((pageNum - 1) * limitNum)
-        .limit(limitNum)
+        .sort({ createdAt: -1 }) // Mới nhất lên đầu.
+        .skip((pageNum - 1) * limitNum) // Bỏ qua các bản ghi của các trang trước.
+        .limit(limitNum) // Giới hạn số bản ghi trả về.
     ]);
 
     return res.status(200).json({
@@ -344,25 +319,6 @@ export const getTourSubmissionById = async (req, res) => {
 };
 
 // START UC-129 Update Tour Submission
-/**
- * UC-129 – Update Tour Submission (provider cập nhật yêu cầu, staff cập nhật trạng thái duyệt).
- *
- * Một endpoint phục vụ hai vai trò:
- *  - Provider: sửa ghi chú gửi kèm; nếu bài đang 'needs_revision'/'rejected' thì lần
- *    cập nhật này được coi là gửi lại, đưa bài gửi và tour về 'pending'.
- *  - Staff: duyệt một bài đang 'pending' sang approved/rejected/needs_revision,
- *    bắt buộc có lý do khi từ chối/yêu cầu chỉnh sửa.
- *
- * Phần phức tạp:
- *  - Trạng thái công khai thực sự nằm trên Tour, nên duyệt bài gửi phải cập nhật
- *    tour tương ứng: approved → 'active' (khách mới thấy), rejected → 'rejected',
- *    needs_revision → 'needs_revision' kèm revisionNote cho provider đọc.
- *  - Khi duyệt, các cờ từ chối/tạm ngưng cũ trên tour được dọn sạch để tour không
- *    còn hiển thị lý do cũ ở màn quản lý.
- *  - reviewNote của bài gửi được giữ lại sau khi provider gửi lại để họ đọc lý do cũ.
- *  - Cả lúc provider gửi lại lẫn lúc staff duyệt đều kiểm tra availableSeats >= MIN_TOUR_SEATS
- *    để không mở bán tour mà createBooking sẽ chặn mọi đơn.
- */
 export const updateTourSubmission = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -569,18 +525,6 @@ export const updateTourSubmission = async (req, res) => {
 // END UC-129 Update Tour Submission
 
 // START UC-131 Delete Tour Submission
-/**
- * UC-131 – Delete Tour Submission (provider thu hồi yêu cầu duyệt của mình).
- *
- * Xóa mềm để giữ dấu vết kiểm duyệt: set isDeleted/deletedAt/deletedBy thay vì
- * xóa khỏi DB, sau đó mọi truy vấn danh sách đều bỏ qua bài đã xóa.
- *
- * Phần phức tạp:
- *  - Chỉ chủ sở hữu được xóa; staff/người khác bị chặn (route đã giới hạn role).
- *  - Bài đã được duyệt thì không cho xóa vì tour đã mở bán; trả 409 kèm hướng dẫn.
- *  - Thu hồi khi tour vẫn đang 'pending' phải đưa tour về 'draft', nếu không tour sẽ
- *    kẹt ở trạng thái chờ duyệt mà không còn bài gửi nào trong hàng đợi staff.
- */
 export const deleteTourSubmission = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

@@ -221,12 +221,6 @@ const TourDetails = () => {
   };
 
   // START UC-25 View Tour Details
-  /**
-   * Tải chi tiết tour khi mở trang.
-   * Phức tạp: cờ isMounted chặn setState sau khi component đã unmount (đổi tour
-   * nhanh), tránh cảnh báo memory leak; lỗi 404 của tour chưa duyệt được hiển thị
-   * như lỗi tải chứ không phải trang trắng.
-   */
   useEffect(() => {
     let isMounted = true;
 

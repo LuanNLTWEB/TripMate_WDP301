@@ -1,24 +1,6 @@
 import mongoose from 'mongoose';
 
 // START UC-128 Create Tour Submission
-/**
- * TourSubmission – yêu cầu xin duyệt để xuất bản một tour đang ở trạng thái nháp.
- *
- * Luồng nghiệp vụ (module Tour Submission & Approval):
- *  - Provider tạo tour (Tour.status = 'draft') và chỉnh sửa nội dung thoải mái,
- *    khách hàng chưa nhìn thấy tour nháp.
- *  - Khi muốn mở bán, provider tạo một TourSubmission trỏ tới tour đó; tour chuyển
- *    sang 'pending' và staff thấy trong hàng đợi kiểm duyệt.
- *  - Staff duyệt → tour chuyển 'active' (khách hàng mới thấy). Từ chối/yêu cầu chỉnh
- *    sửa → tour về 'rejected'/'needs_revision' để provider sửa rồi gửi lại.
- *  - Bài gửi bị xóa → tour quay về 'draft'.
- *
- * Phần phức tạp:
- *  - Nội dung tour KHÔNG snapshot trong submission; submission chỉ là yêu cầu duyệt
- *    trỏ tới `tourId`, nên dữ liệu duy nhất nằm ở collection Tour (tránh lệch dữ liệu).
- *  - `isDeleted` là xóa mềm để giữ dấu vết; mọi query lọc `isDeleted: { $ne: true }`.
- *  - Index (tourId, status) phục vụ việc chặn gửi trùng một tour đang chờ duyệt.
- */
 const tourSubmissionSchema = new mongoose.Schema({
   tourId: {
     type: mongoose.Schema.Types.ObjectId,

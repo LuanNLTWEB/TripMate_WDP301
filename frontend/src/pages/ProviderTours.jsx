@@ -21,13 +21,6 @@ const MIN_TOUR_SEATS = 1;
 const SEATS_MISSING_MESSAGE = 'Tour chưa có chỗ trống. Vui lòng cập nhật số chỗ trước khi gửi duyệt.';
 
 // START UC-35 View Approval Status
-/**
- * Ánh xạ trạng thái duyệt của tour sang nhãn + màu badge.
- * Phức tạp: 'needs_revision' và 'rejected' là hai trạng thái cần provider xử lý,
- * nên được tách màu riêng để không bị nhầm với 'active'/'suspended'.
- * 'draft' là tour nháp chưa gửi duyệt nên phải hiện khác 'pending' để provider biết
- * cần bấm "Gửi duyệt" thì tour mới tới được hàng đợi của staff.
- */
 const getStatusBadge = (status) => {
   switch (status) {
     case 'draft':

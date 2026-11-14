@@ -14,6 +14,7 @@ const sanitizeExcelCell = (value) => {
   return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
 };
 
+// START UC-40 Create Tour Departure
 export const createDeparture = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -43,6 +44,7 @@ export const createDeparture = async (req, res) => {
 
     const departureDate = new Date(req.body.departureDate);
 
+    // BR-47: ngày khởi hành phải cách hiện tại ít nhất 24 giờ.
     if (departureDate.getTime() - Date.now() < LEAD_TIME_MS) {
       return res.status(400).json({
         success: false,
@@ -50,6 +52,7 @@ export const createDeparture = async (req, res) => {
       });
     }
 
+    // Kiểm tra trùng ngày: mỗi tour chỉ có tối đa 1 lịch khởi hành mỗi ngày.
     const startOfDay = new Date(departureDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(startOfDay);
@@ -67,6 +70,7 @@ export const createDeparture = async (req, res) => {
       });
     }
 
+    // price null dùng giá tour gốc
     const priceRaw = req.body.price;
     const price = (priceRaw === undefined || priceRaw === null || priceRaw === '')
       ? null
@@ -95,6 +99,7 @@ export const createDeparture = async (req, res) => {
     });
   }
 };
+// END UC-40 Create Tour Departure
 
 export const getDeparturesByTour = async (req, res) => {
   const errors = validationResult(req);

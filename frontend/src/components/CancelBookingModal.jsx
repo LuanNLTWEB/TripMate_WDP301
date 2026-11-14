@@ -10,18 +10,6 @@ const formatDate = (value) =>
   value ? new Date(value).toLocaleString('vi-VN') : '—';
 
 // START UC-74 Cancel Booking
-/**
- * UC-74 – Cancel Booking (modal hủy một đơn đặt tour).
- *
- * Chỉ xử lý thao tác hủy; danh sách đơn và điều kiện hiện nút do BookingHistory quyết định.
- *
- * Phần phức tạp:
- *  - Lý do được validate ngay ở client (10-500 ký tự) để khớp cancelBookingValidation
- *    ở backend, tránh gửi request chắc chắn bị 400.
- *  - FREE_CANCEL_WINDOW_HOURS = 48 chỉ dùng để hiển thị mốc hủy miễn phí cho người
- *    dùng, phải khớp hằng số FREE_CANCEL_WINDOW_MS bên backend (BR-88).
- *  - Trong lúc gửi (isSubmitting) nút bị khóa để không tạo hai lần hủy trùng nhau.
- */
 const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
   const toast = useToast();
   const [reason, setReason] = useState('');
@@ -54,6 +42,7 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
     setError('');
     setIsSubmitting(true);
     try {
+      // UC-74 Cancel Booking
       const response = await bookingApi.cancel(booking._id, normalizedReason);
       toast.success(response.message || 'Hủy đặt tour thành công.');
       onCancelled(response);

@@ -1,12 +1,6 @@
 import mongoose from 'mongoose';
 
 // START UC-40 Create Tour Departure
-/**
- * Lịch khởi hành (Tour Departure)
- * Một bản ghi là một ngày khởi hành cụ thể của một tour, có số chỗ và giá riêng.
- * Tách riêng khỏi lịch trình (Tour.itinerary) vì lịch trình là nội dung chương trình
- * theo ngày, còn lịch khởi hành là các mốc thời gian khởi đi thực tế.
- */
 const departureSchema = new mongoose.Schema({
   tourId: {
     type: mongoose.Schema.Types.ObjectId,

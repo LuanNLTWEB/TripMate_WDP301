@@ -68,17 +68,6 @@ const cloneTourSchedule = (itinerary = []) => (Array.isArray(itinerary) ? itiner
 // END UC-24 Duplicate Tour
 
 // START UC-30 View Favorite Tours
-/**
- * UC-30 – View Favorite Tours (khách xem danh sách tour đã lưu yêu thích).
- *
- * Đọc mảng favoriteTours của user hiện tại và populate sang collection Tour.
- *
- * Phần phức tạp:
- *  - populate kèm `match: { status: 'active' }` nên tour đã bị ngưng/duyệt lại sẽ
- *    tự rơi khỏi kết quả, không cần lọc thêm ở client.
- *  - filter(Boolean) để loại các phần tử null còn sót lại khi tour tham chiếu đã bị xóa.
- *  - Trả cả `favoriteTourIds` (mảng id) để UI tô trạng thái tim ở màn danh sách tour.
- */
 export const getFavoriteTours = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
@@ -282,19 +271,6 @@ export const getAllTours = async (req, res) => {
 // END UC-22 Browse & Filter Tours
 
 // START UC-25 View Tour Details
-/**
- * UC-25 – View Tour Details (Guest/Customer xem chi tiết một tour).
- *
- * Tìm tour theo id, populate category và provider rồi trả về object thuần.
- *
- * Phần phức tạp:
- *  - Tour chưa ở trạng thái active chỉ staff hoặc provider sở hữu tour được xem;
- *    các trường hợp khác trả 404 (không trả 403) để không lộ sự tồn tại của tour.
- *  - Lịch trình chi tiết (itinerary) bị xóa khỏi response khi người xem không phải
- *    customer hoặc provider sở hữu (BR-90 – provider privacy).
- *  - providerId có thể là ObjectId thô hoặc đã populate, nên phải so sánh cả hai dạng.
- *  - CastError của id sai định dạng được quy về 404 thay vì 500.
- */
 export const getTourById = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -335,6 +311,7 @@ export const getTourById = async (req, res) => {
       }
     }
 
+    // Chỉ customer và provider sở hữu tour được xem lịch trình; lọc bỏ các mục đã xóa mềm.
     const providerId = tour.providerId?._id || tour.providerId;
     const isOwner = req.user?.role === 'tourProvider'
       && providerId
@@ -652,18 +629,7 @@ export const updateTourStatus = async (req, res) => {
   }
 };
 
-/**
- * UC-101 – Restore Tour: khôi phục tour đang tạm ngưng về trạng thái hoạt động.
- * @route PATCH /api/tours/:id/restore
- * @access Private (staff)
- *
- * Phần phức tạp:
- *  - Chỉ tour 'suspended' mới khôi phục được; rejected/needs_revision phải để provider sửa
- *    rồi gửi duyệt lại, không được bật thẳng sang 'active'.
- *  - Trước khi mở bán lại phải kiểm tra tour còn hợp lệ: còn ít nhất MIN_TOUR_SEATS chỗ và
- *    không còn cờ yêu cầu chỉnh sửa / từ chối cũ treo lại trên tour.
- *  - Provider được thông báo qua Notification loại 'tour_moderation' để biết tour đã mở lại.
- */
+ // UC-101 – Restore Tour: khôi phục tour đang tạm ngưng về trạng thái hoạt động.
 export const restoreTour = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id);
@@ -856,24 +822,6 @@ export const createTour = async (req, res) => {
 };
 
 // START UC-24 Duplicate Tour
-/**
- * UC-24 – Duplicate Tour (provider nhân bản tour thuộc sở hữu của mình).
- *
- * @route POST /api/tours/:id/duplicate
- * @access Provider owner
- *
- * Phần phức tạp:
- *  - Kiểm tra quyền sở hữu ở backend (không chỉ ẩn nút ở frontend); tour không tồn tại
- *    hoặc đã xóa mềm trả 404, tour của provider khác trả 403.
- *  - Chỉ sao chép dữ liệu mô tả/cấu hình + lịch trình khung. KHÔNG sao chép dữ liệu
- *    giao dịch: Departure, Booking, Review, Favorite, averageRating, availableSeats
- *    hay lịch sử duyệt — số chỗ và điểm đánh giá của bản sao bắt đầu lại từ 0.
- *  - Tour mới luôn ở trạng thái 'draft' theo đúng quy trình UC-31 Create Tour, không tự
- *    động gửi duyệt/công khai.
- *  - Tour và lịch trình nằm chung một document nên Tour.create là một insert duy nhất:
- *    hoặc tạo đủ tour + schedule, hoặc không tạo gì — không thể sinh dữ liệu nhân bản
- *    dở dang, không cần transaction đa document.
- */
 export const duplicateTour = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -947,19 +895,7 @@ export const duplicateTour = async (req, res) => {
 
 // START UC-32 View My Provider Tours
 // START UC-35 View Approval Status
-/**
- * UC-35 – View Approval Status (provider xem trạng thái duyệt tour của mình).
- *
- * Trả danh sách tour thuộc provider đang đăng nhập kèm trạng thái duyệt để UI
- * hiển thị badge "Chờ kiểm duyệt / Cần chỉnh sửa / Bị từ chối / Tạm ngưng".
- *
- * Phần phức tạp:
- *  - Lọc theo status do staff cập nhật, tách khỏi filter tìm kiếm bằng $and để
- *    không ghi đè điều kiện providerId.
- *  - Populate rejectedBy và revisionRequestedBy để hiện người duyệt; các field
- *    rejectionReason/revisionNote đi kèm chính document tour.
- *  - Từ khóa tìm kiếm được escape trước khi đưa vào RegExp để tránh lỗi regex.
- */
+
 export const getProviderTours = async (req, res) => {
   try {
     const {
@@ -1056,6 +992,8 @@ export const getProviderTourById = async (req, res) => {
     tour.itinerary = (tour.itinerary || []).filter((item) => !item.isDeleted);
 
     // Trả kèm số chỗ đã được xác nhận để UI hiển thị ngưỡng tối thiểu ngay khi mở trang.
+    // Tính tổng số chỗ đã được đặt (tất cả trạng thái trừ cancelled/rejected) để đảm bảo
+    // sức chứa mới không thấp hơn số chỗ đã cam kết.
     const [confirmedAgg] = await Booking.aggregate([
       { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
@@ -1150,6 +1088,8 @@ export const updateProviderTour = async (req, res) => {
       });
     }
 
+    // Tính tổng số chỗ đã được đặt (tất cả trạng thái trừ cancelled/rejected) để đảm bảo
+    // sức chứa mới không thấp hơn số chỗ đã cam kết.
     const [confirmedAgg] = await Booking.aggregate([
       { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
@@ -1641,20 +1581,7 @@ export const deleteTour = async (req, res) => {
   }
 };
 
-/**
- * Cập nhật số chỗ của tour thuộc nhà cung cấp.
- * @route PUT /api/tours/:id/capacity
- * @access Provider
- */
 // START UC-45 Update Tour Capacity
-/**
- * UC-45 – Update Tour Capacity (provider thay đổi tổng số chỗ nhận khách).
- *
- * Phần phức tạp:
- *  - Không cho hạ số chỗ xuống dưới số chỗ đã bán (mọi booking chưa hủy/chưa bị từ chối).
- *  - Nếu số chỗ mới trùng số cũ thì trả 200 "không thay đổi" và bỏ qua save,
- *    tránh cập nhật updatedAt vô ích.
- */
 export const updateTourCapacity = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1684,6 +1611,8 @@ export const updateTourCapacity = async (req, res) => {
 
     const requestedSeats = Number(req.body.availableSeats);
 
+    // Tính tổng số chỗ đã được đặt (tất cả trạng thái trừ cancelled/rejected) để đảm bảo
+    // sức chứa mới không thấp hơn số chỗ đã cam kết.
     const [confirmedAgg] = await Booking.aggregate([
       { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
