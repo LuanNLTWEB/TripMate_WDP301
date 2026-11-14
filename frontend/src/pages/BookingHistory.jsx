@@ -644,7 +644,6 @@ const BookingHistory = () => {
                 </div>
               ) : (
                 <>
-                  /* Bookings List */
                   <div className="row g-4">
                   {pagedBookings.map((booking) => {
                     const statusInfo = getStatusBadge(booking.status);
