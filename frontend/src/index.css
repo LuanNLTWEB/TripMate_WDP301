@@ -1536,22 +1536,12 @@ main {
   left: 0;
   right: 0;
   height: 3px;
-}
-
-.revenue-kpi-card.card-collected::before {
-  background: #10b981;
-}
-
-.revenue-kpi-card.card-pending::before {
-  background: #f59e0b;
-}
-
-.revenue-kpi-card.card-passengers::before {
-  background: #6366f1;
+  background: var(--tm-primary);
+  opacity: 0.85;
 }
 
 .revenue-kpi-card.card-cancelled::before {
-  background: #ef4444;
+  background: var(--tm-border-subtle);
 }
 
 .revenue-kpi-header {
@@ -1818,18 +1808,20 @@ main {
 }
 
 .revenue-tour-rank-gold {
-  background: #f59e0b;
+  background: var(--tm-primary);
   color: #ffffff;
 }
 
 .revenue-tour-rank-silver {
-  background: #64748b;
-  color: #ffffff;
+  background: #e0f2fe;
+  color: var(--tm-primary-hover);
+  border: 1px solid #bae6fd;
 }
 
 .revenue-tour-rank-bronze {
-  background: #ea580c;
-  color: #ffffff;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
 }
 
 .revenue-tour-rank-plain {
