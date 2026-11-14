@@ -1,7 +1,3 @@
-/**
- * Reporting & Analytics — use case do Toan phụ trách
- *  - UC-102 View Platform Statistics
- */
 import User from '../models/User.js';
 import Destination from '../models/Destination.js';
 import DestinationCategory from '../models/DestinationCategory.js';

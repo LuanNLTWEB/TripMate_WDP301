@@ -1,8 +1,3 @@
-/**
- * Reviews & Moderation — các use case do Toan phụ trách
- *  - UC-89 Update Tour Review
- *  - UC-95 Restore Review
- */
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';

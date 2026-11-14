@@ -1,10 +1,3 @@
-/**
- * Tour Management — các use case do Toan phụ trách
- *  - UC-25 View Tour Details
- *  - UC-30 View Favorite Tours
- *  - UC-35 View Approval Status
- *  - UC-45 Update Tour Capacity
- */
 import Tour from '../models/Tour.js';
 import TourCategory from '../models/TourCategory.js';
 import Notification from '../models/Notification.js';

@@ -1,8 +1,3 @@
-/**
- * Booking (Đặt tour) — các use case do Toan phụ trách
- *  - UC-74 Cancel Booking: cancelBooking (BR-88 khung hủy 48 giờ, BR-91 chỉ hủy đơn
- *    của chính mình, BR-57 trả lại số chỗ trống ngay trong cùng thao tác).
- */
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
@@ -1086,6 +1081,15 @@ export const cancelBooking = async (req, res) => {
       return res.status(409).json({
         success: false,
         message: 'Đơn đặt tour này đã được hủy trước đó'
+      });
+    }
+
+    // Đơn đã bị từ chối (provider reject) không còn hiệu lực, không được hủy thêm
+    // (và tránh việc trả chỗ hai lần: reject đã trả chỗ, cancel lại trả chỗ).
+    if (booking.status === 'rejected') {
+      return res.status(409).json({
+        success: false,
+        message: 'Đơn đặt tour này đã bị từ chối, không thể hủy'
       });
     }
 

@@ -1,8 +1,3 @@
-/**
- * Destination Management — các use case do Toan phụ trách
- *  - UC-17 Create Destination
- *  - UC-121 Update Destination Status
- */
 import Destination from '../models/Destination.js';
 import DestinationCategory from '../models/DestinationCategory.js';
 import User from '../models/User.js';

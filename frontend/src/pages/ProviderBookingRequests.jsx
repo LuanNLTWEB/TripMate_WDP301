@@ -260,7 +260,7 @@ function BookingDetailModal({
                   <i className="bi bi-x-circle me-2"></i>Từ chối
                 </button>
               )}
-              {/* UC-85 Confirm Payment & Check-in */}
+              {/* UC-85 Confirm Payment buttons (cash/bank) */}
               {booking.status === 'confirmed' && onConfirmPayment && (
                 <>
                   <button type="button" className="btn btn-outline-success" onClick={() => onConfirmPayment(booking, 'cash')} disabled={isProcessing}>
@@ -321,9 +321,9 @@ export default function ProviderBookingRequests() {
   // START UC-86 Mark Booking as No-Show (Provider)
   const [noShowModal, setNoShowModal] = useState({ open: false, booking: null, reason: '', submitting: false, error: '' });
   // END UC-86 Mark Booking as No-Show (Provider)
-  // START UC-85 Confirm Payment & Check-in
+  // START UC-85 Action modal state
   const [actionModal, setActionModal] = useState({ open: false, type: null, booking: null, error: '' });
-  // END UC-85 Confirm Payment & Check-in
+  // END UC-85 Action modal state
 
   // Khóa cuộn trang nền an toàn và bắt phím Escape khi có bất kỳ modal nào mở
   useEffect(() => {
@@ -496,7 +496,7 @@ export default function ProviderBookingRequests() {
   };
   // END UC-86 Mark Booking as No-Show (Provider)
 
-  // START UC-85 Confirm Payment & Check-in
+  // START UC-85 Payment & check-in handlers
   // Mở popup xác nhận dùng chung thay cho window.confirm mặc định của trình duyệt.
   const openActionModal = (type, booking) => {
     if (!booking) return;
@@ -598,7 +598,7 @@ export default function ProviderBookingRequests() {
 
     if (succeeded) closeActionModal();
   };
-  // END UC-85 Confirm Payment & Check-in
+  // END UC-85 Payment & check-in handlers
 
   const handleExportReport = async () => {
     setIsExporting(true);
@@ -955,7 +955,7 @@ export default function ProviderBookingRequests() {
                             <i className="bi bi-person-x"></i>
                           </button>
                         )}
-                        {/* UC-85 Confirm Payment & Check-in */}
+                        {/* UC-85 Confirm Cash button */}
                         {booking.status === 'confirmed' && (
                           <button
                             type="button"
@@ -1325,7 +1325,7 @@ export default function ProviderBookingRequests() {
       )}
       {/* END UC-86 Mark Booking as No-Show Modal */}
 
-      {/* START UC-85 Confirm Payment & Check-in */}
+      {/* START UC-85 Action confirmation modal */}
       <ConfirmDeleteModal
         isOpen={actionModal.open && Boolean(actionModal.booking) && Boolean(actionModalContent)}
         title={actionModalContent?.title}
@@ -1339,7 +1339,7 @@ export default function ProviderBookingRequests() {
         onConfirm={handleActionConfirm}
         onClose={closeActionModal}
       />
-      {/* END UC-85 Confirm Payment & Check-in */}
+      {/* END UC-85 Action confirmation modal */}
     </section>
   );
 }

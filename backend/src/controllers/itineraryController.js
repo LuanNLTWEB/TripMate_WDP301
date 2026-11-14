@@ -1,10 +1,3 @@
-/**
- * Itinerary Planning — các use case do Toan phụ trách
- *  - UC-48 View Personal Itinerary
- *  - UC-53 Add Activity to Itinerary (gồm detectScheduleConflicts – BR-62)
- *  - UC-120 Transfer Itinerary Ownership
- *  - UC-137 Leave Itinerary
- */
 import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
