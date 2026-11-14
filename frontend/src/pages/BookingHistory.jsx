@@ -6,9 +6,9 @@ import CancelBookingModal from '../components/CancelBookingModal';
 // START UC-66 Submit Booking Complaint
 import SubmitComplaintModal from '../components/SubmitComplaintModal';
 // END UC-66 Submit Booking Complaint
-// START UC-82 Download Booking Voucher
-import BookingVoucherModal from '../components/BookingVoucherModal';
-// END UC-82 Download Booking Voucher
+// START UC-82 Download Booking Ticket
+import BookingTicketModal from '../components/BookingTicketModal';
+// END UC-82 Download Booking Ticket
 // START UC-152 Update Booking Passenger Info
 import UpdatePassengerModal from '../components/UpdatePassengerModal';
 // END UC-152 Update Booking Passenger Info
@@ -139,9 +139,9 @@ const BookingHistory = () => {
   // START UC-66 Submit Booking Complaint
   const [bookingToComplain, setBookingToComplain] = useState(null);
   // END UC-66 Submit Booking Complaint
-  // START UC-82 Download Booking Voucher
-  const [voucherBooking, setVoucherBooking] = useState(null);
-  // END UC-82 Download Booking Voucher
+  // START UC-82 Download Booking Ticket
+  const [ticketBooking, setTicketBooking] = useState(null);
+  // END UC-82 Download Booking Ticket
   // START UC-152 Update Booking Passenger Info
   const [bookingToUpdatePassenger, setBookingToUpdatePassenger] = useState(null);
   // END UC-152 Update Booking Passenger Info
@@ -207,7 +207,7 @@ const BookingHistory = () => {
   useEffect(() => {
     const isAnyModalOpen = Boolean(
       selectedBooking ||
-      voucherBooking ||
+      ticketBooking ||
       bookingToComplain ||
       bookingToCancel
     );
@@ -217,7 +217,7 @@ const BookingHistory = () => {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (voucherBooking) setVoucherBooking(null);
+        if (ticketBooking) setTicketBooking(null);
         else if (selectedBooking) setSelectedBooking(null);
         else if (bookingToComplain) setBookingToComplain(null);
         else if (bookingToCancel) setBookingToCancel(null);
@@ -229,7 +229,7 @@ const BookingHistory = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.classList.remove('modal-open');
     };
-  }, [selectedBooking, voucherBooking, bookingToComplain, bookingToCancel]);
+  }, [selectedBooking, ticketBooking, bookingToComplain, bookingToCancel]);
 
   const copyBookingCode = (code, fullId) => {
     navigator.clipboard.writeText(fullId || code);
@@ -803,20 +803,20 @@ const BookingHistory = () => {
                                     <span>Xem chi tiết</span>
                                   </button>
 
-                                  {/* START UC-82 Download Booking Voucher */}
+                                  {/* START UC-82 Download Booking Ticket */}
                                   {booking.status === 'confirmed' && (
                                     <button
                                       type="button"
-                                      id={`btn-voucher-${booking._id}`}
+                                      id={`btn-ticket-${booking._id}`}
                                       className="btn btn-outline-success btn-sm rounded-pill py-1.5 px-3 fw-semibold w-100 d-inline-flex align-items-center justify-content-center gap-1.5"
-                                      onClick={() => setVoucherBooking(booking)}
-                                      title="Xem và tải phiếu xác nhận đặt chỗ (Booking Voucher)"
+                                      onClick={() => setTicketBooking(booking)}
+                                      title="Xem và tải vé xác nhận đặt chỗ (Booking Ticket)"
                                     >
                                       <i className="bi bi-ticket-perforated"></i>
-                                      <span>Xem Voucher</span>
+                                      <span>Xem Ticket</span>
                                     </button>
                                   )}
-                                  {/* END UC-82 Download Booking Voucher */}
+                                  {/* END UC-82 Download Booking Ticket */}
 
                                   {/* Đánh giá tour khi chuyến đi đã hoàn thành */}
                                   {booking.status === 'completed' && (tour._id || booking.tourId) && (
@@ -1252,11 +1252,11 @@ const BookingHistory = () => {
                       type="button"
                       className="btn btn-success rounded-pill px-4 fw-semibold"
                       onClick={() => {
-                        setVoucherBooking(selectedBooking);
+                        setTicketBooking(selectedBooking);
                         setSelectedBooking(null);
                       }}
                     >
-                      <i className="bi bi-ticket-perforated me-1"></i>Xem Voucher
+                      <i className="bi bi-ticket-perforated me-1"></i>Xem Ticket
                     </button>
                   )}
                   {selectedBooking.status === 'completed' && (selectedBooking.tourId?._id || selectedBooking.tourId) && (
@@ -1285,15 +1285,15 @@ const BookingHistory = () => {
       </>
     )}
 
-      {/* START UC-82 Download Booking Voucher */}
-      {voucherBooking && (
-        <BookingVoucherModal
-          bookingId={voucherBooking._id}
-          initialBooking={voucherBooking}
-          onClose={() => setVoucherBooking(null)}
+      {/* START UC-82 Download Booking Ticket */}
+      {ticketBooking && (
+        <BookingTicketModal
+          bookingId={ticketBooking._id}
+          initialBooking={ticketBooking}
+          onClose={() => setTicketBooking(null)}
         />
       )}
-      {/* END UC-82 Download Booking Voucher */}
+      {/* END UC-82 Download Booking Ticket */}
     </>
   );
 };

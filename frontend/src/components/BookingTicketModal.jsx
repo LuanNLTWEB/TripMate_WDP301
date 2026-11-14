@@ -16,11 +16,11 @@ const formatDate = (val) => {
   });
 };
 
-export default function BookingVoucherModal({ bookingId, initialBooking = null, onClose }) {
+export default function BookingTicketModal({ bookingId, initialBooking = null, onClose }) {
   const toast = useToast();
-  const voucherRef = useRef(null);
+  const ticketRef = useRef(null);
   const [loading, setLoading] = useState(!initialBooking);
-  const [voucherData, setVoucherData] = useState(() => (initialBooking ? {
+  const [ticketData, setTicketData] = useState(() => (initialBooking ? {
     booking: initialBooking,
     shortCode: `BK-${String(initialBooking._id).slice(-6).toUpperCase()}`,
     issuedAt: new Date()
@@ -37,16 +37,16 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
 
   useEffect(() => {
     let active = true;
-    const loadVoucher = async () => {
+    const loadTicket = async () => {
       try {
-        const res = await bookingApi.getVoucher(bookingId);
+        const res = await bookingApi.getTicket(bookingId);
         if (active) {
-          setVoucherData(res.data);
+          setTicketData(res.data);
           setLoading(false);
         }
       } catch (err) {
         if (active) {
-          toast.error(err.message || 'Không thể tạo phiếu xác nhận đặt chỗ.');
+          toast.error(err.message || 'Không thể tạo vé xác nhận đặt chỗ.');
           setLoading(false);
           onClose();
         }
@@ -54,17 +54,17 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
     };
 
     if (bookingId) {
-      loadVoucher();
+      loadTicket();
     }
     return () => { active = false; };
   }, [bookingId, onClose, toast]);
 
-  const booking = voucherData?.booking;
+  const booking = ticketData?.booking;
   const tour = booking?.tourId;
-  const shortCode = voucherData?.shortCode || (booking?._id ? `BK-${String(booking._id).slice(-6).toUpperCase()}` : '—');
+  const shortCode = ticketData?.shortCode || (booking?._id ? `BK-${String(booking._id).slice(-6).toUpperCase()}` : '—');
 
   const handleDownloadPng = async () => {
-    if (!voucherRef.current || downloading) return;
+    if (!ticketRef.current || downloading) return;
     setDownloading(true);
 
     try {
@@ -147,14 +147,14 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
       // Footer note
       ctx.fillStyle = '#64748b';
       ctx.font = 'italic 11px "Segoe UI", Roboto, sans-serif';
-      ctx.fillText('Vui lòng xuất trình voucher này cho Hướng dẫn viên tại điểm hẹn ít nhất 15 phút trước giờ khởi hành.', 24, 396);
+      ctx.fillText('Vui lòng xuất trình vé này cho Hướng dẫn viên tại điểm hẹn ít nhất 15 phút trước giờ khởi hành.', 24, 396);
       ctx.fillText('TripMate chúc quý khách một chuyến đi an toàn và trọn vẹn niềm vui!', 24, 414);
 
       const link = document.createElement('a');
-      link.download = `TripMate-Voucher-${shortCode}.png`;
+      link.download = `TripMate-Ticket-${shortCode}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-      toast.success('Đã tải ảnh Voucher thành công!');
+      toast.success('Đã tải ảnh Ticket thành công!');
     } catch {
       toast.error('Không thể tạo file ảnh. Vui lòng thử chức năng In / Lưu PDF.');
     } finally {
@@ -188,11 +188,11 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
             <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
               <div>
                 <span className="badge bg-success-subtle text-success text-uppercase fw-semibold mb-1">
-                  Xác nhận giữ chỗ · Booking Voucher
+                  Xác nhận giữ chỗ · Booking Ticket
                 </span>
                 <h5 className="modal-title fw-bold text-dark mb-0">
                   <i className="bi bi-ticket-perforated me-2 text-primary"></i>
-                  Phiếu xác nhận đặt tour
+                  Vé xác nhận đặt tour
                 </h5>
               </div>
               <button type="button" className="btn-close" onClick={onClose} aria-label="Đóng"></button>
@@ -202,17 +202,17 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
               {loading ? (
                 <div className="text-center py-5">
                   <div className="spinner-border text-primary" role="status"></div>
-                  <p className="text-muted mt-2 mb-0">Đang khởi tạo Booking Voucher...</p>
+                  <p className="text-muted mt-2 mb-0">Đang khởi tạo Booking Ticket...</p>
                 </div>
               ) : (
                 /* Ticket Card */
                 <div
-                  ref={voucherRef}
-                  id="tripmate-booking-voucher-card"
+                  ref={ticketRef}
+                  id="tripmate-booking-ticket-card"
                   className="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mx-auto"
                   style={{ maxWidth: 720 }}
                 >
-                  {/* Voucher Header Banner */}
+                  {/* Ticket Header Banner */}
                   <div
                     className="p-4 text-white d-flex flex-wrap align-items-center justify-content-between gap-3"
                     style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' }}
@@ -226,7 +226,7 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
                           ✓ ĐÃ XÁC NHẬN GIỮ CHỖ
                         </span>
                       </div>
-                      <h4 className="fw-bold mb-0 text-white">TripMate Official Booking Voucher</h4>
+                      <h4 className="fw-bold mb-0 text-white">TripMate Official Booking Ticket</h4>
                     </div>
                     <div className="text-end small text-white-50">
                       <div>Khởi hành: <strong>{formatDate(booking?.departureDate)}</strong></div>
@@ -234,7 +234,7 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
                     </div>
                   </div>
 
-                  {/* Voucher Content */}
+                  {/* Ticket Content */}
                   <div className="p-4">
                     {/* Thông tin tour */}
                     <div className="mb-3">
@@ -331,7 +331,7 @@ export default function BookingVoucherModal({ bookingId, initialBooking = null, 
                   {downloading ? (
                     <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang tạo ảnh...</>
                   ) : (
-                    <><i className="bi bi-download me-2"></i>Tải ảnh Voucher (.PNG)</>
+                    <><i className="bi bi-download me-2"></i>Tải ảnh Ticket (.PNG)</>
                   )}
                 </button>
               </div>

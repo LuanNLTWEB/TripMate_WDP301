@@ -675,9 +675,9 @@ export const bookingApi = {
     body: JSON.stringify({ noShowReason })
   }),
   // END UC-86 Mark Booking as No-Show (Provider)
-  // START UC-82 Download Booking Voucher (Customer)
-  getVoucher: (id) => apiRequest(`/bookings/${id}/voucher`, { method: 'GET' }),
-  // END UC-82 Download Booking Voucher (Customer)
+  // START UC-82 Download Booking Ticket (Customer)
+  getTicket: (id) => apiRequest(`/bookings/${id}/ticket`, { method: 'GET' }),
+  // END UC-82 Download Booking Ticket (Customer)
 
   // START UC-85 Confirm Payment & Check-in
   // Provider xác nhận đã thu tiền tại điểm đón rồi điểm danh khách lên xe.
