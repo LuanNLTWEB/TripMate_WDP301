@@ -25,6 +25,14 @@ const formatDateRange = (startDate, endDate) => {
   return format(startDate || endDate);
 };
 
+// Format number to Vietnamese style without currency symbol (1.000.000)
+const formatVnd = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  return new Intl.NumberFormat('vi-VN', {
+    maximumFractionDigits: 0
+  }).format(Number(value) || 0);
+};
+
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
@@ -2047,16 +2055,15 @@ function Itinerary() {
                                 <label className="form-label" htmlFor="activity-cost">Chi phí dự kiến (₫)</label>
                                 <input
                                   id="activity-cost"
-                                  type="number"
-                                  min="0"
-                                  step="1000"
+                                  type="text"
+                                  inputMode="numeric"
                                   className={`form-control ${activityErrors.estimatedCost ? 'is-invalid' : ''}`}
-                                  value={activityForm.estimatedCost}
+                                  value={formatVnd(activityForm.estimatedCost)}
                                   onChange={(event) => {
-                                    setActivityForm({ ...activityForm, estimatedCost: event.target.value });
+                                    setActivityForm({ ...activityForm, estimatedCost: event.target.value.replace(/\D/g, '') });
                                     clearActivityError('estimatedCost');
                                   }}
-                                  placeholder="Ví dụ: 150000"
+                                  placeholder="Ví dụ: 150.000"
                                   disabled={saving}
                                 />
                                 {activityErrors.estimatedCost && (
