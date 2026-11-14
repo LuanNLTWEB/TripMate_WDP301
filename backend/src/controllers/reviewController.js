@@ -46,7 +46,7 @@ const evaluateReviewEligibility = async (tourId, userId, now = new Date()) => {
   const tour = await Tour.findById(tourId);
   if (!tour || tour.isDeleted) return { tour: null };
 
-  const existingReview = await Review.findOne({ tourId, userId });
+  const existingReview = await Review.findOne({ tourId, userId, isDeleted: false });
   if (existingReview) {
     return {
       tour,
@@ -165,13 +165,42 @@ export const createReview = async (req, res) => {
       });
     }
 
-    const review = await Review.create({
-      userId: req.user._id,
-      tourId,
-      rating: req.body.rating,
-      comment: req.body.comment.trim(),
-      status: 'approved'
-    });
+    let review = await Review.findOne({ tourId, userId: req.user._id, isDeleted: true });
+    if (review) {
+      review.rating = req.body.rating;
+      review.comment = req.body.comment.trim();
+      review.status = 'approved';
+      review.isDeleted = false;
+      review.deletedAt = null;
+      review.deletedBy = null;
+      review.isReported = false;
+      review.reportReason = '';
+      review.reportDetails = '';
+      review.reportedBy = null;
+      review.reportedAt = null;
+      review.moderatedBy = null;
+      review.moderationReason = '';
+      review.helpfulCount = 0;
+      review.helpfulVotes = [];
+      review.reply = {
+        comment: '',
+        userId: null,
+        repliedAt: null,
+        updatedAt: null,
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null
+      };
+      await review.save();
+    } else {
+      review = await Review.create({
+        userId: req.user._id,
+        tourId,
+        rating: req.body.rating,
+        comment: req.body.comment.trim(),
+        status: 'approved'
+      });
+    }
     await review.populate('userId', 'username');
 
     const { averageRating, totalReviews } = await recalculateTourRating(tourId);

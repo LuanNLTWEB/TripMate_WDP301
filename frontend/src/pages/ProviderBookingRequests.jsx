@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { bookingApi } from '../services/api';
 import { useToast } from '../hooks/useToast';
@@ -136,7 +137,7 @@ function BookingDetailModal({
     booking.tourId?.destinationLocation || booking.tourId?.location
   ].filter(Boolean).join(' → ');
 
-  return (
+  const modalMarkup = (
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={onClose}></div>
       <div
@@ -293,6 +294,8 @@ function BookingDetailModal({
       </div>
     </>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalMarkup, document.body) : null;
 }
 
 export default function ProviderBookingRequests() {
@@ -427,7 +430,9 @@ export default function ProviderBookingRequests() {
       toast.success(response.message || 'Đã xác nhận đặt tour thành công.');
       setApproveModal({ open: false, booking: null, submitting: false, error: '' });
     } catch (requestError) {
-      setApproveModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể xác nhận đặt tour.' }));
+      const msg = requestError.message || 'Không thể xác nhận đặt tour.';
+      toast.error(msg);
+      setApproveModal((prev) => ({ ...prev, submitting: false, error: msg }));
     }
   };
 
@@ -491,7 +496,9 @@ export default function ProviderBookingRequests() {
       toast.success(response.message || 'Đã ghi nhận khách vắng mặt thành công.');
       setNoShowModal({ open: false, booking: null, reason: '', submitting: false, error: '' });
     } catch (requestError) {
-      setNoShowModal((prev) => ({ ...prev, submitting: false, error: requestError.message || 'Không thể ghi nhận khách vắng mặt.' }));
+      const msg = requestError.message || 'Không thể ghi nhận khách vắng mặt.';
+      toast.error(msg);
+      setNoShowModal((prev) => ({ ...prev, submitting: false, error: msg }));
     }
   };
   // END UC-86 Mark Booking as No-Show (Provider)
@@ -704,7 +711,7 @@ export default function ProviderBookingRequests() {
 
         <button
           type="button"
-          className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+          className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 px-3 py-2"
           onClick={() => setShowExportBar((prev) => !prev)}
         >
           <i className="bi bi-file-earmark-spreadsheet"></i>
@@ -713,69 +720,123 @@ export default function ProviderBookingRequests() {
       </div>
 
       {showExportBar && (
-        <div className="card border-0 shadow-sm rounded-3 mb-4">
-          <div className="card-body d-flex flex-wrap align-items-end gap-3">
-            <div style={{ minWidth: '160px' }}>
-              <label className="form-label small fw-semibold mb-1" htmlFor="report-from">Từ ngày</label>
-              <CustomDatePicker
-                id="report-from"
-                name="reportFrom"
-                value={reportFrom}
-                placeholder="dd/mm/yyyy"
-                onChange={(event, val) => setReportFrom(val !== undefined ? val : event.target.value)}
-              />
+        <div className="provider-export-panel mb-4">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div className="d-flex flex-wrap align-items-center gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <label className="form-label small fw-semibold text-muted mb-0 text-nowrap" htmlFor="report-from">
+                  <i className="bi bi-calendar3 me-1"></i>Từ ngày:
+                </label>
+                <div style={{ width: '150px' }}>
+                  <CustomDatePicker
+                    id="report-from"
+                    name="reportFrom"
+                    value={reportFrom}
+                    placeholder="dd/mm/yyyy"
+                    onChange={(event, val) => setReportFrom(val !== undefined ? val : event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <label className="form-label small fw-semibold text-muted mb-0 text-nowrap" htmlFor="report-to">
+                  <i className="bi bi-calendar3 me-1"></i>Đến ngày:
+                </label>
+                <div style={{ width: '150px' }}>
+                  <CustomDatePicker
+                    id="report-to"
+                    name="reportTo"
+                    value={reportTo}
+                    placeholder="dd/mm/yyyy"
+                    onChange={(event, val) => setReportTo(val !== undefined ? val : event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-primary btn-sm px-3 d-inline-flex align-items-center gap-1"
+                onClick={handleExportReport}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                    Đang xuất...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-download"></i>
+                    <span>Tải file CSV</span>
+                  </>
+                )}
+              </button>
             </div>
-            <div style={{ minWidth: '160px' }}>
-              <label className="form-label small fw-semibold mb-1" htmlFor="report-to">Đến ngày</label>
-              <CustomDatePicker
-                id="report-to"
-                name="reportTo"
-                value={reportTo}
-                placeholder="dd/mm/yyyy"
-                onChange={(event, val) => setReportTo(val !== undefined ? val : event.target.value)}
-              />
+
+            <div className="small text-muted d-flex align-items-center gap-1">
+              <i className="bi bi-info-circle text-primary"></i>
+              <span>Lọc theo thời điểm tạo đơn đặt tour.</span>
             </div>
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleExportReport} disabled={isExporting}>
-              {isExporting
-                ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang xuất...</>
-                : <><i className="bi bi-download me-1"></i>Tải file Excel</>}
-            </button>
-            <span className="small text-muted">Lọc theo thời điểm tạo đơn đặt tour.</span>
           </div>
         </div>
       )}
 
-      <div className="row g-3 mb-4">
+      {/* 7 Thẻ Thống Kê Trạng Thái Cân Đối 1 Hàng */}
+      <div className="provider-stats-strip mb-4">
         {SUMMARY_CARDS.map((card) => (
-          <div className="col-6 col-md-4 col-xl-2" key={card.key}>
-            <div className="card border-0 shadow-sm h-100 rounded-3">
-              <div className="card-body d-flex align-items-center gap-3">
-                <div className={`rounded-circle bg-${card.color}-subtle text-${card.color} d-flex align-items-center justify-content-center flex-shrink-0`} style={{ width: 46, height: 46 }}>
-                  <i className={`bi ${card.icon} fs-5`}></i>
-                </div>
-                <div>
-                  <div className="small text-muted">{card.label}</div>
-                  <div className="h4 fw-bold mb-0 text-dark">{summary[card.key] || 0}</div>
-                </div>
-              </div>
+          <div className="provider-stat-card" key={card.key}>
+            <div className={`provider-stat-icon bg-${card.color}-subtle text-${card.color}`}>
+              <i className={`bi ${card.icon}`}></i>
+            </div>
+            <div className="provider-stat-info">
+              <div className="provider-stat-label" title={card.label}>{card.label}</div>
+              <div className="provider-stat-value">{summary[card.key] || 0}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="d-flex flex-wrap gap-3 mb-4">
-        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
-          <i className="bi bi-people text-primary me-2"></i>
-          Tổng lượt khách: <strong>{summary.totalGuests || 0}</strong>
-        </span>
-        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
-          <i className="bi bi-cash-coin text-success me-2"></i>
-          Giá trị booking đã xác nhận: <strong>{formatCurrency(summary.confirmedRevenue)}</strong>
-        </span>
-        <span className="badge bg-light text-dark border py-2 px-3 fw-normal">
-          <i className="bi bi-wallet2 text-info me-2"></i>
-          Tiền đã thu tại điểm đón: <strong>{formatCurrency(summary.collectedRevenue)}</strong>
-        </span>
+      {/* Banner Tổng Hợp Khách & Doanh Thu Tích Hợp */}
+      <div className="provider-financial-banner mb-4">
+        <div className="provider-financial-item">
+          <div className="provider-financial-icon bg-primary-subtle text-primary">
+            <i className="bi bi-people"></i>
+          </div>
+          <div>
+            <div className="provider-financial-label">Tổng lượt khách</div>
+            <div className="provider-financial-value text-primary">
+              {summary.totalGuests || 0} <span className="small text-muted fw-normal">khách</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="provider-financial-sep"></div>
+
+        <div className="provider-financial-item">
+          <div className="provider-financial-icon bg-success-subtle text-success">
+            <i className="bi bi-cash-coin"></i>
+          </div>
+          <div>
+            <div className="provider-financial-label">Giá trị booking đã xác nhận</div>
+            <div className="provider-financial-value text-success">
+              {formatCurrency(summary.confirmedRevenue)}
+            </div>
+          </div>
+        </div>
+
+        <div className="provider-financial-sep"></div>
+
+        <div className="provider-financial-item">
+          <div className="provider-financial-icon bg-info-subtle text-info">
+            <i className="bi bi-wallet2"></i>
+          </div>
+          <div>
+            <div className="provider-financial-label">Tiền đã thu tại điểm đón</div>
+            <div className="provider-financial-value text-info">
+              {formatCurrency(summary.collectedRevenue)}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bảng danh sách yêu cầu đặt tour đồng bộ 1:1 với UI Quản lý tour */}
@@ -811,10 +872,10 @@ export default function ProviderBookingRequests() {
           <table className="management-table">
             <thead>
               <tr>
-                <th style={{ width: '30%' }}>Tour</th>
-                <th style={{ width: '25%' }}>Hành trình</th>
-                <th style={{ width: '18%' }}>Giá và chỗ</th>
-                <th style={{ width: '15%' }}>Trạng thái</th>
+                <th style={{ width: '28%' }}>Tour</th>
+                <th style={{ width: '25%' }}>Hành trình &amp; Khách</th>
+                <th style={{ width: '19%' }}>Giá và lịch</th>
+                <th style={{ width: '16%' }}>Trạng thái</th>
                 <th className="text-end" style={{ width: '12%' }}>Thao tác</th>
               </tr>
             </thead>
@@ -857,8 +918,10 @@ export default function ProviderBookingRequests() {
                             <i className="bi bi-image"></i>
                           </div>
                         )}
-                        <div>
-                          <div className="fw-bold text-dark">{booking.tourId?.title || 'Tour không còn khả dụng'}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '240px' }} title={booking.tourId?.title}>
+                            {booking.tourId?.title || 'Tour không còn khả dụng'}
+                          </div>
                           <div className="small text-muted mt-1">
                             <i className="bi bi-clock me-1"></i>
                             {booking.tourId?.duration || 'Lịch trình tiêu chuẩn'}
@@ -869,13 +932,17 @@ export default function ProviderBookingRequests() {
 
                     <td>
                       <div className="d-flex align-items-center gap-2 small">
-                        <span className="text-dark fw-medium">{booking.tourId?.departureLocation || 'Chưa cập nhật'}</span>
-                        <i className="bi bi-arrow-right text-muted"></i>
-                        <span className="text-primary fw-medium">{booking.tourId?.destinationLocation || booking.tourId?.location || 'Chưa cập nhật'}</span>
+                        <span className="text-dark fw-medium text-truncate" style={{ maxWidth: '110px' }} title={booking.tourId?.departureLocation}>
+                          {booking.tourId?.departureLocation || 'Chưa cập nhật'}
+                        </span>
+                        <i className="bi bi-arrow-right text-muted flex-shrink-0"></i>
+                        <span className="text-primary fw-medium text-truncate" style={{ maxWidth: '110px' }} title={booking.tourId?.destinationLocation || booking.tourId?.location}>
+                          {booking.tourId?.destinationLocation || booking.tourId?.location || 'Chưa cập nhật'}
+                        </span>
                       </div>
                       <div className="small text-muted mt-1 d-flex align-items-center" title={`${booking.fullName} - ${booking.phone}`}>
                         <i className="bi bi-person me-1 text-primary flex-shrink-0"></i>
-                        <span className="text-dark fw-medium text-truncate" style={{ maxWidth: '140px' }}>
+                        <span className="text-dark fw-medium text-truncate" style={{ maxWidth: '130px' }}>
                           {formatCustomerName(booking.fullName)}
                         </span>
                         {booking.phone && (
@@ -1046,7 +1113,7 @@ export default function ProviderBookingRequests() {
       )}
 
       {/* START Approve Booking Modal */}
-      {approveModal.open && approveModal.booking && (
+      {approveModal.open && approveModal.booking && typeof document !== 'undefined' && createPortal(
         <>
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={() => !approveModal.submitting && setApproveModal({ open: false, booking: null, submitting: false, error: '' })}></div>
           <div
@@ -1099,10 +1166,6 @@ export default function ProviderBookingRequests() {
                     <i className="bi bi-info-circle text-primary me-1"></i>
                     Khi duyệt, đơn sẽ chuyển sang trạng thái <strong>Đã xác nhận</strong> và tự động cập nhật số chỗ trống của tour.
                   </p>
-
-                  {approveModal.error && (
-                    <div className="alert alert-danger py-2 small mt-3 mb-0">{approveModal.error}</div>
-                  )}
                 </div>
                 <div className="modal-footer">
                   <button
@@ -1135,12 +1198,13 @@ export default function ProviderBookingRequests() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
       {/* END Approve Booking Modal */}
 
       {/* START UC-78 Reject Booking Modal */}
-      {rejectModal.open && rejectModal.booking && (
+      {rejectModal.open && rejectModal.booking && typeof document !== 'undefined' && createPortal(
         <>
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={() => !rejectModal.submitting && setRejectModal({ open: false, booking: null, reason: '', submitting: false, error: '' })}></div>
           <div
@@ -1230,12 +1294,13 @@ export default function ProviderBookingRequests() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
       {/* END UC-78 Reject Booking Modal */}
 
       {/* START UC-86 Mark Booking as No-Show Modal */}
-      {noShowModal.open && noShowModal.booking && (
+      {noShowModal.open && noShowModal.booking && typeof document !== 'undefined' && createPortal(
         <>
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={() => !noShowModal.submitting && setNoShowModal({ open: false, booking: null, reason: '', submitting: false, error: '' })}></div>
           <div
@@ -1286,9 +1351,6 @@ export default function ProviderBookingRequests() {
                       ></textarea>
                       <div className="form-text text-end">{noShowModal.reason.length}/500</div>
                     </div>
-                    {noShowModal.error && (
-                      <div className="alert alert-danger py-2 small mb-0">{noShowModal.error}</div>
-                    )}
                   </div>
                   <div className="modal-footer">
                     <button
@@ -1321,7 +1383,8 @@ export default function ProviderBookingRequests() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
       {/* END UC-86 Mark Booking as No-Show Modal */}
 

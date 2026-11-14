@@ -112,13 +112,6 @@ function ResetPassword() {
                     </p>
                   </div>
 
-                  {error && (
-                    <div className="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3" role="alert">
-                      <i className="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                      <div>{error}</div>
-                    </div>
-                  )}
-
                   <form onSubmit={handleSubmit} noValidate>
                     {/* New Password */}
                     <div className="mb-3">

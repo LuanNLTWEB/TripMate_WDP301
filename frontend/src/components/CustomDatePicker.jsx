@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * CustomDatePicker - Modern, sleek Date Picker component for TripMate
@@ -32,7 +33,9 @@ export default function CustomDatePicker({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMode, setViewMode] = useState('days'); // 'days' | 'months' | 'years'
+  const [coords, setCoords] = useState(null);
   const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Parse initial view date
   const parseDate = (val) => {
@@ -133,31 +136,100 @@ export default function CustomDatePicker({
     }
   };
 
-  // Outside click & Escape handlers
+  // Compute popover bounding coordinates
+  const getCoords = useCallback(() => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      return null;
+    }
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const spaceBelow = viewportHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    const pickerWidth = Math.min(310, viewportWidth - 16);
+    const shouldOpenUp = spaceBelow < 330 && spaceAbove > spaceBelow;
+
+    let left = rect.left;
+    if (left + pickerWidth > viewportWidth - 8) {
+      left = Math.max(8, viewportWidth - pickerWidth - 8);
+    }
+    if (left < 8) {
+      left = 8;
+    }
+
+    return {
+      top: shouldOpenUp ? undefined : Math.round(rect.bottom + 6),
+      bottom: shouldOpenUp ? Math.round(viewportHeight - rect.top + 6) : undefined,
+      left: Math.round(left),
+      width: Math.round(pickerWidth),
+      isDropup: shouldOpenUp
+    };
+  }, []);
+
+  const updateCoords = useCallback(() => {
+    const nextCoords = getCoords();
+    if (!nextCoords) {
+      setIsOpen(false);
+      setViewMode('days');
+      return;
+    }
+    setCoords(nextCoords);
+  }, [getCoords]);
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateCoords();
+    }
+  }, [isOpen, updateCoords]);
+
+  // Outside click, Escape, Scroll, Resize handlers
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleOutsideClick = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
         setViewMode('days');
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape') {
         setIsOpen(false);
         setViewMode('days');
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    const handleScroll = (event) => {
+      if (dropdownRef.current && dropdownRef.current.contains(event.target)) {
+        return;
+      }
+      updateCoords();
+    };
+
+    const handleResize = () => {
+      updateCoords();
+    };
+
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true, passive: true });
+      window.removeEventListener('resize', handleResize, { passive: true });
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updateCoords]);
 
   // Months array
   const monthNames = [
@@ -231,6 +303,18 @@ export default function CustomDatePicker({
     return `${d}/${m}/${y}`;
   };
 
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      const nextCoords = getCoords();
+      if (nextCoords) setCoords(nextCoords);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+      setViewMode('days');
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -251,11 +335,11 @@ export default function CustomDatePicker({
         tabIndex={disabled ? -1 : 0}
         aria-invalid={invalid || undefined}
         className={`tm-datepicker-trigger form-control ${isOpen ? 'is-focused' : ''} ${disabled ? 'is-disabled' : ''} ${invalid ? 'tm-input-invalid' : ''}`}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={toggleOpen}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            !disabled && setIsOpen((prev) => !prev);
+            toggleOpen();
           }
         }}
       >
@@ -285,8 +369,23 @@ export default function CustomDatePicker({
       </div>
 
       {/* Floating Popover Calendar */}
-      {isOpen && (
-        <div className="tm-datepicker-dropdown" role="dialog" aria-modal="true">
+      {isOpen && coords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          className={`tm-datepicker-dropdown ${coords.isDropup ? 'is-dropup' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: coords.top !== undefined ? `${coords.top}px` : 'auto',
+            bottom: coords.bottom !== undefined ? `${coords.bottom}px` : 'auto',
+            left: `${coords.left}px`,
+            right: 'auto',
+            width: `${coords.width}px`,
+            boxSizing: 'border-box',
+            zIndex: 99999
+          }}
+        >
           {/* Header with Month/Year Navigation */}
           <div className="tm-datepicker-header">
             {viewMode === 'days' && (
@@ -474,7 +573,8 @@ export default function CustomDatePicker({
               Đóng
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

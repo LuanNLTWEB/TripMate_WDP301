@@ -144,12 +144,6 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
                   </div>
                 </div>
 
-                {error && (
-                  <div className="alert alert-danger py-2 small mb-0 mt-3" role="alert">
-                    <i className="bi bi-exclamation-circle me-2"></i>{error}
-                  </div>
-                )}
-
                 <div className="alert alert-light border small mt-3 mb-0">
                   <i className="bi bi-info-circle me-1"></i>
                   Chỉ hủy được miễn phí khi còn ít nhất {FREE_CANCEL_WINDOW_HOURS} giờ trước ngày khởi hành.

@@ -537,13 +537,6 @@ const SubmitComplaintModal = ({ bookings = [], initialBooking = null, onClose, o
                       </div>
                     )}
                   </div>
-
-                  {error && (
-                    <div className="alert alert-danger py-2 small mb-0 mt-3" role="alert">
-                      <i className="bi bi-exclamation-circle me-2"></i>
-                      {error}
-                    </div>
-                  )}
                 </div>
 
                 <div className="modal-footer border-0 px-4 pb-4 pt-2">

@@ -29,7 +29,6 @@ const Destinations = () => {
   const toast = useToast();
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [popularOnly, setPopularOnly] = useState(false);
@@ -43,7 +42,6 @@ const Destinations = () => {
 
   const fetchDestinations = async (filters = {}, pageNum = 1) => {
     setLoading(true);
-    setError(null);
     try {
       const response = await destinationApi.getAll({ ...filters, page: pageNum, limit: 6 });
       setDestinations(response.data || []);
@@ -51,7 +49,7 @@ const Destinations = () => {
       setTotalDestinations(response.total !== undefined ? response.total : (response.data || []).length);
       setCurrentPage(response.currentPage || pageNum);
     } catch (err) {
-      setError(err.message || 'Không thể tải danh sách điểm đến.');
+      toast.error(err.message || 'Không thể tải danh sách điểm đến.');
     } finally {
       setLoading(false);
     }
@@ -303,10 +301,6 @@ const Destinations = () => {
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Đang tải...</span>
               </div>
-            </div>
-          ) : error ? (
-            <div className="alert alert-danger" role="alert">
-              {error}
             </div>
           ) : destinations.length === 0 ? (
             <div className="text-center text-muted py-5 border rounded-4 bg-light">

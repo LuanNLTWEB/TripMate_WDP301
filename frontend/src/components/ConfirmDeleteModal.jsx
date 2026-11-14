@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useToast } from '../hooks/useToast';
 
 const CONFIRM_VARIANTS = {
   danger: { headerClass: 'text-danger', icon: 'bi-exclamation-triangle', buttonClass: 'btn-danger' },
@@ -24,6 +26,13 @@ export default function ConfirmDeleteModal({
   onConfirm,
   onClose
 }) {
+  const toast = useToast();
+
+  useEffect(() => {
+    if (error && isOpen) {
+      toast.error(error);
+    }
+  }, [error, isOpen, toast]);
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
@@ -39,7 +48,7 @@ export default function ConfirmDeleteModal({
 
   const tone = CONFIRM_VARIANTS[variant] || CONFIRM_VARIANTS.danger;
 
-  return (
+  const modalMarkup = (
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
       <div
@@ -47,14 +56,14 @@ export default function ConfirmDeleteModal({
         tabIndex="-1"
         role="dialog"
         aria-modal="true"
-        style={{ zIndex: 1055 }}
+        style={{ zIndex: 1055, overscrollBehavior: 'contain' }}
         onClick={(e) => {
           if (e.target === e.currentTarget && !loading) {
             onClose();
           }
         }}
       >
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered" style={{ overscrollBehavior: 'contain' }}>
           <div className="modal-content border-0 shadow">
             <div className="modal-header">
               <h5 className={`modal-title fw-bold ${tone.headerClass} d-flex align-items-center mb-0`}>
@@ -74,12 +83,6 @@ export default function ConfirmDeleteModal({
                 <p className="mb-0 text-dark">{message}</p>
               ) : (
                 message
-              )}
-              {error && (
-                <div className="alert alert-danger py-2 small mt-3 mb-0" role="alert">
-                  <i className="bi bi-exclamation-circle me-2"></i>
-                  {error}
-                </div>
               )}
               {onReasonChange && (
                 <div className="mt-3">
@@ -130,4 +133,6 @@ export default function ConfirmDeleteModal({
       </div>
     </>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalMarkup, document.body) : null;
 }

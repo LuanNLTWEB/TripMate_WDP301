@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useToast } from '../hooks/useToast';
 import { statsApi } from '../services/api';
 
 function byKey(entries, key, fallback = 0) {
@@ -16,27 +17,25 @@ function byKey(entries, key, fallback = 0) {
  *  - Chỉ gọi API một lần khi mount; loading/error tách riêng để không render
  *    số liệu rỗng khi request còn đang chạy.
  */function Stats() {
+  const toast = useToast();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  const loadStats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await statsApi.getPlatformStats();
+      setStats(response.stats);
+    } catch (requestError) {
+      toast.error(requestError.message || 'Không thể tải thống kê nền tảng.');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    // Tải số liệu thống kê toàn hệ thống hiển thị trên trang.
-    const loadStats = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const response = await statsApi.getPlatformStats();
-        setStats(response.stats);
-      } catch (requestError) {
-        setError(requestError.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadStats();
-  }, []);
+  }, [loadStats]);
 
   return (
     <section className="management-page-section">
@@ -48,8 +47,6 @@ function byKey(entries, key, fallback = 0) {
 
           {loading ? (
             <div className="text-center py-5"><div className="spinner-border text-primary" role="status"></div></div>
-          ) : error ? (
-            <div className="alert alert-danger">{error}</div>
           ) : stats ? (
             <>
               <div className="row g-3 mb-4">

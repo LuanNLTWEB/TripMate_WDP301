@@ -113,7 +113,7 @@ export default function ProviderTours() {
       setTotalPages(response.totalPages || 1);
       setListError('');
     } catch (requestError) {
-      setListError(requestError.message || 'Không thể tải danh sách tour của bạn.');
+      toast.error(requestError.message || 'Không thể tải danh sách tour của bạn.');
     } finally {
       setIsLoading(false);
     }
@@ -221,13 +221,6 @@ export default function ProviderTours() {
           <span>Tạo tour mới</span>
         </button>
       </div>
-
-      {listError && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          {listError}
-          <button type="button" className="btn-close" onClick={() => setListError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       {/* START UC-24 Duplicate Tour */}
       {duplicatedTour && (

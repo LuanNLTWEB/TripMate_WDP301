@@ -24,7 +24,8 @@ const DestinationDetails = () => {
         const response = await destinationApi.getById(id);
         setDestination(response.data);
       } catch (err) {
-        setError(err.message || 'Failed to fetch destination details');
+        setError(err.message || 'Không tìm thấy điểm đến.');
+        toast.error(err.message || 'Không tìm thấy điểm đến.');
       } finally {
         setLoading(false);
       }
@@ -33,7 +34,7 @@ const DestinationDetails = () => {
     if (id) {
       fetchDestination();
     }
-  }, [id]);
+  }, [id, toast]);
 
   // Load trạng thái yêu thích ban đầu
   useEffect(() => {
@@ -78,13 +79,15 @@ const DestinationDetails = () => {
     return (
       <>
         <Navbar />
-        <div className="container py-5" style={{ minHeight: '80vh' }}>
-          <div className="alert alert-danger" role="alert">
-            {error || 'Không tìm thấy điểm đến.'}
+        <div className="container py-5 text-center" style={{ minHeight: '80vh' }}>
+          <div className="card border-0 shadow-sm rounded-4 p-5 mx-auto" style={{ maxWidth: '500px' }}>
+            <i className="bi bi-geo-alt-fill text-muted fs-1 mb-3"></i>
+            <h5 className="fw-bold mb-2">Không tìm thấy điểm đến</h5>
+            <p className="text-muted small mb-4">{error || 'Điểm đến bạn đang tìm kiếm không tồn tại hoặc đã bị gỡ bỏ.'}</p>
+            <Link to="/destinations" className="btn btn-primary rounded-pill px-4">
+              <i className="bi bi-arrow-left me-2"></i> Quay lại danh sách
+            </Link>
           </div>
-          <Link to="/destinations" className="btn btn-outline-primary">
-            <i className="bi bi-arrow-left me-2"></i> Quay lại
-          </Link>
         </div>
         <Footer />
       </>

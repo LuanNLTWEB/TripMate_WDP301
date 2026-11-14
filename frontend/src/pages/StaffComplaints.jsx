@@ -224,10 +224,10 @@ export default function StaffComplaints() {
       </div>
       {selected && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="modal-backdrop fade show" style={{ zIndex: 1060 }} onClick={() => setSelected(null)}></div>
-          <div className="modal fade show d-block" style={{ zIndex: 1065 }} tabIndex="-1" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
-            <div className="modal-dialog modal-dialog-centered modal-md" style={{ maxWidth: 660 }}>
-              <div className="modal-content shadow-lg border-0">
+          <div className="modal-backdrop fade show" style={{ zIndex: 1060, backgroundColor: 'rgba(0, 0, 0, 0.55)' }} onClick={() => setSelected(null)}></div>
+          <div className="modal fade show d-block" style={{ zIndex: 1065, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} tabIndex="-1" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable" style={{ maxWidth: 720 }}>
+              <div className="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
                 <div className="modal-header align-items-start">
                   <div className="me-3">
                     <h5 className="modal-title mb-1">Chi tiết khiếu nại</h5>

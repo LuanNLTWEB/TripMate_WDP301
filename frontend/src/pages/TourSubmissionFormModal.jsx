@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import CustomSelect from '../components/CustomSelect';
 import { tourApi, tourSubmissionApi } from '../services/api';
@@ -123,7 +124,7 @@ export default function TourSubmissionFormModal({
     }
   };
 
-  return (
+  const modalMarkup = (
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1040 }}></div>
       <div
@@ -154,10 +155,6 @@ export default function TourSubmissionFormModal({
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body px-4 py-3">
-                {error && (
-                  <div className="alert alert-danger py-2 small" role="alert">{error}</div>
-                )}
-
                 {isEdit ? (
                   <div className="mb-3">
                     <label className="form-label small fw-semibold text-secondary">Tour đang gửi duyệt</label>
@@ -302,5 +299,7 @@ export default function TourSubmissionFormModal({
       </div>
     </>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalMarkup, document.body) : null;
 }
 // END UC-128 Create Tour Submission

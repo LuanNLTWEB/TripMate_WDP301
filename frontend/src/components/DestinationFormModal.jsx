@@ -252,14 +252,6 @@ export default function DestinationFormModal({
               noValidate
             >
               <div className="modal-body p-4 overflow-y-auto" style={{ minHeight: 0 }}>
-                {error && (
-                  <div className="alert alert-danger alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill"></i>
-                    <span>{error}</span>
-                    <button type="button" className="btn-close ms-auto" onClick={() => setError('')} aria-label="Đóng"></button>
-                  </div>
-                )}
-
                 <div className="row g-4">
                   {/* Left Column: Basic Information Card */}
                   <div className="col-12 col-lg-8">

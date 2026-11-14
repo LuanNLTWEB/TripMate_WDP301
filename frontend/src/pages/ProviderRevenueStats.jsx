@@ -7,7 +7,15 @@ import ManagementPagination from '../components/management/ManagementPagination'
 
 const formatCurrency = (val) => {
   if (typeof val !== 'number') return '0 ₫';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(val);
+};
+
+const formatCompactCurrency = (val) => {
+  if (typeof val !== 'number' || val <= 0) return '0 ₫';
+  if (val >= 1000000000) return `${(val / 1000000000).toFixed(1)} Tỷ`;
+  if (val >= 1000000) return `${(val / 1000000).toFixed(1)} Tr`;
+  if (val >= 1000) return `${Math.round(val / 1000)}k`;
+  return `${val} ₫`;
 };
 
 const formatDate = (val) => {
@@ -40,13 +48,13 @@ const getStatusBadge = (status) => {
   }
 };
 
-const TIME_RANGE_OPTIONS = [
-  { value: '7_days', label: '7 ngày qua', icon: 'bi bi-clock-history' },
-  { value: '30_days', label: '30 ngày qua', icon: 'bi bi-calendar-range' },
-  { value: 'this_month', label: 'Tháng này', icon: 'bi bi-calendar-month' },
-  { value: 'this_year', label: 'Năm nay', icon: 'bi bi-calendar-check' },
-  { value: 'all', label: 'Toàn bộ thời gian', icon: 'bi bi-infinity' },
-  { value: 'custom', label: 'Tùy chọn khoảng ngày', icon: 'bi bi-calendar3' }
+const TIME_RANGE_PILLS = [
+  { value: '7_days', label: '7 ngày qua' },
+  { value: '30_days', label: '30 ngày qua' },
+  { value: 'this_month', label: 'Tháng này' },
+  { value: 'this_year', label: 'Năm nay' },
+  { value: 'all', label: 'Toàn bộ' },
+  { value: 'custom', label: 'Tùy chọn ngày' }
 ];
 
 const STATUS_FILTER_OPTIONS = [
@@ -60,6 +68,27 @@ const STATUS_FILTER_OPTIONS = [
 
 const ITEMS_PER_PAGE = 10;
 
+// Helper to compute smooth SVG curves
+function getCurvedPath(points) {
+  if (!points || points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 export default function ProviderRevenueStats() {
   const toast = useToast();
 
@@ -70,11 +99,15 @@ export default function ProviderRevenueStats() {
 
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState(null);
+  const [chartType, setChartType] = useState('line'); // 'line' | 'bar'
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [activeTourTab, setActiveTourTab] = useState('has_revenue'); // 'has_revenue' | 'all'
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Auto fetch data whenever any filter changes
+  // Auto fetch data whenever filters change
   useEffect(() => {
     let isCancelled = false;
 
@@ -122,7 +155,22 @@ export default function ProviderRevenueStats() {
     totalPassengersServed: 0
   };
 
-  // Filtered transactions
+  // Comprehensive cashflow insights
+  const totalGrossValue = summary.totalCollectedRevenue + summary.totalConfirmedRevenue;
+  const collectedPercent = totalGrossValue > 0
+    ? Math.round((summary.totalCollectedRevenue / totalGrossValue) * 100)
+    : 0;
+  const confirmedPercent = totalGrossValue > 0 ? 100 - collectedPercent : 0;
+
+  const totalAllBookings = summary.totalCompletedBookings + summary.totalConfirmedBookings + summary.totalCancelledBookings;
+  const cancelRate = totalAllBookings > 0
+    ? Math.round((summary.totalCancelledBookings / totalAllBookings) * 100)
+    : 0;
+  const avgBookingValue = summary.totalCompletedBookings > 0
+    ? Math.round(summary.totalCollectedRevenue / summary.totalCompletedBookings)
+    : 0;
+
+  // Filtered transactions for the table
   const filteredTransactions = useMemo(() => {
     const list = statsData?.recentTransactions || [];
     return list.filter((tx) => {
@@ -146,13 +194,6 @@ export default function ProviderRevenueStats() {
     return filteredTransactions.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredTransactions, currentPage]);
 
-  // Max revenue in time series for chart scaling
-  const maxSeriesRevenue = useMemo(() => {
-    const points = statsData?.timeSeries || [];
-    if (points.length === 0) return 1;
-    return Math.max(...points.map((p) => p.revenue), 1);
-  }, [statsData?.timeSeries]);
-
   const tourSelectOptions = useMemo(() => {
     const tours = statsData?.tours || [];
     return [
@@ -165,52 +206,185 @@ export default function ProviderRevenueStats() {
     ];
   }, [statsData?.tours]);
 
+  // Tour leaderboard segregation
+  const allTours = statsData?.revenueByTour || [];
+  const toursWithRevenue = useMemo(() => {
+    return allTours.filter((t) => t.collectedRevenue > 0 || t.confirmedRevenue > 0);
+  }, [allTours]);
+
+  const toursWithoutRevenue = useMemo(() => {
+    return allTours.filter((t) => t.collectedRevenue === 0 && t.confirmedRevenue === 0);
+  }, [allTours]);
+
+  const displayedTours = activeTourTab === 'has_revenue' ? toursWithRevenue : allTours;
+
+  // Ensure continuous timeline so chart spans seamlessly across dates
+  const completeTimeSeries = useMemo(() => {
+    const rawList = statsData?.timeSeries || [];
+    if (rawList.length === 0) return [];
+
+    const rawMap = new Map();
+    rawList.forEach((item) => {
+      rawMap.set(item.date, item);
+    });
+
+    let endDate = new Date();
+    const lastItemDate = new Date(rawList[rawList.length - 1].date);
+    if (lastItemDate > endDate) {
+      endDate = lastItemDate;
+    }
+
+    let startDate;
+    if (timeRange === '7_days') {
+      startDate = new Date(endDate.getTime() - 6 * 24 * 60 * 60 * 1000);
+    } else if (timeRange === '30_days') {
+      startDate = new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000);
+    } else if (timeRange === 'this_month') {
+      startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+    } else if (timeRange === 'this_year') {
+      startDate = new Date(endDate.getFullYear(), 0, 1);
+    } else if (timeRange === 'custom' && customStart && customEnd) {
+      startDate = new Date(customStart);
+      endDate = new Date(customEnd);
+    } else {
+      startDate = new Date(rawList[0].date);
+      endDate = new Date(rawList[rawList.length - 1].date);
+    }
+
+    const filled = [];
+    const curr = new Date(startDate);
+    while (curr <= endDate) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${d}`;
+      if (rawMap.has(dateStr)) {
+        filled.push(rawMap.get(dateStr));
+      } else {
+        filled.push({ date: dateStr, revenue: 0, bookings: 0 });
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    return filled.length > 0 ? filled : rawList;
+  }, [statsData?.timeSeries, timeRange, customStart, customEnd]);
+
+  // Chart scaling calculations
+  const maxSeriesRevenue = useMemo(() => {
+    if (completeTimeSeries.length === 0) return 1000000;
+    return Math.max(...completeTimeSeries.map((p) => p.revenue), 1000000);
+  }, [completeTimeSeries]);
+
+  const peakPoint = useMemo(() => {
+    if (completeTimeSeries.length === 0) return null;
+    return completeTimeSeries.reduce((max, d) => (d.revenue > max.revenue ? d : max), completeTimeSeries[0]);
+  }, [completeTimeSeries]);
+
+  const avgDayRevenue = useMemo(() => {
+    if (completeTimeSeries.length === 0) return 0;
+    const total = completeTimeSeries.reduce((sum, d) => sum + d.revenue, 0);
+    return Math.round(total / completeTimeSeries.length);
+  }, [completeTimeSeries]);
+
+  // SVG Chart Geometry
+  const chartWidth = 800;
+  const chartHeight = 250;
+  const paddingLeft = 65;
+  const paddingRight = 16;
+  const paddingTop = 18;
+  const paddingBottom = 34;
+  const plotWidth = chartWidth - paddingLeft - paddingRight;
+  const plotHeight = chartHeight - paddingTop - paddingBottom;
+  const baselineY = paddingTop + plotHeight;
+
+  const yTicks = [0, maxSeriesRevenue * 0.33, maxSeriesRevenue * 0.66, maxSeriesRevenue];
+
+  const chartPoints = useMemo(() => {
+    if (completeTimeSeries.length === 0) return [];
+    return completeTimeSeries.map((item, index) => {
+      // In line mode, points stretch from left border to right border
+      const x = completeTimeSeries.length > 1
+        ? paddingLeft + (index / (completeTimeSeries.length - 1)) * plotWidth
+        : paddingLeft + plotWidth / 2;
+      const ratio = maxSeriesRevenue > 0 ? item.revenue / maxSeriesRevenue : 0;
+      const y = paddingTop + plotHeight - ratio * plotHeight;
+      return {
+        ...item,
+        x,
+        y,
+        index
+      };
+    });
+  }, [completeTimeSeries, maxSeriesRevenue, plotWidth, plotHeight]);
+
+  const linePath = useMemo(() => getCurvedPath(chartPoints), [chartPoints]);
+  const areaPath = useMemo(() => {
+    if (chartPoints.length === 0) return '';
+    const firstX = chartPoints[0].x;
+    const lastX = chartPoints[chartPoints.length - 1].x;
+    return `${linePath} L ${lastX.toFixed(1)} ${baselineY} L ${firstX.toFixed(1)} ${baselineY} Z`;
+  }, [linePath, chartPoints, baselineY]);
+
+  const barWidth = useMemo(() => {
+    if (completeTimeSeries.length === 0) return 20;
+    return Math.max(Math.min((plotWidth / completeTimeSeries.length) * 0.65, 28), 5);
+  }, [completeTimeSeries.length, plotWidth]);
+
+  const activeTimeRangeLabel = TIME_RANGE_PILLS.find((p) => p.value === timeRange)?.label || 'Tùy chọn';
+
   return (
     <section className="management-page-section">
-      {/* Management Header */}
-      <div className="management-page-heading">
-        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      {/* 1. Management Header */}
+      <div className="management-page-heading mb-4">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
           <div>
+            <span className="management-page-kicker">Báo Cáo Tài Chính</span>
             <h1>Thống kê doanh thu</h1>
-            <p>Báo cáo chi tiết dòng tiền, số lượng vé đã bán và tình hình tăng trưởng của các tour.</p>
+            <p>
+              Theo dõi dòng tiền thực nhận, doanh thu chờ thu, tỷ lệ hoàn tất đơn và hiệu quả kinh doanh của từng tour.
+            </p>
           </div>
           {loading && (
-            <div className="d-flex align-items-center gap-2 text-primary small fw-semibold">
+            <div className="d-flex align-items-center gap-2 text-primary small fw-semibold bg-primary-subtle px-3 py-2 rounded-3">
               <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-              <span>Đang tự động cập nhật dữ liệu...</span>
+              <span>Đang đồng bộ dữ liệu...</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Filter Bar with CustomSelect and CustomDatePicker */}
-      <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
-        <div className="d-flex flex-wrap align-items-center gap-3">
-          <div className="d-flex align-items-center gap-2">
-            <label htmlFor="revenue-time-range" className="small text-muted fw-semibold mb-0 text-nowrap">
-              <i className="bi bi-calendar3 me-1"></i>Khoảng thời gian:
-            </label>
-            <CustomSelect
-              id="revenue-time-range"
-              style={{ width: '200px' }}
-              triggerStyle={{ height: '38px', fontSize: '0.88rem' }}
-              value={timeRange}
-              onChange={(e) => {
-                setTimeRange(e.target.value);
-                setCurrentPage(1);
-              }}
-              options={TIME_RANGE_OPTIONS}
-            />
+      {/* 2. Filter Bar with Pills and Custom Date Range */}
+      <div className="revenue-filter-bar mb-4">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          {/* Quick Time Range Pills */}
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <span className="small text-muted fw-semibold me-1">
+              <i className="bi bi-clock-history me-1"></i>Thời gian:
+            </span>
+            {TIME_RANGE_PILLS.map((pill) => (
+              <button
+                key={pill.value}
+                type="button"
+                className={`revenue-time-pill ${timeRange === pill.value ? 'active' : ''}`}
+                onClick={() => {
+                  setTimeRange(pill.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {pill.label}
+              </button>
+            ))}
           </div>
 
+          {/* Tour Selector Dropdown */}
           <div className="d-flex align-items-center gap-2">
             <label htmlFor="revenue-tour-filter" className="small text-muted fw-semibold mb-0 text-nowrap">
-              <i className="bi bi-map me-1"></i>Tour:
+              <i className="bi bi-map me-1"></i>Lọc tour:
             </label>
             <CustomSelect
               id="revenue-tour-filter"
-              style={{ minWidth: '240px', maxWidth: '360px' }}
-              triggerStyle={{ height: '38px', fontSize: '0.88rem' }}
+              style={{ minWidth: '220px', maxWidth: '320px' }}
+              triggerStyle={{ height: '36px', fontSize: '0.86rem' }}
               value={selectedTourId}
               onChange={(e) => {
                 setSelectedTourId(e.target.value);
@@ -219,263 +393,506 @@ export default function ProviderRevenueStats() {
               options={tourSelectOptions}
             />
           </div>
+        </div>
 
-          {timeRange === 'custom' && (
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <div className="d-flex align-items-center gap-1">
-                <span className="small text-muted fw-semibold text-nowrap">Từ:</span>
-                <div style={{ width: '160px' }}>
-                  <CustomDatePicker
-                    id="revenue-custom-start"
-                    value={customStart}
-                    onChange={(e, val) => {
-                      setCustomStart(val || e?.target?.value || '');
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Từ ngày"
-                  />
-                </div>
-              </div>
-              <div className="d-flex align-items-center gap-1">
-                <span className="small text-muted fw-semibold text-nowrap">Đến:</span>
-                <div style={{ width: '160px' }}>
-                  <CustomDatePicker
-                    id="revenue-custom-end"
-                    value={customEnd}
-                    onChange={(e, val) => {
-                      setCustomEnd(val || e?.target?.value || '');
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Đến ngày"
-                  />
-                </div>
+        {/* Custom Date Range Expandable Panel */}
+        {timeRange === 'custom' && (
+          <div className="pt-3 mt-3 border-top d-flex flex-wrap align-items-center gap-3">
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-muted fw-semibold text-nowrap">
+                <i className="bi bi-calendar3 me-1"></i>Từ ngày:
+              </span>
+              <div style={{ width: '150px' }}>
+                <CustomDatePicker
+                  id="revenue-custom-start"
+                  value={customStart}
+                  onChange={(e, val) => {
+                    setCustomStart(val || e?.target?.value || '');
+                    setCurrentPage(1);
+                  }}
+                  placeholder="dd/mm/yyyy"
+                />
               </div>
             </div>
-          )}
+
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-muted fw-semibold text-nowrap">
+                <i className="bi bi-calendar3 me-1"></i>Đến ngày:
+              </span>
+              <div style={{ width: '150px' }}>
+                <CustomDatePicker
+                  id="revenue-custom-end"
+                  value={customEnd}
+                  onChange={(e, val) => {
+                    setCustomEnd(val || e?.target?.value || '');
+                    setCurrentPage(1);
+                  }}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
+            </div>
+
+            <span className="small text-muted">
+              Lựa chọn khoảng thời gian tùy chỉnh để phân tích dòng tiền chi tiết.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Four Core Hero KPI Cards */}
+      <div className="revenue-kpi-grid mb-4">
+        {/* Card 1: Doanh thu thực nhận */}
+        <div className="revenue-kpi-card card-collected">
+          <div className="revenue-kpi-header">
+            <span className="revenue-kpi-label">Doanh thu thực nhận</span>
+            <span className="revenue-kpi-badge bg-success-subtle text-success">
+              Đã thu thành công
+            </span>
+          </div>
+          <div className="revenue-kpi-value text-success">
+            {formatCurrency(summary.totalCollectedRevenue)}
+          </div>
+          <div className="revenue-kpi-sub">
+            <i className="bi bi-check-circle-fill text-success me-1"></i>
+            Đã thu từ <strong>{summary.totalCompletedBookings}</strong> đơn hoàn tất
+          </div>
+        </div>
+
+        {/* Card 2: Dự kiến thu (Chờ đón) */}
+        <div className="revenue-kpi-card card-pending">
+          <div className="revenue-kpi-header">
+            <span className="revenue-kpi-label">Dự kiến thu khi đi</span>
+            <span className="revenue-kpi-badge bg-warning-subtle text-warning-emphasis">
+              Thu tại điểm đón
+            </span>
+          </div>
+          <div className="revenue-kpi-value text-warning-emphasis">
+            {formatCurrency(summary.totalConfirmedRevenue)}
+          </div>
+          <div className="revenue-kpi-sub">
+            <i className="bi bi-hourglass-split text-warning me-1"></i>
+            <strong>{summary.totalConfirmedBookings}</strong> đơn đã duyệt (chờ thu tiền)
+          </div>
+        </div>
+
+        {/* Card 3: Lượt khách phục vụ */}
+        <div className="revenue-kpi-card card-passengers">
+          <div className="revenue-kpi-header">
+            <span className="revenue-kpi-label">Khách hàng phục vụ</span>
+            <span className="revenue-kpi-badge bg-primary-subtle text-primary">
+              Lượt trải nghiệm
+            </span>
+          </div>
+          <div className="revenue-kpi-value text-primary">
+            {summary.totalPassengersServed.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">khách</span>
+          </div>
+          <div className="revenue-kpi-sub">
+            <i className="bi bi-people-fill text-primary me-1"></i>
+            Hành khách đã tham gia các chuyến đi
+          </div>
+        </div>
+
+        {/* Card 4: Doanh thu thất thoát / Đã hủy */}
+        <div className="revenue-kpi-card card-cancelled">
+          <div className="revenue-kpi-header">
+            <span className="revenue-kpi-label">Doanh thu thất thoát</span>
+            <span className="revenue-kpi-badge bg-danger-subtle text-danger">
+              Đơn bị hủy
+            </span>
+          </div>
+          <div className="revenue-kpi-value text-danger">
+            {formatCurrency(summary.totalCancelledRevenue)}
+          </div>
+          <div className="revenue-kpi-sub">
+            <i className="bi bi-x-octagon-fill text-danger me-1"></i>
+            Thất thoát từ <strong>{summary.totalCancelledBookings}</strong> đơn bị hủy
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="row g-3 mb-4">
-        {/* Card 1: Collected Revenue */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <span className="small text-muted fw-semibold text-uppercase">Doanh thu thực thu</span>
-              <span className="badge bg-success-subtle text-success rounded-circle p-2">
-                <i className="bi bi-wallet2 fs-5"></i>
-              </span>
-            </div>
-            <div className="fs-4 fw-bold text-success mb-1">
-              {formatCurrency(summary.totalCollectedRevenue)}
-            </div>
-            <div className="small text-muted">
-              Đã thu từ <strong>{summary.totalCompletedBookings}</strong> đơn đặt tour
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Confirmed / Pending Revenue */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <span className="small text-muted fw-semibold text-uppercase">Doanh thu chờ thu</span>
-              <span className="badge bg-warning-subtle text-warning-emphasis rounded-circle p-2">
-                <i className="bi bi-hourglass-split fs-5"></i>
-              </span>
-            </div>
-            <div className="fs-4 fw-bold text-warning-emphasis mb-1">
-              {formatCurrency(summary.totalConfirmedRevenue)}
-            </div>
-            <div className="small text-muted">
-              <strong>{summary.totalConfirmedBookings}</strong> đơn đã xác nhận (thu tại điểm đón)
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Total Passengers */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <span className="small text-muted fw-semibold text-uppercase">Lượt khách phục vụ</span>
-              <span className="badge bg-info-subtle text-info rounded-circle p-2">
-                <i className="bi bi-people-fill fs-5"></i>
-              </span>
+      {/* 4. Financial Health & Collection Ratio Banner */}
+      <div className="revenue-health-card mb-4">
+        <div className="row align-items-center g-3">
+          <div className="col-12 col-md-5">
+            <div className="small text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: '0.74rem', letterSpacing: '0.04em' }}>
+              Tổng giá trị booking phát sinh (Gross Value)
             </div>
             <div className="fs-4 fw-bold text-dark mb-1">
-              {summary.totalPassengersServed.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">hành khách</span>
+              {formatCurrency(totalGrossValue)}
             </div>
-            <div className="small text-muted">
-              Tổng số người đã tham gia các tour
+            <div className="revenue-health-progress my-2">
+              <div
+                className="bg-success"
+                style={{ width: `${collectedPercent}%` }}
+                title={`Đã thực thu: ${collectedPercent}%`}
+              ></div>
+              <div
+                className="bg-warning"
+                style={{ width: `${confirmedPercent}%` }}
+                title={`Chờ thu tại điểm đón: ${confirmedPercent}%`}
+              ></div>
             </div>
-          </div>
-        </div>
-
-        {/* Card 4: Cancelled Bookings */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <span className="small text-muted fw-semibold text-uppercase">Doanh thu đã hủy</span>
-              <span className="badge bg-danger-subtle text-danger rounded-circle p-2">
-                <i className="bi bi-x-octagon-fill fs-5"></i>
+            <div className="d-flex justify-content-between small text-muted" style={{ fontSize: '0.75rem' }}>
+              <span>
+                <span className="badge bg-success rounded-circle p-1 me-1"> </span>
+                Đã thực thu: <strong>{collectedPercent}%</strong>
+              </span>
+              <span>
+                <span className="badge bg-warning rounded-circle p-1 me-1"> </span>
+                Chờ thu: <strong>{confirmedPercent}%</strong>
               </span>
             </div>
-            <div className="fs-4 fw-bold text-danger mb-1">
-              {formatCurrency(summary.totalCancelledRevenue)}
-            </div>
-            <div className="small text-muted">
-              <strong>{summary.totalCancelledBookings}</strong> đơn đặt tour đã bị hủy
+          </div>
+
+          <div className="col-12 col-md-7 border-start-md">
+            <div className="row g-2 text-center text-md-start">
+              <div className="col-4">
+                <div className="p-2.5 bg-light rounded-3">
+                  <span className="text-muted small d-block mb-1">Tỷ lệ thu tiền</span>
+                  <span className="fw-bold fs-5 text-success">{collectedPercent}%</span>
+                </div>
+              </div>
+              <div className="col-4">
+                <div className="p-2.5 bg-light rounded-3">
+                  <span className="text-muted small d-block mb-1">Giá trị TB / đơn</span>
+                  <span className="fw-bold fs-6 text-dark text-truncate d-block" title={formatCurrency(avgBookingValue)}>
+                    {formatCompactCurrency(avgBookingValue)}
+                  </span>
+                </div>
+              </div>
+              <div className="col-4">
+                <div className="p-2.5 bg-light rounded-3">
+                  <span className="text-muted small d-block mb-1">Tỷ lệ hủy đơn</span>
+                  <span className={`fw-bold fs-5 ${cancelRate > 15 ? 'text-danger' : 'text-muted'}`}>
+                    {cancelRate}%
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Charts & Tour Performance Breakdown */}
-      <div className="row g-4 mb-4">
-        {/* Time-Series Revenue Trend Chart */}
+      {/* 5. Charts & Tour Performance Breakdown */}
+      <div className="row g-4 mb-4 align-items-start">
+        {/* Left Column: Interactive Revenue Trend Chart */}
         <div className="col-12 col-lg-8">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold mb-0 text-dark">
-                <i className="bi bi-graph-up text-primary me-2"></i>
-                Xu hướng doanh thu theo thời gian
-              </h5>
-              <span className="badge bg-light text-muted fw-normal border">
-                {statsData?.timeSeries?.length || 0} mốc ghi nhận
-              </span>
+          <div className="revenue-chart-card">
+            {/* Header with Type Toggle and Peak Stats */}
+            <div className="revenue-chart-header">
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                  <h5 className="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                    <i className="bi bi-graph-up text-primary"></i>
+                    <span>Xu hướng doanh thu theo thời gian</span>
+                  </h5>
+                  <div className="small text-muted">
+                    {peakPoint && peakPoint.revenue > 0 ? (
+                      <span>
+                        Cao nhất: <strong className="text-success">{formatCurrency(peakPoint.revenue)}</strong> ({formatDate(peakPoint.date)}) · TB: <strong>{formatCurrency(avgDayRevenue)}/ngày</strong>
+                      </span>
+                    ) : (
+                      <span>Theo dõi phân bổ doanh thu phát sinh theo từng ngày</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chart Mode Toggle */}
+                <div className="btn-group btn-group-sm" role="group" aria-label="Loại biểu đồ">
+                  <button
+                    type="button"
+                    className={`btn ${chartType === 'line' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setChartType('line')}
+                    title="Biểu đồ đường mượt"
+                  >
+                    <i className="bi bi-activity me-1"></i>Đường
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${chartType === 'bar' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    onClick={() => setChartType('bar')}
+                    title="Biểu đồ cột"
+                  >
+                    <i className="bi bi-bar-chart-fill me-1"></i>Cột
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {(!statsData?.timeSeries || statsData.timeSeries.length === 0) ? (
-              <div className="text-center py-5 text-muted my-auto">
-                <i className="bi bi-bar-chart fs-1 text-secondary opacity-50 d-block mb-2"></i>
-                Chưa có dữ liệu doanh thu phát sinh trong khoảng thời gian này.
-              </div>
-            ) : (
-              <div className="d-flex flex-column justify-content-end pt-4" style={{ minHeight: '260px' }}>
-                <div className="d-flex align-items-end justify-content-between gap-2 h-100 pb-2 border-bottom">
-                  {statsData.timeSeries.map((item, idx) => {
-                    const heightPercent = Math.max(Math.round((item.revenue / maxSeriesRevenue) * 100), 6);
-                    return (
-                      <div
-                        key={idx}
-                        className="d-flex flex-column align-items-center flex-grow-1"
-                        style={{ maxWidth: '48px' }}
-                        title={`${item.date}: ${formatCurrency(item.revenue)} (${item.bookings} đơn)`}
-                      >
-                        <div className="small fw-bold text-success mb-1 text-nowrap d-none d-md-block" style={{ fontSize: '0.68rem' }}>
-                          {item.revenue > 0 ? (item.revenue / 1000000 >= 1 ? `${(item.revenue / 1000000).toFixed(1)}Tr` : `${Math.round(item.revenue / 1000)}k`) : ''}
-                        </div>
-                        <div
-                          className="w-100 rounded-top bg-primary bg-gradient transition-all"
-                          style={{
-                            height: `${heightPercent}%`,
-                            minHeight: '8px',
-                            opacity: item.revenue > 0 ? 0.9 : 0.25
-                          }}
-                        ></div>
-                        <div className="text-muted mt-2 text-truncate" style={{ fontSize: '0.7rem' }}>
-                          {item.date ? item.date.slice(5) : ''}
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* SVG Visual Chart Body */}
+            <div className="revenue-chart-body">
+              {chartPoints.length === 0 ? (
+                <div className="text-center py-5 text-muted my-auto">
+                  <div className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center p-3 mb-2">
+                    <i className="bi bi-bar-chart fs-1 text-secondary opacity-50"></i>
+                  </div>
+                  <h6 className="fw-bold text-dark mb-1">Chưa có dữ liệu doanh thu phát sinh</h6>
+                  <p className="small text-muted mb-0">Các đơn đặt tour được thanh toán sẽ tự động xuất hiện tại đây.</p>
                 </div>
-                <div className="d-flex justify-content-between text-muted small mt-2">
-                  <span>Trục ngang: Ngày ghi nhận</span>
-                  <span>Đơn vị: VNĐ</span>
-                </div>
+              ) : (
+                <>
+                  {/* Floating Tooltip */}
+                  {hoveredPoint && (
+                    <div
+                      className="revenue-chart-tooltip"
+                      style={{
+                        left: `${Math.min(Math.max(hoveredPoint.x, 70), chartWidth - 70)}px`,
+                        top: `${Math.max(hoveredPoint.y, 40)}px`
+                      }}
+                    >
+                      <div className="fw-bold">{formatDate(hoveredPoint.date)}</div>
+                      <div className="text-success fw-bold">{formatCurrency(hoveredPoint.revenue)}</div>
+                      <div className="text-light opacity-75 small">{hoveredPoint.bookings} đơn đặt tour</div>
+                    </div>
+                  )}
+
+                  <svg
+                    viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                    className="w-100"
+                    style={{ overflow: 'visible', display: 'block' }}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  >
+                    {/* Horizontal Gridlines & Y-axis labels */}
+                    {yTicks.map((tickVal) => {
+                      const yPos = paddingTop + plotHeight - (maxSeriesRevenue > 0 ? (tickVal / maxSeriesRevenue) * plotHeight : 0);
+                      return (
+                        <g key={`tick-${tickVal}`}>
+                          <line
+                            x1={paddingLeft}
+                            y1={yPos}
+                            x2={chartWidth - paddingRight}
+                            y2={yPos}
+                            stroke="#f1f5f9"
+                            strokeWidth="1"
+                            strokeDasharray="3 3"
+                          />
+                          <text
+                            x={paddingLeft - 8}
+                            y={yPos + 4}
+                            textAnchor="end"
+                            fontSize="11"
+                            fill="#94a3b8"
+                            fontFamily="system-ui, -apple-system, sans-serif"
+                          >
+                            {formatCompactCurrency(tickVal)}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Active Hover Guide Line */}
+                    {hoveredPoint && (
+                      <line
+                        x1={hoveredPoint.x}
+                        y1={paddingTop}
+                        x2={hoveredPoint.x}
+                        y2={baselineY}
+                        stroke="#0284c7"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 3"
+                      />
+                    )}
+
+                    {/* Line Chart Elements */}
+                    {chartType === 'line' && (
+                      <>
+                        <path d={areaPath} fill="#0284c7" fillOpacity="0.08" />
+                        <path d={linePath} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" />
+                        {chartPoints.map((p) => {
+                          const isHovered = hoveredPoint?.index === p.index;
+                          return (
+                            <g key={`pt-${p.index}`}>
+                              <circle
+                                cx={p.x}
+                                cy={p.y}
+                                r={isHovered ? 6 : p.revenue > 0 ? 3.5 : 2}
+                                fill={isHovered ? '#10b981' : p.revenue > 0 ? '#0284c7' : '#cbd5e1'}
+                                stroke="#ffffff"
+                                strokeWidth={isHovered ? 2.5 : 1.5}
+                                style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+                                onMouseEnter={() => setHoveredPoint(p)}
+                              />
+                            </g>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {/* Bar Chart Elements */}
+                    {chartType === 'bar' &&
+                      chartPoints.map((p) => {
+                        const isHovered = hoveredPoint?.index === p.index;
+                        const barX = paddingLeft + (p.index + 0.5) * (plotWidth / chartPoints.length) - barWidth / 2;
+                        const rawHeight = plotHeight - (p.y - paddingTop);
+                        const barH = Math.max(rawHeight, p.revenue > 0 ? 6 : 2);
+                        const barY = baselineY - barH;
+
+                        return (
+                          <rect
+                            key={`bar-${p.index}`}
+                            x={barX}
+                            y={barY}
+                            width={barWidth}
+                            height={barH}
+                            rx={Math.min(barWidth / 2, 4)}
+                            fill={isHovered ? '#10b981' : p.revenue > 0 ? '#0284c7' : '#e2e8f0'}
+                            style={{ cursor: 'pointer', transition: 'fill 0.18s ease' }}
+                            onMouseEnter={() => setHoveredPoint(p)}
+                          />
+                        );
+                      })}
+
+                    {/* X-axis Date Labels */}
+                    {chartPoints.map((p, idx) => {
+                      const totalCount = chartPoints.length;
+                      let shouldShow = false;
+                      if (totalCount <= 8) {
+                        shouldShow = true;
+                      } else {
+                        const step = Math.ceil((totalCount - 1) / 5);
+                        shouldShow = idx % step === 0 || idx === totalCount - 1;
+                      }
+
+                      if (!shouldShow) return null;
+                      const dateLabel = p.date ? p.date.slice(5) : '';
+                      return (
+                        <text
+                          key={`xlabel-${p.index}`}
+                          x={p.x}
+                          y={chartHeight - 12}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fill="#94a3b8"
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                        >
+                          {dateLabel}
+                        </text>
+                      );
+                    })}
+                  </svg>
+                </>
+              )}
+            </div>
+
+            {/* Grounded Bottom Footer Bar */}
+            <div className="revenue-chart-footer">
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+                  <i className="bi bi-calendar-check me-1"></i>
+                  {activeTimeRangeLabel}
+                </span>
+                <span className="text-muted small">
+                  Tổng {completeTimeSeries.length} ngày theo dõi
+                </span>
               </div>
-            )}
+              <div className="text-end small">
+                <span className="text-muted">Tổng thực thu kỳ này: </span>
+                <strong className="text-success fs-6">{formatCurrency(summary.totalCollectedRevenue)}</strong>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Top Tours by Revenue Breakdown */}
+        {/* Right Column: Top Tours by Revenue Leaderboard */}
         <div className="col-12 col-lg-4">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column">
+          <div className="revenue-tours-card">
             <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
               <div>
                 <h5 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
                   <i className="bi bi-trophy-fill text-warning"></i>
-                  <span>Hiệu quả theo từng Tour</span>
+                  <span>Hiệu quả theo Tour</span>
                 </h5>
-                <span className="text-muted small" style={{ fontSize: '0.8rem' }}>Đóng góp doanh thu của các tour</span>
+                <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
+                  Đóng góp doanh thu từng tour
+                </span>
               </div>
-              <span className="badge bg-light text-muted border rounded-pill px-2.5 py-1 small">
-                {statsData?.revenueByTour?.length || 0} tour
-              </span>
+
+              {/* Tour Tab Buttons */}
+              <div className="revenue-tour-tabs">
+                <button
+                  type="button"
+                  className={`revenue-tour-tab-btn ${activeTourTab === 'has_revenue' ? 'active' : ''}`}
+                  onClick={() => setActiveTourTab('has_revenue')}
+                  title="Chỉ hiện các tour có phát sinh doanh thu"
+                >
+                  Có thu ({toursWithRevenue.length})
+                </button>
+                <button
+                  type="button"
+                  className={`revenue-tour-tab-btn ${activeTourTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveTourTab('all')}
+                  title="Tất cả các tour"
+                >
+                  Tất cả ({allTours.length})
+                </button>
+              </div>
             </div>
 
-            {(!statsData?.revenueByTour || statsData.revenueByTour.length === 0) ? (
+            {displayedTours.length === 0 ? (
               <div className="text-center py-5 text-muted my-auto">
                 <i className="bi bi-inbox fs-2 text-secondary opacity-50 d-block mb-2"></i>
-                Chưa có dữ liệu doanh thu theo tour.
+                Chưa có tour nào phát sinh doanh thu trong kỳ này.
               </div>
             ) : (
-              <div
-                className="d-flex flex-column gap-2.5 flex-grow-1"
-                style={{
-                  maxHeight: statsData.revenueByTour.length > 4 ? '360px' : 'none',
-                  overflowY: statsData.revenueByTour.length > 4 ? 'auto' : 'visible'
-                }}
-              >
-                {statsData.revenueByTour.map((tourItem, idx) => {
+              <div className="revenue-tour-list">
+                {displayedTours.map((tourItem, idx) => {
                   const percentOfTotal = summary.totalCollectedRevenue > 0
                     ? Math.round((tourItem.collectedRevenue / summary.totalCollectedRevenue) * 100)
                     : 0;
 
-                  // Rank Badge colors (Gold, Silver, Bronze, or Neutral)
-                  const rankBadgeClass =
-                    idx === 0 ? 'bg-warning text-dark' :
-                    idx === 1 ? 'bg-secondary-subtle text-secondary' :
-                    idx === 2 ? 'bg-danger-subtle text-danger' :
-                    'bg-light text-muted border';
+                  const hasRevenue = tourItem.collectedRevenue > 0 || tourItem.confirmedRevenue > 0;
+                  const rankClass =
+                    idx === 0 && hasRevenue ? 'revenue-tour-rank-gold' :
+                    idx === 1 && hasRevenue ? 'revenue-tour-rank-silver' :
+                    idx === 2 && hasRevenue ? 'revenue-tour-rank-bronze' :
+                    'revenue-tour-rank-plain';
 
                   return (
-                    <div
-                      key={tourItem.tourId}
-                      className="p-3 rounded-3 bg-light bg-opacity-50 border"
-                      style={{ transition: 'all 0.2s ease' }}
-                    >
-                      {/* Top: Rank + Tour Title */}
-                      <div className="d-flex align-items-start gap-2 mb-2">
-                        <span
-                          className={`badge rounded-circle fw-bold flex-shrink-0 ${rankBadgeClass}`}
-                          style={{ width: '22px', height: '22px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem' }}
-                        >
-                          {idx + 1}
-                        </span>
-                        <div
-                          className="fw-bold text-dark small text-truncate flex-grow-1"
-                          title={tourItem.title}
-                          style={{ lineHeight: '1.4' }}
-                        >
-                          {tourItem.title}
+                    <div key={tourItem.tourId} className="revenue-tour-item">
+                      {/* Top: Rank + Title + Badge */}
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-1.5">
+                        <div className="d-flex align-items-center gap-2 overflow-hidden flex-grow-1 min-width-0">
+                          <span className={`revenue-tour-rank ${rankClass}`}>
+                            {idx + 1}
+                          </span>
+                          <div
+                            className="fw-bold text-dark small text-truncate"
+                            title={tourItem.title}
+                          >
+                            {tourItem.title}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Middle: Revenue and Percentage Badge */}
-                      <div className="d-flex justify-content-between align-items-center mb-1 ps-4">
-                        <div className="fw-bold text-success fs-6">
-                          {formatCurrency(tourItem.collectedRevenue)}
-                        </div>
-                        {summary.totalCollectedRevenue > 0 ? (
-                          <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
+                        {hasRevenue ? (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 flex-shrink-0" style={{ fontSize: '0.72rem' }}>
                             {percentOfTotal}% tổng thu
                           </span>
                         ) : (
-                          <span className="badge bg-light text-muted border rounded-pill px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
-                            0% tổng thu
+                          <span className="badge bg-light text-muted border rounded-pill px-2 py-0.5 flex-shrink-0" style={{ fontSize: '0.7rem' }}>
+                            Chưa có đơn
                           </span>
                         )}
                       </div>
 
-                      {/* Progress Bar (Only when total revenue > 0) */}
-                      {summary.totalCollectedRevenue > 0 && (
+                      {/* Middle: Revenue and Pending info */}
+                      <div className="d-flex justify-content-between align-items-center ps-4 mb-1">
+                        <div className={`fs-6 fw-bold ${hasRevenue ? 'text-success' : 'text-muted'}`}>
+                          {formatCurrency(tourItem.collectedRevenue)}
+                        </div>
+                        {tourItem.confirmedRevenue > 0 && (
+                          <span className="small text-warning-emphasis fw-medium" style={{ fontSize: '0.72rem' }}>
+                            Chờ thu: {formatCompactCurrency(tourItem.confirmedRevenue)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress Bar */}
+                      {hasRevenue && (
                         <div className="progress ms-4 my-1.5" style={{ height: '5px', backgroundColor: '#e2e8f0', borderRadius: '999px' }}>
                           <div
                             className="progress-bar bg-success rounded-pill"
                             role="progressbar"
-                            style={{ width: `${Math.max(percentOfTotal, 2)}%` }}
+                            style={{ width: `${Math.max(percentOfTotal, 3)}%` }}
                             aria-valuenow={percentOfTotal}
                             aria-valuemin="0"
                             aria-valuemax="100"
@@ -484,7 +901,7 @@ export default function ProviderRevenueStats() {
                       )}
 
                       {/* Bottom details: Bookings & Passengers */}
-                      <div className="d-flex justify-content-between text-muted ps-4" style={{ fontSize: '0.75rem' }}>
+                      <div className="d-flex justify-content-between text-muted ps-4 pt-1" style={{ fontSize: '0.74rem' }}>
                         <span>
                           <i className="bi bi-receipt me-1 text-primary"></i>
                           {tourItem.completedBookings} đơn thành công
@@ -497,13 +914,27 @@ export default function ProviderRevenueStats() {
                     </div>
                   );
                 })}
+
+                {/* Helpful note for remaining zero-revenue tours */}
+                {activeTourTab === 'has_revenue' && toursWithoutRevenue.length > 0 && (
+                  <div className="p-2.5 text-center bg-light rounded-3 mt-1 small text-muted">
+                    <span>Còn <strong>{toursWithoutRevenue.length}</strong> tour chưa phát sinh doanh thu trong kỳ. </span>
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm p-0 text-decoration-none fw-semibold"
+                      onClick={() => setActiveTourTab('all')}
+                    >
+                      Xem tất cả →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Detailed Transactions Table - Reusing Unified Management Design */}
+      {/* 6. Detailed Transactions Table */}
       <div className="management-table-card">
         <div className="management-table-toolbar">
           <div className="management-search-box">
@@ -526,8 +957,8 @@ export default function ProviderRevenueStats() {
             </label>
             <CustomSelect
               id="tx-status-filter"
-              style={{ width: '200px' }}
-              triggerStyle={{ height: '40px', fontSize: '0.88rem' }}
+              style={{ width: '190px' }}
+              triggerStyle={{ height: '38px', fontSize: '0.86rem' }}
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -542,12 +973,12 @@ export default function ProviderRevenueStats() {
           <table className="management-table align-middle">
             <thead>
               <tr>
-                <th style={{ width: '16%' }}>Mã & Ngày đặt</th>
-                <th style={{ width: '24%' }}>Tour du lịch</th>
-                <th style={{ width: '20%' }}>Khách hàng</th>
-                <th style={{ width: '13%' }}>Khởi hành</th>
-                <th style={{ width: '12%' }}>Số tiền</th>
-                <th className="text-end" style={{ width: '15%' }}>Trạng thái</th>
+                <th style={{ width: '16%' }}>Mã &amp; Thời gian</th>
+                <th style={{ width: '25%' }}>Tour du lịch</th>
+                <th style={{ width: '22%' }}>Khách hàng</th>
+                <th style={{ width: '12%' }}>Khởi hành</th>
+                <th style={{ width: '13%' }}>Số tiền</th>
+                <th className="text-end" style={{ width: '12%' }}>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
@@ -555,7 +986,7 @@ export default function ProviderRevenueStats() {
                 <tr>
                   <td colSpan="6" className="text-center py-5 text-muted">
                     <span className="spinner-border spinner-border-sm text-primary me-2" role="status"></span>
-                    Đang tải dữ liệu giao dịch...
+                    Đang tải danh sách giao dịch...
                   </td>
                 </tr>
               ) : paginatedTransactions.length === 0 ? (
@@ -569,7 +1000,7 @@ export default function ProviderRevenueStats() {
                       <p className="small text-muted mb-0">
                         {searchTerm || statusFilter !== 'all'
                           ? 'Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc trạng thái.'
-                          : 'Các đơn đặt tour và dòng tiền sẽ được cập nhật tự động tại đây.'}
+                          : 'Các đơn đặt tour và dòng tiền sẽ được ghi nhận tự động tại đây.'}
                       </p>
                     </div>
                   </td>
@@ -583,16 +1014,17 @@ export default function ProviderRevenueStats() {
                         <span className="font-monospace small fw-bold text-dark d-block">
                           #{String(tx._id).slice(-6).toUpperCase()}
                         </span>
-                        <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        <span className="text-muted" style={{ fontSize: '0.74rem' }}>
                           {formatDateTime(tx.createdAt)}
                         </span>
                       </td>
 
                       <td>
-                        <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: '260px' }} title={tx.tourTitle}>
+                        <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: '240px' }} title={tx.tourTitle}>
                           {tx.tourTitle}
                         </div>
                         <div className="small text-muted">
+                          <i className="bi bi-people me-1 text-primary"></i>
                           {tx.numberOfPeople} hành khách
                         </div>
                       </td>
@@ -600,22 +1032,36 @@ export default function ProviderRevenueStats() {
                       <td>
                         <div className="fw-semibold text-dark small">{tx.customerName}</div>
                         {tx.phone && (
-                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                            <i className="bi bi-telephone me-1"></i>{tx.phone}
+                          <div className="text-muted" style={{ fontSize: '0.74rem' }}>
+                            <i className="bi bi-telephone me-1 text-primary"></i>{tx.phone}
+                          </div>
+                        )}
+                        {tx.customerEmail && (
+                          <div className="text-muted text-truncate" style={{ fontSize: '0.74rem', maxWidth: '180px' }} title={tx.customerEmail}>
+                            <i className="bi bi-envelope me-1"></i>{tx.customerEmail}
                           </div>
                         )}
                       </td>
 
                       <td className="small text-muted">
-                        <i className="bi bi-calendar3 me-1"></i>{formatDate(tx.departureDate)}
+                        <i className="bi bi-calendar3 me-1 text-primary"></i>
+                        {formatDate(tx.departureDate)}
                       </td>
 
                       <td>
-                        <div className="fw-bold text-primary">
+                        <div className="fw-bold text-dark">
                           {formatCurrency(tx.totalPrice)}
                         </div>
-                        <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                          {tx.paymentMethod === 'bank_transfer' ? 'Chuyển khoản' : 'Thu tại đón'}
+                        <div className="mt-0.5">
+                          {tx.paymentMethod === 'bank_transfer' ? (
+                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: '0.68rem' }}>
+                              <i className="bi bi-bank me-1"></i>Chuyển khoản
+                            </span>
+                          ) : (
+                            <span className="badge bg-secondary-subtle text-secondary border" style={{ fontSize: '0.68rem' }}>
+                              <i className="bi bi-cash me-1"></i>Thu tại đón
+                            </span>
+                          )}
                         </div>
                       </td>
 

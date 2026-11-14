@@ -175,8 +175,7 @@ const BookingHistory = () => {
       setBookings(res.data || []);
     } catch (err) {
       console.error('Error fetching bookings:', err);
-      setError(err.message || 'Không thể tải danh sách đặt tour. Vui lòng thử lại sau.');
-      toast.error('Không thể tải danh sách đặt tour');
+      toast.error(err.message || 'Không thể tải danh sách đặt tour. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -554,22 +553,6 @@ const BookingHistory = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Error Alert */}
-              {error && (
-                <div className="alert alert-danger rounded-4 shadow-sm p-4 mb-4 d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-3">
-                    <i className="bi bi-exclamation-octagon-fill fs-3 flex-shrink-0"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">Đã có lỗi xảy ra</h6>
-                      <p className="mb-0 small">{error}</p>
-                    </div>
-                  </div>
-                  <button type="button" className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={fetchBookings}>
-                    Thử lại
-                  </button>
-                </div>
-              )}
 
               {/* Content Loading State */}
               {loading ? (

@@ -13,7 +13,6 @@ export default function ProviderCreateTour() {
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const [error, setError] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [fileName, setFileName] = useState('Chưa có tệp nào được chọn');
 
@@ -46,21 +45,19 @@ export default function ProviderCreateTour() {
       return updated;
     });
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-    if (error) setError('');
   };
 
   const handlePriceChange = (e) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     setFormData((prev) => ({ ...prev, price: rawValue }));
     if (errors.price) setErrors((prev) => ({ ...prev, price: '' }));
-    if (error) setError('');
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setError('Kích thước ảnh không được vượt quá 5MB.');
+        toast.error('Kích thước ảnh không được vượt quá 5MB.');
         return;
       }
       if (imageFile && formData.imageUrl.startsWith('blob:')) {
@@ -71,7 +68,6 @@ export default function ProviderCreateTour() {
       const previewUrl = URL.createObjectURL(file);
       setFormData(prev => ({ ...prev, imageUrl: previewUrl }));
       if (errors.image) setErrors((prev) => ({ ...prev, image: '' }));
-      setError('');
     } else {
       setFileName('Chưa có tệp nào được chọn');
     }
@@ -79,7 +75,6 @@ export default function ProviderCreateTour() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
 
     const fieldErrors = {};
     if (!formData.title.trim()) fieldErrors.title = 'Vui lòng nhập tên tour.';
@@ -139,7 +134,6 @@ export default function ProviderCreateTour() {
       navigate('/tours');
     } catch (err) {
       const msg = err.message || 'Không thể tạo tour. Vui lòng thử lại.';
-      setError(msg);
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -163,14 +157,6 @@ export default function ProviderCreateTour() {
               Đăng ký tour của bạn lên hệ thống TripMate. Tour sẽ được gửi đến nhân viên để duyệt trước khi hiển thị công khai.
             </p>
           </div>
-
-          {error && (
-            <div className="alert alert-danger alert-dismissible fade show" role="alert">
-              <i className="bi bi-exclamation-triangle-fill me-2"></i>
-              {error}
-              <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-            </div>
-          )}
 
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-body p-4 p-md-5">

@@ -16,7 +16,6 @@ const FavoriteDestinations = () => {
   const [favoriteDestinations, setFavoriteDestinations] = useState([]);
   const [favoriteTours, setFavoriteTours] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [removingKey, setRemovingKey] = useState('');
   const [activeTab, setActiveTab] = useState('destinations');
 
@@ -66,7 +65,7 @@ const FavoriteDestinations = () => {
       }
 
       if (loadErrors.length > 0) {
-        setError(`Không thể tải danh sách ${loadErrors.join(' và ')} yêu thích.`);
+        toast.error(`Không thể tải danh sách ${loadErrors.join(' và ')} yêu thích.`);
       }
       setLoading(false);
     };
@@ -76,14 +75,13 @@ const FavoriteDestinations = () => {
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated, user?.role, user?.id, user?._id]);
+  }, [isAuthenticated, user?.role, user?.id, user?._id, toast]);
 
   const handleRemoveDestination = async (destinationId) => {
     const itemKey = `destination:${destinationId}`;
     if (removingKey) return;
 
     setRemovingKey(itemKey);
-    setError('');
     try {
       await destinationApi.removeFavorite(destinationId);
       setFavoriteDestinations((current) => current.filter((destination) => destination._id !== destinationId));
@@ -100,7 +98,6 @@ const FavoriteDestinations = () => {
     if (removingKey) return;
 
     setRemovingKey(itemKey);
-    setError('');
     try {
       await tourApi.removeFavorite(tourId);
       setFavoriteTours((current) => current.filter((tour) => tour._id !== tourId));
@@ -139,13 +136,6 @@ const FavoriteDestinations = () => {
             </div>
           ) : (
             <>
-              {error && (
-                <div className="alert alert-danger alert-dismissible" role="alert">
-                  {error}
-                  <button type="button" className="btn-close" aria-label="Đóng" onClick={() => setError('')}></button>
-                </div>
-              )}
-
               <div className="card border-0 shadow-sm rounded-4 mb-4">
                 <div className="card-body p-2 p-md-3">
                   <div className="nav nav-pills nav-fill gap-2" role="tablist" aria-label="Loại mục yêu thích">

@@ -69,7 +69,7 @@ export default function StaffAnnouncements() {
         setAnnouncements([]);
         setTotal(0);
         setTotalPages(0);
-        setError(requestError.message || 'Không thể tải danh sách tin tức.');
+        toast.error(requestError.message || 'Không thể tải danh sách tin tức.');
       } finally {
         if (active) setLoading(false);
       }
@@ -237,13 +237,6 @@ export default function StaffAnnouncements() {
           </div>
         </div>
       </div>
-
-      {error && (
-        <div className="alert alert-danger d-flex align-items-center mb-4 shadow-sm" role="alert">
-          <i className="bi bi-exclamation-triangle-fill fs-5 me-2 flex-shrink-0"></i>
-          <div>{error}</div>
-        </div>
-      )}
 
       {/* Main Table Card */}
       <div className="management-table-card">

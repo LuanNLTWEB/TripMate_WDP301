@@ -194,7 +194,7 @@ export default function MyComplaints() {
       setComplaints(complaintResponse.data || []);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải khiếu nại.');
+      toast.error(requestError.message || 'Không thể tải khiếu nại.');
     } finally {
       setLoading(false);
     }
@@ -321,8 +321,6 @@ export default function MyComplaints() {
             </div>
           </div>
         </div>
-
-        {error && <div className="alert alert-danger">{error}</div>}
 
         {loading ? (
           <div className="text-center py-5">
@@ -504,9 +502,9 @@ export default function MyComplaints() {
 {/* START STT 68 Update Booking Complaint Modal */}
         {editingComplaint && (
           <>
-            <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={handleCloseEdit}></div>
-            <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055 }} onClick={(e) => { if (e.target === e.currentTarget) handleCloseEdit(); }}>
-              <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-backdrop fade show" style={{ zIndex: 1050, backgroundColor: 'rgba(0, 0, 0, 0.55)' }} onClick={handleCloseEdit}></div>
+            <div className="modal fade show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ zIndex: 1055, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} onClick={(e) => { if (e.target === e.currentTarget) handleCloseEdit(); }}>
+              <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                 <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                   <form onSubmit={handleSaveEdit} noValidate>
                     <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -528,13 +526,6 @@ export default function MyComplaints() {
                           Mã đơn: {bookingCode(editingComplaint.bookingId?._id)} · Trạng thái: Mới gửi (Được phép cập nhật)
                         </div>
                       </div>
-
-                      {editError && (
-                        <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
-                          <i className="bi bi-exclamation-circle-fill"></i>
-                          <div>{editError}</div>
-                        </div>
-                      )}
 
                       <div className="mb-3">
                         <label htmlFor="edit-complaint-category" className="form-label fw-semibold small text-muted text-uppercase">

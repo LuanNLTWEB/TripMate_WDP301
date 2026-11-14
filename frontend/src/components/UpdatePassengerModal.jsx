@@ -120,7 +120,7 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
           if (e.target === e.currentTarget && !isSubmitting) onClose();
         }}
       >
-        <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             {/* Header */}
             <div className="modal-header bg-light px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
@@ -147,13 +147,6 @@ const UpdatePassengerModal = ({ booking, tourTitle, onClose, onUpdated }) => {
             {/* Form Body */}
             <form onSubmit={handleSubmit} noValidate>
               <div className="modal-body p-4">
-                {error && (
-                  <div className="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill flex-shrink-0" />
-                    <div>{error}</div>
-                  </div>
-                )}
-
                 {isLimitReached ? (
                   <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
                     <i className="bi bi-exclamation-triangle-fill flex-shrink-0 fs-5" />

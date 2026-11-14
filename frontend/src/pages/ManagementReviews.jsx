@@ -187,7 +187,7 @@ export default function ManagementReviews() {
         setSummary(EMPTY_SUMMARY);
         setTotal(0);
         setTotalPages(1);
-        setError(requestError.message || (
+        toast.error(requestError.message || (
           isReportedView
             ? 'Không thể tải danh sách đánh giá bị báo cáo.'
             : 'Không thể tải danh sách đánh giá kiểm duyệt.'
@@ -364,13 +364,6 @@ export default function ManagementReviews() {
       </ul>
 
       {isReportedView && <ReportSummary summary={summary} />}
-
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>{error}
-          <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-        </div>
-      )}
 
       <div className="management-table-card">
         <div className="management-table-toolbar flex-wrap gap-3">

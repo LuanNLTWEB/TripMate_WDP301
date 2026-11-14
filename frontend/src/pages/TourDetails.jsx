@@ -236,7 +236,11 @@ const TourDetails = () => {
         const response = await tourApi.getById(id);
         if (isMounted) setTour(response.data);
       } catch (err) {
-        if (isMounted) setError(err.message || 'Không thể tải thông tin tour.');
+        if (isMounted) {
+          const msg = err.message || 'Không thể tải thông tin tour.';
+          setError(msg);
+          toast.error(msg);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -342,7 +346,10 @@ const TourDetails = () => {
         }
       })
       .catch(() => {
-        if (isMounted) setReviewsError('Không thể tải đánh giá.');
+        if (isMounted) {
+          setReviewsError('Không thể tải đánh giá.');
+          toast.error('Không thể tải đánh giá.');
+        }
       })
       .finally(() => {
         if (isMounted) setReviewsLoading(false);
@@ -442,24 +449,33 @@ const TourDetails = () => {
     if (isManagementRoute) {
       return (
         <section className="management-page-section">
-          <div className="alert alert-danger">{error || 'Không tìm thấy tour.'}</div>
-          <Link
-            to={user?.role === 'tourProvider' ? '/management/my-tours' : '/management/tours'}
-            className="btn btn-outline-primary"
-          >
-            <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
-          </Link>
+          <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+            <i className="bi bi-compass text-muted fs-1 mb-3"></i>
+            <h5 className="fw-bold mb-2">Không tìm thấy tour</h5>
+            <p className="text-muted small mb-4">{error || 'Tour không tồn tại hoặc đã bị xóa.'}</p>
+            <Link
+              to={user?.role === 'tourProvider' ? '/management/my-tours' : '/management/tours'}
+              className="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+            >
+              <i className="bi bi-arrow-left"></i>
+              <span>Quay lại danh sách tour</span>
+            </Link>
+          </div>
         </section>
       );
     }
     return (
       <>
         <Navbar />
-        <main className="container py-5" style={{ minHeight: '80vh' }}>
-          <div className="alert alert-danger">{error || 'Không tìm thấy tour.'}</div>
-          <Link to="/tours" className="btn btn-outline-primary">
-            <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
-          </Link>
+        <main className="container py-5 text-center" style={{ minHeight: '80vh' }}>
+          <div className="card border-0 shadow-sm rounded-4 p-5 text-center mx-auto" style={{ maxWidth: '500px' }}>
+            <i className="bi bi-compass text-muted fs-1 mb-3"></i>
+            <h5 className="fw-bold mb-2">Không tìm thấy tour</h5>
+            <p className="text-muted small mb-4">{error || 'Tour bạn đang tìm kiếm không tồn tại hoặc đã bị gỡ bỏ.'}</p>
+            <Link to="/tours" className="btn btn-primary rounded-pill px-4">
+              <i className="bi bi-arrow-left me-2"></i>Quay lại danh sách tour
+            </Link>
+          </div>
         </main>
         <Footer />
       </>
@@ -474,8 +490,6 @@ const TourDetails = () => {
 
   const tourContent = (
     <>
-      {error && <div className="alert alert-danger">{error}</div>}
-
       <div className="row g-4 mb-4">
         <div className="col-lg-8">
               <div className="card border-0 shadow-sm rounded-4">
@@ -1096,12 +1110,10 @@ const TourDetails = () => {
                     <span className="visually-hidden">Đang tải...</span>
                   </div>
                 </div>
-              ) : reviewsError ? (
-                <div className="alert alert-warning small mb-0">{reviewsError}</div>
               ) : reviews.length === 0 ? (
                 <div className="text-center text-muted py-4">
                   <i className="bi bi-chat-dots fs-3 d-block mb-2"></i>
-                  Chưa có đánh giá nào cho tour này.
+                  {reviewsError || 'Chưa có đánh giá nào cho tour này.'}
                 </div>
               ) : (
                 <div className="row g-3">

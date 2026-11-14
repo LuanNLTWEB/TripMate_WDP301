@@ -60,7 +60,7 @@ export default function StaffNotifications() {
         setTotalPages(response.totalPages || 1);
       } catch (err) {
         if (!active) return;
-        setError(err.message || 'Không thể tải danh sách thông báo quản lý');
+        toast.error(err.message || 'Không thể tải danh sách thông báo quản lý');
         setNotifications([]);
         setTotal(0);
         setTotalPages(1);
@@ -191,13 +191,6 @@ export default function StaffNotifications() {
               </div>
             </div>
           </div>
-
-          {error && (
-            <div className="alert alert-danger alert-dismissible fade show" role="alert">
-              {error}
-              <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-            </div>
-          )}
 
           {/* Table */}
           <div className="card shadow-sm border-0">

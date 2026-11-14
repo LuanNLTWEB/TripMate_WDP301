@@ -31,7 +31,7 @@ function StaffDestinations() {
       setCurrentPage(response.currentPage || 1);
       setError('');
     } catch (requestError) {
-      setError(requestError.message || 'Không thể tải danh sách điểm đến.');
+      toast.error(requestError.message || 'Không thể tải danh sách điểm đến.');
     } finally {
       setIsLoading(false);
     }
@@ -158,13 +158,6 @@ function StaffDestinations() {
             <span>Thêm điểm đến</span>
           </button>
         </div>
-
-        {error && (
-          <div className="alert alert-danger alert-dismissible fade show" role="alert">
-            {error}
-            <button type="button" className="btn-close" onClick={() => setError('')} aria-label="Đóng"></button>
-          </div>
-        )}
 
         <div className="management-table-card">
           <div className="management-table-toolbar">

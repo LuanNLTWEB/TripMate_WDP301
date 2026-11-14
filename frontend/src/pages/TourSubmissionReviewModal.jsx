@@ -210,10 +210,6 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
                   </div>
                 )}
 
-                {error && (
-                  <div className="alert alert-danger py-2 small" role="alert">{error}</div>
-                )}
-
                 {!isPending ? (
                   <div className="alert alert-info small mb-0">
                     Yêu cầu đã được xử lý. Nếu nhà cung cấp gửi lại, yêu cầu sẽ quay về trạng thái chờ duyệt.

@@ -1,8 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * CustomSelect - Reusable TripMate Dropdown Select Component
  * Replaces native OS select dropdown with a sleek, elevated custom UI.
+ * Features React Portal to float cleanly over modals, popups, and tables
+ * without getting clipped by overflow containers or modal footers.
  *
  * Props:
  * - options: Array of { value, label, icon, disabled } or Array of strings
@@ -16,6 +19,8 @@ import React, { useState, useRef, useEffect } from 'react';
  * - triggerClassName: Additional CSS classes on trigger button
  * - style: Inline styles on container
  * - triggerStyle: Inline styles on trigger button
+ * - required: Boolean flag for HTML form validation
+ * - dropup: Boolean flag to force upward display
  */
 export default function CustomSelect({
   options = [],
@@ -34,7 +39,9 @@ export default function CustomSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(Boolean(dropup));
+  const [coords, setCoords] = useState(null);
   const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Normalize options array
   const normalizedOptions = options.map((opt) => {
@@ -52,46 +59,118 @@ export default function CustomSelect({
   // Find currently selected option
   const selectedOption = normalizedOptions.find((opt) => String(opt.value) === String(value));
 
-  // Auto-detect direction (upward vs downward)
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      if (dropup) {
-        setOpenUpward(true);
-      } else {
-        const rect = containerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const estimatedHeight = Math.min(normalizedOptions.length * 42 + 20, 220);
-        if (spaceBelow < estimatedHeight && rect.top > estimatedHeight) {
-          setOpenUpward(true);
-        } else {
-          setOpenUpward(false);
-        }
-      }
-    }
-  }, [isOpen, dropup, normalizedOptions.length]);
+  // Compute position and bounding coordinates
+  const getCoords = useCallback(() => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
 
-  // Close dropdown on outside click
+    // If trigger is detached or scrolled completely offscreen, close dropdown
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      return null;
+    }
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const spaceBelow = viewportHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    const shouldOpenUp = Boolean(dropup) || (spaceBelow < 180 && spaceAbove > spaceBelow);
+    setOpenUpward(shouldOpenUp);
+
+    const maxHeight = shouldOpenUp
+      ? Math.min(260, Math.max(120, spaceAbove - 8))
+      : Math.min(260, Math.max(120, spaceBelow - 8));
+
+    let left = rect.left;
+    let width = rect.width;
+
+    if (left + width > viewportWidth - 8) {
+      left = Math.max(8, viewportWidth - width - 8);
+    }
+    if (left < 8) {
+      left = 8;
+      width = Math.min(width, viewportWidth - 16);
+    }
+
+    return {
+      top: shouldOpenUp ? undefined : Math.round(rect.bottom + 4),
+      bottom: shouldOpenUp ? Math.round(viewportHeight - rect.top + 4) : undefined,
+      left: Math.round(left),
+      width: Math.round(width),
+      maxHeight: Math.round(maxHeight)
+    };
+  }, [dropup]);
+
+  const updateCoords = useCallback(() => {
+    const nextCoords = getCoords();
+    if (!nextCoords) {
+      setIsOpen(false);
+      return;
+    }
+    setCoords(nextCoords);
+  }, [getCoords]);
+
+  // Sync coords synchronously before paint
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateCoords();
+    }
+  }, [isOpen, updateCoords]);
+
+  // Event listeners for window resize, scroll, outside click, and escape key
   useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScroll = (event) => {
+      // Ignore scroll events coming from within the dropdown itself
+      if (dropdownRef.current && dropdownRef.current.contains(event.target)) {
+        return;
+      }
+      updateCoords();
+    };
+
+    const handleResize = () => {
+      updateCoords();
+    };
+
     const handleOutsideClick = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true, passive: true });
+      window.removeEventListener('resize', handleResize, { passive: true });
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
+  }, [isOpen, updateCoords]);
+
+  // Scroll active option into view when dropdown is opened
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const activeEl = dropdownRef.current.querySelector('.is-selected');
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
   }, [isOpen]);
 
   const handleSelect = (option) => {
@@ -111,7 +190,15 @@ export default function CustomSelect({
 
   const toggleDropdown = () => {
     if (disabled) return;
-    setIsOpen((prev) => !prev);
+    if (!isOpen) {
+      const nextCoords = getCoords();
+      if (nextCoords) {
+        setCoords(nextCoords);
+      }
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -153,8 +240,24 @@ export default function CustomSelect({
         <i className="bi bi-chevron-down tm-select-arrow" aria-hidden="true"></i>
       </button>
 
-      {isOpen && (
-        <div className={`tm-select-dropdown ${openUpward ? 'is-dropup' : ''}`} role="listbox" tabIndex="-1">
+      {isOpen && coords && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          className={`tm-select-dropdown ${openUpward ? 'is-dropup' : ''}`}
+          role="listbox"
+          tabIndex="-1"
+          style={{
+            position: 'fixed',
+            top: coords.top !== undefined ? `${coords.top}px` : 'auto',
+            bottom: coords.bottom !== undefined ? `${coords.bottom}px` : 'auto',
+            left: `${coords.left}px`,
+            right: 'auto',
+            width: `${coords.width}px`,
+            maxHeight: `${coords.maxHeight}px`,
+            boxSizing: 'border-box',
+            zIndex: 99999
+          }}
+        >
           {normalizedOptions.length === 0 ? (
             <div className="p-3 text-center text-muted small">Không có lựa chọn</div>
           ) : (
@@ -177,7 +280,8 @@ export default function CustomSelect({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
