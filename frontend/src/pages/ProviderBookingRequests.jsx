@@ -282,7 +282,7 @@ function BookingDetailModal({
                   <i className="bi bi-person-check me-2"></i>Điểm danh khách lên xe
                 </button>
               )}
-              {['paid', 'checked_in'].includes(booking.status) && onComplete && (
+              {booking.status === 'checked_in' && onComplete && (
                 <button type="button" className="btn btn-secondary" onClick={() => onComplete(booking)} disabled={isCompleting}>
                   {isCompleting ? <><span className="spinner-border spinner-border-sm me-2" role="status"></span>Đang hoàn thành...</> : <><i className="bi bi-flag-fill me-2"></i>Đánh dấu hoàn thành</>}
                 </button>
@@ -1046,7 +1046,7 @@ export default function ProviderBookingRequests() {
                             {processingId === booking._id ? <span className="spinner-border spinner-border-sm" role="status" style={{ width: '1rem', height: '1rem' }}></span> : <i className="bi bi-person-check"></i>}
                           </button>
                         )}
-                        {['paid', 'checked_in'].includes(booking.status) && (
+                        {booking.status === 'checked_in' && (
                           <button
                             type="button"
                             className="management-action-btn btn-approve"

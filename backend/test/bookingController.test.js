@@ -363,7 +363,7 @@ test('rejects checking in the same booking twice', async () => {
 });
 // END UC-85 Confirm Payment & Check-in
 
-test('provider marks paid booking as completed', async () => {
+test('rejects completing a paid booking that has not been checked in', async () => {
   const doc = mockBookingDocument({
     _id: 'booking-1',
     tourId: 'tour-1',
@@ -376,10 +376,9 @@ test('provider marks paid booking as completed', async () => {
   const result = createResponse();
   await completeBooking(providerRequest(), result.response);
 
-  assert.equal(result.statusCode, 200);
-  assert.equal(result.body.success, true);
-  assert.equal(doc.status, 'completed');
-  assert.ok(doc.completedAt instanceof Date);
+  assert.equal(result.statusCode, 409);
+  assert.equal(result.body.success, false);
+  assert.equal(doc.status, 'paid');
 });
 
 test('provider marks checked_in booking as completed', async () => {

@@ -658,10 +658,10 @@ export const completeBooking = async (req, res) => {
       });
     }
 
-    if (!['paid', 'checked_in'].includes(booking.status)) {
+    if (booking.status !== 'checked_in') {
       return res.status(409).json({
         success: false,
-        message: 'Chỉ đơn đặt tour đã thanh toán hoặc đã điểm danh mới được đánh dấu hoàn thành'
+        message: 'Chỉ đơn đặt tour đã điểm danh mới được đánh dấu hoàn thành'
       });
     }
 
