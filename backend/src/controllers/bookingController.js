@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Booking from '../models/Booking.js';
 import Tour from '../models/Tour.js';
 import User from '../models/User.js';
@@ -7,10 +8,38 @@ import { validationResult } from 'express-validator';
 import ExcelJS from 'exceljs';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Giới hạn tốc độ đặt tour trong bộ nhớ (tối đa 5 lần/phút mỗi người dùng)
+const _bookingRateLimitStore = new Map();
+const checkBookingRateLimit = (req, res) => {
+  const key = req.user?._id?.toString() || req.ip || 'unknown';
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const max = 5;
+
+  let data = _bookingRateLimitStore.get(key);
+  if (!data || now - data.windowStart > windowMs) {
+    data = { windowStart: now, count: 0 };
+    _bookingRateLimitStore.set(key, data);
+  }
+
+  data.count++;
+  if (data.count > max) {
+    res.status(429).json({
+      success: false,
+      message: 'Quá nhiều yêu cầu đặt tour. Vui lòng thử lại sau 1 phút.',
+      retryAfter: Math.ceil((windowMs - (now - data.windowStart)) / 1000)
+    });
+    return false;
+  }
+  return true;
+};
 
 // START UC-71 Create Booking
 // Nhận thông tin đặt tour từ customer theo lịch khởi hành, kiểm tra chỗ trống, tính tổng tiền rồi tạo booking
 export const createBooking = async (req, res) => {
+  // Giới hạn tốc độ đặt tour của người dùng
+  if (!checkBookingRateLimit(req, res)) return;
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -44,6 +73,16 @@ export const createBooking = async (req, res) => {
     let departure = null;
     if (departureId) {
       departure = await Departure.findOne({ _id: departureId, tourId: tour._id });
+      // Kiểm tra ngày khởi hành trong tương lai (ngăn chặn bypass qua departureId)
+      if (departure) {
+        const depDateCheck = new Date(departure.departureDate);
+        if (depDateCheck.getTime() < Date.now()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Khong the dat tour cho lich khoi hanh trong qua khu hoac da xuat phat.'
+          });
+        }
+      }
     }
 
     if (!departure && departureDate) {
@@ -102,7 +141,15 @@ export const createBooking = async (req, res) => {
 
     const bookedSeats = confirmedBookings.reduce((sum, b) => sum + (Number(b.numberOfPeople) || 0), 0);
     const departureRemaining = Math.max(0, Number(departure.availableSeats || 0) - bookedSeats);
-    const tourRemaining = Math.max(0, Number(tour.availableSeats || 0));
+
+    // Tính tourRemaining động từ TẤT CẢ booking của tất cả các đợt khởi hành
+    const allTourBookings = await Booking.find({
+      tourId: tour._id,
+      status: { $in: ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'] }
+    });
+    const totalBookedSeats = allTourBookings.reduce((sum, b) => sum + (Number(b.numberOfPeople) || 0), 0);
+    const tourRemaining = Math.max(0, Number(tour.availableSeats || 0) - totalBookedSeats);
+
     const remainingSeats = Math.min(departureRemaining, tourRemaining);
 
     if (remainingSeats < Number(numberOfPeople)) {
@@ -119,32 +166,34 @@ export const createBooking = async (req, res) => {
 
     const totalPrice = unitPrice * Number(numberOfPeople);
 
-    // 7. Tạo đơn đặt tour liên kết với lịch khởi hành
-    const booking = await Booking.create({
-      tourId: tour._id,
-      customerId: req.user._id,
-      departureId: departure._id,
-      fullName,
-      phone,
-      email,
-      address: address || '',
-      numberOfPeople: Number(numberOfPeople),
-      departureDate: departure.departureDate,
-      note: note || '',
-      totalPrice,
-      status: 'pending'
-    });
-    // BR-67 - tự động trừ số chỗ đã đặt khỏi tour khi tạo booking
-    // ngăn chặn đặt chỗ vô tận khi availableSeats chưa được cập nhật thủ công.
-    // Lưu ý: Không trừ trực tiếp vào Departure.availableSeats vì trường này lưu tổng sức chứa
-    // của đợt khởi hành và số chỗ còn lại được tính động qua tổng số booking đang hoạt động.
+    // 7. Tạo đơn đặt tour liên kết với lịch khởi hành (với giao dịch để đảm bảo toàn vẹn)
+    const session = await mongoose.startSession();
+    let booking;
     try {
-      await Tour.updateOne(
-        { _id: tour._id },
-        { $inc: { availableSeats: -numberOfPeople } }
-      );
-    } catch {
-      // Bỏ qua lỗi cast trong môi trường mock test
+      await session.withTransaction(async () => {
+        const created = await Booking.create([{
+          tourId: tour._id,
+          customerId: req.user._id,
+          departureId: departure._id,
+          fullName,
+          phone,
+          email,
+          address: address || '',
+          numberOfPeople: Number(numberOfPeople),
+          departureDate: departure.departureDate,
+          note: note || '',
+          totalPrice,
+          status: 'pending'
+        }], { session });
+
+        booking = created[0];
+
+        // Lưu ý: tour.availableSeats KHÔNG bị trừ ở đây.
+        // Số chỗ còn lại được tính động từ các booking.
+        // Điều này ngăn chặn race condition và đảm bảo hủy booking khôi phục lại số chỗ.
+      });
+    } finally {
+      await session.endSession();
     }
 
     await booking.populate([
@@ -1109,13 +1158,7 @@ export const cancelBooking = async (req, res) => {
     booking.cancelledAt = new Date();
     await booking.save({ validateBeforeSave: false });
 
-    // BR-57 - trả lại chỗ trống trong cùng thao tác đánh dấu hủy, để số chỗ
-    // của tour không bao giờ lệch với danh sách đơn đặt
-    await Tour.updateOne(
-      { _id: booking.tourId },
-      { $inc: { availableSeats: booking.numberOfPeople } }
-    );
-
+    // Số chỗ còn lại được tính động từ các booking, không cần cập nhật tour.availableSeats.
     const populated = await Booking.findById(id)
       .populate('tourId', 'title location duration price images departureLocation destinationLocation')
       .populate('customerId', 'username email phone');
@@ -1201,13 +1244,7 @@ export const respondProviderBooking = async (req, res) => {
       booking.respondedBy = req.user._id;
       await booking.save({ validateBeforeSave: false });
 
-      // Đơn pending đã bị trừ chỗ ngay khi tạo booking, nên từ chối phải trả chỗ lại cho tour.
-      // Departure.availableSeats giữ nguyên tổng sức chứa; số chỗ còn lại tự khôi phục khi booking chuyển rejected.
-      await Tour.updateOne(
-        { _id: booking.tourId },
-        { $inc: { availableSeats: booking.numberOfPeople } }
-      );
-
+      // Số chỗ còn lại được tính động từ các booking, không cần cập nhật tour.availableSeats.
       const populated = await Booking.findById(booking._id)
         .populate('tourId', 'title location duration price images departureLocation destinationLocation')
         .populate('customerId', 'username email phone');
