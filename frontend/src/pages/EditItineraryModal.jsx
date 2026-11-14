@@ -10,6 +10,18 @@ const toDateInputString = (value) => {
   return d.toISOString().slice(0, 10);
 };
 
+const formatBudgetInput = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  const digitsOnly = String(value).replace(/\D/g, '');
+  return digitsOnly ? Number(digitsOnly).toLocaleString('vi-VN') : '';
+};
+
+const parseBudgetValue = (value) => {
+  if (value === '' || value === null || value === undefined) return 0;
+  const digitsOnly = String(value).replace(/\D/g, '');
+  return digitsOnly ? Number(digitsOnly) : 0;
+};
+
 const validate = (values) => {
   const next = {};
   const title = (values.title || '').trim();
@@ -18,8 +30,8 @@ const validate = (values) => {
   else if (title.length > 120) next.title = 'Tên lịch trình không được vượt quá 120 ký tự';
 
   if (values.budget !== '' && values.budget !== undefined) {
-    const num = Number(values.budget);
-    if (isNaN(num) || num < 0) next.budget = 'Ngân sách không được âm';
+    const num = parseBudgetValue(values.budget);
+    if (Number.isNaN(num) || num < 0) next.budget = 'Ngân sách không được âm';
     else if (num > 500000000) next.budget = 'Ngân sách tối đa là 500.000.000 VNĐ';
   }
 
@@ -83,7 +95,7 @@ function EditItineraryModal({ open, onClose, itinerary, onUpdated }) {
         title: form.title.trim(),
         startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
-        budget: form.budget === '' ? 0 : Number(form.budget)
+        budget: form.budget === '' ? 0 : parseBudgetValue(form.budget)
       });
       toast.success(response.message || 'Cập nhật lịch trình thành công.');
       if (onUpdated) {
@@ -162,14 +174,12 @@ function EditItineraryModal({ open, onClose, itinerary, onUpdated }) {
                   <label className="form-label fw-semibold" htmlFor="itinerary-edit-budget">Ngân sách dự kiến (VNĐ)</label>
                   <input
                     id="itinerary-edit-budget"
-                    type="number"
-                    min="0"
-                    max="500000000"
-                    step="50000"
+                    type="text"
+                    inputMode="numeric"
                     className={`form-control ${errors.budget ? 'is-invalid' : ''}`}
-                    value={form.budget}
-                    onChange={(event) => update('budget', event.target.value)}
-                    placeholder="VD: 5000000"
+                    value={form.budget ? formatBudgetInput(form.budget) : ''}
+                    onChange={(event) => update('budget', event.target.value.replace(/\D/g, ''))}
+                    placeholder="VD: 5.000.000"
                   />
                   {errors.budget && <div className="invalid-feedback d-block">{errors.budget}</div>}
                   <div className="form-text small text-muted">
