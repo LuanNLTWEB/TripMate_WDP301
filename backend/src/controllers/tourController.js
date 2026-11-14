@@ -291,7 +291,7 @@ export const getTourById = async (req, res) => {
     if (!tour || tour.isDeleted) {
       return res.status(404).json({
         success: false,
-        message: 'Tour not found'
+        message: 'Không tìm thấy tour'
       });
     }
 
@@ -308,7 +308,7 @@ export const getTourById = async (req, res) => {
       if (!isPrivileged) {
         return res.status(404).json({
           success: false,
-          message: 'Tour not found'
+          message: 'Không tìm thấy tour'
         });
       }
     }
@@ -338,7 +338,7 @@ export const getTourById = async (req, res) => {
     if (error.name === 'CastError') {
       return res.status(404).json({
         success: false,
-        message: 'Tour not found'
+        message: 'Không tìm thấy tour'
       });
     }
 

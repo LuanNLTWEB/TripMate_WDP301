@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-// START UC-70 View Provider Revenue Statistics
+// UC-70 View Provider Revenue Statistics
 /**
  * Provider revenue and booking performance statistics.
  * @route GET /api/stats/provider-revenue
@@ -21,9 +21,8 @@ router.get(
   authorize(...ACCESS_ROLES.PROVIDER_ONLY),
   getProviderRevenueStats
 );
-// END UC-70 View Provider Revenue Statistics
 
-// START UC-102 View Platform Statistics
+// UC-102 View Platform Statistics
 /**
  * Platform statistics for staff.
  * @route GET /api/stats/platform
@@ -35,7 +34,6 @@ router.get(
   authorize(...ACCESS_ROLES.STAFF_ONLY),
   getPlatformStats
 );
-// END UC-102 View Platform Statistics
 
 /**
  * System dashboard statistics for admin.

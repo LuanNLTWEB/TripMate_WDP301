@@ -27,7 +27,7 @@ const router = express.Router();
 // @access  Private (Customer)
 router.get('/favorites', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getFavoriteDestinations);
 
-// START UC-14 Save / Unsave Destination
+// UC-14 Save / Unsave Destination
 // @route   POST /api/destinations/:id/favorite
 // @desc    Toggle save/unsave a destination
 // @access  Private (Customer)
@@ -38,7 +38,6 @@ router.post(
 	destinationIdValidation,
 	toggleFavorite
 );
-// END UC-14 Save / Unsave Destination
 
 router.delete(
 	'/:id/favorite',
@@ -64,14 +63,13 @@ router.get(
 	getDestinationById
 );
 
-// START UC-11 View Destination List
+// UC-11 View Destination List
 // @route   GET /api/destinations
 // @desc    Get all active destinations
 // @access  Public
 router.get('/', getAllDestinations);
-// END UC-11 View Destination List
 
-// START UC-17 Create Destination
+// UC-17 Create Destination
 // POST /api/destinations - nhân viên thêm điểm đến vào danh mục.
 // POST /api/destinations - chỉ staff được tạo điểm đến mới.
 router.post(
@@ -81,9 +79,8 @@ router.post(
 	createDestinationValidation,
 	createDestination
 );
-// END UC-17 Create Destination
 
-// START UC-121 Update Destination Status
+// UC-121 Update Destination Status
 // PATCH /api/destinations/:id/status - bật/tắt trạng thái hiển thị của điểm đến.
 router.patch(
 	'/:id/status',
@@ -92,9 +89,8 @@ router.patch(
 	updateDestinationStatusValidation,
 	updateDestinationStatus
 );
-// END UC-121 Update Destination Status
 
-// START UC-19 Update Destination
+// UC-19 Update Destination
 router.put(
 	'/:id',
 	protect,
@@ -102,7 +98,6 @@ router.put(
 	updateDestinationValidation,
 	updateDestination
 );
-// END UC-19 Update Destination
 
 router.delete(
 	'/:id',

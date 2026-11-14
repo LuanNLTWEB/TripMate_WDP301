@@ -247,10 +247,11 @@ export const itineraryApi = {
     body: JSON.stringify(activity)
   }),
   // END UC-53 Add Activity to Itinerary
-  // START UC-58 Check Time Conflict
+  // UC-53 Add Activity to Itinerary - Check Conflict
   getConflicts: (id) => apiRequest(`/itineraries/${id}/conflicts`, {
     method: 'GET'
   }),
+  // START UC-58 Check Time Conflict
   checkTimeConflict: (id, payload) => apiRequest(`/itineraries/${id}/conflicts/check`, {
     method: 'POST',
     body: JSON.stringify(payload)
