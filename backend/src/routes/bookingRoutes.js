@@ -6,7 +6,7 @@ import {
   getProviderBookingRequests,
   confirmProviderBooking,
   respondProviderBooking,
-  getBookingVoucher,
+  getBookingTicket,
   markBookingAsNoShow,
 
   confirmBookingPayment,
@@ -60,10 +60,10 @@ router.patch('/provider/:id/complete', protect, authorize(...ACCESS_ROLES.PROVID
 // START UC-123 Export Provider Booking Report
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report
-// START UC-82 Download Booking Voucher (Customer)
-// GET /api/bookings/:id/voucher - xuất phiếu xác nhận đặt chỗ kèm mã QR
-router.get('/:id/voucher', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingVoucher);
-// END UC-82 Download Booking Voucher (Customer)
+// START UC-82 Download Booking Ticket (Customer)
+// GET /api/bookings/:id/ticket - xuất vé xác nhận đặt chỗ kèm mã QR
+router.get('/:id/ticket', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingTicket);
+// END UC-82 Download Booking Ticket (Customer)
 // START UC-74 Cancel Booking
 // PATCH /api/bookings/:id/cancel - tự hủy đơn: chỉ customer, validate lý do rồi mới vào controller.
 router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), cancelBookingValidation, cancelBooking);

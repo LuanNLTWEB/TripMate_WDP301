@@ -1138,12 +1138,12 @@ export const respondProviderBooking = async (req, res) => {
   }
 };
 // END UC-78 Respond to Booking (Provider)
-// START UC-82 Download Booking Voucher (Customer)
+// START UC-82 Download Booking Ticket (Customer)
 /**
- * UC-82 - Download Booking Voucher (Xuất phiếu xác nhận đặt chỗ kèm mã QR).
+ * UC-82 - Download Booking Ticket (Xuất vé xác nhận đặt chỗ kèm mã QR).
  * Chỉ khả dụng cho khách hàng sở hữu đơn và đơn đã được xác nhận (status === 'confirmed').
  */
-export const getBookingVoucher = async (req, res) => {
+export const getBookingTicket = async (req, res) => {
   try {
     const booking = await Booking.findOne({
       _id: req.params.id,
@@ -1192,11 +1192,11 @@ export const getBookingVoucher = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting booking voucher:', error);
-    return res.status(500).json({ success: false, message: 'Không thể tạo phiếu xác nhận đặt tour' });
+    console.error('Error getting booking ticket:', error);
+    return res.status(500).json({ success: false, message: 'Không thể tạo vé xác nhận đặt tour' });
   }
 };
-// END UC-82 Download Booking Voucher (Customer)
+// END UC-82 Download Booking Ticket (Customer)
 
 // START UC-86 Mark Booking as No-Show (Provider)
 /**

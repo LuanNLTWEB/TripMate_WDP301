@@ -6,7 +6,7 @@ import User from '../src/models/User.js';
 import {
   createBooking,
   respondProviderBooking,
-  getBookingVoucher,
+  getBookingTicket,
   markBookingAsNoShow,
   resetNoShowCount
 } from '../src/controllers/bookingController.js';
@@ -106,8 +106,8 @@ test('UC-78: rejects response when booking is already confirmed or cancelled (40
   assert.equal(res.body.success, false);
 });
 
-// UC-82: Download Booking Voucher
-test('UC-82: returns voucher with shortCode and qrData for confirmed booking', async () => {
+// UC-82: Download Booking Ticket
+test('UC-82: returns ticket with shortCode and qrData for confirmed booking', async () => {
   const confirmedBooking = {
     _id: '507f191e810c19729de860ea',
     customerId: 'customer-1',
@@ -129,7 +129,7 @@ test('UC-82: returns voucher with shortCode and qrData for confirmed booking', a
   });
 
   const res = createResponse();
-  await getBookingVoucher({
+  await getBookingTicket({
     params: { id: '507f191e810c19729de860ea' },
     user: { _id: 'customer-1' }
   }, res.response);
@@ -141,7 +141,7 @@ test('UC-82: returns voucher with shortCode and qrData for confirmed booking', a
   assert.ok(res.body.data.qrData.includes('Tour Bà Nà Hills'));
 });
 
-test('UC-82: rejects voucher when booking status is not confirmed (400)', async () => {
+test('UC-82: rejects ticket when booking status is not confirmed (400)', async () => {
   Booking.findOne = () => ({
     populate: async () => ({
       _id: 'booking-pending',
@@ -151,7 +151,7 @@ test('UC-82: rejects voucher when booking status is not confirmed (400)', async 
   });
 
   const res = createResponse();
-  await getBookingVoucher({
+  await getBookingTicket({
     params: { id: 'booking-pending' },
     user: { _id: 'customer-1' }
   }, res.response);
