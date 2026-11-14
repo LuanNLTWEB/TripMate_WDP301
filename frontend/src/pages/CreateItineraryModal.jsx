@@ -45,6 +45,7 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
     setErrors((current) => ({ ...current, [name]: undefined }));
   };
 
+  // START UC-47 Create Personal Itinerary
   const submit = async (event) => {
     event.preventDefault();
     const nextErrors = validate(form);
@@ -81,6 +82,7 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
       setSaving(false);
     }
   };
+  // END UC-47 Create Personal Itinerary
 
   return (
     <>

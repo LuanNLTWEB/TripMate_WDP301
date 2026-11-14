@@ -551,6 +551,7 @@ export const removeFavoriteDestination = async (req, res) => {
   }
 };
 
+// START UC-16 View Favorite Destinations
 // @desc    Get favorite destinations of current user
 // @route   GET /api/destinations/favorites
 // @access  Private (Customer)
@@ -583,6 +584,7 @@ export const getFavoriteDestinations = async (req, res) => {
     });
   }
 };
+// END UC-16 View Favorite Destinations
 
 export const deleteDestination = async (req, res) => {
   const errors = validationResult(req);

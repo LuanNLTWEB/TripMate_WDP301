@@ -5,6 +5,7 @@ import User from '../models/User.js';
 
 const INVITE_TYPE = 'itinerary_invite';
 
+// START UC-132 Invite Collaborator
 /**
  * Invite a registered user to collaborate on an owned itinerary (owner only).
  * Creates a pending invitation stored in the notifications collection.
@@ -98,6 +99,7 @@ export const inviteCollaborator = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể gửi lời mời cộng tác' });
   }
 };
+// END UC-132 Invite Collaborator
 
 /**
  * List invitations received by the authenticated customer.
@@ -129,6 +131,7 @@ export const listReceivedInvitations = async (req, res) => {
   }
 };
 
+// START UC-133 Respond to Itinerary Invitation
 /**
  * Accept or decline a received itinerary invitation (recipient only).
  * Accepting adds the recipient into the itinerary collaborators with joinedAt.
@@ -212,7 +215,9 @@ export const respondToInvitation = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xử lý lời mời' });
   }
 };
+// END UC-133 Respond to Itinerary Invitation
 
+// START UC-134 View Collaborator List
 /**
  * List collaborators of an itinerary (owner + any collaborator may view).
  * All sent invitations are returned to the owner only.
@@ -261,7 +266,9 @@ export const listCollaborators = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tải danh sách cộng tác viên' });
   }
 };
+// END UC-134 View Collaborator List
 
+// START UC-84 Cancel Sent Itinerary Invitation
 /**
  * Delete a sent itinerary invitation (owner only).
  * This only removes the invitation history and does not remove an accepted collaborator.
@@ -305,7 +312,9 @@ export const deleteSentInvitation = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa lời mời' });
   }
 };
+// END UC-84 Cancel Sent Itinerary Invitation
 
+// START UC-135 Change Collaborator Role
 /**
  * Change a collaborator's permission level (view <-> edit) on an owned itinerary (owner only).
  * @route PUT /api/itineraries/:id/collaborators/:userId
@@ -397,3 +406,4 @@ export const changeCollaboratorRole = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể đổi quyền cộng tác viên' });
   }
 };
+// END UC-135 Change Collaborator Role

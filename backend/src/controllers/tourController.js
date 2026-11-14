@@ -101,6 +101,7 @@ export const getFavoriteTours = async (req, res) => {
 
 // END UC-30 View Favorite Tours
 
+// START UC-29 Remove Favorite Tour
 export const removeFavoriteTour = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -130,6 +131,7 @@ export const removeFavoriteTour = async (req, res) => {
     });
   }
 };
+// END UC-29 Remove Favorite Tour
 
 export const saveFavoriteTour = async (req, res) => {
   const errors = validationResult(req);
@@ -474,7 +476,6 @@ export const getManagedTourById = async (req, res) => {
   }
 };
 
-// START UC-101 Restore Tour
 // Staff chỉ được đổi trạng thái tour sang hai giá trị này qua PATCH /tours/:id/status;
 // 'active' chỉ đến từ duyệt bài gửi (UC-129) hoặc khôi phục tour tạm ngưng (UC-101).
 const REVIEWABLE_TOUR_STATUSES = ['suspended', 'rejected'];
@@ -629,7 +630,7 @@ export const updateTourStatus = async (req, res) => {
   }
 };
 
- // UC-101 – Restore Tour: khôi phục tour đang tạm ngưng về trạng thái hoạt động.
+// START UC-101 Restore Tour
 export const restoreTour = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id);
@@ -1414,6 +1415,7 @@ export const updateTourSchedule = async (req, res) => {
   }
 };
 
+// START UC-39 Delete Tour Schedule
 /**
  * Delete one schedule day of a provider-owned tour.
  * @route DELETE /api/tours/:id/schedule/:scheduleId
@@ -1512,7 +1514,9 @@ export const deleteTourSchedule = async (req, res) => {
     });
   }
 };
+// END UC-39 Delete Tour Schedule
 
+// START UC-34 Delete Tour
 /**
  * Xóa mềm tour thuộc nhà cung cấp (UC-34 - Delete Tour).
  * Tour được ẩn khỏi các truy vấn công khai, giữ nguyên booking/đánh giá/lịch trình.
@@ -1580,6 +1584,7 @@ export const deleteTour = async (req, res) => {
     });
   }
 };
+// END UC-34 Delete Tour
 
 // START UC-45 Update Tour Capacity
 export const updateTourCapacity = async (req, res) => {

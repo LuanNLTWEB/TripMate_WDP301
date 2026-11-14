@@ -8,6 +8,8 @@ import Notification from '../models/Notification.js';
 const destinationFields = 'name location images status';
 const tourFields = 'title price images departureLocation destinationLocation location duration status';
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const timeToMinutes = (hhmm) => {
   const [h, m] = String(hhmm || '00:00').split(':').map(Number);
   return h * 60 + m;
@@ -140,9 +142,10 @@ const canEdit = (itinerary, userId) => (
   ))
 );
 
+// START UC-47 Create Personal Itinerary
 /**
  * Create a personal itinerary owned by the authenticated customer.
- * Guards against double-submit (same title from the same owner within 3 seconds).
+ * Prevents an owner from creating another itinerary with the same title.
  * @route POST /api/itineraries
  * @access Customer
  */
@@ -156,15 +159,14 @@ export const createItinerary = async (req, res) => {
     const { title, budget, startDate, endDate } = req.body;
     const normalizedTitle = String(title).trim();
 
-    const recentDuplicate = await Itinerary.findOne({
+    const duplicate = await Itinerary.findOne({
       owner: req.user._id,
-      title: normalizedTitle,
-      createdAt: { $gte: new Date(Date.now() - 3000) }
+      title: { $regex: `^${escapeRegex(normalizedTitle)}$`, $options: 'i' }
     });
-    if (recentDuplicate) {
+    if (duplicate) {
       return res.status(409).json({
         success: false,
-        message: 'Lịch trình tương tự vừa được tạo, vui lòng chờ trong giây lát'
+        message: 'Bạn đã có lịch trình với tên này'
       });
     }
 
@@ -183,6 +185,7 @@ export const createItinerary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Unable to create itinerary' });
   }
 };
+// END UC-47 Create Personal Itinerary
 
 /**
  * Update an itinerary (owner or collaborator with edit permission).
@@ -208,7 +211,19 @@ export const updateItinerary = async (req, res) => {
     const { title, budget, startDate, endDate } = req.body;
 
     if (title !== undefined) {
-      itinerary.title = String(title).trim();
+      const normalizedTitle = String(title).trim();
+      const duplicate = await Itinerary.findOne({
+        owner: itinerary.owner,
+        title: { $regex: `^${escapeRegex(normalizedTitle)}$`, $options: 'i' },
+        _id: { $ne: itinerary._id }
+      });
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: 'Bạn đã có lịch trình với tên này'
+        });
+      }
+      itinerary.title = normalizedTitle;
     }
     if (budget !== undefined) {
       itinerary.budget = budget === '' || budget === null ? 0 : Number(budget);
@@ -505,6 +520,7 @@ export const addActivity = async (req, res) => {
 
 // END UC-53 Add Activity to Itinerary
 
+// START UC-57 Reorder Activities
 /**
  * Reorder activities in an owned or edit-enabled shared itinerary.
  * @route PUT /api/itineraries/:id/activities/reorder
@@ -554,6 +570,7 @@ export const reorderActivities = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể sắp xếp lại hoạt động' });
   }
 };
+// END UC-57 Reorder Activities
 
 /**
  * Remove an activity from an owned or edit-enabled shared itinerary.
@@ -692,6 +709,7 @@ export const addDestination = async (req, res) => {
   }
 };
 
+// START UC-52 Remove Destination from Itinerary
 /**
  * Remove a destination from an owned or edit-enabled shared itinerary.
  * @route DELETE /api/itineraries/:id/destinations/:destinationId
@@ -732,6 +750,7 @@ export const removeDestination = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa điểm đến khỏi lịch trình' });
   }
 };
+// END UC-52 Remove Destination from Itinerary
 
 // START UC-55 Add Tour to Itinerary
 /**

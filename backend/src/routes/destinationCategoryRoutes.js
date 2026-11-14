@@ -15,11 +15,14 @@ import {
 
 const router = express.Router();
 
+// START UC-118 View Destination Category List
 // @route   GET /api/destination-categories
 // @desc    Get all destination categories
 // @access  Public
 router.get('/', getAllCategories);
+// END UC-118 View Destination Category List
 
+// START UC-116 Create Destination Category
 // @route   POST /api/destination-categories
 // @desc    Create a destination category
 // @access  Staff
@@ -30,7 +33,9 @@ router.post(
   createCategoryValidation,
   createCategory
 );
+// END UC-116 Create Destination Category
 
+// START UC-117 Update Destination Category
 // @route   PUT /api/destination-categories/:id
 // @desc    Update a destination category
 // @access  Staff
@@ -41,7 +46,9 @@ router.put(
   updateCategoryValidation,
   updateCategory
 );
+// END UC-117 Update Destination Category
 
+// START UC-119 Delete Destination Category
 // @route   DELETE /api/destination-categories/:id
 // @desc    Delete a destination category
 // @access  Staff
@@ -52,5 +59,6 @@ router.delete(
   categoryIdValidation,
   deleteCategory
 );
+// END UC-119 Delete Destination Category
 
 export default router;

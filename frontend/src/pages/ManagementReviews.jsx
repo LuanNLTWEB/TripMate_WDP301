@@ -271,6 +271,7 @@ export default function ManagementReviews() {
     setHideReason('');
   };
 
+  // START UC-94 Hide Review
   const confirmDelete = async () => {
     if (!hideReview) return;
     const reason = hideReason.trim();
@@ -295,6 +296,7 @@ export default function ManagementReviews() {
       setActionLoading(false);
     }
   };
+  // END UC-94 Hide Review
 
   // START UC-95 Restore Review
   const handleRestore = async (review) => {

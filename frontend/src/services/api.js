@@ -182,22 +182,32 @@ export const destinationApi = {
     body: JSON.stringify(destination)
   }),
   remove: (id) => apiRequest(`/destinations/${id}`, { method: 'DELETE' }),
+  // START UC-16 View Favorite Destinations
   getFavorites: () => apiRequest('/destinations/favorites', { method: 'GET' }),
+  // END UC-16 View Favorite Destinations
   toggleFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'POST' }),
   removeFavorite: (id) => apiRequest(`/destinations/${id}/favorite`, { method: 'DELETE' })
 };
 
 export const destinationCategoryApi = {
+  // START UC-118 View Destination Category List
   getAll: () => apiRequest('/destination-categories', { method: 'GET' }),
+  // END UC-118 View Destination Category List
+  // START UC-116 Create Destination Category
   create: (category) => apiRequest('/destination-categories', {
     method: 'POST',
     body: JSON.stringify(category)
   }),
+  // END UC-116 Create Destination Category
+  // START UC-117 Update Destination Category
   update: (id, category) => apiRequest(`/destination-categories/${id}`, {
     method: 'PUT',
     body: JSON.stringify(category)
   }),
+  // END UC-117 Update Destination Category
+  // START UC-119 Delete Destination Category
   remove: (id) => apiRequest(`/destination-categories/${id}`, { method: 'DELETE' })
+  // END UC-119 Delete Destination Category
 };
 
 export const tourCategoryApi = {
@@ -220,10 +230,12 @@ export const itineraryApi = {
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   // END UC-48 View Personal Itinerary
   getBudget: (id) => apiRequest(`/itineraries/${id}/budget`, { method: 'GET' }),
+  // START UC-47 Create Personal Itinerary
   create: (itinerary) => apiRequest('/itineraries', {
     method: 'POST',
     body: JSON.stringify(itinerary)
   }),
+  // END UC-47 Create Personal Itinerary
   update: (id, itinerary) => apiRequest(`/itineraries/${id}`, {
     method: 'PUT',
     body: JSON.stringify(itinerary)
@@ -244,10 +256,12 @@ export const itineraryApi = {
     body: JSON.stringify(payload)
   }),
   // END UC-58 Check Time Conflict
+  // START UC-57 Reorder Activities
   reorderActivities: (id, activities) => apiRequest(`/itineraries/${id}/activities/reorder`, {
     method: 'PUT',
     body: JSON.stringify({ activities })
   }),
+  // END UC-57 Reorder Activities
   removeActivity: (id, activityId) => apiRequest(`/itineraries/${id}/activities/${activityId}`, {
     method: 'DELETE'
   }),
@@ -259,9 +273,11 @@ export const itineraryApi = {
     method: 'POST',
     body: JSON.stringify({ destinationId })
   }),
+  // START UC-52 Remove Destination from Itinerary
   removeDestination: (id, destinationId) => apiRequest(`/itineraries/${id}/destinations/${destinationId}`, {
     method: 'DELETE'
   }),
+  // END UC-52 Remove Destination from Itinerary
   addTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours`, {
     method: 'POST',
     body: JSON.stringify({ tourId })
@@ -269,12 +285,11 @@ export const itineraryApi = {
   removeTour: (id, tourId) => apiRequest(`/itineraries/${id}/tours/${tourId}`, {
   method: 'DELETE'
 }),
-  // START UC-48 View Personal Itinerary (Shared)
-  // Tải lịch trình được chia sẽ
+  // START UC-148 View Packing Checklist
   getById: (id) => apiRequest(`/itineraries/${id}`, {
     method: 'GET'
   }),
-  // END UC-48 View Personal Itinerary
+  // END UC-148 View Packing Checklist
   duplicate: (id, payload) => apiRequest(`/itineraries/${id}/duplicate`, {
     method: 'POST',
     body: JSON.stringify(payload || {})
@@ -300,26 +315,36 @@ export const itineraryApi = {
     body: JSON.stringify({ newOwnerId })
   }),
   // END UC-120 Transfer Itinerary Ownership
+  // START UC-135 Change Collaborator Role
   changeCollaboratorRole: (id, userId, permission) => apiRequest(`/itineraries/${id}/collaborators/${userId}`, {
     method: 'PUT',
     body: JSON.stringify({ permission })
   }),
+  // END UC-135 Change Collaborator Role
+  // START UC-132 Invite Collaborator
   invite: (id, payload) => apiRequest(`/itineraries/${id}/invitations`, {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
+  // END UC-132 Invite Collaborator
+  // START UC-84 Cancel Sent Itinerary Invitation
   deleteSentInvitation: (id, notificationId) => apiRequest(`/itineraries/${id}/invitations/${notificationId}`, {
     method: 'DELETE'
   }),
+  // END UC-84 Cancel Sent Itinerary Invitation
+  // START UC-134 View Collaborator List
   listCollaborators: (id) => apiRequest(`/itineraries/${id}/collaborators`, { method: 'GET' }),
+  // END UC-134 View Collaborator List
   listReceivedInvitations: (status) => apiRequest(
     `/itineraries/invitations${status ? `?status=${encodeURIComponent(status)}` : ''}`,
     { method: 'GET' }
   ),
+  // START UC-133 Respond to Itinerary Invitation
   respondInvitation: (notificationId, action) => apiRequest(`/itineraries/invitations/${notificationId}/respond`, {
     method: 'POST',
     body: JSON.stringify({ action })
   }),
+  // END UC-133 Respond to Itinerary Invitation
   addComment: (id, content) => apiRequest(`/itineraries/${id}/comments`, {
     method: 'POST',
     body: JSON.stringify({ content })
@@ -416,7 +441,9 @@ export const announcementApi = {
 };
 
 export const reviewApi = {
+  // START UC-88 View Tour Review
   getByTour: (tourId) => apiRequest(`/reviews/tours/${tourId}`, { method: 'GET' }),
+  // END UC-88 View Tour Review
   // START Reply to Tour Review
   getProviderByTour: (tourId) => apiRequest(`/reviews/provider/tours/${tourId}`, { method: 'GET' }),
   reply: (id, payload) => apiRequest(`/reviews/${id}/reply`, {
@@ -435,10 +462,12 @@ export const reviewApi = {
     body: JSON.stringify(payload)
   }),
   delete: (id) => apiRequest(`/reviews/${id}`, { method: 'DELETE' }),
+  // START UC-94 Hide Review
   hide: (id, moderationReason) => apiRequest(`/reviews/${id}/hide`, {
     method: 'PATCH',
     body: JSON.stringify({ moderationReason })
   }),
+  // END UC-94 Hide Review
   // START Vote Helpful on Tour Review
   voteHelpful: (id) => apiRequest(`/reviews/${id}/vote-helpful`, { method: 'POST' }),
   // END Vote Helpful on Tour Review
@@ -450,7 +479,6 @@ export const reviewApi = {
   }),
   // END UC-89 Update Tour Review
   // START UC-95 Restore Review
-  // Khôi phục một đánh giá đã bị xoá trước đó.
   restore: (id) => apiRequest(`/reviews/${id}/restore`, { method: 'PATCH' }),
   // END UC-95 Restore Review
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
@@ -518,7 +546,9 @@ export const tourApi = {
     method: 'PUT',
     body: JSON.stringify(tour)
   }),
+  // START UC-34 Delete Tour
   remove: (id) => apiRequest(`/tours/${id}`, { method: 'DELETE' }),
+  // END UC-34 Delete Tour
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -533,13 +563,16 @@ export const tourApi = {
     method: 'PATCH',
     body: JSON.stringify({ status, reason })
   }),
+  // START UC-101 Restore Tour
   restore: (id) => apiRequest(`/tours/${id}/restore`, { method: 'PATCH' }),
+  // END UC-101 Restore Tour
   // START UC-30 View Favorite Tours
-  // Tải các tour yêu thích của khách hàng đang đăng nhập.
   getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
   // END UC-30 View Favorite Tours
   saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
+  // START UC-29 Remove Favorite Tour
   removeFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'DELETE' }),
+  // END UC-29 Remove Favorite Tour
   requestRevision: (id, note) => apiRequest(`/tours/${id}/revision`, {
     method: 'PATCH',
     body: JSON.stringify({ note })
@@ -573,9 +606,11 @@ export const tourApi = {
     method: 'PUT',
     body: JSON.stringify(scheduleData)
   }),
+  // START UC-39 Delete Tour Schedule
   deleteSchedule: (id, scheduleId) => apiRequest(`/tours/${id}/schedule/${scheduleId}`, {
     method: 'DELETE'
   }),
+  // END UC-39 Delete Tour Schedule
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
   // START UC-45 Update Tour Capacity
   // Cập nhật số chỗ mở bán của một tour.
@@ -652,6 +687,7 @@ export const bookingApi = {
     const qs = searchParams.toString();
     return apiRequest(`/bookings/my${qs ? `?${qs}` : ''}`, { method: 'GET' });
   },
+  // START UC-77 View Booking Details (Provider)
   getProviderRequests: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -661,6 +697,7 @@ export const bookingApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/bookings/provider${queryString}`, { method: 'GET' });
   },
+  // END UC-77 View Booking Details (Provider)
   approveBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   confirmBooking: (id) => apiRequest(`/bookings/provider/${id}/confirm`, { method: 'PATCH' }),
   // START UC-78 Respond to Booking (Provider)
@@ -716,7 +753,9 @@ export const bookingApi = {
     return response.blob();
   },
   // END UC-123 Export Provider Booking Report
+  // START UC-73 View Booking Details (Customer)
   getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' }),
+  // END UC-73 View Booking Details (Customer)
   // START UC-74 Cancel Booking
   // Huỷ đơn đặt tour của khách kèm lý do.
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
@@ -739,8 +778,6 @@ export const bookingApi = {
 };
 
 // START UC-66 Submit Booking Complaint
-// Ảnh được upload trước qua /complaints/evidence (FormData, field `image`),
-// sau đó gửi khiếu nại bằng JSON kèm mảng URL `evidenceImages`.
 export const complaintApi = {
   uploadEvidence: (formData) => apiRequest('/complaints/evidence', {
     method: 'POST',
@@ -756,7 +793,6 @@ export const complaintApi = {
   // END UC-67 View My Complaints
   cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
   // START UC-153 Search & Filter Customer Complaints
-  // Tải danh sách khiếu nại cho nhân viên theo từ khoá, trạng thái và trang.
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -769,17 +805,15 @@ export const complaintApi = {
   // END UC-153 Search & Filter Customer Complaints
 
   // START UC-154 View Customer Complaints
-  // Tải một khiếu nại kèm đầy đủ thông tin đơn đặt cho nhân viên.
   getById: (id) => apiRequest(`/complaints/management/${id}`, { method: 'GET' }),
   // END UC-154 View Customer Complaints
 
-  // START UC-81 Resolve Customer Complaint
-  // Gửi quyết định xử lý và ghi chú của nhân viên cho một khiếu nại.
+  // START UC-80 Handle Booking Issue
   resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
   }),
-  // END UC-81 Resolve Customer Complaint
+  // END UC-80 Handle Booking Issue
 
   // START STT 68 Update Booking Complaint (Customer)
   update: (id, payload) => apiRequest(`/complaints/${id}`, {
@@ -831,7 +865,6 @@ export const notificationApi = {
 // START UC-130 View Tour Submission List
 // API bài gửi duyệt tour: staff thấy toàn bộ, provider chỉ thấy bài của mình.
 export const tourSubmissionApi = {
-  // Tải một trang bài gửi theo tìm kiếm và bộ lọc hiện tại.
   list: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -843,7 +876,9 @@ export const tourSubmissionApi = {
     return apiRequest(`/tour-submissions${queryString}`, { method: 'GET' });
   },
   // END UC-130 View Tour Submission List
+  // START UC-97 Review Tour Submission
   getById: (id) => apiRequest(`/tour-submissions/${id}`, { method: 'GET' }),
+  // END UC-97 Review Tour Submission
   // START UC-128 Create Tour Submission
   // Tạo yêu cầu duyệt cho một tour nháp.
   create: (payload) => apiRequest('/tour-submissions', {
@@ -852,7 +887,6 @@ export const tourSubmissionApi = {
   }),
   // END UC-128 Create Tour Submission
   // START UC-129 Update Tour Submission
-  // Provider gửi nội dung đã sửa, staff gửi status kèm reviewNote.
   update: (id, payload) => apiRequest(`/tour-submissions/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)

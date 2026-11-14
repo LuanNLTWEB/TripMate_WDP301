@@ -42,7 +42,7 @@ const staffComplaintPopulate = [
   }
 ];
 
-// UC-66 – Submit Booking Complaint (Customer).
+// START UC-66 Submit Booking Complaint
 // Chỉ tạo khiếu nại; không xử lý/duyệt, không thay đổi booking gốc.
 // Ảnh minh chứng đã được upload trước qua POST /api/complaints/evidence,
 // controller chỉ nhận mảng URL trong body.
@@ -118,6 +118,7 @@ export const createComplaint = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể gửi khiếu nại' });
   }
 };
+// END UC-66 Submit Booking Complaint
 
 // START UC-67 View My Complaints
 // Trả về toàn bộ khiếu nại của khách hàng đang đăng nhập, mới nhất trước.
@@ -193,7 +194,7 @@ export const getComplaintById = async (req, res) => {
 };
 // END UC-154 View Customer Complaints
 
-// START UC-81 Resolve Customer Complaint
+// START UC-80 Handle Booking Issue
 // Lưu quyết định xử lý và ghi chú của nhân viên cho khiếu nại còn đang mở.
 export const resolveComplaint = async (req, res) => {
   const errors = validationResult(req);
@@ -225,7 +226,7 @@ export const resolveComplaint = async (req, res) => {
 };
 
 
-// END UC-81 Resolve Customer Complaint
+// END UC-80 Handle Booking Issue
 
 // START STT 68 / UC-68 Update Booking Complaint (Customer)
 /**

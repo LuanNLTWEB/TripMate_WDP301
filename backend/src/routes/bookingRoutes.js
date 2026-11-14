@@ -41,7 +41,9 @@ router.post('/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), creat
 // START UC-75 View Booking History & Detail (getMyBookings)
 router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyBookings);
 // END UC-75 View Booking History & Detail (getMyBookings)
+// START UC-77 View Booking Details (Provider)
 router.get('/provider', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), providerBookingListValidation, getProviderBookingRequests);
+// END UC-77 View Booking Details (Provider)
 // PATCH /api/bookings/provider/:id/confirm - provider duyệt request đang pending -> confirmed
 router.patch('/provider/:id/confirm', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), confirmProviderBooking);
 // START UC-78 Respond to Booking (Provider)
@@ -85,8 +87,8 @@ router.patch('/users/:userId/reset-no-show', protect, authorize('staff', 'admin'
 router.patch('/:id/passenger-info', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateBookingPassengerInfoValidation, updateBookingPassengerInfo);
 // END UC-152 Update Booking Passenger Info
 
-// START UC-75 View Booking History & Detail (getBookingById)
+// START UC-73 View Booking Details (Customer)
 router.get('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingById);
-// END UC-75 View Booking History & Detail (getBookingById)
+// END UC-73 View Booking Details (Customer)
 
 export default router;

@@ -27,12 +27,14 @@ router.post('/', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), createTourSu
 router.get('/', protect, authorize(...ACCESS_ROLES.SUBMISSION_VIEW), tourSubmissionListValidation, getTourSubmissions);
 // END UC-130 View Tour Submission List
 
+// START UC-97 Review Tour Submission
 router.get('/:id', protect, authorize(...ACCESS_ROLES.SUBMISSION_VIEW), tourSubmissionIdValidation, getTourSubmissionById);
+// END UC-97 Review Tour Submission
 
-// START UC-129 Update Tour Submission
+// START UC-97 Review Tour Submission
 // PUT /api/tour-submissions/:id - provider sửa nội dung, staff đổi trạng thái duyệt.
 router.put('/:id', protect, authorize(...ACCESS_ROLES.SUBMISSION_VIEW), updateTourSubmissionValidation, updateTourSubmission);
-// END UC-129 Update Tour Submission
+// END UC-97 Review Tour Submission
 
 // START UC-131 Delete Tour Submission
 // DELETE /api/tour-submissions/:id - provider xóa mềm bài gửi chưa được duyệt.

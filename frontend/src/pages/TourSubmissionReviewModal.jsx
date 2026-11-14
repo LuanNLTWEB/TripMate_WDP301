@@ -19,7 +19,7 @@ const DECISIONS = [
   { value: 'rejected', label: 'Từ chối', icon: 'bi-x-circle', variant: 'danger' }
 ];
 
-// START UC-129 Update Tour Submission (Staff)
+// START UC-97 Review Tour Submission
 export default function TourSubmissionReviewModal({ open, submission, onClose, onReviewed }) {
   const toast = useToast();
   const [decision, setDecision] = useState('approved');
@@ -285,4 +285,4 @@ export default function TourSubmissionReviewModal({ open, submission, onClose, o
     </>
   );
 }
-// END UC-129 Update Tour Submission  (Staff)
+// END UC-97 Review Tour Submission

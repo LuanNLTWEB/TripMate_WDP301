@@ -16,6 +16,7 @@ const buildCategoryNameQuery = (name, excludeId = null) => {
   return query;
 };
 
+// START UC-118 View Destination Category List
 /**
  * Get all destination categories.
  * @route GET /api/destination-categories
@@ -41,6 +42,7 @@ export const getAllCategories = async (req, res) => {
     });
   }
 };
+// END UC-118 View Destination Category List
 
 // START UC-116 Create Destination Category
 /**

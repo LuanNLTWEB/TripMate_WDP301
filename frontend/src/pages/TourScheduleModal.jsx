@@ -50,6 +50,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
     }
   };
 
+  // START UC-39 Delete Tour Schedule
   const handleDelete = async () => {
     if (!pendingDelete || deleteInFlight.current || isTourActive) return;
     deleteInFlight.current = true;
@@ -73,6 +74,7 @@ export default function TourScheduleModal({ open, onClose, tour, onUpdated }) {
       setDeleting(false);
     }
   };
+  // END UC-39 Delete Tour Schedule
 
   const nextSuggestedDay = schedules.length > 0
     ? Math.max(...schedules.map((s) => s.day || 0)) + 1

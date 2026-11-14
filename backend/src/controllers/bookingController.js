@@ -1031,7 +1031,7 @@ export const exportProviderBookingReport = async (req, res) => {
 };
 // END UC-123 Export Provider Booking Report
 
-// START UC-75 View Booking History & Detail (getBookingById)
+// START UC-73 View Booking Details (Customer)
 // Lấy thông tin chi tiết một đơn đặt tour cụ thể của customer (chỉ view của chính mình)
 export const getBookingById = async (req, res) => {
   try {
@@ -1066,7 +1066,7 @@ export const getBookingById = async (req, res) => {
       });
     }
   };
-// END UC-75 View Booking History & Detail (getBookingById)
+// END UC-73 View Booking Details (Customer)
 
 // BR-88 - khung thời gian miễn phí: chỉ được tự hủy khi còn tối thiểu 48 giờ
 // trước ngày khởi hành. Không tính hoàn tiền ở đây vì hệ thống chưa có module

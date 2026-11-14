@@ -268,6 +268,7 @@ export const reportReview = async (req, res) => {
 };
 // END UC-91 Report Inappropriate Review
 
+// START UC-88 View Tour Review
 export const getReviewsByTour = async (req, res) => {
   try {
     const { tourId } = req.params;
@@ -298,6 +299,7 @@ export const getReviewsByTour = async (req, res) => {
     res.status(500).json({ success: false, message: 'Không thể tải danh sách đánh giá' });
   }
 };
+// END UC-88 View Tour Review
 
 export const getAllReviewsForModeration = async (req, res) => {
   try {
@@ -549,6 +551,7 @@ export const deleteReview = async (req, res) => {
   }
 };
 
+// START UC-94 Hide Review
 /**
  * Ẩn đánh giá bởi Staff (UC Review Moderation - Hide Review).
  * @route PATCH /api/reviews/:id/hide
@@ -608,6 +611,7 @@ export const hideReview = async (req, res) => {
     });
   }
 };
+// END UC-94 Hide Review
 
 // START UC-95 Restore Review
 

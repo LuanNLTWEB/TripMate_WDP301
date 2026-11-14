@@ -400,6 +400,7 @@ function Itinerary() {
     }
   };
 
+  // START UC-52 Remove Destination from Itinerary
   const removeDestination = async () => {
     const destination = confirmModal.destination;
     if (!selected || !destination) return;
@@ -417,6 +418,7 @@ function Itinerary() {
       setSaving(false);
     }
   };
+  // END UC-52 Remove Destination from Itinerary
 
   const addTour = async (event) => {
     event.preventDefault();
@@ -587,7 +589,9 @@ function Itinerary() {
     if (!selected) return;
     setSaving(true);
     try {
+      // START UC-57 Reorder Activities
       const response = await itineraryApi.reorderActivities(selected._id, reorderList);
+      // END UC-57 Reorder Activities
       applyItinerary(response.itinerary);
       setReorderMode(false);
       setReorderList([]);
@@ -926,8 +930,6 @@ function Itinerary() {
   const packedPackingItems = displayedPackingItems.filter((item) => Boolean(item.isPacked)).length;
   const isPackingItemUpdating = (itemId) => updatingPackingItemIds.includes(String(itemId));
 
-  // Cập nhật lạc quan đúng một vật dụng trên mọi bản sao lịch trình đang giữ
-  // trong state, nhờ vậy thanh tiến độ đổi ngay mà không cần tải lại trang.
   const applyPackingItemStatusPatch = (itineraryId, itemId, isPacked) => {
     const patchItinerary = (itinerary) => {
       if (!itinerary || String(itinerary._id) !== String(itineraryId)) return itinerary;
@@ -978,7 +980,6 @@ function Itinerary() {
         || (nextPacked ? 'Đã đánh dấu vật dụng đã chuẩn bị' : 'Đã bỏ đánh dấu vật dụng')
       );
     } catch (requestError) {
-      // Khôi phục đúng trạng thái trước đó nếu API thất bại.
       applyPackingItemStatusPatch(itineraryId, itemId, previousPacked);
       toast.error(
         requestError?.status
@@ -1556,6 +1557,7 @@ function Itinerary() {
                         </div>
                       </section>
 
+                      {/* START UC-148 View Packing Checklist */}
                       <section className="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden">
                         <div className="card-body p-4">
                           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
@@ -1755,6 +1757,7 @@ function Itinerary() {
                           )}
                         </div>
                       </section>
+                      {/* END UC-148 View Packing Checklist */}
 
 
 

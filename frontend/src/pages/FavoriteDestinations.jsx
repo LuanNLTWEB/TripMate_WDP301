@@ -33,7 +33,9 @@ const FavoriteDestinations = () => {
       setFavoriteTours([]);
 
       const [destinationResult, tourResult] = await Promise.allSettled([
+        // START UC-16 View Favorite Destinations
         destinationApi.getFavorites(),
+        // END UC-16 View Favorite Destinations
         // START UC-30 View Favorite Tours
         tourApi.getFavorites(),
         // END UC-30 View Favorite Tours
@@ -97,7 +99,9 @@ const FavoriteDestinations = () => {
 
     setRemovingKey(itemKey);
     try {
+      // START UC-29 Remove Favorite Tour
       await tourApi.removeFavorite(tourId);
+      // END UC-29 Remove Favorite Tour
       setFavoriteTours((current) => current.filter((tour) => tour._id !== tourId));
       toast.success('Đã bỏ lưu tour yêu thích.');
     } catch (err) {
