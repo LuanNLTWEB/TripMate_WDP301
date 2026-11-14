@@ -121,11 +121,7 @@ function Home() {
                 </p>
 
                 <div className="d-flex flex-wrap gap-3 mb-4">
-                  <Link to="/itinerary" className="btn btn-primary btn-lg rounded-pill px-4 shadow-sm d-inline-flex align-items-center gap-2">
-                    <i className="bi bi-calendar-plus"></i>
-                    <span>Tự lập lịch trình ngay</span>
-                  </Link>
-                  <Link to="/tours" className="btn btn-outline-secondary btn-lg rounded-pill px-4 d-inline-flex align-items-center gap-2">
+                  <Link to="/tours" className="btn btn-primary btn-lg rounded-pill px-4 shadow-sm d-inline-flex align-items-center gap-2">
                     <i className="bi bi-compass"></i>
                     <span>Xem {realStats.totalTours} Tour có sẵn</span>
                   </Link>

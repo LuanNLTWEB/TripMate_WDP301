@@ -445,15 +445,15 @@ export default function ProviderRevenueStats() {
         <div className="revenue-kpi-card card-collected">
           <div className="revenue-kpi-header">
             <span className="revenue-kpi-label">Doanh thu thực nhận</span>
-            <span className="revenue-kpi-badge bg-success-subtle text-success">
+            <span className="revenue-kpi-badge bg-primary-subtle text-primary">
               Đã thu thành công
             </span>
           </div>
-          <div className="revenue-kpi-value text-success">
+          <div className="revenue-kpi-value text-primary">
             {formatCurrency(summary.totalCollectedRevenue)}
           </div>
           <div className="revenue-kpi-sub">
-            <i className="bi bi-check-circle-fill text-success me-1"></i>
+            <i className="bi bi-check-circle-fill text-primary me-1"></i>
             Đã thu từ <strong>{summary.totalCompletedBookings}</strong> đơn hoàn tất
           </div>
         </div>
@@ -462,15 +462,15 @@ export default function ProviderRevenueStats() {
         <div className="revenue-kpi-card card-pending">
           <div className="revenue-kpi-header">
             <span className="revenue-kpi-label">Dự kiến thu khi đi</span>
-            <span className="revenue-kpi-badge bg-warning-subtle text-warning-emphasis">
+            <span className="revenue-kpi-badge bg-light text-secondary border">
               Thu tại điểm đón
             </span>
           </div>
-          <div className="revenue-kpi-value text-warning-emphasis">
+          <div className="revenue-kpi-value text-dark">
             {formatCurrency(summary.totalConfirmedRevenue)}
           </div>
           <div className="revenue-kpi-sub">
-            <i className="bi bi-hourglass-split text-warning me-1"></i>
+            <i className="bi bi-hourglass-split text-muted me-1"></i>
             <strong>{summary.totalConfirmedBookings}</strong> đơn đã duyệt (chờ thu tiền)
           </div>
         </div>
@@ -479,15 +479,15 @@ export default function ProviderRevenueStats() {
         <div className="revenue-kpi-card card-passengers">
           <div className="revenue-kpi-header">
             <span className="revenue-kpi-label">Khách hàng phục vụ</span>
-            <span className="revenue-kpi-badge bg-primary-subtle text-primary">
+            <span className="revenue-kpi-badge bg-light text-secondary border">
               Lượt trải nghiệm
             </span>
           </div>
-          <div className="revenue-kpi-value text-primary">
+          <div className="revenue-kpi-value text-dark">
             {summary.totalPassengersServed.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">khách</span>
           </div>
           <div className="revenue-kpi-sub">
-            <i className="bi bi-people-fill text-primary me-1"></i>
+            <i className="bi bi-people-fill text-muted me-1"></i>
             Hành khách đã tham gia các chuyến đi
           </div>
         </div>
@@ -496,15 +496,15 @@ export default function ProviderRevenueStats() {
         <div className="revenue-kpi-card card-cancelled">
           <div className="revenue-kpi-header">
             <span className="revenue-kpi-label">Doanh thu thất thoát</span>
-            <span className="revenue-kpi-badge bg-danger-subtle text-danger">
+            <span className="revenue-kpi-badge bg-light text-secondary border">
               Đơn bị hủy
             </span>
           </div>
-          <div className="revenue-kpi-value text-danger">
+          <div className="revenue-kpi-value text-secondary">
             {formatCurrency(summary.totalCancelledRevenue)}
           </div>
           <div className="revenue-kpi-sub">
-            <i className="bi bi-x-octagon-fill text-danger me-1"></i>
+            <i className="bi bi-x-octagon text-muted me-1"></i>
             Thất thoát từ <strong>{summary.totalCancelledBookings}</strong> đơn bị hủy
           </div>
         </div>
@@ -522,23 +522,22 @@ export default function ProviderRevenueStats() {
             </div>
             <div className="revenue-health-progress my-2">
               <div
-                className="bg-success"
+                className="bg-primary"
                 style={{ width: `${collectedPercent}%` }}
                 title={`Đã thực thu: ${collectedPercent}%`}
               ></div>
               <div
-                className="bg-warning"
-                style={{ width: `${confirmedPercent}%` }}
+                style={{ width: `${confirmedPercent}%`, backgroundColor: '#cbd5e1' }}
                 title={`Chờ thu tại điểm đón: ${confirmedPercent}%`}
               ></div>
             </div>
             <div className="d-flex justify-content-between small text-muted" style={{ fontSize: '0.75rem' }}>
               <span>
-                <span className="badge bg-success rounded-circle p-1 me-1"> </span>
+                <span className="badge bg-primary rounded-circle p-1 me-1"> </span>
                 Đã thực thu: <strong>{collectedPercent}%</strong>
               </span>
               <span>
-                <span className="badge bg-warning rounded-circle p-1 me-1"> </span>
+                <span className="badge rounded-circle p-1 me-1" style={{ backgroundColor: '#cbd5e1' }}> </span>
                 Chờ thu: <strong>{confirmedPercent}%</strong>
               </span>
             </div>
@@ -549,7 +548,7 @@ export default function ProviderRevenueStats() {
               <div className="col-4">
                 <div className="p-2.5 bg-light rounded-3">
                   <span className="text-muted small d-block mb-1">Tỷ lệ thu tiền</span>
-                  <span className="fw-bold fs-5 text-success">{collectedPercent}%</span>
+                  <span className="fw-bold fs-5 text-primary">{collectedPercent}%</span>
                 </div>
               </div>
               <div className="col-4">
@@ -563,7 +562,7 @@ export default function ProviderRevenueStats() {
               <div className="col-4">
                 <div className="p-2.5 bg-light rounded-3">
                   <span className="text-muted small d-block mb-1">Tỷ lệ hủy đơn</span>
-                  <span className={`fw-bold fs-5 ${cancelRate > 15 ? 'text-danger' : 'text-muted'}`}>
+                  <span className={`fw-bold fs-5 ${cancelRate > 15 ? 'text-danger' : 'text-dark'}`}>
                     {cancelRate}%
                   </span>
                 </div>
@@ -641,7 +640,7 @@ export default function ProviderRevenueStats() {
                       }}
                     >
                       <div className="fw-bold">{formatDate(hoveredPoint.date)}</div>
-                      <div className="text-success fw-bold">{formatCurrency(hoveredPoint.revenue)}</div>
+                      <div className="text-info fw-bold">{formatCurrency(hoveredPoint.revenue)}</div>
                       <div className="text-light opacity-75 small">{hoveredPoint.bookings} đơn đặt tour</div>
                     </div>
                   )}
@@ -706,7 +705,7 @@ export default function ProviderRevenueStats() {
                                 cx={p.x}
                                 cy={p.y}
                                 r={isHovered ? 6 : p.revenue > 0 ? 3.5 : 2}
-                                fill={isHovered ? '#10b981' : p.revenue > 0 ? '#0284c7' : '#cbd5e1'}
+                                fill={isHovered ? '#0369a1' : p.revenue > 0 ? '#0284c7' : '#cbd5e1'}
                                 stroke="#ffffff"
                                 strokeWidth={isHovered ? 2.5 : 1.5}
                                 style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
@@ -735,7 +734,7 @@ export default function ProviderRevenueStats() {
                             width={barWidth}
                             height={barH}
                             rx={Math.min(barWidth / 2, 4)}
-                            fill={isHovered ? '#10b981' : p.revenue > 0 ? '#0284c7' : '#e2e8f0'}
+                            fill={isHovered ? '#0369a1' : p.revenue > 0 ? '#0284c7' : '#e2e8f0'}
                             style={{ cursor: 'pointer', transition: 'fill 0.18s ease' }}
                             onMouseEnter={() => setHoveredPoint(p)}
                           />
@@ -787,7 +786,7 @@ export default function ProviderRevenueStats() {
               </div>
               <div className="text-end small">
                 <span className="text-muted">Tổng thực thu kỳ này: </span>
-                <strong className="text-success fs-6">{formatCurrency(summary.totalCollectedRevenue)}</strong>
+                <strong className="text-primary fs-6">{formatCurrency(summary.totalCollectedRevenue)}</strong>
               </div>
             </div>
           </div>
@@ -799,7 +798,7 @@ export default function ProviderRevenueStats() {
             <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
               <div>
                 <h5 className="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                  <i className="bi bi-trophy-fill text-warning"></i>
+                  <i className="bi bi-trophy-fill text-primary"></i>
                   <span>Hiệu quả theo Tour</span>
                 </h5>
                 <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
@@ -864,7 +863,7 @@ export default function ProviderRevenueStats() {
                         </div>
 
                         {hasRevenue ? (
-                          <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 flex-shrink-0" style={{ fontSize: '0.72rem' }}>
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 flex-shrink-0" style={{ fontSize: '0.72rem' }}>
                             {percentOfTotal}% tổng thu
                           </span>
                         ) : (
@@ -876,11 +875,11 @@ export default function ProviderRevenueStats() {
 
                       {/* Middle: Revenue and Pending info */}
                       <div className="d-flex justify-content-between align-items-center ps-4 mb-1">
-                        <div className={`fs-6 fw-bold ${hasRevenue ? 'text-success' : 'text-muted'}`}>
+                        <div className={`fs-6 fw-bold ${hasRevenue ? 'text-dark' : 'text-muted'}`}>
                           {formatCurrency(tourItem.collectedRevenue)}
                         </div>
                         {tourItem.confirmedRevenue > 0 && (
-                          <span className="small text-warning-emphasis fw-medium" style={{ fontSize: '0.72rem' }}>
+                          <span className="small text-muted fw-medium" style={{ fontSize: '0.72rem' }}>
                             Chờ thu: {formatCompactCurrency(tourItem.confirmedRevenue)}
                           </span>
                         )}
@@ -890,7 +889,7 @@ export default function ProviderRevenueStats() {
                       {hasRevenue && (
                         <div className="progress ms-4 my-1.5" style={{ height: '5px', backgroundColor: '#e2e8f0', borderRadius: '999px' }}>
                           <div
-                            className="progress-bar bg-success rounded-pill"
+                            className="progress-bar bg-primary rounded-pill"
                             role="progressbar"
                             style={{ width: `${Math.max(percentOfTotal, 3)}%` }}
                             aria-valuenow={percentOfTotal}
@@ -903,11 +902,11 @@ export default function ProviderRevenueStats() {
                       {/* Bottom details: Bookings & Passengers */}
                       <div className="d-flex justify-content-between text-muted ps-4 pt-1" style={{ fontSize: '0.74rem' }}>
                         <span>
-                          <i className="bi bi-receipt me-1 text-primary"></i>
+                          <i className="bi bi-receipt me-1 text-muted"></i>
                           {tourItem.completedBookings} đơn thành công
                         </span>
                         <span>
-                          <i className="bi bi-people me-1 text-info"></i>
+                          <i className="bi bi-people me-1 text-muted"></i>
                           {tourItem.passengers} hành khách
                         </span>
                       </div>
@@ -1024,7 +1023,7 @@ export default function ProviderRevenueStats() {
                           {tx.tourTitle}
                         </div>
                         <div className="small text-muted">
-                          <i className="bi bi-people me-1 text-primary"></i>
+                          <i className="bi bi-people me-1"></i>
                           {tx.numberOfPeople} hành khách
                         </div>
                       </td>
@@ -1033,7 +1032,7 @@ export default function ProviderRevenueStats() {
                         <div className="fw-semibold text-dark small">{tx.customerName}</div>
                         {tx.phone && (
                           <div className="text-muted" style={{ fontSize: '0.74rem' }}>
-                            <i className="bi bi-telephone me-1 text-primary"></i>{tx.phone}
+                            <i className="bi bi-telephone me-1"></i>{tx.phone}
                           </div>
                         )}
                         {tx.customerEmail && (
@@ -1044,7 +1043,7 @@ export default function ProviderRevenueStats() {
                       </td>
 
                       <td className="small text-muted">
-                        <i className="bi bi-calendar3 me-1 text-primary"></i>
+                        <i className="bi bi-calendar3 me-1"></i>
                         {formatDate(tx.departureDate)}
                       </td>
 
