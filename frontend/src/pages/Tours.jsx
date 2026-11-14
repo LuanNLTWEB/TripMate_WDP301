@@ -576,9 +576,15 @@ const Tours = () => {
                               <span>Cài đặt</span>
                             </Link>
                           )}
-                          <span className="small fw-bold text-warning d-inline-flex align-items-center">
-                            <i className="bi bi-star-fill me-1"></i>{tour.averageRating ? tour.averageRating.toFixed(1) : '5.0'}
-                          </span>
+                          {Number(tour.averageRating) > 0 ? (
+                            <span className="small fw-bold text-warning d-inline-flex align-items-center">
+                              <i className="bi bi-star-fill me-1"></i>{Number(tour.averageRating).toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="small text-muted d-inline-flex align-items-center">
+                              Chưa đánh giá
+                            </span>
+                          )}
                           <span className="text-primary small fw-semibold d-inline-flex align-items-center gap-1">
                             Chi tiết <i className="bi bi-arrow-right"></i>
                           </span>

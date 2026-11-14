@@ -131,48 +131,94 @@ const DestinationDetails = () => {
         </div>
 
         {/* Image Gallery */}
-        <div className="row g-2 mb-5">
-          <div className="col-md-8">
-            {destination.images?.[0] ? (
-              <img 
-                src={destination.images[0]} 
-                alt={destination.name} 
-                className="img-fluid w-100 rounded-start" 
-                style={{ height: '400px', objectFit: 'cover' }}
-              />
-            ) : (
-              <div className="w-100 rounded-start bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '400px' }}>
-                <i className="bi bi-image fs-1"></i>
+        {(() => {
+          const images = Array.isArray(destination.images) ? destination.images.filter(Boolean) : [];
+          if (images.length <= 1) {
+            return (
+              <div className="mb-5">
+                {images[0] ? (
+                  <div
+                    className="position-relative overflow-hidden rounded-3 shadow-sm d-flex align-items-center justify-content-center"
+                    style={{
+                      backgroundColor: '#0f172a',
+                      height: '420px'
+                    }}
+                  >
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: `url(${images[0]})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'blur(20px)',
+                        opacity: 0.4,
+                        transform: 'scale(1.1)'
+                      }}
+                    />
+                    <img
+                      src={images[0]}
+                      alt={destination.name}
+                      className="position-relative"
+                      style={{
+                        maxHeight: '100%',
+                        maxWidth: '100%',
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        zIndex: 2,
+                        boxShadow: '0 6px 24px rgba(0, 0, 0, 0.35)'
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-100 rounded-3 bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '420px' }}>
+                    <i className="bi bi-image fs-1"></i>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="col-md-4 d-none d-md-flex flex-column gap-2">
-            {destination.images?.[1] ? (
-              <img 
-                src={destination.images[1]} 
-                alt={`${destination.name} 2`} 
-                className="img-fluid w-100 rounded-end"
-                style={{ height: '196px', objectFit: 'cover' }} 
-              />
-            ) : (
-              <div className="w-100 rounded-end bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '196px' }}>
-                <i className="bi bi-image fs-3"></i>
+            );
+          }
+
+          return (
+            <div className="row g-2 mb-5">
+              <div className="col-md-8">
+                <img
+                  src={images[0]}
+                  alt={destination.name}
+                  className="img-fluid w-100 rounded-start"
+                  style={{ height: '400px', objectFit: 'cover' }}
+                />
               </div>
-            )}
-            {destination.images?.[2] ? (
-              <img 
-                src={destination.images[2]} 
-                alt={`${destination.name} 3`} 
-                className="img-fluid w-100 rounded-end"
-                style={{ height: '196px', objectFit: 'cover' }} 
-              />
-            ) : (
-              <div className="w-100 rounded-end bg-light d-flex align-items-center justify-content-center text-muted" style={{ height: '196px' }}>
-                <i className="bi bi-image fs-3"></i>
+              <div className="col-md-4 d-none d-md-flex flex-column gap-2">
+                {images.length === 2 ? (
+                  <img
+                    src={images[1]}
+                    alt={`${destination.name} 2`}
+                    className="img-fluid w-100 rounded-end"
+                    style={{ height: '400px', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <>
+                    <img
+                      src={images[1]}
+                      alt={`${destination.name} 2`}
+                      className="img-fluid w-100 rounded-end"
+                      style={{ height: '196px', objectFit: 'cover' }}
+                    />
+                    <img
+                      src={images[2]}
+                      alt={`${destination.name} 3`}
+                      className="img-fluid w-100 rounded-end"
+                      style={{ height: '196px', objectFit: 'cover' }}
+                    />
+                  </>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
         
         {/* Content Section */}
         <div className="row">

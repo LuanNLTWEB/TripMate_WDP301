@@ -28,10 +28,6 @@ function ReviewTourSubmission() {
   const [isSubmittingRevision, setIsSubmittingRevision] = useState(false);
   const [revisionError, setRevisionError] = useState('');
 
-  // State cho modal approve
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [isSubmittingApprove, setIsSubmittingApprove] = useState(false);
-
   // State cho modal reject
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -112,20 +108,6 @@ function ReviewTourSubmission() {
     }
   };
 
-  const handleSubmitApprove = async () => {
-    setIsSubmittingApprove(true);
-    try {
-      const response = await tourApi.setStatus(id, 'active');
-      setTour(response.data);
-      setShowApproveModal(false);
-      toast.success(response.message || 'Đã phê duyệt tour thành công.');
-    } catch (err) {
-      toast.error(err.message || 'Không thể phê duyệt tour.');
-    } finally {
-      setIsSubmittingApprove(false);
-    }
-  };
-
   const handleSubmitReject = async () => {
     setIsSubmittingReject(true);
     try {
@@ -137,19 +119,6 @@ function ReviewTourSubmission() {
       toast.error(err.message || 'Không thể từ chối duyệt tour.');
     } finally {
       setIsSubmittingReject(false);
-    }
-  };
-
-  const handleReactivate = async () => {
-    setIsSubmittingApprove(true);
-    try {
-      const response = await tourApi.setStatus(id, 'active');
-      setTour(response.data);
-      toast.success(response.message || 'Đã kích hoạt lại tour thành công.');
-    } catch (err) {
-      toast.error(err.message || 'Không thể kích hoạt lại tour.');
-    } finally {
-      setIsSubmittingApprove(false);
     }
   };
 
@@ -620,17 +589,17 @@ function ReviewTourSubmission() {
               </span>
             </div>
 
-            {(isPending || isNeedsRevision) && (
+            {isPending && (
               <div className="d-flex flex-column gap-1.5 pt-1">
-                <button
-                  type="button"
+                {/* UC-101: duyệt tour phải đi qua bài gửi duyệt, không bật thẳng 'active'. */}
+                <Link
                   className="btn btn-success btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-medium"
                   style={{ fontSize: '0.825rem' }}
-                  onClick={() => setShowApproveModal(true)}
+                  to="/management/tour-submissions"
                 >
                   <i className="bi bi-check-circle"></i>
-                  <span>Phê duyệt tour</span>
-                </button>
+                  <span>Duyệt tại mục Yêu cầu duyệt tour</span>
+                </Link>
                 <button
                   type="button"
                   className="btn btn-warning btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-medium text-dark"
@@ -673,24 +642,16 @@ function ReviewTourSubmission() {
             )}
 
             {isSuspended && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  className="btn btn-success btn-sm w-100 d-inline-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-medium"
-                  style={{ fontSize: '0.825rem' }}
-                  onClick={handleReactivate}
-                  disabled={isSubmittingApprove}
-                >
-                  <i className="bi bi-check-circle"></i>
-                  <span>Kích hoạt lại tour</span>
-                </button>
+              <div className="text-center py-1 text-muted" style={{ fontSize: '0.8rem' }}>
+                <i className="bi bi-info-circle me-1"></i>
+                Tour đang tạm ngưng. Việc khôi phục được thực hiện ở trang Quản lý tour.
               </div>
             )}
 
-            {isRejected && (
+            {(isNeedsRevision || isRejected) && (
               <div className="text-center py-1 text-muted" style={{ fontSize: '0.8rem' }}>
                 <i className="bi bi-info-circle me-1"></i>
-                Tour đã bị từ chối duyệt đề xuất.
+                Nhà cung cấp cần chỉnh sửa và gửi duyệt lại trước khi tour được mở bán.
               </div>
             )}
           </div>
@@ -891,70 +852,6 @@ function ReviewTourSubmission() {
                   ) : (
                     <>
                       <i className="bi bi-send me-2"></i>Gửi yêu cầu
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal phê duyệt tour */}
-      {showApproveModal && (
-        <div
-          className="modal d-block"
-          tabIndex="-1"
-          role="dialog"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div className="modal-dialog modal-dialog-centered" role="document">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold text-success d-flex align-items-center gap-2">
-                  <i className="bi bi-check-circle"></i>
-                  <span>Phê duyệt và phát hành tour</span>
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowApproveModal(false)}
-                  disabled={isSubmittingApprove}
-                  aria-label="Đóng"
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p className="mb-2">
-                  Bạn có chắc muốn phê duyệt tour <strong>{tour.title}</strong>?
-                </p>
-                <div className="alert alert-info py-2 small mb-0">
-                  <i className="bi bi-info-circle me-1"></i>
-                  Tour sẽ chuyển sang trạng thái <strong>Đang hoạt động</strong> và được mở bán công khai cho du khách trên toàn hệ thống.
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setShowApproveModal(false)}
-                  disabled={isSubmittingApprove}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-success"
-                  onClick={handleSubmitApprove}
-                  disabled={isSubmittingApprove}
-                >
-                  {isSubmittingApprove ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-check-lg me-1"></i>Xác nhận phê duyệt
                     </>
                   )}
                 </button>

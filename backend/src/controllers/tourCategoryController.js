@@ -2,6 +2,18 @@ import TourCategory from '../models/TourCategory.js';
 import Tour from '../models/Tour.js';
 import { validationResult } from 'express-validator';
 
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// So khớp tên danh mục tour không phân biệt hoa/thường.
+const buildCategoryNameQuery = (name, excludeId = null) => {
+  const query = {
+    name: new RegExp(`^${escapeRegex(String(name || '').trim())}$`, 'i')
+  };
+  if (excludeId) query._id = { $ne: excludeId };
+  return query;
+};
+
+// START UC-140 View Tour Category List
 /**
  * Get all tour categories.
  * @route GET /api/tour-categories
@@ -24,7 +36,9 @@ export const getAllCategories = async (req, res) => {
     });
   }
 };
+// END UC-140 View Tour Category List
 
+// START UC-138 Create Tour Category
 /**
  * Create a new tour category.
  * @route POST /api/tour-categories
@@ -41,7 +55,8 @@ export const createCategory = async (req, res) => {
   }
 
   try {
-    const existing = await TourCategory.findOne({ name: req.body.name.trim() });
+    const trimmedName = req.body.name.trim();
+    const existing = await TourCategory.findOne(buildCategoryNameQuery(trimmedName));
     if (existing) {
       return res.status(400).json({
         success: false,
@@ -50,7 +65,7 @@ export const createCategory = async (req, res) => {
     }
 
     const category = await TourCategory.create({
-      name: req.body.name.trim(),
+      name: trimmedName,
       description: req.body.description ? req.body.description.trim() : ''
     });
 
@@ -67,7 +82,9 @@ export const createCategory = async (req, res) => {
     });
   }
 };
+// END UC-138 Create Tour Category
 
+// START UC-139 Update Tour Category
 /**
  * Update a tour category.
  * @route PUT /api/tour-categories/:id
@@ -92,10 +109,8 @@ export const updateCategory = async (req, res) => {
       });
     }
 
-    const duplicate = await TourCategory.findOne({
-      name: req.body.name.trim(),
-      _id: { $ne: req.params.id }
-    });
+    const trimmedName = req.body.name.trim();
+    const duplicate = await TourCategory.findOne(buildCategoryNameQuery(trimmedName, req.params.id));
     if (duplicate) {
       return res.status(400).json({
         success: false,
@@ -103,7 +118,7 @@ export const updateCategory = async (req, res) => {
       });
     }
 
-    category.name = req.body.name.trim();
+    category.name = trimmedName;
     category.description = req.body.description !== undefined ? req.body.description.trim() : category.description;
     await category.save();
 
@@ -120,7 +135,9 @@ export const updateCategory = async (req, res) => {
     });
   }
 };
+// END UC-139 Update Tour Category
 
+// START UC-141 Delete Tour Category
 /**
  * Delete a tour category.
  * @route DELETE /api/tour-categories/:id
@@ -162,3 +179,4 @@ export const deleteCategory = async (req, res) => {
     });
   }
 };
+// END UC-141 Delete Tour Category

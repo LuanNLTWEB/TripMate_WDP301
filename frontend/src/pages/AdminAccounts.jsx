@@ -32,9 +32,14 @@ const genderLabels = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 function AccountFormModal({ account, roles, onClose, onSaved }) {
   const toast = useToast();
   const isEditing = Boolean(account);
+  const isStaffOrProvider = Boolean(
+    account && (account.role === 'staff' || account.role === 'tourProvider')
+  );
   const [formData, setFormData] = useState(
     account
       ? {
+        username: account.username || '',
+        email: account.email || '',
         phone: account.phone || '',
         dateOfBirth: account.dateOfBirth?.substring(0, 10) || '',
         gender: account.gender || 'other',
@@ -65,50 +70,106 @@ function AccountFormModal({ account, roles, onClose, onSaved }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const errs = {};
+
     if (!isEditing) {
-      const errs = {};
       if (!formData.username?.trim()) {
         errs.username = 'Vui lòng nhập tên người dùng.';
+      } else if (formData.username.trim().length < 3 || formData.username.trim().length > 30) {
+        errs.username = 'Tên người dùng phải từ 3 đến 30 ký tự.';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username.trim())) {
+        errs.username = 'Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới.';
       }
+
       if (!formData.email?.trim()) {
         errs.email = 'Vui lòng nhập địa chỉ email.';
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
         errs.email = 'Địa chỉ email không đúng định dạng.';
       }
+
       if (!formData.password) {
         errs.password = 'Vui lòng nhập mật khẩu.';
       } else if (formData.password.length < 6 || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
         errs.password = 'Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường và số.';
       }
+
       if (!formData.phone?.trim()) {
         errs.phone = 'Vui lòng nhập số điện thoại.';
       } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
         errs.phone = 'Số điện thoại không hợp lệ (10-11 số).';
       }
 
-      if (Object.keys(errs).length > 0) {
-        setFieldErrors(errs);
-        const firstField = Object.keys(errs)[0];
-        const el = document.getElementById(`account-${firstField}`) || document.querySelector(`[name="${firstField}"]`);
-        el?.focus();
-        toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
-        return;
+      if (formData.dateOfBirth) {
+        const dob = new Date(formData.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (dob > today) {
+          errs.dateOfBirth = 'Ngày sinh không thể ở tương lai.';
+        } else if (age < 12) {
+          errs.dateOfBirth = 'Bạn phải đủ ít nhất 12 tuổi.';
+        }
       }
+    } else if (isStaffOrProvider) {
+      if (!formData.username?.trim()) {
+        errs.username = 'Vui lòng nhập tên người dùng.';
+      } else if (formData.username.trim().length < 3 || formData.username.trim().length > 30) {
+        errs.username = 'Tên người dùng phải từ 3 đến 30 ký tự.';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username.trim())) {
+        errs.username = 'Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới.';
+      }
+
+      if (!formData.phone?.trim()) {
+        errs.phone = 'Vui lòng nhập số điện thoại.';
+      } else if (!/^[0-9]{10,11}$/.test(formData.phone.trim())) {
+        errs.phone = 'Số điện thoại không hợp lệ (10-11 số).';
+      }
+
+      if (formData.dateOfBirth) {
+        const dob = new Date(formData.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (dob > today) {
+          errs.dateOfBirth = 'Ngày sinh không thể ở tương lai.';
+        } else if (age < 12) {
+          errs.dateOfBirth = 'Bạn phải đủ ít nhất 12 tuổi.';
+        }
+      }
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      const firstField = Object.keys(errs)[0];
+      const el = document.getElementById(`account-${firstField}`) || document.querySelector(`[name="${firstField}"]`);
+      el?.focus();
+      toast.error('Vui lòng kiểm tra và điền đầy đủ các thông tin được đánh dấu đỏ.');
+      return;
     }
 
     setIsSaving(true);
     try {
       const data = isEditing
-        ? { role: formData.role }
+        ? (isStaffOrProvider
+            ? {
+                username: formData.username.trim(),
+                phone: formData.phone.trim(),
+                dateOfBirth: formData.dateOfBirth || null,
+                gender: formData.gender,
+                role: formData.role
+              }
+            : { role: formData.role })
         : {
-          username: formData.username.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-          phone: formData.phone.trim(),
-          dateOfBirth: formData.dateOfBirth || undefined,
-          gender: formData.gender,
-          role: formData.role
-        };
+            username: formData.username.trim(),
+            email: formData.email.trim(),
+            password: formData.password,
+            phone: formData.phone.trim(),
+            dateOfBirth: formData.dateOfBirth || undefined,
+            gender: formData.gender,
+            role: formData.role
+          };
       const response = isEditing
         ? await accountApi.update(account.id, data)
         : await accountApi.create(data);
@@ -143,11 +204,17 @@ function AccountFormModal({ account, roles, onClose, onSaved }) {
               <div>
                 <h2 className="modal-title h5 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                   <i className={`bi ${isEditing ? 'bi-person-gear' : 'bi-person-plus-fill'} text-primary`}></i>
-                  <span>{isEditing ? 'Thay đổi vai trò tài khoản' : 'Tạo Tài Khoản Mới'}</span>
+                  <span>
+                    {isEditing
+                      ? (isStaffOrProvider ? 'Cập nhật tài khoản' : 'Thay đổi vai trò tài khoản')
+                      : 'Tạo Tài Khoản Mới'}
+                  </span>
                 </h2>
                 <p className="small text-muted mb-0 mt-0.5">
                   {isEditing
-                    ? `Điều chỉnh quyền truy cập cho người dùng ${account?.username || ''}.`
+                    ? (isStaffOrProvider
+                        ? `Chỉnh sửa thông tin và quyền truy cập cho ${account?.username || ''}.`
+                        : `Điều chỉnh quyền truy cập cho người dùng ${account?.username || ''}.`)
                     : 'Điền đầy đủ thông tin để cấp tài khoản mới trong hệ thống.'}
                 </p>
               </div>
@@ -157,51 +224,139 @@ function AccountFormModal({ account, roles, onClose, onSaved }) {
             <div className="modal-body p-4 overflow-auto">
               <div className="row g-3">
                 {isEditing ? (
-                  <div className="col-12">
-                    <div className="p-3 bg-light rounded-3 border mb-3">
-                      <div className="d-flex align-items-center gap-3 mb-3">
-                        <div
-                          className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-                          style={{ width: '42px', height: '42px' }}
-                        >
-                          {account.username?.charAt(0)?.toUpperCase() || 'U'}
+                  isStaffOrProvider ? (
+                    <>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-email">Email</label>
+                        <input
+                          type="email"
+                          className="form-control bg-light text-muted"
+                          id="account-email"
+                          name="email"
+                          value={formData.email}
+                          readOnly
+                          disabled
+                        />
+                        <div className="form-text small">Email là định danh tài khoản và không thể chỉnh sửa.</div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-username">
+                          Tên người dùng <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          className={`form-control ${fieldErrors.username ? 'is-invalid' : ''}`}
+                          id="account-username"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.username && <div className="invalid-feedback">{fieldErrors.username}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-phone">
+                          Số điện thoại <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          className={`form-control ${fieldErrors.phone ? 'is-invalid' : ''}`}
+                          id="account-phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.phone && <div className="invalid-feedback">{fieldErrors.phone}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-dob">Ngày sinh</label>
+                        <CustomDatePicker
+                          id="account-dob"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                          max={new Date().toISOString().split('T')[0]}
+                          disabled={isSaving}
+                        />
+                        {fieldErrors.dateOfBirth && <div className="invalid-feedback d-block">{fieldErrors.dateOfBirth}</div>}
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-gender">Giới tính</label>
+                        <CustomSelect
+                          id="account-gender"
+                          name="gender"
+                          value={formData.gender}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                          options={[
+                            { value: 'male', label: 'Nam' },
+                            { value: 'female', label: 'Nữ' },
+                            { value: 'other', label: 'Khác' }
+                          ]}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-semibold text-dark" htmlFor="account-role">Vai trò</label>
+                        <CustomSelect
+                          id="account-role"
+                          name="role"
+                          value={formData.role}
+                          onChange={handleChange}
+                          disabled={isSaving}
+                          options={roles.map((r) => ({
+                            value: r.name,
+                            label: ROLE_LABELS[r.name] || r.name
+                          }))}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-12">
+                      <div className="p-3 bg-light rounded-3 border mb-3">
+                        <div className="d-flex align-items-center gap-3 mb-3">
+                          <div
+                            className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                            style={{ width: '42px', height: '42px' }}
+                          >
+                            {account.username?.charAt(0)?.toUpperCase() || 'U'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="fw-bold text-dark text-truncate">{account.username}</div>
+                            <div className="small text-muted text-truncate">{account.email}</div>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="fw-bold text-dark text-truncate">{account.username}</div>
-                          <div className="small text-muted text-truncate">{account.email}</div>
+                        <div className="row g-3 small pt-2 border-top">
+                          <div className="col-md-4">
+                            <span className="text-muted d-block">Số điện thoại</span>
+                            <span className="fw-medium text-dark">{account.phone || 'Chưa cập nhật'}</span>
+                          </div>
+                          <div className="col-md-4">
+                            <span className="text-muted d-block">Ngày sinh</span>
+                            <span className="fw-medium text-dark">{formatAdminDate(account.dateOfBirth)}</span>
+                          </div>
+                          <div className="col-md-4">
+                            <span className="text-muted d-block">Giới tính</span>
+                            <span className="fw-medium text-dark">{genderLabels[account.gender] || 'Chưa cập nhật'}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="row g-3 small pt-2 border-top">
-                        <div className="col-md-4">
-                          <span className="text-muted d-block">Số điện thoại</span>
-                          <span className="fw-medium text-dark">{account.phone || 'Chưa cập nhật'}</span>
-                        </div>
-                        <div className="col-md-4">
-                          <span className="text-muted d-block">Ngày sinh</span>
-                          <span className="fw-medium text-dark">{formatAdminDate(account.dateOfBirth)}</span>
-                        </div>
-                        <div className="col-md-4">
-                          <span className="text-muted d-block">Giới tính</span>
-                          <span className="fw-medium text-dark">{genderLabels[account.gender] || 'Chưa cập nhật'}</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    <label className="form-label small fw-semibold text-dark" htmlFor="account-role">
-                      Vai trò trong hệ thống
-                    </label>
-                    <CustomSelect
-                      id="account-role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      disabled={isSaving}
-                      options={roles.map((r) => ({
-                        value: r.name,
-                        label: ROLE_LABELS[r.name] || r.name
-                      }))}
-                    />
-                  </div>
+                      <label className="form-label small fw-semibold text-dark" htmlFor="account-role">
+                        Vai trò trong hệ thống
+                      </label>
+                      <CustomSelect
+                        id="account-role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        disabled={isSaving}
+                        options={roles.map((r) => ({
+                          value: r.name,
+                          label: ROLE_LABELS[r.name] || r.name
+                        }))}
+                      />
+                    </div>
+                  )
                 ) : (
                   <>
                     <div className="col-md-6">
@@ -283,6 +438,7 @@ function AccountFormModal({ account, roles, onClose, onSaved }) {
                         max={new Date().toISOString().split('T')[0]}
                         disabled={isSaving}
                       />
+                      {fieldErrors.dateOfBirth && <div className="invalid-feedback d-block">{fieldErrors.dateOfBirth}</div>}
                     </div>
 
                     <div className="col-md-6">

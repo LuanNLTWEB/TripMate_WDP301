@@ -30,6 +30,11 @@ const departureSchema = new mongoose.Schema({
     min: [0, 'Số chỗ không được âm'],
     default: 0
   },
+  totalSeats: {
+    type: Number,
+    min: [0, 'Số chỗ không được âm'],
+    default: null
+  },
   price: {
     type: Number,
     min: [0, 'Giá khởi hành không được âm'],

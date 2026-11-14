@@ -1,9 +1,5 @@
-/**
- * Destination Management — các use case do Toan phụ trách
- *  - UC-17 Create Destination
- *  - UC-121 Update Destination Status
- */
 import Destination from '../models/Destination.js';
+import DestinationCategory from '../models/DestinationCategory.js';
 import User from '../models/User.js';
 import Itinerary from '../models/Itinerary.js';
 import { validationResult } from 'express-validator';
@@ -11,6 +7,23 @@ import mongoose from 'mongoose';
 import { logActivity } from '../utils/activityLogger.js';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * UC-119 – Danh mục đã xóa mềm không được gán cho điểm đến nữa.
+ * Trả về null nếu hợp lệ, ngược lại trả về { status, message } để controller phản hồi.
+ */
+const validateAssignableCategory = async (categoryId) => {
+  if (!categoryId) return null;
+
+  const category = await DestinationCategory.findOne({
+    _id: categoryId,
+    isDeleted: { $ne: true }
+  });
+  if (!category) {
+    return { status: 404, message: 'Không tìm thấy danh mục đang hoạt động' };
+  }
+  return null;
+};
 
 const DESTINATION_STATUS_VALUES = ['active', 'inactive'];
 
@@ -44,6 +57,14 @@ export const createDestination = async (req, res) => {
   }
 
   try {
+    const categoryError = await validateAssignableCategory(req.body.categoryId);
+    if (categoryError) {
+      return res.status(categoryError.status).json({
+        success: false,
+        message: categoryError.message
+      });
+    }
+
     const destination = await Destination.create({
       name: req.body.name,
       description: req.body.description,
@@ -79,6 +100,7 @@ export const createDestination = async (req, res) => {
 
 // END UC-17 Create Destination
 
+// START UC-19 Update Destination
 /**
  * Update a destination.
  * @route PUT /api/destinations/:id
@@ -95,6 +117,16 @@ export const updateDestination = async (req, res) => {
   }
 
   try {
+    if (req.body.categoryId !== undefined) {
+      const categoryError = await validateAssignableCategory(req.body.categoryId);
+      if (categoryError) {
+        return res.status(categoryError.status).json({
+          success: false,
+          message: categoryError.message
+        });
+      }
+    }
+
     const destination = await Destination.findOne({
       _id: req.params.id,
       isDeleted: { $ne: true }
@@ -103,9 +135,25 @@ export const updateDestination = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy điểm đến' });
     }
 
-    destination.name = req.body.name ?? destination.name;
+    const nextName = req.body.name !== undefined ? String(req.body.name).trim() : destination.name;
+    const nextLocation = req.body.location !== undefined ? String(req.body.location).trim() : destination.location;
+
+    const duplicate = await Destination.findOne({
+      _id: { $ne: destination._id },
+      isDeleted: { $ne: true },
+      name: new RegExp(`^${escapeRegex(nextName)}$`, 'i'),
+      location: new RegExp(`^${escapeRegex(nextLocation)}$`, 'i')
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Điểm đến với tên này đã tồn tại tại tỉnh/thành phố được chọn'
+      });
+    }
+
+    destination.name = nextName;
     destination.description = req.body.description ?? destination.description;
-    destination.location = req.body.location ?? destination.location;
+    destination.location = nextLocation;
     destination.images = req.body.images ?? destination.images;
     destination.categoryId = req.body.categoryId !== undefined ? (req.body.categoryId || null) : destination.categoryId;
     destination.isPopular = req.body.isPopular !== undefined
@@ -136,6 +184,7 @@ export const updateDestination = async (req, res) => {
     });
   }
 };
+// END UC-19 Update Destination
 
 /**
  * Activate or deactivate a destination in the catalogue.
@@ -232,6 +281,7 @@ export const updateDestinationStatus = async (req, res) => {
 
 // END UC-121 Update Destination Status
 
+// START UC-11 View Destination List
 // @desc    Get all destinations
 // @route   GET /api/destinations
 // @access  Public (Guest)
@@ -304,6 +354,7 @@ export const getAllDestinations = async (req, res) => {
     });
   }
 };
+// END UC-11 View Destination List
 
 /**
  * List every non-deleted destination for Staff moderation, including inactive ones.
@@ -440,6 +491,7 @@ export const getDestinationById = async (req, res) => {
   }
 };
 
+// START UC-14 Save / Unsave Destination
 /**
  * Toggle save/unsave a destination for the current customer.
  * @route POST /api/destinations/:id/favorite
@@ -491,6 +543,7 @@ export const toggleFavorite = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể cập nhật yêu thích' });
   }
 };
+// END UC-14 Save / Unsave Destination
 
 /**
  * Remove a destination from the current customer's favorites.

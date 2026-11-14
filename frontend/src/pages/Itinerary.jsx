@@ -25,6 +25,14 @@ const formatDateRange = (startDate, endDate) => {
   return format(startDate || endDate);
 };
 
+// Format number to Vietnamese style without currency symbol (1.000.000)
+const formatVnd = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  return new Intl.NumberFormat('vi-VN', {
+    maximumFractionDigits: 0
+  }).format(Number(value) || 0);
+};
+
 function Itinerary() {
   const { user, isAuthenticated } = useAuth();
   const toast = useToast();
@@ -602,6 +610,14 @@ function Itinerary() {
   const duplicateItinerary = async () => {
     if (!duplicateModal.itinerary || saving) return;
 
+    if (duplicateModal.startDate) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (duplicateModal.startDate < todayStr) {
+        toast.error('Ngày bắt đầu lịch trình mới phải ở tương lai');
+        return;
+      }
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -751,7 +767,9 @@ function Itinerary() {
     (collaborator) => String(collaborator.user?._id || collaborator.user) === currentUserId
   )?.permission;
   const canEditSelected = Boolean(isOwner || myPermission === 'edit');
-  // UC-151 – mọi thành viên (kể cả quyền 'view') được tự đánh dấu tiến độ của mình.
+  // UC-151 – owner và mọi collaborator (kể cả quyền 'view') đều được đánh dấu
+  // tiến độ đóng gói của chính mình theo BR-95; quyền 'view' chỉ không được
+  // thêm/sửa/xóa vật dụng trong danh sách.
   const canMarkPacked = Boolean(isOwner || myPermission);
   const isCollaborator = Boolean(!isOwner && myPermission);
 
@@ -1685,7 +1703,7 @@ function Itinerary() {
                                           disabled={!canMarkPacked || !item._id || isPackingItemUpdating(item._id)}
                                           title={
                                             !canMarkPacked
-                                              ? 'Bạn không có quyền đánh dấu vật dụng trong lịch trình này'
+                                              ? 'Bạn không có quyền đánh dấu vật dụng'
                                               : item.isPacked
                                                 ? 'Bỏ đánh dấu vật dụng'
                                                 : 'Đánh dấu vật dụng đã chuẩn bị'
@@ -2035,16 +2053,15 @@ function Itinerary() {
                                 <label className="form-label" htmlFor="activity-cost">Chi phí dự kiến (₫)</label>
                                 <input
                                   id="activity-cost"
-                                  type="number"
-                                  min="0"
-                                  step="1000"
+                                  type="text"
+                                  inputMode="numeric"
                                   className={`form-control ${activityErrors.estimatedCost ? 'is-invalid' : ''}`}
-                                  value={activityForm.estimatedCost}
+                                  value={formatVnd(activityForm.estimatedCost)}
                                   onChange={(event) => {
-                                    setActivityForm({ ...activityForm, estimatedCost: event.target.value });
+                                    setActivityForm({ ...activityForm, estimatedCost: event.target.value.replace(/\D/g, '') });
                                     clearActivityError('estimatedCost');
                                   }}
-                                  placeholder="Ví dụ: 150000"
+                                  placeholder="Ví dụ: 150.000"
                                   disabled={saving}
                                 />
                                 {activityErrors.estimatedCost && (
@@ -2560,6 +2577,7 @@ function Itinerary() {
                       <CustomDatePicker
                         id="duplicate-itinerary-start-date"
                         name="startDate"
+                        min={new Date().toISOString().split('T')[0]}
                         value={duplicateModal.startDate}
                         placeholder="dd/mm/yyyy"
                         onChange={(e, val) => setDuplicateModal((prev) => ({ ...prev, startDate: val !== undefined ? val : e.target.value }))}

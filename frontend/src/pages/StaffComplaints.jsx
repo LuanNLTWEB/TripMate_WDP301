@@ -85,6 +85,8 @@ function InfoRow({ label, children }) {
   );
 }
 
+// START UC-154 View Customer Complaints
+// Trang để nhân viên xem mọi khiếu nại của khách kèm thông tin đơn đặt.
 export default function StaffComplaints() {
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -113,6 +115,8 @@ export default function StaffComplaints() {
   };
   // END STT 156 Reset No-Show Count (Staff)
 
+  // START UC-153 Search & Filter Customer Complaints
+  // Tải danh sách khiếu nại theo từ khoá và bộ lọc trạng thái hiện tại.
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -127,7 +131,10 @@ export default function StaffComplaints() {
 
   useEffect(() => { load(); // eslint-disable-line react/set-state-in-effect
   }, [load]);
+  // END UC-153 Search & Filter Customer Complaints
 
+  // START UC-81 Resolve Customer Complaint
+  // Gửi quyết định xử lý và nội dung phản hồi cho khiếu nại đang chọn.
   const resolve = async (nextStatus) => {
     if (!selected || note.trim().length < 5) {
       setNoteError('Vui lòng nhập phản hồi xử lý ít nhất 5 ký tự.');
@@ -146,6 +153,7 @@ export default function StaffComplaints() {
       toast.error(error.message || 'Không thể cập nhật khiếu nại.');
     }
   };
+  // END UC-81 Resolve Customer Complaint
 
   const booking = selected?.bookingId && typeof selected.bookingId === 'object' ? selected.bookingId : {};
   const bookingId = booking._id || (typeof selected?.bookingId === 'string' ? selected.bookingId : null);
@@ -384,3 +392,4 @@ export default function StaffComplaints() {
     </section>
   );
 }
+// END UC-154 View Customer Complaints

@@ -80,6 +80,7 @@ export default function TourSubmissions() {
     { value: 'rejected', label: 'Bị từ chối' }
   ]), []);
 
+  // Tải một trang bài gửi theo tìm kiếm và trạng thái hiện tại.
   const loadSubmissions = async (searchTerm = search, selectedStatus = status, page = currentPage) => {
     setIsLoading(true);
     try {
@@ -108,6 +109,7 @@ export default function TourSubmissions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, status, currentPage]);
 
+  // Mở hộp thoại tạo bài gửi mới.
   const openCreateModal = () => setFormState({
     open: true,
     mode: 'create',
@@ -115,6 +117,7 @@ export default function TourSubmissions() {
     preselectedTourId: ''
   });
 
+  // Mở hộp thoại sửa bài gửi đã có.
   const openEditModal = (submission) => setFormState({
     open: true,
     mode: 'edit',
@@ -122,6 +125,7 @@ export default function TourSubmissions() {
     preselectedTourId: ''
   });
 
+  // Đóng hộp thoại bài gửi.
   const closeFormModal = () => {
     setFormState({ open: false, mode: 'create', submission: null, preselectedTourId: '' });
     if (searchParams.get('tour')) {
@@ -129,15 +133,18 @@ export default function TourSubmissions() {
     }
   };
 
+  // Tải lại danh sách sau khi bài gửi được tạo hoặc sửa.
   const handleSaved = async () => {
     setCurrentPage(1);
     await loadSubmissions(search, status, 1);
   };
 
+  // Tải lại danh sách sau khi có quyết định duyệt.
   const handleReviewed = async () => {
     await loadSubmissions(search, status, currentPage);
   };
 
+  // Xoá bài gửi đang chọn sau khi xác nhận.
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -153,6 +160,7 @@ export default function TourSubmissions() {
     }
   };
 
+  // Chuyển danh sách sang trang khác.
   const handlePageChange = (page) => {
     if (page < 1 || page > totalPages || page === currentPage) return;
     setCurrentPage(page);

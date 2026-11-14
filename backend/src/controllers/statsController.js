@@ -1,7 +1,3 @@
-/**
- * Reporting & Analytics — use case do Toan phụ trách
- *  - UC-102 View Platform Statistics
- */
 import User from '../models/User.js';
 import Destination from '../models/Destination.js';
 import DestinationCategory from '../models/DestinationCategory.js';
@@ -42,7 +38,7 @@ const getPlatformStats = async (req, res) => {
         { $match: { isDeleted: { $ne: true } } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
-      DestinationCategory.countDocuments(),
+      DestinationCategory.countDocuments({ isDeleted: { $ne: true } }),
       Tour.countDocuments({ isDeleted: { $ne: true } }),
       Itinerary.countDocuments(),
       Itinerary.aggregate([{ $unwind: '$activities' }, { $count: 'total' }]),

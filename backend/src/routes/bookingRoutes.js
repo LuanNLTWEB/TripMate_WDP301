@@ -6,7 +6,7 @@ import {
   getProviderBookingRequests,
   confirmProviderBooking,
   respondProviderBooking,
-  getBookingVoucher,
+  getBookingTicket,
   markBookingAsNoShow,
 
   confirmBookingPayment,
@@ -35,8 +35,12 @@ import {
 
 const router = express.Router();
 
+// START UC-71 Create Booking
 router.post('/:tourId', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), createBookingValidation, createBooking);
+// END UC-71 Create Booking
+// START UC-75 View Booking History & Detail (getMyBookings)
 router.get('/my', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getMyBookings);
+// END UC-75 View Booking History & Detail (getMyBookings)
 router.get('/provider', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), providerBookingListValidation, getProviderBookingRequests);
 // PATCH /api/bookings/provider/:id/confirm - provider duyệt request đang pending -> confirmed
 router.patch('/provider/:id/confirm', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), confirmProviderBooking);
@@ -55,15 +59,18 @@ router.patch('/provider/:id/payment', protect, authorize(...ACCESS_ROLES.PROVIDE
 // PATCH /api/bookings/provider/:id/check-in - provider điểm danh khách lên xe (paid -> checked_in)
 router.patch('/provider/:id/check-in', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), checkInBookingValidation, checkInBooking);
 // END UC-85 Confirm Payment & Check-in
+// START UC-79 Complete Booking
 router.patch('/provider/:id/complete', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), completeBookingValidation, completeBooking);
+// END UC-79 Complete Booking
 
 // START UC-123 Export Provider Booking Report
+// GET /api/bookings/provider/report - tải báo cáo đơn đặt tour dạng Excel.
 router.get('/provider/report', protect, authorize(...ACCESS_ROLES.PROVIDER_ONLY), exportProviderBookingReport);
 // END UC-123 Export Provider Booking Report
-// START UC-82 Download Booking Voucher (Customer)
-// GET /api/bookings/:id/voucher - xuất phiếu xác nhận đặt chỗ kèm mã QR
-router.get('/:id/voucher', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingVoucher);
-// END UC-82 Download Booking Voucher (Customer)
+// START UC-82 Download Booking Ticket (Customer)
+// GET /api/bookings/:id/ticket - xuất vé xác nhận đặt chỗ kèm mã QR
+router.get('/:id/ticket', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingTicket);
+// END UC-82 Download Booking Ticket (Customer)
 // START UC-74 Cancel Booking
 // PATCH /api/bookings/:id/cancel - tự hủy đơn: chỉ customer, validate lý do rồi mới vào controller.
 router.patch('/:id/cancel', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), cancelBookingValidation, cancelBooking);
@@ -78,6 +85,8 @@ router.patch('/users/:userId/reset-no-show', protect, authorize('staff', 'admin'
 router.patch('/:id/passenger-info', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), updateBookingPassengerInfoValidation, updateBookingPassengerInfo);
 // END UC-152 Update Booking Passenger Info
 
+// START UC-75 View Booking History & Detail (getBookingById)
 router.get('/:id', protect, authorize(...ACCESS_ROLES.CUSTOMER_ONLY), getBookingById);
+// END UC-75 View Booking History & Detail (getBookingById)
 
 export default router;

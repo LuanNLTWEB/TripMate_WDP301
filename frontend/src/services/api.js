@@ -122,7 +122,6 @@ export const accountApi = {
 
 export const roleApi = {
   getAll: () => apiRequest('/admin/roles', { method: 'GET' }),
-  create: (roleData) => apiRequest('/admin/roles', { method: 'POST', body: JSON.stringify(roleData) }),
   update: (id, roleData) => apiRequest(`/admin/roles/${id}`, { method: 'PUT', body: JSON.stringify(roleData) }),
   remove: (id) => apiRequest(`/admin/roles/${id}`, { method: 'DELETE' })
 };
@@ -166,6 +165,7 @@ export const destinationApi = {
   },
   getManagedById: (id) => apiRequest(`/destinations/management/${id}`, { method: 'GET' }),
   // START UC-17 Create Destination
+  // Tạo điểm đến từ form quản lý điểm đến của nhân viên.
   create: (destination) => apiRequest('/destinations', {
     method: 'POST',
     body: JSON.stringify(destination)
@@ -216,6 +216,7 @@ export const tourCategoryApi = {
 export const itineraryApi = {
   listShared: () => apiRequest('/itineraries/shared', { method: 'GET' }),
   // START UC-48 View Personal Itinerary
+  // Tải các lịch trình khách sở hữu hoặc được chia sẻ.
   list: () => apiRequest('/itineraries', { method: 'GET' }),
   // END UC-48 View Personal Itinerary
   getBudget: (id) => apiRequest(`/itineraries/${id}/budget`, { method: 'GET' }),
@@ -228,6 +229,7 @@ export const itineraryApi = {
     body: JSON.stringify(itinerary)
   }),
   // START UC-53 Add Activity to Itinerary
+  // Thêm một hoạt động vào một ngày của lịch trình.
   addActivity: (id, activity) => apiRequest(`/itineraries/${id}/activities`, {
     method: 'POST',
     body: JSON.stringify(activity)
@@ -268,6 +270,7 @@ export const itineraryApi = {
   method: 'DELETE'
 }),
   // START UC-48 View Personal Itinerary
+  // Tải một lịch trình kèm các ngày và hoạt động.
   getById: (id) => apiRequest(`/itineraries/${id}`, {
     method: 'GET'
   }),
@@ -284,12 +287,14 @@ export const itineraryApi = {
     method: 'DELETE'
   }),
   // START UC-137 Leave Itinerary
+  // Xoá người dùng hiện tại khỏi lịch trình chia sẻ.
   leave: (id, newOwnerId) => apiRequest(`/itineraries/${id}/leave`, {
     method: 'DELETE',
     ...(newOwnerId ? { body: JSON.stringify({ newOwnerId }) } : {})
   }),
   // END UC-137 Leave Itinerary
   // START UC-120 Transfer Itinerary Ownership
+  // Chuyển lịch trình cho một cộng tác viên khác.
   transferOwnership: (id, newOwnerId) => apiRequest(`/itineraries/${id}/owner`, {
     method: 'PUT',
     body: JSON.stringify({ newOwnerId })
@@ -352,6 +357,7 @@ export const itineraryApi = {
 
 export const statsApi = {
   // START UC-102 View Platform Statistics
+  // Tải số liệu thống kê toàn hệ thống hiển thị trên dashboard của nhân viên.
   getPlatformStats: () => apiRequest('/stats/platform', { method: 'GET' }),
   // END UC-102 View Platform Statistics
   getAdminStats: (params = {}) => {
@@ -437,12 +443,14 @@ export const reviewApi = {
   voteHelpful: (id) => apiRequest(`/reviews/${id}/vote-helpful`, { method: 'POST' }),
   // END Vote Helpful on Tour Review
   // START UC-89 Update Tour Review
+  // Cập nhật đánh giá của chính khách hàng.
   update: (id, payload) => apiRequest(`/reviews/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
   }),
   // END UC-89 Update Tour Review
   // START UC-95 Restore Review
+  // Khôi phục một đánh giá đã bị xoá trước đó.
   restore: (id) => apiRequest(`/reviews/${id}/restore`, { method: 'PATCH' }),
   // END UC-95 Restore Review
   report: (id, payload) => apiRequest(`/reviews/${id}/report`, {
@@ -489,6 +497,7 @@ export const tourApi = {
     return apiRequest(`/tours${queryString}`, { method: 'GET' });
   },
   // START UC-25 View Tour Details
+  // Tải một tour cho trang chi tiết công khai.
   getById: (id) => apiRequest(`/tours/${id}`, { method: 'GET' }),
   // END UC-25 View Tour Details
   // START UC-64 Compare Tours
@@ -526,6 +535,7 @@ export const tourApi = {
   }),
   restore: (id) => apiRequest(`/tours/${id}/restore`, { method: 'PATCH' }),
   // START UC-30 View Favorite Tours
+  // Tải các tour yêu thích của khách hàng đang đăng nhập.
   getFavorites: () => apiRequest('/tours/favorites', { method: 'GET' }),
   // END UC-30 View Favorite Tours
   saveFavorite: (id) => apiRequest(`/tours/${id}/favorite`, { method: 'POST' }),
@@ -535,6 +545,7 @@ export const tourApi = {
     body: JSON.stringify({ note })
   }),
   // START UC-35 View Approval Status
+  // Tải tour của nhà cung cấp kèm tìm kiếm, lọc trạng thái và phân trang.
   getProviderTours: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -544,6 +555,7 @@ export const tourApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/tours/provider${queryString}`, { method: 'GET' });
   },
+  // Tải một tour của nhà cung cấp kèm trạng thái duyệt.
   getProviderById: (id) => apiRequest(`/tours/provider/${id}`, { method: 'GET' }),
   // END UC-35 View Approval Status
   // START UC-24 Duplicate Tour
@@ -566,6 +578,7 @@ export const tourApi = {
   }),
   getSchedule: (id) => apiRequest(`/tours/${id}/schedule`, { method: 'GET' }),
   // START UC-45 Update Tour Capacity
+  // Cập nhật số chỗ mở bán của một tour.
   updateCapacity: (id, availableSeats) => apiRequest(`/tours/${id}/capacity`, {
     method: 'PUT',
     body: JSON.stringify({ availableSeats })
@@ -582,6 +595,7 @@ export const tourApi = {
 };
 export const departureApi = {
   // START UC-40 Create Tour Departure
+  // Tạo chuyến khởi hành cho một tour.
   create: (payload) => apiRequest('/departures', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -661,9 +675,9 @@ export const bookingApi = {
     body: JSON.stringify({ noShowReason })
   }),
   // END UC-86 Mark Booking as No-Show (Provider)
-  // START UC-82 Download Booking Voucher (Customer)
-  getVoucher: (id) => apiRequest(`/bookings/${id}/voucher`, { method: 'GET' }),
-  // END UC-82 Download Booking Voucher (Customer)
+  // START UC-82 Download Booking Ticket (Customer)
+  getTicket: (id) => apiRequest(`/bookings/${id}/ticket`, { method: 'GET' }),
+  // END UC-82 Download Booking Ticket (Customer)
 
   // START UC-85 Confirm Payment & Check-in
   // Provider xác nhận đã thu tiền tại điểm đón rồi điểm danh khách lên xe.
@@ -671,11 +685,13 @@ export const bookingApi = {
     method: 'PATCH',
     body: JSON.stringify(payload)
   }),
+  // Điểm danh một đơn đã thanh toán cho chuyến khởi hành.
   checkIn: (id) => apiRequest(`/bookings/provider/${id}/check-in`, { method: 'PATCH' }),
   // END UC-85 Confirm Payment & Check-in
   completeBooking: (id) => apiRequest(`/bookings/provider/${id}/complete`, { method: 'PATCH' }),
 
   // START UC-123 Export Provider Booking Report
+  // Tải báo cáo đơn đặt tour của nhà cung cấp dưới dạng Excel.
   exportProviderReport: async ({ from, to } = {}) => {
     const query = new URLSearchParams();
     if (from) query.append('from', from);
@@ -692,7 +708,7 @@ export const bookingApi = {
         const data = await response.json();
         message = data.message || message;
       } catch {
-        // Keep the user-facing fallback when the server does not return JSON.
+        // Giữ thông báo mặc định cho người dùng khi server không trả về JSON.
       }
       throw new Error(message);
     }
@@ -702,6 +718,7 @@ export const bookingApi = {
   // END UC-123 Export Provider Booking Report
   getById: (id) => apiRequest(`/bookings/${id}`, { method: 'GET' }),
   // START UC-74 Cancel Booking
+  // Huỷ đơn đặt tour của khách kèm lý do.
   cancel: (id, reason) => apiRequest(`/bookings/${id}/cancel`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
@@ -733,9 +750,14 @@ export const complaintApi = {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
-  // UC-66 – customer xem khiếu nại của mình; UC-81/153/154 – staff tra cứu/xử lý.
+  // START UC-67 View My Complaints
+  // Tải khiếu nại của khách hàng đang đăng nhập.
   getMine: () => apiRequest('/complaints/my', { method: 'GET' }),
+  // END UC-67 View My Complaints
   cancel: (id) => apiRequest(`/complaints/${id}/cancel`, { method: 'PATCH' }),
+  // START UC-153 Search & Filter Customer Complaints
+  // Tải danh sách khiếu nại cho nhân viên theo từ khoá, trạng thái và trang.
+  // Tải danh sách khiếu nại cho nhân viên theo từ khoá, trạng thái và trang.
   getManaged: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
@@ -745,11 +767,21 @@ export const complaintApi = {
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return apiRequest(`/complaints/management${queryString}`, { method: 'GET' });
   },
+  // END UC-153 Search & Filter Customer Complaints
+
+  // START UC-154 View Customer Complaints
+  // Tải một khiếu nại kèm đầy đủ thông tin đơn đặt cho nhân viên.
   getById: (id) => apiRequest(`/complaints/management/${id}`, { method: 'GET' }),
+  // END UC-154 View Customer Complaints
+
+  // START UC-81 Resolve Customer Complaint
+  // Gửi quyết định xử lý và ghi chú của nhân viên cho một khiếu nại.
   resolve: (id, payload) => apiRequest(`/complaints/${id}/resolve`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
   }),
+  // END UC-81 Resolve Customer Complaint
+
   // START STT 68 Update Booking Complaint (Customer)
   update: (id, payload) => apiRequest(`/complaints/${id}`, {
     method: 'PATCH',
@@ -800,10 +832,12 @@ export const notificationApi = {
 // START UC-130 View Tour Submission List
 // API bài gửi duyệt tour: staff thấy toàn bộ, provider chỉ thấy bài của mình.
 export const tourSubmissionApi = {
+  // Tải một trang bài gửi theo tìm kiếm và bộ lọc hiện tại.
   list: (params = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
     if (params.status && params.status !== 'all') query.append('status', params.status);
+    if (params.tourId) query.append('tourId', params.tourId);
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     const queryString = query.toString() ? `?${query.toString()}` : '';
@@ -812,6 +846,7 @@ export const tourSubmissionApi = {
   // END UC-130 View Tour Submission List
   getById: (id) => apiRequest(`/tour-submissions/${id}`, { method: 'GET' }),
   // START UC-128 Create Tour Submission
+  // Tạo yêu cầu duyệt cho một tour nháp.
   create: (payload) => apiRequest('/tour-submissions', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -825,6 +860,7 @@ export const tourSubmissionApi = {
   }),
   // END UC-129 Update Tour Submission
   // START UC-131 Delete Tour Submission
+  // Xoá một bài gửi duyệt tour.
   remove: (id) => apiRequest(`/tour-submissions/${id}`, { method: 'DELETE' })
   // END UC-131 Delete Tour Submission
 };

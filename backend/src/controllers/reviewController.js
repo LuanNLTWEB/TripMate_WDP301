@@ -1,8 +1,3 @@
-/**
- * Reviews & Moderation — các use case do Toan phụ trách
- *  - UC-89 Update Tour Review
- *  - UC-95 Restore Review
- */
 import Review from '../models/Review.js';
 import Tour from '../models/Tour.js';
 import Booking from '../models/Booking.js';
@@ -233,6 +228,7 @@ export const createReview = async (req, res) => {
   }
 };
 
+// START UC-91 Report Inappropriate Review
 export const reportReview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -270,6 +266,7 @@ export const reportReview = async (req, res) => {
     res.status(500).json({ success: false, message: 'Không thể gửi báo cáo vi phạm' });
   }
 };
+// END UC-91 Report Inappropriate Review
 
 export const getReviewsByTour = async (req, res) => {
   try {
@@ -459,6 +456,13 @@ export const moderateReview = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy đánh giá'
+      });
+    }
+
+    if (review.isDeleted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Đánh giá này đã bị ẩn. Dùng chức năng "Khôi phục" nếu muốn hiển thị lại.'
       });
     }
 

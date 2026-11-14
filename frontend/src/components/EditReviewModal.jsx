@@ -23,6 +23,7 @@ const STAR_LABELS = ['Rất tệ', 'Không hài lòng', 'Bình thường', 'Hài
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Kiểm tra số sao và nội dung đã sửa rồi lưu đánh giá.
   const handleSubmit = async (event) => {
     event.preventDefault();
     const normalizedComment = comment.trim();

@@ -1,10 +1,3 @@
-/**
- * Itinerary Planning — các use case do Toan phụ trách
- *  - UC-48 View Personal Itinerary
- *  - UC-53 Add Activity to Itinerary (gồm detectScheduleConflicts – BR-62)
- *  - UC-120 Transfer Itinerary Ownership
- *  - UC-137 Leave Itinerary
- */
 import { validationResult } from 'express-validator';
 import Itinerary from '../models/Itinerary.js';
 import Destination from '../models/Destination.js';
@@ -44,6 +37,7 @@ const timeToMinutes = (hhmm) => {
   return h * 60 + m;
 };
 
+// Đổi số phút tính từ nửa đêm về lại chuỗi HH:mm.
 const minutesToTime = (totalMin) => {
   const clamped = Math.max(0, Math.min(23 * 60 + 59, totalMin));
   const h = String(Math.floor(clamped / 60)).padStart(2, '0');
@@ -51,6 +45,7 @@ const minutesToTime = (totalMin) => {
   return `${h}:${m}`;
 };
 
+// Tìm khung giờ trống đầu tiên trong ngày vừa đủ độ dài hoạt động yêu cầu.
 const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) => {
   const duration = Math.max(15, timeToMinutes(requestedEnd) - timeToMinutes(requestedStart));
   const sorted = [...sameDayActivities]
@@ -100,6 +95,7 @@ const findSuggestedTimeSlot = (sameDayActivities, requestedStart, requestedEnd) 
   return null;
 };
 
+// Trả về mọi cặp hoạt động bị trùng giờ trong cùng một ngày.
 const detectScheduleConflicts = (itinerary) => {
   const conflicts = [];
   const activities = itinerary.activities || [];
@@ -310,6 +306,7 @@ export const listItineraries = async (req, res) => {
 
 // END UC-48 View Personal Itinerary
 
+// START UC-50 Delete Itinerary
 /**
  * Delete a personal itinerary (owner only).
  * @route DELETE /api/itineraries/:id
@@ -343,6 +340,7 @@ export const deleteItinerary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa lịch trình' });
   }
 };
+// END UC-50 Delete Itinerary
 
 /**
  * List itineraries shared with the authenticated customer.
@@ -387,6 +385,7 @@ export const getItinerary = async (req, res) => {
 
 // END UC-48 View Personal Itinerary
 
+// START UC-59 Calculate Trip Budget
 /**
  * Calculate the trip budget of an itinerary: total cost = activity costs + tour prices.
  * @route GET /api/itineraries/:id/budget
@@ -430,6 +429,7 @@ export const calculateTripBudget = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể tính toán ngân sách chuyến đi' });
   }
 };
+// END UC-59 Calculate Trip Budget
 
 /**
  * Return detected schedule conflicts for an itinerary.
@@ -811,6 +811,7 @@ export const removeDestination = async (req, res) => {
   }
 };
 
+// START UC-55 Add Tour to Itinerary
 /**
  * Add an active tour to an owned itinerary (owner only).
  * @route POST /api/itineraries/:id/tours
@@ -854,6 +855,7 @@ export const addTour = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể thêm tour vào lịch trình' });
   }
 };
+// END UC-55 Add Tour to Itinerary
 
 /**
  * Remove a tour from an owned itinerary (owner only).
@@ -927,6 +929,15 @@ export const duplicateItinerary = async (req, res) => {
     if (req.body.startDate) {
       const parsedStart = new Date(req.body.startDate);
       if (!isNaN(parsedStart.getTime())) {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        if (parsedStart < startOfToday) {
+          return res.status(400).json({
+            success: false,
+            message: 'Ngày bắt đầu lịch trình mới phải ở tương lai'
+          });
+        }
+
         if (source.startDate) {
           const originalStart = new Date(source.startDate);
           dateShiftMs = parsedStart.getTime() - originalStart.getTime();
@@ -1108,9 +1119,9 @@ export const leaveItinerary = async (req, res) => {
 
       const currentUserId = String(req.user._id);
 
-      // BR-72 - Sole Ownership Rule: owner cannot leave without transferring
-      // ownership first. They must use the separate transfer ownership flow,
-      // or delete the entire itinerary.
+      // BR-72 - Quy tắc sở hữu duy nhất: chủ sở hữu không thể rời lịch trình
+      // khi chưa chuyển quyền. Họ phải dùng luồng chuyển quyền riêng,
+      // hoặc xoá toàn bộ lịch trình.
       if (String(itinerary.owner?._id || itinerary.owner) === currentUserId) {
         return res.status(403).json({
           success: false,
@@ -1136,8 +1147,8 @@ export const leaveItinerary = async (req, res) => {
       itinerary.markModified('collaborators');
       await itinerary.save();
 
-      // the leaver is the authenticated user; collaborators are raw ObjectIds here
-      // because the itinerary was not populated
+      // người rời là người dùng đang đăng nhập; cộng tác viên ở đây còn là ObjectId thô
+      // vì lịch trình chưa được populate
       const leaverName = req.user.username || req.user.email || 'Một thành viên';
       const remainingRecipients = collaborators
         .map((c) => c.user?._id || c.user)
@@ -1270,13 +1281,13 @@ export const transferOwnership = async (req, res) => {
       });
     }
 
-    // Transfer: collaborator becomes owner, old owner becomes collaborator (edit)
+    // Chuyển quyền: cộng tác viên thành chủ sở hữu, chủ cũ thành cộng tác viên (quyền sửa)
     const oldOwnerId = itinerary.owner;
     itinerary.owner = newOwnerId;
     itinerary.collaborators = itinerary.collaborators.filter(
       (c) => String(c.user?._id || c.user) !== String(newOwnerId)
     );
-    // Old owner becomes a collaborator with edit permission
+    // Chủ cũ trở thành cộng tác viên với quyền chỉnh sửa
     itinerary.collaborators.push({
       user: oldOwnerId,
       permission: 'edit'
@@ -1286,7 +1297,7 @@ export const transferOwnership = async (req, res) => {
 
     const populated = await findByIdPopulated(itinerary._id);
 
-    // Notify all collaborators about the ownership transfer
+    // Thông báo cho toàn bộ cộng tác viên về việc chuyển quyền sở hữu
     const recipients = itinerary.collaborators
       .map((c) => c.user?._id || c.user)
       .filter((id) => String(id) !== String(newOwnerId));
@@ -1371,6 +1382,7 @@ export const addComment = async (req, res) => {
   }
 };
 
+// START UC-158 Delete Itinerary Comment
 /**
  * UC-61: Delete Comment on Itinerary
  * Delete a comment (author of the comment or owner of the itinerary).
@@ -1422,6 +1434,7 @@ export const deleteComment = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa bình luận' });
   }
 };
+// END UC-158 Delete Itinerary Comment
 
 
 // START UC-147 Add Packing Item
@@ -1464,6 +1477,7 @@ export const addPackingItem = async (req, res) => {
 };
 // END UC-147 Add Packing Item
 
+// START UC-149 Update Packing Item
 /**
  * Update a packing item in an owned or edit-enabled shared itinerary.
  * @route PUT /api/itineraries/:id/packing-items/:itemId
@@ -1500,7 +1514,9 @@ export const updatePackingItem = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể cập nhật vật dụng' });
   }
 };
+// END UC-149 Update Packing Item
 
+// START UC-150 Remove Packing Item
 /**
  * Remove a packing item from an owned or edit-enabled shared itinerary.
  * @route DELETE /api/itineraries/:id/packing-items/:itemId
@@ -1537,13 +1553,18 @@ export const removePackingItem = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Không thể xóa vật dụng' });
   }
 };
+// END UC-150 Remove Packing Item
 
 // START UC-151 Mark Item as Packed
 /**
  * Mark a packing item as packed or not packed.
- * Any member of the itinerary (owner or collaborator, including view-only)
- * may mark the item as packed for themselves. The state is stored per user
- * in `packedBy` so each member has an independent checklist progress.
+ *
+ * BR-95: every itinerary member — owner, edit-collaborator and view-collaborator
+ * — may check/uncheck packing items for themselves. A 'view' collaborator keeps
+ * read-only access to the itinerary content but still owns their personal
+ * checklist progress. The state is stored per user in `packedBy`, so a member's
+ * action never alters another member's progress.
+ *
  * @route PATCH /api/itineraries/:id/packing-items/:itemId/status
  * @access Customer
  */
@@ -1571,8 +1592,10 @@ export const updatePackingItemStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy lịch trình' });
     }
 
-    // Xem được lịch trình là được tự đánh dấu tiến độ của mình,
-    // kể cả collaborator chỉ có quyền 'view'.
+    // BR-95: mọi thành viên của lịch trình — kể cả collaborator chỉ có quyền
+    // 'view' — đều được tự đánh dấu tiến độ đóng gói của chính mình. Thao tác
+    // chỉ sửa `packedBy` của người gọi nên không ảnh hưởng tiến độ thành viên
+    // khác; quyền 'view' chỉ giới hạn việc sửa nội dung lịch trình.
     if (!canView(itinerary, req.user._id)) {
       return res.status(403).json({
         success: false,

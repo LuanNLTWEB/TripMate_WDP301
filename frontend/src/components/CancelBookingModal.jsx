@@ -38,6 +38,7 @@ const CancelBookingModal = ({ booking, tourTitle, onClose, onCancelled }) => {
     };
   }, [isSubmitting, onClose]);
 
+  // Kiểm tra lý do huỷ rồi gửi yêu cầu huỷ.
   const handleSubmit = async (event) => {
     event.preventDefault();
     const normalizedReason = reason.trim();

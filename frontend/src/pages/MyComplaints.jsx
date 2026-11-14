@@ -33,6 +33,8 @@ const formatDate = (value) => {
 const bookingCode = (id) => (id ? `BK-${String(id).slice(-6).toUpperCase()}` : '—');
 const complaintCode = (id) => (id ? `CP-${String(id).slice(-6).toUpperCase()}` : '—');
 
+// START UC-67 View My Complaints
+// Trang để khách hàng xem và theo dõi khiếu nại của chính mình.
 export default function MyComplaints() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -48,6 +50,7 @@ export default function MyComplaints() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Mở form sửa với dữ liệu của khiếu nại đang chọn.
   const handleOpenEdit = (complaint) => {
     setEditingComplaint(complaint);
     setEditCategory(complaint.category || 'quality_mismatch');
@@ -56,16 +59,19 @@ export default function MyComplaints() {
     setEditError('');
   };
 
+  // Đóng form sửa và xoá trạng thái của form.
   const handleCloseEdit = () => {
     if (editSubmitting || uploadingImage) return;
     setEditingComplaint(null);
     setEditError('');
   };
 
+  // Xoá một ảnh minh chứng khỏi form sửa.
   const handleRemoveEditImage = (index) => {
     setEditImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Tải một ảnh minh chứng lên và thêm đường dẫn vào form sửa.
   const handleUploadEditImage = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -93,6 +99,7 @@ export default function MyComplaints() {
     }
   };
 
+  // Kiểm tra form sửa rồi lưu các thay đổi của khiếu nại.
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     const trimmedDesc = editDescription.trim();
@@ -179,6 +186,7 @@ export default function MyComplaints() {
     return filteredComplaints.slice(start, start + PAGE_SIZE);
   }, [filteredComplaints, currentPage]);
 
+  // Tải khiếu nại của khách hàng đang đăng nhập.
   const load = async () => {
     setLoading(true);
     try {
@@ -195,6 +203,7 @@ export default function MyComplaints() {
   useEffect(() => { load(); // eslint-disable-line react/set-state-in-effect
   }, []);
 
+  // Huỷ khiếu nại mà khách đã xác nhận trong hộp thoại.
   const handleConfirmCancel = async () => {
     if (!complaintToCancel || cancelling) return;
     setCancelling(true);
@@ -644,3 +653,4 @@ export default function MyComplaints() {
     </>
   );
 }
+// END UC-67 View My Complaints

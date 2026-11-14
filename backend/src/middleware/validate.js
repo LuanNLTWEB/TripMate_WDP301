@@ -82,8 +82,8 @@ export const registerValidation = [
 ];
 
 // START UC-66 Submit Booking Complaint
-// Customer submits a booking-linked complaint with optional evidence images;
-// staff resolves it (UC-81/153/154).
+// Khách hàng gửi khiếu nại gắn với một đơn đặt tour, kèm ảnh minh chứng tuỳ chọn;
+// nhân viên xử lý khiếu nại đó (UC-81/153/154).
 export const createComplaintValidation = [
   body('bookingId').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ'),
   body('category')
@@ -135,6 +135,7 @@ export const confirmBookingPaymentValidation = [
     .withMessage('Phương thức thanh toán phải là cash hoặc bank_transfer')
 ];
 
+// Kiểm tra mã đơn đặt tour dùng khi điểm danh.
 export const checkInBookingValidation = [
   param('id').isMongoId().withMessage('Mã đơn đặt tour không hợp lệ')
 ];
@@ -145,6 +146,7 @@ export const completeBookingValidation = [
 ];
 
 
+// Kiểm tra từ khoá, trạng thái, trang và số dòng của danh sách khiếu nại.
 export const complaintListValidation = [
   query('status')
     .optional()
@@ -305,7 +307,7 @@ export const accountValidation = [
     })
 ];
 
-export const updateAccountRoleValidation = [
+export const updateAccountValidation = [
   body('role')
     .trim()
     .notEmpty().withMessage('Vui lòng chọn vai trò')
@@ -313,8 +315,37 @@ export const updateAccountRoleValidation = [
       const roleExists = await Role.findOne({ name: value });
       if (!roleExists) throw new Error('Vai trò không hợp lệ');
       return true;
-    })
+    }),
+  body('username')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập tên người dùng')
+    .isLength({ min: 3, max: 30 }).withMessage('Tên người dùng phải từ 3 đến 30 ký tự')
+    .matches(/^[a-zA-Z0-9_]+$/).withMessage('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới'),
+  body('phone')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Vui lòng nhập số điện thoại')
+    .matches(/^[0-9]{10,11}$/).withMessage('Số điện thoại không hợp lệ (10-11 số)'),
+  body('dateOfBirth')
+    .optional({ values: 'falsy' })
+    .isISO8601().withMessage('Ngày sinh phải có định dạng hợp lệ (YYYY-MM-DD)')
+    .custom((value) => {
+      const dateOfBirth = new Date(value);
+      const today = new Date();
+      let age = today.getFullYear() - dateOfBirth.getFullYear();
+      const monthDifference = today.getMonth() - dateOfBirth.getMonth();
+      if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())) age--;
+      if (dateOfBirth > today) throw new Error('Ngày sinh không thể ở tương lai');
+      if (age < 12) throw new Error('Bạn phải đủ ít nhất 12 tuổi');
+      return true;
+    }),
+  body('gender')
+    .optional()
+    .isIn(['male', 'female', 'other']).withMessage('Giới tính không hợp lệ')
 ];
+
+export const updateAccountRoleValidation = updateAccountValidation;
 
 export const itineraryValidation = [
   body('title')
@@ -585,7 +616,7 @@ export const createTourValidation = [
     .notEmpty().withMessage('Vui lòng nhập thời lượng tour (ví dụ: 3 ngày 2 đêm)'),
   body('availableSeats')
     .optional({ values: 'falsy' })
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm'),
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0'),
   body('categoryId')
     .optional({ values: 'falsy' })
     .isMongoId().withMessage('Mã danh mục không hợp lệ'),
@@ -667,6 +698,9 @@ export const createBookingValidation = [
       }
       return true;
     }),
+  body('departureId')
+    .optional({ checkFalsy: true })
+    .isMongoId().withMessage('Mã lịch khởi hành không hợp lệ'),
   body('note')
     .optional()
     .isLength({ max: 500 }).withMessage('Ghi chú không được vượt quá 500 ký tự')
@@ -721,7 +755,7 @@ export const updateProviderTourValidation = [
     .isFloat({ min: 0 }).withMessage('Giá tour phải là số không âm')
     .toFloat(),
   body('availableSeats')
-    .isInt({ min: 0, max: 10000 }).withMessage('Số chỗ phải là số nguyên từ 0 đến 10000')
+    .isInt({ min: 1, max: 10000 }).withMessage('Số chỗ phải là số nguyên lớn hơn 0')
     .toInt(),
   body('categoryId')
     .optional({ values: 'falsy' })
@@ -760,12 +794,11 @@ export const deleteTourScheduleValidation = [
 ];
 
 // START UC-45 Update Tour Capacity
-// Số chỗ phải là số nguyên không âm (BR-50).
 export const updateTourCapacityValidation = [
   param('id').isMongoId().withMessage('Mã tour không hợp lệ'),
   body('availableSeats')
     .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0')
     .toInt()
 ];
 // END UC-45 Update Tour Capacity
@@ -834,6 +867,7 @@ export const voteHelpfulValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
 
+// Kiểm tra mã đánh giá khi khôi phục đánh giá đã xoá.
 export const restoreReviewValidation = [
   param('id').isMongoId().withMessage('Mã đánh giá không hợp lệ')
 ];
@@ -906,7 +940,7 @@ export const createDepartureValidation = [
     .toDate(),
   body('availableSeats')
     .exists({ values: 'falsy' }).withMessage('Vui lòng nhập số chỗ')
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớp hơn 0')
     .toInt(),
   body('price')
     .optional({ nullable: true, checkFalsy: true })
@@ -1029,7 +1063,7 @@ export const updateDepartureValidation = [
     .toDate(),
   body('availableSeats')
     .optional()
-    .isInt({ min: 0 }).withMessage('Số chỗ phải là số nguyên không âm')
+    .isInt({ min: 1 }).withMessage('Số chỗ phải lớn hơn 0')
     .toInt(),
   body('price')
     .optional({ nullable: true, checkFalsy: true })
@@ -1219,14 +1253,24 @@ export const updateTourSubmissionValidation = [
   body('status')
     .optional()
     .isIn(['pending', 'approved', 'rejected', 'needs_revision']).withMessage('Trạng thái duyệt không hợp lệ'),
+  // BR-63: yêu cầu chỉnh sửa phải kèm ghi chú từ 10 đến 1000 ký tự; từ chối chỉ
+  // cần ghi chú khác rỗng (controller trả 400 khi thiếu).
   body('reviewNote')
     .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 1000 }).withMessage('Nội dung phản hồi không được vượt quá 1000 ký tự')
+    .custom((value, { req }) => {
+      const note = typeof value === 'string' ? value.trim() : '';
+      if (req.body.status === 'needs_revision' && note.length < 10) {
+        throw new Error('Nội dung cần chỉnh sửa phải có ít nhất 10 ký tự');
+      }
+      return true;
+    })
 ];
 // END UC-129 Update Tour Submission
 
 // START UC-130 View Tour Submission List
+// Kiểm tra từ khoá, trạng thái, trang và số dòng của danh sách bài gửi.
 export const tourSubmissionListValidation = [
   query('search')
     .optional()
@@ -1235,6 +1279,9 @@ export const tourSubmissionListValidation = [
   query('status')
     .optional()
     .isIn(['all', 'pending', 'needs_revision', 'approved', 'rejected']).withMessage('Trạng thái bài gửi không hợp lệ'),
+  query('tourId')
+    .optional()
+    .isMongoId().withMessage('Mã tour không hợp lệ'),
   query('page')
     .optional()
     .isInt({ min: 1 }).withMessage('Số trang phải là số nguyên dương')
@@ -1247,6 +1294,7 @@ export const tourSubmissionListValidation = [
 // END UC-130 View Tour Submission List
 
 // START UC-131 Delete Tour Submission
+// Kiểm tra tham số mã bài gửi trên đường dẫn.
 export const tourSubmissionIdValidation = [
   param('id').isMongoId().withMessage('Mã bài gửi không hợp lệ')
 ];

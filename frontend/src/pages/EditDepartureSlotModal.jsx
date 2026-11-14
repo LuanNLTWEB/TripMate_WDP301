@@ -10,6 +10,11 @@ const formatCurrency = (value) => new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 }).format(Number(value) || 0);
 
+// Format number to Vietnamese style without currency symbol (1.000.000)
+const formatVnd = (value) => new Intl.NumberFormat('vi-VN', {
+  maximumFractionDigits: 0
+}).format(Number(value) || 0);
+
 export default function EditDepartureSlotModal({ open, onClose, departure, tourPrice, onUpdated }) {
   const toast = useToast();
   const [departureDate, setDepartureDate] = useState('');
@@ -48,8 +53,8 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
 
     if (availableSeats === '') {
       errs.availableSeats = 'Vui lòng nhập số chỗ';
-    } else if (!Number.isInteger(Number(availableSeats)) || Number(availableSeats) < 0) {
-      errs.availableSeats = 'Số chỗ phải là số nguyên không âm';
+    } else if (!Number.isInteger(Number(availableSeats)) || Number(availableSeats) <= 0) {
+      errs.availableSeats = 'Số chỗ phải lớn hơn 0';
     }
 
     if (price !== '') {
@@ -149,7 +154,7 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
                     <input
                       id="slot-seats"
                       type="number"
-                      min="0"
+                      min="1"
                       step="1"
                       className={`form-control ${errors.availableSeats ? 'is-invalid' : ''}`}
                       value={availableSeats}
@@ -172,8 +177,16 @@ export default function EditDepartureSlotModal({ open, onClose, departure, tourP
                       step="1000"
                       className={`form-control ${errors.price ? 'is-invalid' : ''}`}
                       placeholder={tourPrice != null ? String(tourPrice) : ''}
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
+                      // Text input for full control over Vietnamese number formatting
+                      // Raw numeric value stored in price state
+// Display formatted value in input, onChange strips non-digits for API
+                      value={formatVnd(Number(price))}
+                      onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))}
+                      // Allow only digits input, formatted display
+                      // onInput maintains formatted display
+                      type="text"
+                      inputMode="numeric"
+                      // Allow empty (for using tour price)
                       disabled={submitting}
                     />
                     {errors.price

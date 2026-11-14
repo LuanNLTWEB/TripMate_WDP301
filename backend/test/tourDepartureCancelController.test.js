@@ -8,12 +8,14 @@ import { cancelDeparture } from '../src/controllers/departureController.js';
 
 const originalDepartureFindById = Departure.findById;
 const originalTourFindById = Tour.findById;
+const originalTourUpdateOne = Tour.updateOne;
 const originalBookingFind = Booking.find;
 const originalNotificationCreate = Notification.create;
 
 afterEach(() => {
   Departure.findById = originalDepartureFindById;
   Tour.findById = originalTourFindById;
+  Tour.updateOne = originalTourUpdateOne;
   Booking.find = originalBookingFind;
   Notification.create = originalNotificationCreate;
 });
@@ -162,6 +164,7 @@ test('cancelDeparture succeeds when departure is >= 72 hours in future and casca
     _id: 'booking-1',
     customerId: 'cust-1',
     status: 'confirmed',
+    numberOfPeople: 3,
     cancelReason: '',
     cancelledAt: null,
     async save() {
@@ -170,6 +173,12 @@ test('cancelDeparture succeeds when departure is >= 72 hours in future and casca
   };
 
   Booking.find = async () => [mockBooking];
+
+  const tourUpdates = [];
+  Tour.updateOne = async (filter, update) => {
+    tourUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
 
   const createdNotifications = [];
   Notification.create = async (payload) => {
@@ -204,4 +213,53 @@ test('cancelDeparture succeeds when departure is >= 72 hours in future and casca
   assert.equal(createdNotifications[0].notificationType, 'departure_cancellation');
   assert.match(createdNotifications[0].message, /hoàn lại 100% chi phí/);
   assert.match(createdNotifications[0].message, /Bảo trì cáp treo đột xuất/);
+
+  // Verify confirmed seats are released back to the tour
+  assert.equal(result.body.data.releasedSeats, 3);
+  assert.equal(tourUpdates.length, 1);
+  assert.equal(String(tourUpdates[0].filter._id), 'tour-1');
+  assert.equal(tourUpdates[0].update.$inc.availableSeats, 3);
+});
+
+test('cancelDeparture does not release seats for pending bookings', async () => {
+  const departure = makeDeparture({
+    departureDate: new Date(Date.now() + 96 * 60 * 60 * 1000)
+  });
+  Departure.findById = async () => departure;
+
+  Tour.findById = () => ({
+    select: async () => ({ _id: 'tour-1', title: 'Tour Phú Quốc 3N2Đ' })
+  });
+
+  const mockBooking = {
+    _id: 'booking-2',
+    customerId: 'cust-2',
+    status: 'pending',
+    numberOfPeople: 2,
+    cancelReason: '',
+    cancelledAt: null,
+    async save() {}
+  };
+
+  Booking.find = async () => [mockBooking];
+
+  const tourUpdates = [];
+  Tour.updateOne = async (filter, update) => {
+    tourUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
+  Notification.create = async (payload) => payload;
+
+  const result = createResponse();
+
+  await cancelDeparture({
+    params: { id: 'dep-1' },
+    user: { _id: 'provider-1' },
+    body: { reason: 'Bão lớn' }
+  }, result.response);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(mockBooking.status, 'cancelled');
+  assert.equal(result.body.data.releasedSeats, 0);
+  assert.equal(tourUpdates.length, 0);
 });

@@ -1,18 +1,16 @@
-/**
- * Tour Management — các use case do Toan phụ trách
- *  - UC-25 View Tour Details
- *  - UC-30 View Favorite Tours
- *  - UC-35 View Approval Status
- *  - UC-45 Update Tour Capacity
- */
 import Tour from '../models/Tour.js';
 import TourCategory from '../models/TourCategory.js';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Departure from '../models/Departure.js';
 import TourSubmission from '../models/TourSubmission.js';
 import Review from '../models/Review.js';
+import { ensurePendingTourSubmission, repairOrphanPendingTourSubmissions } from '../utils/tourSubmissionSync.js';
 import { validationResult } from 'express-validator';
+
+// Booking còn giữ chỗ của tour: mọi trạng thái trừ cancelled/rejected.
+const COMMITTED_BOOKING_STATUSES = ['pending', 'confirmed', 'paid', 'checked_in', 'completed', 'no_show'];
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -190,6 +188,7 @@ export const saveFavoriteTour = async (req, res) => {
   }
 };
 
+// START UC-22 Browse & Filter Tours
 export const getAllTours = async (req, res) => {
   try {
     const {
@@ -280,6 +279,7 @@ export const getAllTours = async (req, res) => {
     });
   }
 };
+// END UC-22 Browse & Filter Tours
 
 // START UC-25 View Tour Details
 /**
@@ -399,11 +399,16 @@ export const getManagedTours = async (req, res) => {
     } else if (status === 'active') {
       filters.push({ status: 'active' });
     } else if (status === 'pending') {
-      const pendingSubmissionTourIds = await TourSubmission.distinct('tourId', {
-        status: 'pending',
-        isDeleted: { $ne: true }
+      // Phục hồi các tour 'pending' chưa có bài gửi để không bị bỏ sót trong hàng đợi duyệt.
+      const pendingSubmissionTourIds = await repairOrphanPendingTourSubmissions();
+
+      // Gồm cả tour 'pending' lẫn tour có bài gửi chờ duyệt nhưng trạng thái chưa đồng bộ.
+      filters.push({
+        $or: [
+          { status: 'pending' },
+          { _id: { $in: pendingSubmissionTourIds } }
+        ]
       });
-      filters.push({ _id: { $in: pendingSubmissionTourIds } });
     } else if (status === 'needs_revision') {
       filters.push({ status: 'needs_revision' });
     } else if (status === 'rejected') {
@@ -492,6 +497,33 @@ export const getManagedTourById = async (req, res) => {
   }
 };
 
+// START UC-101 Restore Tour
+// Staff chỉ được đổi trạng thái tour sang hai giá trị này qua PATCH /tours/:id/status;
+// 'active' chỉ đến từ duyệt bài gửi (UC-129) hoặc khôi phục tour tạm ngưng (UC-101).
+const REVIEWABLE_TOUR_STATUSES = ['suspended', 'rejected'];
+
+// Khớp MIN_TOUR_SEATS ở tourSubmissionController: tour 0 chỗ thì mở bán cũng không ai đặt được.
+const MIN_TOUR_SEATS = 1;
+
+/**
+ * Báo cho provider biết kết quả kiểm duyệt/khôi phục tour.
+ * Lỗi thông báo không được làm hỏng nghiệp vụ chính nên chỉ log lại.
+ */
+const notifyTourModeration = async ({ recipient, title, message, sender }) => {
+  if (!recipient) return;
+  try {
+    await Notification.create({
+      recipient,
+      title,
+      message,
+      notificationType: 'tour_moderation',
+      sender
+    });
+  } catch (error) {
+    console.error('Notify provider about tour moderation failed:', error);
+  }
+};
+
 export const updateTourStatus = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -513,21 +545,41 @@ export const updateTourStatus = async (req, res) => {
       });
     }
 
+    // UC-101: không cho bật tour sang 'active' qua endpoint này.
+    if (status === 'active') {
+      return res.status(409).json({
+        success: false,
+        message: 'Không thể chuyển tour sang trạng thái đang hoạt động tại đây. Hãy duyệt bài gửi duyệt hoặc khôi phục tour đang tạm ngưng.'
+      });
+    }
+
+    if (!REVIEWABLE_TOUR_STATUSES.includes(status)) {
+      return res.status(409).json({
+        success: false,
+        message: 'Trạng thái chuyển đổi không hợp lệ'
+      });
+    }
+
     if (tour.status === status) {
       return res.status(200).json({
         success: true,
         message: status === 'suspended'
           ? 'Tour đã ở trạng thái tạm ngưng'
-          : status === 'rejected'
-            ? 'Tour đã bị từ chối'
-            : 'Tour đang hoạt động',
+          : 'Tour đã bị từ chối',
         data: tour
       });
     }
 
-    const previousStatus = tour.status;
-    if (status === 'active' && previousStatus === 'pending') {
-      const pendingSubmission = await TourSubmission.exists({
+    // Từ chối chỉ hợp lệ với tour đang chờ duyệt, và phải đồng bộ bài gửi duyệt.
+    if (status === 'rejected') {
+      if (tour.status !== 'pending') {
+        return res.status(409).json({
+          success: false,
+          message: 'Chỉ có thể từ chối tour đang ở trạng thái chờ duyệt'
+        });
+      }
+
+      const pendingSubmission = await TourSubmission.findOne({
         tourId: tour._id,
         status: 'pending',
         isDeleted: { $ne: true }
@@ -539,28 +591,46 @@ export const updateTourStatus = async (req, res) => {
           message: 'Tour này chưa có bài gửi duyệt đang chờ xử lý. Hãy gửi bài duyệt tour trước.'
         });
       }
+
+      const rejectionReason = reason.trim();
+      const reviewedAt = new Date();
+
+      tour.status = 'rejected';
+      tour.rejectionReason = rejectionReason;
+      tour.rejectedAt = reviewedAt;
+      tour.rejectedBy = req.user._id;
+
+      pendingSubmission.status = 'rejected';
+      pendingSubmission.reviewNote = rejectionReason;
+      pendingSubmission.reviewedAt = reviewedAt;
+      pendingSubmission.reviewedBy = req.user._id;
+
+      await tour.save();
+      await pendingSubmission.save();
+      await tour.populate([
+        { path: 'suspendedBy', select: 'username email' },
+        { path: 'rejectedBy', select: 'username email' }
+      ]);
+
+      await notifyTourModeration({
+        recipient: tour.providerId,
+        title: 'Tour của bạn bị từ chối duyệt',
+        message: `Tour "${tour.title}": ${rejectionReason}`,
+        sender: req.user._id
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đã từ chối duyệt tour',
+        data: tour
+      });
     }
 
-    tour.status = status;
-    if (status === 'suspended') {
-      tour.suspensionReason = reason.trim();
-      tour.suspendedAt = new Date();
-      tour.suspendedBy = req.user._id;
-    } else if (status === 'rejected') {
-      tour.rejectionReason = reason.trim();
-      tour.rejectedAt = new Date();
-      tour.rejectedBy = req.user._id;
-    } else {
-      tour.suspensionReason = '';
-      tour.suspendedAt = null;
-      tour.suspendedBy = null;
-      tour.rejectionReason = '';
-      tour.rejectedAt = null;
-      tour.rejectedBy = null;
-      tour.revisionNote = '';
-      tour.revisionRequestedAt = null;
-      tour.revisionRequestedBy = null;
-    }
+    // Trạng thái còn lại là tạm ngưng (UC-101 giữ nguyên logic cũ).
+    tour.status = 'suspended';
+    tour.suspensionReason = reason.trim();
+    tour.suspendedAt = new Date();
+    tour.suspendedBy = req.user._id;
 
     await tour.save();
     await tour.populate([
@@ -568,20 +638,9 @@ export const updateTourStatus = async (req, res) => {
       { path: 'rejectedBy', select: 'username email' }
     ]);
 
-    let message = 'Đã cập nhật trạng thái tour';
-    if (status === 'suspended') {
-      message = 'Đã tạm ngưng tour';
-    } else if (status === 'rejected') {
-      message = 'Đã từ chối duyệt tour';
-    } else if (status === 'active') {
-      message = (previousStatus === 'pending' || previousStatus === 'needs_revision')
-        ? 'Đã phê duyệt tour thành công'
-        : 'Đã kích hoạt lại tour';
-    }
-
     res.status(200).json({
       success: true,
-      message,
+      message: 'Đã tạm ngưng tour',
       data: tour
     });
   } catch (error) {
@@ -594,9 +653,16 @@ export const updateTourStatus = async (req, res) => {
 };
 
 /**
- * Khôi phục tour đã bị tạm ngưng (UC Tour Moderation - Restore Tour).
+ * UC-101 – Restore Tour: khôi phục tour đang tạm ngưng về trạng thái hoạt động.
  * @route PATCH /api/tours/:id/restore
  * @access Private (staff)
+ *
+ * Phần phức tạp:
+ *  - Chỉ tour 'suspended' mới khôi phục được; rejected/needs_revision phải để provider sửa
+ *    rồi gửi duyệt lại, không được bật thẳng sang 'active'.
+ *  - Trước khi mở bán lại phải kiểm tra tour còn hợp lệ: còn ít nhất MIN_TOUR_SEATS chỗ và
+ *    không còn cờ yêu cầu chỉnh sửa / từ chối cũ treo lại trên tour.
+ *  - Provider được thông báo qua Notification loại 'tour_moderation' để biết tour đã mở lại.
  */
 export const restoreTour = async (req, res) => {
   try {
@@ -616,6 +682,27 @@ export const restoreTour = async (req, res) => {
       });
     }
 
+    if (Number(tour.availableSeats || 0) < MIN_TOUR_SEATS) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour chưa có chỗ trống. Vui lòng cập nhật số chỗ trước khi khôi phục tour.'
+      });
+    }
+
+    const hasStaleReviewFlags = Boolean(
+      tour.revisionRequestedAt
+      || tour.rejectedAt
+      || String(tour.revisionNote || '').trim()
+      || String(tour.rejectionReason || '').trim()
+    );
+
+    if (hasStaleReviewFlags) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour còn yêu cầu chỉnh sửa hoặc lý do từ chối chưa được xử lý. Vui lòng để nhà cung cấp gửi duyệt lại trước khi khôi phục.'
+      });
+    }
+
     tour.status = 'active';
     tour.suspensionReason = '';
     tour.suspendedAt = null;
@@ -625,6 +712,13 @@ export const restoreTour = async (req, res) => {
       { path: 'suspendedBy', select: 'username email' },
       { path: 'rejectedBy', select: 'username email' }
     ]);
+
+    await notifyTourModeration({
+      recipient: tour.providerId,
+      title: 'Tour của bạn đã được khôi phục',
+      message: `Tour "${tour.title}" đã được khôi phục và mở bán trở lại.`,
+      sender: req.user?._id
+    });
 
     return res.status(200).json({
       success: true,
@@ -640,6 +734,9 @@ export const restoreTour = async (req, res) => {
   }
 };
 
+// END UC-101 Restore Tour
+
+// START UC-99 Request Tour Revision
 export const requestTourRevision = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -675,6 +772,20 @@ export const requestTourRevision = async (req, res) => {
     await tour.save();
     await tour.populate('revisionRequestedBy', 'username email');
 
+    if (tour.providerId) {
+      try {
+        await Notification.create({
+          recipient: tour.providerId,
+          title: 'Tour của bạn cần chỉnh sửa',
+          message: `Tour "${tour.title}": ${tour.revisionNote}`,
+          notificationType: 'tour_submission_result',
+          sender: req.user._id
+        });
+      } catch (notifyErr) {
+        console.error('Error notifying provider for tour revision:', notifyErr);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Đã gửi yêu cầu chỉnh sửa tour',
@@ -688,6 +799,7 @@ export const requestTourRevision = async (req, res) => {
     });
   }
 };
+// END UC-99 Request Tour Revision
 
 export const createTour = async (req, res) => {
   const errors = validationResult(req);
@@ -754,7 +866,8 @@ export const createTour = async (req, res) => {
  *  - Kiểm tra quyền sở hữu ở backend (không chỉ ẩn nút ở frontend); tour không tồn tại
  *    hoặc đã xóa mềm trả 404, tour của provider khác trả 403.
  *  - Chỉ sao chép dữ liệu mô tả/cấu hình + lịch trình khung. KHÔNG sao chép dữ liệu
- *    giao dịch: Departure, Booking, Review, Favorite, averageRating hay lịch sử duyệt.
+ *    giao dịch: Departure, Booking, Review, Favorite, averageRating, availableSeats
+ *    hay lịch sử duyệt — số chỗ và điểm đánh giá của bản sao bắt đầu lại từ 0.
  *  - Tour mới luôn ở trạng thái 'draft' theo đúng quy trình UC-31 Create Tour, không tự
  *    động gửi duyệt/công khai.
  *  - Tour và lịch trình nằm chung một document nên Tour.create là một insert duy nhất:
@@ -796,7 +909,11 @@ export const duplicateTour = async (req, res) => {
       price: sourceTour.price,
       duration: sourceTour.duration,
       images: [...(sourceTour.images || [])],
-      availableSeats: sourceTour.availableSeats,
+      // Không kế thừa sức chứa đang bán của tour gốc: tour nhân bản chưa mở bán chỗ nào,
+      // provider phải cấu hình lại số chỗ (UC-45) trước khi gửi duyệt.
+      availableSeats: 0,
+      // Điểm đánh giá của tour gốc gắn với Review của tour đó, không thuộc bản sao.
+      averageRating: 0,
       itinerary: cloneTourSchedule(sourceTour.itinerary),
       includedServices: [...(sourceTour.includedServices || [])],
       excludedServices: [...(sourceTour.excludedServices || [])],
@@ -828,6 +945,7 @@ export const duplicateTour = async (req, res) => {
 };
 // END UC-24 Duplicate Tour
 
+// START UC-32 View My Provider Tours
 // START UC-35 View Approval Status
 /**
  * UC-35 – View Approval Status (provider xem trạng thái duyệt tour của mình).
@@ -903,6 +1021,7 @@ export const getProviderTours = async (req, res) => {
 };
 
 // END UC-35 View Approval Status
+// END UC-32 View My Provider Tours
 
 export const getProviderTourById = async (req, res) => {
   const errors = validationResult(req);
@@ -936,8 +1055,16 @@ export const getProviderTourById = async (req, res) => {
     // UC39 - ẩn các ngày lịch trình đã xóa mềm khỏi màn hình chi tiết tour của provider.
     tour.itinerary = (tour.itinerary || []).filter((item) => !item.isDeleted);
 
+    // Trả kèm số chỗ đã được xác nhận để UI hiển thị ngưỡng tối thiểu ngay khi mở trang.
+    const [confirmedAgg] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
+      { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
+    ]);
+    const confirmedSeats = confirmedAgg?.seats || 0;
+
     res.status(200).json({
       success: true,
+      confirmedSeats,
       data: tour
     });
   } catch (error) {
@@ -997,7 +1124,11 @@ export const updateProviderTour = async (req, res) => {
     };
     const currentCategoryId = String(tour.categoryId?._id || tour.categoryId || '');
     const nextCategoryId = String(categoryId || '');
-    const hasChanges = [
+    const requestedSeats = normalized.availableSeats;
+    const seatChanged = Number(tour.availableSeats) !== requestedSeats;
+    // Số chỗ là dữ liệu vận hành (thay đổi theo từng đơn đặt), không phải nội dung
+    // công khai của tour — nên chỉ sửa số chỗ không kéo tour về trạng thái chờ duyệt.
+    const hasContentChanges = [
       'title',
       'description',
       'location',
@@ -1006,11 +1137,10 @@ export const updateProviderTour = async (req, res) => {
       'duration'
     ].some((field) => String(tour[field] || '') !== normalized[field])
       || Number(tour.price) !== normalized.price
-      || Number(tour.availableSeats) !== normalized.availableSeats
       || currentCategoryId !== nextCategoryId
       || JSON.stringify(tour.images || []) !== JSON.stringify(normalized.images);
 
-    if (!hasChanges) {
+    if (!hasContentChanges && !seatChanged) {
       await tour.populate('categoryId', 'name');
       return res.status(200).json({
         success: true,
@@ -1020,13 +1150,12 @@ export const updateProviderTour = async (req, res) => {
       });
     }
 
-    const requestedSeats = normalized.availableSeats;
-    const [confirmedSeatsResult] = await Booking.aggregate([
-      { $match: { tourId: tour._id, status: 'confirmed' } },
+    const [confirmedAgg] = await Booking.aggregate([
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
     ]);
-    const confirmedSeats = confirmedSeatsResult?.seats || 0;
-    if (requestedSeats < confirmedSeats) {
+    const confirmedSeats = confirmedAgg?.seats || 0;
+    if (seatChanged && requestedSeats < confirmedSeats) {
       return res.status(409).json({
         success: false,
         message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
@@ -1038,7 +1167,8 @@ export const updateProviderTour = async (req, res) => {
 
     Object.assign(tour, normalized);
 
-    const shouldResubmit = ['active', 'needs_revision', 'rejected'].includes(previousStatus);
+    const shouldResubmit = hasContentChanges
+      && ['active', 'needs_revision', 'rejected'].includes(previousStatus);
     if (shouldResubmit) {
       tour.status = 'pending';
       tour.revisionNote = '';
@@ -1049,15 +1179,54 @@ export const updateProviderTour = async (req, res) => {
       tour.rejectedBy = null;
     }
 
+    // Đồng bộ TourSubmission cho tour cần duyệt: tour vừa gửi lại (shouldResubmit)
+    // hoặc tour đã 'pending' nhưng chưa có bài gửi.
+    const needsPendingSubmission = hasContentChanges
+      && (shouldResubmit || previousStatus === 'pending');
+    let submissionSynced = false;
+
+    if (needsPendingSubmission) {
+      submissionSynced = await ensurePendingTourSubmission(tour, req.user._id);
+
+      // Chỉ gửi thông báo khi có bài gửi mới cần duyệt, tránh lặp lại mỗi lần provider lưu.
+      if (submissionSynced) {
+        try {
+          const staffUsers = await User.find({
+            role: 'staff',
+            isActive: { $ne: false },
+            isDeleted: { $ne: true }
+          }).select('_id').lean();
+
+          await Promise.all(
+            staffUsers.map((staff) =>
+              Notification.create({
+                recipient: staff._id,
+                notificationType: 'tour_moderation',
+                title: 'Có tour gửi duyệt lại',
+                message: `Nhà cung cấp vừa cập nhật và gửi duyệt lại tour "${tour.title}". Vui lòng kiểm tra và phản hồi.`,
+                sender: req.user._id
+              })
+            )
+          );
+        } catch (notifyError) {
+          console.error('Thông báo staff về tour gửi duyệt lại thất bại:', notifyError);
+        }
+      }
+    }
+
     await tour.save();
     await tour.populate('categoryId', 'name');
+
+    const tourIsPending = tour.status === 'pending';
 
     return res.status(200).json({
       success: true,
       message: shouldResubmit
         ? 'Cập nhật tour thành công. Tour đã được gửi lại để kiểm duyệt.'
-        : 'Cập nhật thông tin tour thành công.',
-      requiresReview: shouldResubmit,
+        : tourIsPending
+          ? 'Cập nhật tour thành công. Tour đang chờ kiểm duyệt.'
+          : 'Cập nhật thông tin tour thành công.',
+      requiresReview: tourIsPending,
       confirmedSeats,
       data: tour
     });
@@ -1482,10 +1651,7 @@ export const deleteTour = async (req, res) => {
  * UC-45 – Update Tour Capacity (provider thay đổi tổng số chỗ nhận khách).
  *
  * Phần phức tạp:
- *  - BR-51: aggregate tổng numberOfPeople của các booking 'confirmed' trước khi ghi,
- *    không cho hạ số chỗ xuống dưới số chỗ đã bán.
- *  - Chỉ tính booking 'confirmed' (không tính pending/cancelled) để khớp với
- *    nghiệp vụ giữ chỗ thực tế (BR-50).
+ *  - Không cho hạ số chỗ xuống dưới số chỗ đã bán (mọi booking chưa hủy/chưa bị từ chối).
  *  - Nếu số chỗ mới trùng số cũ thì trả 200 "không thay đổi" và bỏ qua save,
  *    tránh cập nhật updatedAt vô ích.
  */
@@ -1518,9 +1684,8 @@ export const updateTourCapacity = async (req, res) => {
 
     const requestedSeats = Number(req.body.availableSeats);
 
-    // Số chỗ đã bị cam kết trong các booking đã xác nhận
     const [confirmedAgg] = await Booking.aggregate([
-      { $match: { tourId: tour._id, status: 'confirmed' } },
+      { $match: { tourId: tour._id, status: { $in: COMMITTED_BOOKING_STATUSES } } },
       { $group: { _id: null, seats: { $sum: '$numberOfPeople' } } }
     ]);
     const confirmedSeats = confirmedAgg?.seats || 0;
@@ -1530,6 +1695,15 @@ export const updateTourCapacity = async (req, res) => {
         success: false,
         message: `Số chỗ không được thấp hơn ${confirmedSeats} chỗ đã được xác nhận đặt tour`,
         confirmedSeats
+      });
+    }
+
+    // Tour đang mở bán không được đặt số chỗ về 0 thủ công: trạng thái phải đi qua
+    // tạm ngưng (BR-48) để tránh tour active nhưng không đặt được.
+    if (tour.status === 'active' && requestedSeats === 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Tour đang hoạt động. Vui lòng tạm ngưng tour trước khi đặt số chỗ về 0.'
       });
     }
 
@@ -1568,6 +1742,7 @@ export const updateTourCapacity = async (req, res) => {
 
 // END UC-45 Update Tour Capacity
 
+// START UC-46 Update Tour Price
 /**
  * Update the owning provider's tour price.
  * @route PUT /api/tours/:id/price
@@ -1627,7 +1802,9 @@ export const updateTourPrice = async (req, res) => {
     });
   }
 };
+// END UC-46 Update Tour Price
 
+// START UC-37 View Tour Schedule
 /**
  * Get tour schedule (itinerary)
  * @route GET /api/tours/:id/schedule
@@ -1694,6 +1871,7 @@ export const getTourSchedule = async (req, res) => {
     });
   }
 };
+// END UC-37 View Tour Schedule
 
 /**
  * Cập nhật điểm & thông tin khởi hành của tour (UC-42 - Update Tour Departure)
@@ -1797,6 +1975,7 @@ export const updateTourDeparture = async (req, res) => {
 };
 
 
+// START UC-27 Check Tour Availability
 /**
  * Kiểm tra chỗ trống và giá theo lịch khởi hành của tour (UC-27)
  * @route GET /api/tours/:id/availability
@@ -1832,7 +2011,7 @@ export const checkTourAvailability = async (req, res) => {
 
     const confirmedBookings = await Booking.find({
       tourId: tour._id,
-      status: 'confirmed'
+      status: { $in: COMMITTED_BOOKING_STATUSES }
     }).select('departureDate numberOfPeople status');
 
     const toDateKey = (value) => {
@@ -1859,10 +2038,13 @@ export const checkTourAvailability = async (req, res) => {
       const bookedSeats = bookedByDate[dateKey] || 0;
       const capacity = Math.min(Number(dep.availableSeats || 0), tourSeats + bookedSeats);
       const remainingSeats = Math.min(Math.max(0, capacity - bookedSeats), tourSeats);
-      const price = tour.price;
+      const price = (dep.price !== null && dep.price !== undefined && Number(dep.price) > 0)
+        ? Number(dep.price)
+        : tour.price;
 
       return {
         _id: dep._id,
+        hasDeparture: true,
         dateKey,
         departureDate: dep.departureDate,
         capacity,
@@ -1889,18 +2071,16 @@ export const checkTourAvailability = async (req, res) => {
       if (matchedDeparture) {
         selectedDateAvailability = matchedDeparture;
       } else {
-        const bookedSeats = bookedByDate[reqDateKey] || 0;
-        const remainingSeats = tourSeats;
-        const capacity = remainingSeats + bookedSeats;
         selectedDateAvailability = {
           _id: null,
+          hasDeparture: false,
           dateKey: reqDateKey,
           departureDate: new Date(requestedDate),
-          capacity,
-          bookedSeats,
-          remainingSeats,
-          isAvailable: remainingSeats > 0,
-          price: tour.price,
+          capacity: 0,
+          bookedSeats: 0,
+          remainingSeats: 0,
+          isAvailable: false,
+          price: null,
           note: ''
         };
       }
@@ -1925,6 +2105,7 @@ export const checkTourAvailability = async (req, res) => {
     });
   }
 };
+// END UC-27 Check Tour Availability
 
 // START UC-64 Compare Tours
 /**

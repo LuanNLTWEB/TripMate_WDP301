@@ -5,12 +5,27 @@ import CustomDatePicker from '../components/CustomDatePicker';
 
 const initialForm = { title: '', startDate: '', endDate: '', budget: '' };
 
+const formatBudgetInput = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  const digitsOnly = String(value).replace(/\D/g, '');
+  return digitsOnly ? Number(digitsOnly).toLocaleString('vi-VN') : '';
+};
+
+const parseBudgetValue = (value) => {
+  if (value === '' || value === null || value === undefined) return 0;
+  const digitsOnly = String(value).replace(/\D/g, '');
+  return digitsOnly ? Number(digitsOnly) : 0;
+};
+
 const validate = (values) => {
   const next = {};
   const title = values.title.trim();
   if (!title) next.title = 'Vui lòng nhập tên lịch trình';
   else if (title.length < 3) next.title = 'Tên lịch trình phải có ít nhất 3 ký tự';
-  if (values.budget && Number(values.budget) < 0) next.budget = 'Ngân sách không được âm';
+  if (values.budget !== '' && values.budget !== undefined) {
+    const budgetValue = parseBudgetValue(values.budget);
+    if (Number.isNaN(budgetValue) || budgetValue < 0) next.budget = 'Ngân sách không được âm';
+  }
   if (values.startDate && values.endDate && new Date(values.endDate) < new Date(values.startDate)) {
     next.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
   }
@@ -53,7 +68,7 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
         title: form.title.trim(),
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
-        budget: form.budget === '' ? undefined : Number(form.budget)
+        budget: form.budget === '' ? undefined : parseBudgetValue(form.budget)
       });
       onCreated(response.itinerary);
       setForm(initialForm);
@@ -126,12 +141,12 @@ function CreateItineraryModal({ open, onClose, onCreated }) {
                   <label className="form-label" htmlFor="itinerary-create-budget">Ngân sách dự kiến (VNĐ)</label>
                   <input
                     id="itinerary-create-budget"
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     className={`form-control ${errors.budget ? 'is-invalid' : ''}`}
-                    value={form.budget}
-                    onChange={(event) => update('budget', event.target.value)}
-                    placeholder="2000000"
+                    value={form.budget ? formatBudgetInput(form.budget) : ''}
+                    onChange={(event) => update('budget', event.target.value.replace(/\D/g, ''))}
+                    placeholder="VD: 2.000.000"
                   />
                   {errors.budget && <div className="invalid-feedback d-block">{errors.budget}</div>}
                 </div>

@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import Booking from '../src/models/Booking.js';
 import Tour from '../src/models/Tour.js';
+import Departure from '../src/models/Departure.js';
 import User from '../src/models/User.js';
 import {
   createBooking,
   respondProviderBooking,
-  getBookingVoucher,
+  getBookingTicket,
   markBookingAsNoShow,
   resetNoShowCount
 } from '../src/controllers/bookingController.js';
@@ -16,15 +17,23 @@ const originalBookingFindOne = Booking.findOne;
 const originalBookingCreate = Booking.create;
 const originalTourFindById = Tour.findById;
 const originalTourFindOne = Tour.findOne;
+const originalTourUpdateOne = Tour.updateOne;
+const originalDepartureUpdateOne = Departure.updateOne;
 const originalUserFindById = User.findById;
+const originalDepartureFindOne = Departure.findOne;
+const originalBookingFind = Booking.find;
 
 afterEach(() => {
   Booking.findById = originalBookingFindById;
   Booking.findOne = originalBookingFindOne;
+  Booking.find = originalBookingFind;
   Booking.create = originalBookingCreate;
   Tour.findById = originalTourFindById;
   Tour.findOne = originalTourFindOne;
+  Tour.updateOne = originalTourUpdateOne;
+  Departure.updateOne = originalDepartureUpdateOne;
   User.findById = originalUserFindById;
+  Departure.findOne = originalDepartureFindOne;
 });
 
 const createResponse = () => {
@@ -50,6 +59,7 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
     tourId: 'tour-1',
     status: 'pending',
     numberOfPeople: 2,
+    departureDate: '2026-11-22T00:00:00.000Z',
     async save() { savedBooking = true; return this; }
   };
   bookingDoc.populate = () => ({ populate: async () => bookingDoc });
@@ -64,6 +74,16 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
     providerId: 'provider-1',
     availableSeats: 10
   });
+  const tourUpdates = [];
+  Tour.updateOne = async (filter, update) => {
+    tourUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
+  const departureUpdates = [];
+  Departure.updateOne = async (filter, update) => {
+    departureUpdates.push({ filter, update });
+    return { acknowledged: true };
+  };
 
   const res = createResponse();
   await respondProviderBooking({
@@ -82,6 +102,11 @@ test('UC-78: allows provider to reject a pending booking with a valid reason', a
   assert.equal(bookingDoc.rejectionReason, 'Hiện tại thời tiết xấu không thể khởi hành đoàn.');
   assert.ok(bookingDoc.respondedAt);
   assert.equal(bookingDoc.respondedBy, 'provider-1');
+  // Đơn pending đã bị trừ chỗ ở Tour khi tạo, nên từ chối phải hoàn lại 2 chỗ cho Tour;
+  // Departure.availableSeats giữ nguyên tổng sức chứa của đợt khởi hành nên không $inc.
+  assert.equal(tourUpdates.length, 1);
+  assert.equal(tourUpdates[0].update.$inc.availableSeats, 2);
+  assert.equal(departureUpdates.length, 0);
 });
 
 test('UC-78: rejects response when booking is already confirmed or cancelled (409)', async () => {
@@ -106,8 +131,8 @@ test('UC-78: rejects response when booking is already confirmed or cancelled (40
   assert.equal(res.body.success, false);
 });
 
-// UC-82: Download Booking Voucher
-test('UC-82: returns voucher with shortCode and qrData for confirmed booking', async () => {
+// UC-82: Download Booking Ticket
+test('UC-82: returns ticket with shortCode and qrData for confirmed booking', async () => {
   const confirmedBooking = {
     _id: '507f191e810c19729de860ea',
     customerId: 'customer-1',
@@ -129,7 +154,7 @@ test('UC-82: returns voucher with shortCode and qrData for confirmed booking', a
   });
 
   const res = createResponse();
-  await getBookingVoucher({
+  await getBookingTicket({
     params: { id: '507f191e810c19729de860ea' },
     user: { _id: 'customer-1' }
   }, res.response);
@@ -141,7 +166,7 @@ test('UC-82: returns voucher with shortCode and qrData for confirmed booking', a
   assert.ok(res.body.data.qrData.includes('Tour Bà Nà Hills'));
 });
 
-test('UC-82: rejects voucher when booking status is not confirmed (400)', async () => {
+test('UC-82: rejects ticket when booking status is not confirmed (400)', async () => {
   Booking.findOne = () => ({
     populate: async () => ({
       _id: 'booking-pending',
@@ -151,7 +176,7 @@ test('UC-82: rejects voucher when booking status is not confirmed (400)', async 
   });
 
   const res = createResponse();
-  await getBookingVoucher({
+  await getBookingTicket({
     params: { id: 'booking-pending' },
     user: { _id: 'customer-1' }
   }, res.response);
@@ -305,3 +330,226 @@ test('STT 156: resetNoShowCount returns 404 when user not found', async () => {
   assert.equal(res.body.success, false);
 });
 // END STT 156 Reset No-Show Count Tests
+
+// START UC-71 Create Booking by Departure Schedule Tests
+test('UC-71: createBooking rejects when tour has no scheduled departure (400)', async () => {
+  User.findById = () => ({
+    select: async () => ({ isBookingRestricted: false })
+  });
+  Tour.findOne = async () => ({
+    _id: 'tour-1',
+    title: 'Tour Đà Lạt',
+    status: 'active',
+    price: 1500000,
+    availableSeats: 20
+  });
+  Departure.findOne = async () => null;
+
+  const res = createResponse();
+  await createBooking({
+    params: { tourId: 'tour-1' },
+    user: { _id: 'customer-1' },
+    body: {
+      fullName: 'Nguyễn Văn A',
+      phone: '0901234567',
+      email: 'a@example.com',
+      numberOfPeople: 2,
+      departureDate: new Date('2026-12-01')
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.success, false);
+  assert.match(res.body.message, /chưa có lịch khởi hành/);
+});
+
+test('UC-71: createBooking rejects when selected departure has fewer available seats than requested (400)', async () => {
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 7);
+
+  User.findById = () => ({
+    select: async () => ({ isBookingRestricted: false })
+  });
+  Tour.findOne = async () => ({
+    _id: 'tour-1',
+    title: 'Tour Đà Lạt',
+    status: 'active',
+    price: 1500000,
+    availableSeats: 20
+  });
+  Departure.findOne = async () => ({
+    _id: 'dep-1',
+    tourId: 'tour-1',
+    departureDate: futureDate,
+    availableSeats: 2,
+    price: 1400000,
+    status: 'scheduled'
+  });
+  Booking.find = async () => [];
+  Tour.updateOne = async () => ({ modifiedCount: 1 });
+  Departure.updateOne = async () => ({ modifiedCount: 1 });
+
+  const res = createResponse();
+  await createBooking({
+    params: { tourId: 'tour-1' },
+    user: { _id: 'customer-1' },
+    body: {
+      fullName: 'Nguyễn Văn A',
+      phone: '0901234567',
+      email: 'a@example.com',
+      numberOfPeople: 5,
+      departureId: 'dep-1'
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.success, false);
+  assert.match(res.body.message, /chỉ còn 2 chỗ trống/);
+});
+
+test('UC-71: createBooking successfully creates booking linking departureId and computing totalPrice with departure price (201)', async () => {
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 10);
+
+  User.findById = () => ({
+    select: async () => ({ isBookingRestricted: false })
+  });
+  Tour.findOne = async () => ({
+    _id: 'tour-1',
+    title: 'Tour Đà Lạt 3N2Đ',
+    status: 'active',
+    price: 2000000,
+    availableSeats: 30
+  });
+  Departure.findOne = async () => ({
+    _id: 'dep-1',
+    tourId: 'tour-1',
+    departureDate: futureDate,
+    availableSeats: 15,
+    price: 1800000, // Giá ưu đãi theo lịch khởi hành
+    status: 'scheduled'
+  });
+  Booking.find = async () => [];
+  Tour.updateOne = async () => ({ modifiedCount: 1 });
+  Departure.updateOne = async () => ({ modifiedCount: 1 });
+
+  let createdBookingData = null;
+  Booking.create = async (doc) => {
+    createdBookingData = doc;
+    return {
+      ...doc,
+      _id: 'booking-new-1',
+      populate: async () => doc
+    };
+  };
+
+  const res = createResponse();
+  await createBooking({
+    params: { tourId: 'tour-1' },
+    user: { _id: 'customer-1' },
+    body: {
+      fullName: 'Nguyễn Văn A',
+      phone: '0901234567',
+      email: 'a@example.com',
+      numberOfPeople: 3,
+      departureId: 'dep-1',
+      departureDate: futureDate.toISOString()
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.body.success, true);
+  assert.equal(createdBookingData.departureId, 'dep-1');
+  assert.equal(createdBookingData.numberOfPeople, 3);
+  assert.equal(createdBookingData.totalPrice, 1800000 * 3); // 5,400,000 VND
+  assert.equal(createdBookingData.status, 'pending');
+});
+
+test('UC-71: createBooking does not double-deduct Departure.availableSeats when existing bookings exist', async () => {
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 10);
+
+  User.findById = () => ({
+    select: async () => ({ isBookingRestricted: false })
+  });
+  Tour.findOne = async () => ({
+    _id: 'tour-1',
+    title: 'Tour Sa Pa',
+    status: 'active',
+    price: 2000000,
+    availableSeats: 16
+  });
+  Departure.findOne = async () => ({
+    _id: 'dep-1',
+    tourId: 'tour-1',
+    departureDate: futureDate,
+    availableSeats: 10,
+    price: 2000000,
+    status: 'scheduled'
+  });
+  Booking.find = async () => [{ numberOfPeople: 4, status: 'confirmed' }];
+
+  const tourUpdates = [];
+  const departureUpdates = [];
+  Tour.updateOne = async (filter, update) => {
+    tourUpdates.push({ filter, update });
+    return { modifiedCount: 1 };
+  };
+  Departure.updateOne = async (filter, update) => {
+    departureUpdates.push({ filter, update });
+    return { modifiedCount: 1 };
+  };
+  Booking.create = async (doc) => ({
+    ...doc,
+    _id: 'booking-new-2',
+    populate: async () => doc
+  });
+
+  // Đợt có 10 chỗ, đã đặt 4 chỗ => còn 6 chỗ; đặt thêm 6 chỗ phải thành công (201) và không trừ thêm Departure.availableSeats
+  const res = createResponse();
+  await createBooking({
+    params: { tourId: 'tour-1' },
+    user: { _id: 'customer-2' },
+    body: {
+      fullName: 'Trần Thị B',
+      phone: '0907654321',
+      email: 'b@example.com',
+      numberOfPeople: 6,
+      departureId: 'dep-1',
+      departureDate: futureDate.toISOString()
+    }
+  }, res.response);
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(tourUpdates.length, 1);
+  assert.equal(tourUpdates[0].update.$inc.availableSeats, -6);
+  assert.equal(departureUpdates.length, 0);
+});
+
+test('UC-78: respondProviderBooking confirms pending booking even when tour.availableSeats is already 0', async () => {
+  const bookingDoc = {
+    _id: 'booking-last',
+    tourId: 'tour-1',
+    status: 'pending',
+    numberOfPeople: 4,
+    departureDate: '2026-11-22T00:00:00.000Z',
+    async save() { return this; }
+  };
+  bookingDoc.populate = () => ({ populate: async () => bookingDoc });
+  Booking.findById = () => bookingDoc;
+  Tour.findById = async () => ({
+    _id: 'tour-1',
+    providerId: 'provider-1',
+    availableSeats: 0
+  });
+
+  const res = createResponse();
+  await respondProviderBooking({
+    params: { id: 'booking-last' },
+    user: { _id: 'provider-1' },
+    body: { action: 'confirm' }
+  }, res.response);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(bookingDoc.status, 'confirmed');
+});

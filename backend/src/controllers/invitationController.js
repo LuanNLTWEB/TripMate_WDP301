@@ -40,6 +40,12 @@ export const inviteCollaborator = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Không thể tự mời chính mình' });
     }
 
+    // UC-132: chỉ khách hàng mới được nhận lời mời cộng tác lịch trình;
+    // người có vai trò khác (provider/staff) không thể tham gia lịch trình khách.
+    if (targetUser.role !== 'customer') {
+      return res.status(400).json({ success: false, message: 'Chỉ có thể mời khách hàng cộng tác lịch trình.' });
+    }
+
     const isCollaborator = (itinerary.collaborators || []).some(
       (c) => String(c.user?._id || c.user) === String(targetUser._id)
     );
