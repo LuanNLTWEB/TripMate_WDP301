@@ -28,7 +28,6 @@ const FavoriteDestinations = () => {
 
     const fetchFavorites = async () => {
       setLoading(true);
-      setError('');
       setFavoriteDestinations([]);
       setFavoriteTours([]);
 
